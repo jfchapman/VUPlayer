@@ -1,0 +1,364 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{CEA20176-060E-4D43-99DE-DB035BE10FF0}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>VUPlayer</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>FLAC__NO_DLL;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalIncludeDirectories>libs\bass-2.4.12\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4458</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;libs\bass-2.4.12\c\bass.lib;libs\libvorbis-1.3.5\x86\libvorbis_static.lib;libs\libvorbis-1.3.5\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\flac-1.3.2\x86\debug\libFLAC_static.lib;libs\flac-1.3.2\x86\debug\libFLAC++_static.lib;libs\flac-1.3.2\x86\debug\win_utf8_io_static.lib;libs\libogg-1.3.2\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.12\bass.dll" "$(OutDir)bass.dll"</Command>
+    </PostBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>FLAC__NO_DLL;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalIncludeDirectories>libs\bass-2.4.12\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4458</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;libs\bass-2.4.12\c\x64\bass.lib;libs\libvorbis-1.3.5\x64\libvorbis_static.lib;libs\libvorbis-1.3.5\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\flac-1.3.2\x64\debug\libFLAC_static.lib;libs\flac-1.3.2\x64\debug\libFLAC++_static.lib;libs\flac-1.3.2\x64\debug\win_utf8_io_static.lib;libs\libogg-1.3.2\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.12\x64\bass.dll" "$(OutDir)bass.dll"</Command>
+    </PostBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>FLAC__NO_DLL;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalIncludeDirectories>libs\bass-2.4.12\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4458</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;libs\bass-2.4.12\c\bass.lib;libs\libvorbis-1.3.5\x86\libvorbis_static.lib;libs\libvorbis-1.3.5\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\flac-1.3.2\x86\release\libFLAC_static.lib;libs\flac-1.3.2\x86\release\libFLAC++_static.lib;libs\flac-1.3.2\x86\release\win_utf8_io_static.lib;libs\libogg-1.3.2\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.12\bass.dll" "$(OutDir)bass.dll"</Command>
+    </PostBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>FLAC__NO_DLL;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalIncludeDirectories>libs\bass-2.4.12\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4458</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;libs\bass-2.4.12\c\x64\bass.lib;libs\libvorbis-1.3.5\x64\libvorbis_static.lib;libs\libvorbis-1.3.5\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\flac-1.3.2\x64\release\libFLAC_static.lib;libs\flac-1.3.2\x64\release\libFLAC++_static.lib;libs\flac-1.3.2\x64\release\win_utf8_io_static.lib;libs\libogg-1.3.2\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.12\x64\bass.dll" "$(OutDir)bass.dll"</Command>
+    </PostBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Artwork.h" />
+    <ClInclude Include="Database.h" />
+    <ClInclude Include="DecoderWavpack.h" />
+    <ClInclude Include="DlgHotkey.h" />
+    <ClInclude Include="DlgOptions.h" />
+    <ClInclude Include="DlgTrackInfo.h" />
+    <ClInclude Include="Handler.h" />
+    <ClInclude Include="HandlerBass.h" />
+    <ClInclude Include="HandlerFlac.h" />
+    <ClInclude Include="Handlers.h" />
+    <ClInclude Include="HandlerWavpack.h" />
+    <ClInclude Include="Hotkeys.h" />
+    <ClInclude Include="Library.h" />
+    <ClInclude Include="libs\replaygain\replaygain_analysis.h" />
+    <ClInclude Include="libs\sqlite-3.18.0\sqlite3.h" />
+    <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\i18n.h" />
+    <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.h" />
+    <ClInclude Include="Lock.h" />
+    <ClInclude Include="MediaInfo.h" />
+    <ClInclude Include="NullVisual.h" />
+    <ClInclude Include="Options.h" />
+    <ClInclude Include="OptionsGeneral.h" />
+    <ClInclude Include="OptionsHotkeys.h" />
+    <ClInclude Include="OptionsMod.h" />
+    <ClInclude Include="OptionsReplaygain.h" />
+    <ClInclude Include="Oscilloscope.h" />
+    <ClInclude Include="ReplayGain.h" />
+    <ClInclude Include="ShellMetadata.h" />
+    <ClInclude Include="Output.h" />
+    <ClInclude Include="Playlist.h" />
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="Settings.h" />
+    <ClInclude Include="SpectrumAnalyser.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="Decoder.h" />
+    <ClInclude Include="DecoderBass.h" />
+    <ClInclude Include="DecoderFlac.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="Utility.h" />
+    <ClInclude Include="Visual.h" />
+    <ClInclude Include="VUMeter.h" />
+    <ClInclude Include="VUMeterData.h" />
+    <ClInclude Include="VUPlayer.h" />
+    <ClInclude Include="WndCounter.h" />
+    <ClInclude Include="WndList.h" />
+    <ClInclude Include="WndRebar.h" />
+    <ClInclude Include="WndSplit.h" />
+    <ClInclude Include="WndStatus.h" />
+    <ClInclude Include="WndToolbar.h" />
+    <ClInclude Include="WndToolbarCrossfade.h" />
+    <ClInclude Include="WndToolbarFile.h" />
+    <ClInclude Include="WndToolbarFlow.h" />
+    <ClInclude Include="WndToolbarInfo.h" />
+    <ClInclude Include="WndToolbarOptions.h" />
+    <ClInclude Include="WndToolbarPlayback.h" />
+    <ClInclude Include="WndToolbarPlaylist.h" />
+    <ClInclude Include="WndTrackbar.h" />
+    <ClInclude Include="WndTrackbarSeek.h" />
+    <ClInclude Include="WndTrackbarVolume.h" />
+    <ClInclude Include="WndTray.h" />
+    <ClInclude Include="WndTree.h" />
+    <ClInclude Include="WndVisual.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Artwork.cpp" />
+    <ClCompile Include="Database.cpp" />
+    <ClCompile Include="Decoder.cpp" />
+    <ClCompile Include="DecoderWavpack.cpp" />
+    <ClCompile Include="DlgHotkey.cpp" />
+    <ClCompile Include="DlgOptions.cpp" />
+    <ClCompile Include="DlgTrackInfo.cpp" />
+    <ClCompile Include="HandlerBass.cpp" />
+    <ClCompile Include="HandlerFlac.cpp" />
+    <ClCompile Include="Handlers.cpp" />
+    <ClCompile Include="HandlerWavpack.cpp" />
+    <ClCompile Include="Hotkeys.cpp" />
+    <ClCompile Include="Library.cpp" />
+    <ClCompile Include="libs\replaygain\replaygain_analysis.cpp">
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
+    </ClCompile>
+    <ClCompile Include="libs\sqlite-3.18.0\sqlite3.c" />
+    <ClCompile Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.c">
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4267; 4996; 4701; 4706; 4703</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4267; 4996; 4701; 4706; 4703</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4267; 4996; 4701; 4706; 4703</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4267; 4996; 4701; 4706; 4703</DisableSpecificWarnings>
+    </ClCompile>
+    <ClCompile Include="Lock.cpp" />
+    <ClCompile Include="MediaInfo.cpp" />
+    <ClCompile Include="NullVisual.cpp" />
+    <ClCompile Include="Options.cpp" />
+    <ClCompile Include="OptionsGeneral.cpp" />
+    <ClCompile Include="OptionsHotkeys.cpp" />
+    <ClCompile Include="OptionsMod.cpp" />
+    <ClCompile Include="OptionsReplaygain.cpp" />
+    <ClCompile Include="Oscilloscope.cpp" />
+    <ClCompile Include="ReplayGain.cpp" />
+    <ClCompile Include="ShellMetadata.cpp" />
+    <ClCompile Include="Output.cpp" />
+    <ClCompile Include="Playlist.cpp" />
+    <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="DecoderBass.cpp" />
+    <ClCompile Include="DecoderFlac.cpp" />
+    <ClCompile Include="SpectrumAnalyser.cpp" />
+    <ClCompile Include="Utility.cpp" />
+    <ClCompile Include="Visual.cpp" />
+    <ClCompile Include="VUMeter.cpp" />
+    <ClCompile Include="VUPlayer.cpp" />
+    <ClCompile Include="WndCounter.cpp" />
+    <ClCompile Include="WndList.cpp" />
+    <ClCompile Include="WndMain.cpp">
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458</DisableSpecificWarnings>
+    </ClCompile>
+    <ClCompile Include="WndRebar.cpp" />
+    <ClCompile Include="WndSplit.cpp" />
+    <ClCompile Include="WndStatus.cpp" />
+    <ClCompile Include="WndToolbar.cpp" />
+    <ClCompile Include="WndToolbarCrossfade.cpp" />
+    <ClCompile Include="WndToolbarFile.cpp" />
+    <ClCompile Include="WndToolbarFlow.cpp" />
+    <ClCompile Include="WndToolbarInfo.cpp" />
+    <ClCompile Include="WndToolbarOptions.cpp" />
+    <ClCompile Include="WndToolbarPlayback.cpp" />
+    <ClCompile Include="WndToolbarPlaylist.cpp" />
+    <ClCompile Include="WndTrackbar.cpp" />
+    <ClCompile Include="WndTrackbarSeek.cpp" />
+    <ClCompile Include="WndTrackbarVolume.cpp" />
+    <ClCompile Include="WndTray.cpp" />
+    <ClCompile Include="WndTree.cpp">
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4995</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4995</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4995</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4995</DisableSpecificWarnings>
+    </ClCompile>
+    <ClCompile Include="WndVisual.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="VUPlayer.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\add_files.ico" />
+    <Image Include="res\add_folder.ico" />
+    <Image Include="res\crossfade.ico" />
+    <Image Include="res\info.ico" />
+    <Image Include="res\new_playlist.ico" />
+    <Image Include="res\next.ico" />
+    <Image Include="res\options.ico" />
+    <Image Include="res\pause.ico" />
+    <Image Include="res\placeholder.png" />
+    <Image Include="res\play.ico" />
+    <Image Include="res\previous.ico" />
+    <Image Include="res\random.ico" />
+    <Image Include="res\remove_files.ico" />
+    <Image Include="res\repeat_playlist.ico" />
+    <Image Include="res\repeat_track.ico" />
+    <Image Include="res\small.ico" />
+    <Image Include="res\stop.ico" />
+    <Image Include="res\volume.ico" />
+    <Image Include="res\volume_mute.ico" />
+    <Image Include="res\VUPlayer.ico" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
