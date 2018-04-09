@@ -81,6 +81,9 @@ public:
 	// Returns the playlists that have been updated.
 	Playlist::Set OnUpdatedMedia( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo );
 
+	// Called when media library has been refreshed.
+	void OnMediaLibraryRefreshed();
+
 	// Toggles 'All Tracks' on the tree control.
 	void OnAllTracks();
 
@@ -108,6 +111,9 @@ public:
 private:
 	// Maps a tree item to a playlist.
 	typedef std::map<HTREEITEM,Playlist::Ptr> PlaylistMap;
+
+	// Maps a playlist type to an icon index.
+	typedef std::map<Playlist::Type,int> IconMap;
 
 	// Loads playlists
 	void LoadPlaylists();
@@ -219,6 +225,15 @@ private:
 	// Returns the initial selected tree item from application settings.
 	HTREEITEM GetStartupItem();
 
+	// Populates the tree.
+	void Populate();
+
+	// Creates the image list.
+	void CreateImageList();
+
+	// Gets the icon index corresponding to a playlist 'type'.
+	int GetIconIndex( const Playlist::Type type ) const;
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -275,5 +290,11 @@ private:
 
 	// Highlight colour.
 	COLORREF m_ColourHighlight;
+
+	// Image list.
+	HIMAGELIST m_ImageList;
+
+	// Icon map.
+	IconMap m_IconMap;
 };
 

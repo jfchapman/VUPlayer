@@ -2,6 +2,7 @@
 
 #include "HandlerBass.h"
 #include "HandlerFlac.h"
+#include "HandlerOpus.h"
 #include "HandlerWavpack.h"
 
 #include "ShellMetadata.h"
@@ -11,6 +12,7 @@ Handlers::Handlers() :
 	m_Handlers( {
 		Handler::Ptr( new HandlerFlac() ),
 		Handler::Ptr( new HandlerWavpack() ),
+		Handler::Ptr( new HandlerOpus() ),
 		Handler::Ptr( new HandlerBass() ) } )
 {
 }

@@ -131,6 +131,9 @@ public:
 	// Returns the number of selected playlist items.
 	int GetSelectedCount() const;
 
+	// Returns the number of playlist items.
+	int GetCount() const;
+
 	// Launches a file selector dialog to add a folder to the playlist.
 	void OnCommandAddFolder();
 
@@ -152,6 +155,16 @@ public:
 	// Displays the colour selection dialog for changing the list control colours.
 	// 'commandID' - command ID indicating which colour to change.
 	void OnSelectColour( const UINT commandID );
+
+	// Cuts or copies selected files from the playlist into the clipboard.
+	// 'cut' - true to cut the files, false to copy the files.
+	void OnCutCopy( const bool cut );
+
+	// Pastes files into the playlist from the clipboard.
+	void OnPaste();
+
+	// Selects all list control items.
+	void SelectAllItems();
 
 private:
 	// Column format information.
@@ -209,16 +222,6 @@ private:
 
 	// Moves selected items to 'insertionIndex'.
 	void MoveSelectedItems( const int insertionIndex );
-
-	// Selects all list control items.
-	void SelectAllItems();
-
-	// Cuts or copies selected files from the playlist into the clipboard.
-	// 'cut' - true to cut the files, false to copy the files.
-	void OnCutCopy( const bool cut );
-
-	// Pastes files into the playlist from the clipboard.
-	void OnPaste();
 
 	// Shows or hides a column.
 	// 'column' - column type.

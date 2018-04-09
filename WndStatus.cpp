@@ -46,6 +46,7 @@ WndStatus::WndStatus( HINSTANCE instance, HWND parent ) :
 	m_DefaultWndProc( NULL ),
 	m_Playlist(),
 	m_ReplayGainStatusCount( -1 ),
+	m_LibraryStatusCount( -1 ),
 	m_IdleText()
 {
 	const int versionSize = 16;
@@ -110,23 +111,34 @@ void WndStatus::Update( Playlist* playlist )
 	}
 }
 
-void WndStatus::Update( const ReplayGain& replayGain )
+void WndStatus::Update( const ReplayGain& replayGain, const LibraryMaintainer& libraryMaintainer )
 {
-	const int pendingCount = replayGain.GetPendingCount();
-	if ( pendingCount != m_ReplayGainStatusCount ) {
+	const int pendingReplayGain = replayGain.GetPendingCount();
+	const int pendingLibrary = libraryMaintainer.GetPendingCount();
+	if ( ( pendingReplayGain != m_ReplayGainStatusCount ) || ( pendingLibrary != m_LibraryStatusCount ) ) {
 		std::wstring idleText = m_IdleText;
-		if ( 0 != pendingCount ) {
+		if ( 0 != pendingLibrary ) {
+			const int bufSize = 256;
+			WCHAR buf[ bufSize ];
+			LoadString( m_hInst, IDS_STATUS_LIBRARY, buf, bufSize );
+			idleText = buf;
+			const size_t pos = idleText.find( '%' );
+			if ( std::wstring::npos != pos ) {
+				idleText.replace( pos, 1 /*len*/, std::to_wstring( pendingLibrary ) );
+			}
+		} else if ( 0 != pendingReplayGain ) {
 			const int bufSize = 256;
 			WCHAR buf[ bufSize ];
 			LoadString( m_hInst, IDS_STATUS_REPLAYGAIN, buf, bufSize );
 			idleText = buf;
 			const size_t pos = idleText.find( '%' );
 			if ( std::wstring::npos != pos ) {
-				idleText.replace( pos, 1 /*len*/, std::to_wstring( pendingCount ) );
+				idleText.replace( pos, 1 /*len*/, std::to_wstring( pendingReplayGain ) );
 			}
 		}
 		SendMessage( m_hWnd, SB_SETTEXT, 0, reinterpret_cast<LPARAM>( idleText.c_str() ) );
-		m_ReplayGainStatusCount = pendingCount;
+		m_ReplayGainStatusCount = pendingReplayGain;
+		m_LibraryStatusCount = pendingLibrary;
 	}
 }
 

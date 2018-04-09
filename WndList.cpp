@@ -524,10 +524,6 @@ void WndList::SetListViewItemText( int itemIndex, const MediaInfo& mediaInfo )
 					}
 				}
 				const std::wstring str = ss.str();
-				size_t jimbo = str.find( L"+-" );
-				if ( std::wstring::npos != jimbo ) {
-					jimbo = 0;
-				}
 				ListView_SetItemText( m_hWnd, itemIndex, columnIndex, const_cast<LPWSTR>( str.c_str() ) );
 				break;
 			}
@@ -1412,6 +1408,12 @@ Playlist::ItemList WndList::GetSelectedPlaylistItems()
 int WndList::GetSelectedCount() const
 {
 	const int count = ListView_GetSelectedCount( m_hWnd );
+	return count;
+}
+
+int WndList::GetCount() const
+{
+	const int count = ListView_GetItemCount( m_hWnd );
 	return count;
 }
 

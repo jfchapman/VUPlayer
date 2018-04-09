@@ -149,7 +149,7 @@ public:
 	// 'item' - playlist item containing the ID of the item to remove.
 	void RemoveItem( const Item& item );
 
-	// Removed 'mediaInfo' from the playlist.
+	// Removes 'mediaInfo' from the playlist.
 	void RemoveItem( const MediaInfo& mediaInfo );
 
 	// Returns the number of items in the playlist.

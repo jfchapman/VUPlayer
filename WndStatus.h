@@ -1,5 +1,6 @@
 #pragma once
 
+#include "LibraryMaintainer.h"
 #include "Playlist.h"
 #include "ReplayGain.h"
 
@@ -27,8 +28,8 @@ public:
 	// Called when an 'playlist' is updated.
 	void Update( Playlist* playlist );
 
-	// Updates the status text based on the 'replayGain' state.
-	void Update( const ReplayGain& replayGain );
+	// Updates the status text based on the 'replayGain' & 'libraryMaintainer' state.
+	void Update( const ReplayGain& replayGain, const LibraryMaintainer& libraryMaintainer );
 
 	// Refreshes the status bar contents.
 	void Refresh();
@@ -48,6 +49,9 @@ private:
 
 	// Indicates the number of pending ReplayGain calculations currently displayed.
 	int m_ReplayGainStatusCount;
+
+	// Indicates the number of pending library maintenance items currently displayed.
+	int m_LibraryStatusCount;
 
 	// The idle status text.
 	std::wstring m_IdleText;

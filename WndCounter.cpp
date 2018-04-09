@@ -60,7 +60,8 @@ WndCounter::WndCounter( HINSTANCE instance, HWND parent, Settings& settings, Out
 	m_Font(),
 	m_Colour( RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ ) ),
 	m_ShowRemaining( false ),
-	m_FontMidpoint( 0 )
+	m_FontMidpoint( 0 ),
+	fBackgroundBitmap( nullptr )
 {
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof( WNDCLASSEX );
@@ -133,7 +134,7 @@ void WndCounter::Redraw()
 	RECT rect = {};
 	GetClientRect( m_hWnd, &rect );
 	MapWindowPoints( m_hWnd, parentWnd, reinterpret_cast<LPPOINT>( &rect ), 2 /*numPoints*/ );
-	InvalidateRect( parentWnd, &rect, TRUE /*erase*/ );
+	InvalidateRect( parentWnd, &rect, FALSE /*erase*/ );
 }
 
 void WndCounter::OnPaint( const PAINTSTRUCT& ps )
@@ -145,6 +146,12 @@ void WndCounter::OnPaint( const PAINTSTRUCT& ps )
 	Gdiplus::Font font( ps.hdc, &m_Font );
 	Gdiplus::Bitmap bitmap( clientRect.right - clientRect.left, clientRect.bottom, PixelFormat32bppARGB );
 	Gdiplus::Graphics bitmapGraphics( &bitmap );
+
+	std::shared_ptr<Gdiplus::Bitmap> backgroundBitmap = GetBackgroundBitmap();
+	if ( backgroundBitmap ) {
+		bitmapGraphics.DrawImage( backgroundBitmap.get(), Gdiplus::Rect( 0 /*x*/, 0 /*y*/, bitmap.GetWidth(), bitmap.GetHeight() ) );
+	}
+
 	Gdiplus::Color textColour;
 	textColour.SetFromCOLORREF( m_Colour );
 	const Gdiplus::SolidBrush textBrush( textColour );
@@ -290,4 +297,56 @@ void WndCounter::Toggle()
 {
 	m_ShowRemaining = !m_ShowRemaining;
 	Refresh();
+}
+
+std::shared_ptr<Gdiplus::Bitmap> WndCounter::GetBackgroundBitmap()
+{
+	if ( !fBackgroundBitmap ) {
+		// Take a screenshot of the control window.
+		HDC clientDC = GetDC( m_hWnd );
+		if ( nullptr != clientDC ) {
+			HDC memDC = CreateCompatibleDC( clientDC );
+			if ( nullptr != memDC ) {
+				RECT clientRect = {};
+				GetClientRect( m_hWnd, &clientRect );
+				const int width = clientRect.right - clientRect.left;
+				const int height = clientRect.bottom - clientRect.top;
+
+				BITMAPINFO bitmapInfo = {};
+				bitmapInfo.bmiHeader.biSize = sizeof( BITMAPINFOHEADER );
+				bitmapInfo.bmiHeader.biBitCount = 32;
+				bitmapInfo.bmiHeader.biCompression = BI_RGB;
+				bitmapInfo.bmiHeader.biPlanes = 1;
+				bitmapInfo.bmiHeader.biWidth = width;
+				bitmapInfo.bmiHeader.biHeight = height;
+
+				void* bits = nullptr;
+				HBITMAP hBitmap = CreateDIBSection( memDC, &bitmapInfo, DIB_RGB_COLORS, &bits, nullptr /*hSection*/, 0 /*offset*/ );
+				if ( nullptr != hBitmap ) {			
+					HANDLE oldBitmap = SelectObject( memDC, hBitmap );
+					if ( FALSE != BitBlt( memDC, 0 /*destX*/, 0 /*destY*/, width, height, clientDC, 0 /*srcX*/, 0 /*srcY*/, SRCCOPY ) ) {
+						fBackgroundBitmap.reset( new Gdiplus::Bitmap( width, height, PixelFormat32bppARGB ) );
+						Gdiplus::BitmapData bitmapData;
+						Gdiplus::Rect rect( 0 /*x*/, 0 /*y*/, width, height );
+						if ( Gdiplus::Ok == fBackgroundBitmap->LockBits( &rect, Gdiplus::ImageLockModeWrite, PixelFormat32bppARGB, &bitmapData ) ) {
+							// Flip image.
+							unsigned char* srcBits = static_cast<unsigned char*>( bits );
+							unsigned char* destBits = static_cast<unsigned char*>( bitmapData.Scan0 );
+							for ( int row = 0; row < height; row++ ) {
+								memcpy( destBits + ( height - row - 1 ) * width * 4, srcBits + row * width * 4, width * 4 );
+							}
+							fBackgroundBitmap->UnlockBits( &bitmapData );
+						}	else {
+							fBackgroundBitmap.reset();
+						}
+					}
+					SelectObject( memDC, oldBitmap );
+					DeleteObject( hBitmap );
+				}
+				DeleteDC( memDC );
+			}
+			ReleaseDC( m_hWnd, clientDC );
+		}
+	}
+	return fBackgroundBitmap;
 }

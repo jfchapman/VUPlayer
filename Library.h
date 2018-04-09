@@ -46,8 +46,10 @@ public:
 	// 'mediaInfo' - in/out, media information containing the filename to query.
 	// 'checkFileAttributes' - whether to check if the time/size of the file matches any existing entry.
 	// 'scanMedia' - whether to scan the file specified in 'mediaInfo' if no matching database entry is found.
+	// 'sendNotification' - whether to notify the main app if 'mediaInfo' has changed.
+	// 'removeMissing' - whether to remove media information from the library if the file specified in 'mediaInfo' cannot be opened.
 	// Returns true if media information was returned.
-	bool GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes = true, const bool scanMedia = true );
+	bool GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes = true, const bool scanMedia = true, const bool sendNotification = true, const bool removeMissing = false );
 
 	// Updates media information and writes out tag information to file.
 	// 'previousMediaInfo' - previous media information.
@@ -131,6 +133,9 @@ private:
 	// Updates the artwork table if necessary.
 	void UpdateArtworkTable();
 
+	// Creates indices if necessary.
+	void CreateIndices();
+
 	// Gets the 'lastModified' time and 'fileSize' of 'filename', returning true if the file could be opened.
 	bool GetFileInfo( const std::wstring& filename, long long& lastModified, long long& fileSize ) const;
 
@@ -148,6 +153,10 @@ private:
 	// 'mediaInfo' - in/out, media information which will be modified if tags are successfully written.
 	// 'tags' - tags to write.
 	void WriteFileTags( MediaInfo& mediaInfo, const Handler::Tags& tags );
+
+	// Removes 'mediaInfo' from the library.
+	// Returns true if the library was updated.
+	bool RemoveFromLibrary( const MediaInfo& mediaInfo );
 
 	// Converts a 'gain' value to a string tag.
 	std::wstring GainToString( const float gain ) const;

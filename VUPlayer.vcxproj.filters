@@ -210,6 +210,15 @@
     <ClInclude Include="libs\sqlite-3.18.0\sqlite3.h">
       <Filter>Third Party</Filter>
     </ClInclude>
+    <ClInclude Include="DecoderOpus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HandlerOpus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LibraryMaintainer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -383,6 +392,15 @@
     <ClCompile Include="libs\sqlite-3.18.0\sqlite3.c">
       <Filter>Third Party</Filter>
     </ClCompile>
+    <ClCompile Include="DecoderOpus.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlerOpus.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LibraryMaintainer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="VUPlayer.rc">
@@ -448,6 +466,30 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\volume_mute.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\album.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\icon3.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\artist.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\artists.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\playlist.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\genre.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\year.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\library.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

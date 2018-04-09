@@ -221,6 +221,10 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
+		case MSG_LIBRARYREFRESHED : {
+			vuplayer->OnHandleLibraryRefreshed();
+			break;
+		}
 		case MSG_TRAYNOTIFY : {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnTrayNotify( wParam, lParam );

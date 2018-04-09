@@ -50,6 +50,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_Handlers(),
 	m_Database( DocumentsFolder() + L"VUPlayer.db" ),
 	m_Library( m_Database, m_Handlers ),
+	m_Maintainer( m_Library ),
 	m_Settings( m_Database, m_Library ),
 	m_Output( m_hWnd, m_Handlers, m_Settings, m_Settings.GetVolume() ),
 	m_ReplayGain( m_Library, m_Handlers ),
@@ -380,6 +381,14 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				}
 				break;				
 			}
+			case LVN_DELETEITEM : {
+				const int itemCount = m_List.GetCount();
+				if ( 1 == itemCount ) {
+					// Last item is being deleted.
+					OnListSelectionChanged();
+				}
+				break;
+			}
 			case HDN_BEGINTRACK : {
 				LPNMHEADER hdr = reinterpret_cast<LPNMHEADER>( lParam );
 				if ( ( nullptr != hdr ) && ( 0 == hdr->iItem ) ) {
@@ -427,7 +436,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_ToolbarPlayback.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_Rebar.Update();
 		m_Counter.Refresh();
-		m_Status.Update( m_ReplayGain );
+		m_Status.Update( m_ReplayGain, m_Maintainer );
 		m_Tray.Update( m_CurrentOutput );
 	}
 	if ( !handled ) {
@@ -519,6 +528,7 @@ void VUPlayer::OnDestroy()
 	m_Settings.SetPlaybackSettings( m_Output.GetRandomPlay(), m_Output.GetRepeatTrack(), m_Output.GetRepeatPlaylist(), m_Output.GetCrossfade() );
 
 	m_ReplayGain.Stop();
+	m_Maintainer.Stop();
 
 	WriteWindowSettings();
 }
@@ -764,8 +774,28 @@ void VUPlayer::OnCommand( const int commandID )
 			SetFocus( m_List.GetWindowHandle() );
 			break;
 		}
+		case ID_FILE_CUT : {
+			m_List.OnCutCopy( true /*cut*/ );
+			break;
+		}
+		case ID_FILE_COPY : {
+			m_List.OnCutCopy( false /*cut*/ );
+			break;
+		}
+		case ID_FILE_PASTE : {
+			m_List.OnPaste();
+			break;
+		}
+		case ID_FILE_SELECTALL : {
+			m_List.SelectAllItems();
+			break;
+		}
 		case ID_FILE_OPTIONS : {
 			OnOptions();
+			break;
+		}
+		case ID_FILE_REFRESHMEDIALIBRARY : {
+			m_Maintainer.Start();
 			break;
 		}
 		case ID_VIEW_COUNTER_FONTSTYLE : {
@@ -899,6 +929,8 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
 		const UINT replaygainEnabled = selectedItems ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_CALCULATEREPLAYGAIN, MF_BYCOMMAND | replaygainEnabled );
+		const UINT refreshLibraryEnabled = ( 0 == m_Maintainer.GetPendingCount() ) ? MF_ENABLED : MF_DISABLED;
+		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
 
 		// View menu
 		CheckMenuItem( menu, ID_TREEMENU_ALLTRACKS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_ALLTRACKS ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1023,8 +1055,18 @@ void VUPlayer::OnHandleMediaUpdate( const MediaInfo* previousMediaInfo, const Me
 				m_Splitter.Resize();
 				m_Visual.DoRender();
 			}
-		}	
+		}
 	}
+}
+
+void VUPlayer::OnLibraryRefreshed()
+{
+	PostMessage( m_hWnd, MSG_LIBRARYREFRESHED, 0 /*wParam*/, 0 /*lParam*/ );
+}
+
+void VUPlayer::OnHandleLibraryRefreshed()
+{
+	m_Tree.OnMediaLibraryRefreshed();
 }
 
 void VUPlayer::OnRestartPlayback( const long itemID )

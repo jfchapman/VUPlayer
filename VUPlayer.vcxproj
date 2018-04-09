@@ -90,16 +90,16 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.12\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opusfile-0.9\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;libs\bass-2.4.12\c\bass.lib;libs\libvorbis-1.3.5\x86\libvorbis_static.lib;libs\libvorbis-1.3.5\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\flac-1.3.2\x86\debug\libFLAC_static.lib;libs\flac-1.3.2\x86\debug\libFLAC++_static.lib;libs\flac-1.3.2\x86\debug\win_utf8_io_static.lib;libs\libogg-1.3.2\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;libs\bass-2.4.13.8\c\bass.lib;libs\libvorbis-1.3.5\x86\libvorbis_static.lib;libs\libvorbis-1.3.5\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\opusfile-0.9\x86\opus.lib;libs\opusfile-0.9\x86\opusfile.lib;libs\flac-1.3.2\x86\debug\libFLAC_static.lib;libs\flac-1.3.2\x86\debug\libFLAC++_static.lib;libs\flac-1.3.2\x86\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)libs\bass-2.4.12\bass.dll" "$(OutDir)bass.dll"</Command>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\bass.dll" "$(OutDir)bass.dll"</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -114,16 +114,16 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.12\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opusfile-0.9\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;libs\bass-2.4.12\c\x64\bass.lib;libs\libvorbis-1.3.5\x64\libvorbis_static.lib;libs\libvorbis-1.3.5\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\flac-1.3.2\x64\debug\libFLAC_static.lib;libs\flac-1.3.2\x64\debug\libFLAC++_static.lib;libs\flac-1.3.2\x64\debug\win_utf8_io_static.lib;libs\libogg-1.3.2\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;libs\bass-2.4.13.8\c\x64\bass.lib;libs\libvorbis-1.3.5\x64\libvorbis_static.lib;libs\libvorbis-1.3.5\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\opusfile-0.9\x64\opus.lib;libs\opusfile-0.9\x64\opusfile.lib;libs\flac-1.3.2\x64\debug\libFLAC_static.lib;libs\flac-1.3.2\x64\debug\libFLAC++_static.lib;libs\flac-1.3.2\x64\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)libs\bass-2.4.12\x64\bass.dll" "$(OutDir)bass.dll"</Command>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\x64\bass.dll" "$(OutDir)bass.dll"</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -140,7 +140,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.12\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opusfile-0.9\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -148,11 +148,11 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;libs\bass-2.4.12\c\bass.lib;libs\libvorbis-1.3.5\x86\libvorbis_static.lib;libs\libvorbis-1.3.5\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\flac-1.3.2\x86\release\libFLAC_static.lib;libs\flac-1.3.2\x86\release\libFLAC++_static.lib;libs\flac-1.3.2\x86\release\win_utf8_io_static.lib;libs\libogg-1.3.2\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;libs\bass-2.4.13.8\c\bass.lib;libs\libvorbis-1.3.5\x86\libvorbis_static.lib;libs\libvorbis-1.3.5\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\opusfile-0.9\x86\opus.lib;libs\opusfile-0.9\x86\opusfile.lib;libs\flac-1.3.2\x86\release\libFLAC_static.lib;libs\flac-1.3.2\x86\release\libFLAC++_static.lib;libs\flac-1.3.2\x86\release\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)libs\bass-2.4.12\bass.dll" "$(OutDir)bass.dll"</Command>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\bass.dll" "$(OutDir)bass.dll"</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -169,7 +169,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.12\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.18.0;libs\replaygain;libs\flac-1.3.2\include;libs\libvorbis-1.3.5\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opusfile-0.9\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -177,11 +177,11 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;libs\bass-2.4.12\c\x64\bass.lib;libs\libvorbis-1.3.5\x64\libvorbis_static.lib;libs\libvorbis-1.3.5\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\flac-1.3.2\x64\release\libFLAC_static.lib;libs\flac-1.3.2\x64\release\libFLAC++_static.lib;libs\flac-1.3.2\x64\release\win_utf8_io_static.lib;libs\libogg-1.3.2\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;libs\bass-2.4.13.8\c\x64\bass.lib;libs\libvorbis-1.3.5\x64\libvorbis_static.lib;libs\libvorbis-1.3.5\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\opusfile-0.9\x64\opus.lib;libs\opusfile-0.9\x64\opusfile.lib;libs\flac-1.3.2\x64\release\libFLAC_static.lib;libs\flac-1.3.2\x64\release\libFLAC++_static.lib;libs\flac-1.3.2\x64\release\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)libs\bass-2.4.12\x64\bass.dll" "$(OutDir)bass.dll"</Command>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\x64\bass.dll" "$(OutDir)bass.dll"</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -193,6 +193,7 @@
   <ItemGroup>
     <ClInclude Include="Artwork.h" />
     <ClInclude Include="Database.h" />
+    <ClInclude Include="DecoderOpus.h" />
     <ClInclude Include="DecoderWavpack.h" />
     <ClInclude Include="DlgHotkey.h" />
     <ClInclude Include="DlgOptions.h" />
@@ -200,10 +201,12 @@
     <ClInclude Include="Handler.h" />
     <ClInclude Include="HandlerBass.h" />
     <ClInclude Include="HandlerFlac.h" />
+    <ClInclude Include="HandlerOpus.h" />
     <ClInclude Include="Handlers.h" />
     <ClInclude Include="HandlerWavpack.h" />
     <ClInclude Include="Hotkeys.h" />
     <ClInclude Include="Library.h" />
+    <ClInclude Include="LibraryMaintainer.h" />
     <ClInclude Include="libs\replaygain\replaygain_analysis.h" />
     <ClInclude Include="libs\sqlite-3.18.0\sqlite3.h" />
     <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\i18n.h" />
@@ -258,16 +261,19 @@
     <ClCompile Include="Artwork.cpp" />
     <ClCompile Include="Database.cpp" />
     <ClCompile Include="Decoder.cpp" />
+    <ClCompile Include="DecoderOpus.cpp" />
     <ClCompile Include="DecoderWavpack.cpp" />
     <ClCompile Include="DlgHotkey.cpp" />
     <ClCompile Include="DlgOptions.cpp" />
     <ClCompile Include="DlgTrackInfo.cpp" />
     <ClCompile Include="HandlerBass.cpp" />
     <ClCompile Include="HandlerFlac.cpp" />
+    <ClCompile Include="HandlerOpus.cpp" />
     <ClCompile Include="Handlers.cpp" />
     <ClCompile Include="HandlerWavpack.cpp" />
     <ClCompile Include="Hotkeys.cpp" />
     <ClCompile Include="Library.cpp" />
+    <ClCompile Include="LibraryMaintainer.cpp" />
     <ClCompile Include="libs\replaygain\replaygain_analysis.cpp">
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
@@ -339,14 +345,21 @@
   <ItemGroup>
     <Image Include="res\add_files.ico" />
     <Image Include="res\add_folder.ico" />
+    <Image Include="res\album.ico" />
+    <Image Include="res\artist.ico" />
+    <Image Include="res\artists.ico" />
     <Image Include="res\crossfade.ico" />
+    <Image Include="res\genre.ico" />
+    <Image Include="res\icon3.ico" />
     <Image Include="res\info.ico" />
+    <Image Include="res\library.ico" />
     <Image Include="res\new_playlist.ico" />
     <Image Include="res\next.ico" />
     <Image Include="res\options.ico" />
     <Image Include="res\pause.ico" />
     <Image Include="res\placeholder.png" />
     <Image Include="res\play.ico" />
+    <Image Include="res\playlist.ico" />
     <Image Include="res\previous.ico" />
     <Image Include="res\random.ico" />
     <Image Include="res\remove_files.ico" />
@@ -357,6 +370,7 @@
     <Image Include="res\volume.ico" />
     <Image Include="res\volume_mute.ico" />
     <Image Include="res\VUPlayer.ico" />
+    <Image Include="res\year.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

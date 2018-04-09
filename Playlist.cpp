@@ -13,7 +13,9 @@ static DWORD WINAPI PendingThreadProc( LPVOID lpParam )
 {
 	Playlist* playlist = reinterpret_cast<Playlist*>( lpParam );
 	if ( nullptr != playlist ) {
+		CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
 		playlist->OnPendingThreadHandler();
+		CoUninitialize();
 	}
 	return 0;
 }

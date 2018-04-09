@@ -7,6 +7,7 @@
 #include "Database.h"
 #include "Hotkeys.h"
 #include "Library.h"
+#include "LibraryMaintainer.h"
 #include "Output.h"
 #include "ReplayGain.h"
 #include "Settings.h"
@@ -33,6 +34,11 @@
 // 'wParam' : pointer to previous MediaInfo, to be deleted by the message handler.
 // 'lParam' : pointer to updated MediaInfo, to be deleted by the message handler.
 static const UINT MSG_MEDIAUPDATED = WM_APP + 77;
+
+// Message ID for signalling that the media library has been refreshed.
+// 'wParam' : unused.
+// 'lParam' : unused.
+static const UINT MSG_LIBRARYREFRESHED = WM_APP + 78;
 
 // Main application singleton
 class VUPlayer
@@ -82,8 +88,14 @@ public:
 	// 'updatedMediaInfo' - the updated media information.
 	void OnMediaUpdated( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo );
 
-	// Handles the update of 'previousMediaInfo' to 'updatedMediaInfo'.
+	// Called when the media library has been refreshed.
+	void OnLibraryRefreshed();
+
+	// Handles the update of 'previousMediaInfo' to 'updatedMediaInfo', from the main thread.
 	void OnHandleMediaUpdate( const MediaInfo* previousMediaInfo, const MediaInfo* updatedMediaInfo );
+
+	// Handles a media library refresh, from the main thread.
+	void OnHandleLibraryRefreshed();
 
 	// Restarts playback from a playlist 'itemID'.
 	void OnRestartPlayback( const long itemID );
@@ -160,6 +172,9 @@ private:
 
 	// Media library.
 	Library m_Library;
+
+	// Media library maintainer.
+	LibraryMaintainer m_Maintainer;
 
 	// Application settings.
 	Settings m_Settings;

@@ -52,6 +52,7 @@ void Library::UpdateDatabase()
 {
 	UpdateMediaTable();
 	UpdateArtworkTable();
+	CreateIndices();
 }
 
 void Library::UpdateMediaTable()
@@ -139,7 +140,16 @@ void Library::UpdateArtworkTable()
 	}
 }
 
-bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes, const bool scanMedia )
+void Library::CreateIndices()
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string artistIndex = "CREATE INDEX IF NOT EXISTS MediaIndex_Artist ON Media(Artist);";
+		sqlite3_exec( database, artistIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+	}
+}
+
+bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes, const bool scanMedia, const bool sendNotification, const bool removeMissing )
 {
 	bool success = false;
 	sqlite3* database = m_Database.GetDatabase();
@@ -169,12 +179,14 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 				success = GetDecoderInfo( info );
 				if ( success ) {
 					success = UpdateMediaLibrary( info );
-					if ( success ) {
+					if ( success && sendNotification ) {
 						VUPlayer* vuplayer = VUPlayer::Get();
 						if ( nullptr != vuplayer ) {
 							vuplayer->OnMediaUpdated( mediaInfo /*previousInfo*/, info /*updatedInfo*/ );
 						}
 					}
+				} else if ( removeMissing ) {
+					RemoveFromLibrary( info );
 				}
 			}
 
@@ -1116,4 +1128,22 @@ bool Library::GetYearExists( const long year )
 		}
 	}
 	return exists;
+}
+
+bool Library::RemoveFromLibrary( const MediaInfo& mediaInfo )
+{
+	bool removed = false;
+	sqlite3* database = m_Database.GetDatabase();
+	const std::wstring& filename = mediaInfo.GetFilename();
+	if ( ( nullptr != database ) && !filename.empty() ) {
+		const std::string query = "DELETE FROM Media WHERE Filename=?1;";
+		sqlite3_stmt* stmt = nullptr;
+		if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
+				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
+			// Should be a maximum of one entry.
+			removed = ( SQLITE_DONE == sqlite3_step( stmt ) );
+			sqlite3_finalize( stmt );
+		}
+	}
+	return removed;
 }

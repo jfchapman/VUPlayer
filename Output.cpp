@@ -294,22 +294,36 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 			long samplesToRead = static_cast<long>( byteCount ) / ( channels * 4 );
 
 			if ( GetCrossfade() && !GetFadeOut() && !GetFadeToNext() ) {
-				const float crossfadePosition = GetCrossfadePosition();
+				const float crossfadePosition = GetCrossfadePosition();			
 				if ( crossfadePosition > 0 ) {
-					// Ensure we don't read past the crossfade point.
-					const long sampleRate = m_DecoderStream->GetSampleRate();
-					if ( sampleRate > 0 ) {
-						const QWORD bytesPos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE );
-						const float trackPos = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytesPos ) ) - m_LastTransitionPosition;
-						const float secondsTillCrossfade = crossfadePosition - trackPos;
-						const long samplesTillCrossfade = static_cast<long>( secondsTillCrossfade * sampleRate );
-						if ( samplesTillCrossfade < samplesToRead ) {
-							samplesToRead = samplesTillCrossfade;
-							if ( samplesToRead <= 0 ) {
-								samplesToRead = 0;
-								// Hold on the the decoder, and indicate its fade out position.
-								m_CrossfadingStream = m_DecoderStream;
-								m_CurrentItemCrossfading = m_CurrentItemDecoding;
+					// Check whether there's an item to crossfade to.
+					std::lock_guard<std::mutex> lock( m_PlaylistMutex );
+					Playlist::Item nextItem = {};
+					if ( m_Playlist ) {
+						if ( GetRandomPlay() ) {
+							nextItem = m_Playlist->GetRandomItem();
+						} else if ( GetRepeatTrack() ) {
+							nextItem = m_CurrentItemDecoding;
+						} else {
+							m_Playlist->GetNextItem( m_CurrentItemDecoding, nextItem, GetRepeatPlaylist() /*wrap*/ );
+						}
+					}
+					if ( nextItem.ID > 0 ) {
+						// Ensure we don't read past the crossfade point.
+						const long sampleRate = m_DecoderStream->GetSampleRate();
+						if ( sampleRate > 0 ) {
+							const QWORD bytesPos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE );
+							const float trackPos = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytesPos ) ) - m_LastTransitionPosition;
+							const float secondsTillCrossfade = crossfadePosition - trackPos;
+							const long samplesTillCrossfade = static_cast<long>( secondsTillCrossfade * sampleRate );
+							if ( samplesTillCrossfade < samplesToRead ) {
+								samplesToRead = samplesTillCrossfade;
+								if ( samplesToRead <= 0 ) {
+									samplesToRead = 0;
+									// Hold on the the decoder, and indicate its fade out position.
+									m_CrossfadingStream = m_DecoderStream;
+									m_CurrentItemCrossfading = m_CurrentItemDecoding;
+								}
 							}
 						}
 					}

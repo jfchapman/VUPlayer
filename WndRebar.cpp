@@ -52,7 +52,7 @@ WndRebar::WndRebar( HINSTANCE instance, HWND parent ) :
 	m_IconCallbackMap(),
 	m_ClickCallbackMap()
 {
-	const DWORD style = WS_CHILD | WS_VISIBLE | /*WS_CLIPCHILDREN |*/ CCS_NODIVIDER | RBS_FIXEDORDER | RBS_BANDBORDERS;
+	const DWORD style = WS_CHILD | WS_VISIBLE | CCS_NODIVIDER | RBS_FIXEDORDER | RBS_BANDBORDERS;
 	const int x = 0;
 	const int y = 0;
 	const int width = 0;

@@ -58,6 +58,9 @@ private:
 	// Redraws the counter.
 	void Redraw();
 
+	// Returns the background on which to draw the counter.
+	std::shared_ptr<Gdiplus::Bitmap> GetBackgroundBitmap();
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -87,5 +90,8 @@ private:
 
 	// Effective font vertical midpoint, used when drawing the counter text.
 	float m_FontMidpoint;
+
+	// Background on which to draw the counter.
+	std::shared_ptr<Gdiplus::Bitmap> fBackgroundBitmap;
 };
 

@@ -8,6 +8,12 @@ UINT_PTR WndSplit::s_WndSplitID = 1800;
 // Split window class name
 static const wchar_t s_SplitClass[] = L"VUSplitClass";
 
+// Minimum split width
+static const int s_MinSplit = 200;
+
+// Maximum split width
+static const int s_MaxSplit = 500;
+
 // Window procedure
 static LRESULT CALLBACK WndSplitProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -80,8 +86,8 @@ WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStat
 	m_hVisual( wndVisual ),
 	m_hList( wndList ),
 	m_SplitPosition( 0 ),
-	m_MinSplit( static_cast<int>( 200 * GetDPIScaling() ) ),
-	m_MaxSplit( static_cast<int>( 400 * GetDPIScaling() ) ),
+	m_MinSplit( static_cast<int>( s_MinSplit * GetDPIScaling() ) ),
+	m_MaxSplit( static_cast<int>( s_MaxSplit * GetDPIScaling() ) ),
 	m_IsDragging( false ),
 	m_IsTracking( false ),
 	m_IsSizing( false ),
