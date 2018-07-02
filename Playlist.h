@@ -19,6 +19,7 @@ public:
 		Album,
 		Genre,
 		Year,
+		Favourites,
 
 		_Undefined
 	};

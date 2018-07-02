@@ -169,7 +169,8 @@ void WndTray::OnContextMenuCommand( const UINT command )
 	const auto menuItemIter = m_PlaylistMenuItems.find( command );
 	if ( m_PlaylistMenuItems.end() != menuItemIter ) {
 		Playlist::Item playlistItem = { menuItemIter->second, MediaInfo() };
-		const Playlists playlists = m_Tree.GetPlaylists();
+		Playlists playlists = m_Tree.GetPlaylists();
+		playlists.push_back( m_Tree.GetPlaylistFavourites() );
 		for ( const auto& playlist : playlists ) {
 			if ( playlist && playlist->GetItem( playlistItem ) ) {
 				m_Output.SetPlaylist( playlist );
@@ -198,9 +199,35 @@ void WndTray::ShowContextMenu()
 			LoadString( m_hInst, IsIconic( m_NotifyIconData.hWnd ) ? IDS_TRAY_SHOW : IDS_TRAY_HIDE, buffer, buffersize );
 			ModifyMenu( menu, ID_TRAYMENU_SHOWVUPLAYER, MF_BYCOMMAND | MF_STRING, ID_TRAYMENU_SHOWVUPLAYER, buffer );
 
-			// Playlists.
 			m_PlaylistMenuItems.clear();
 			m_NextPlaylistMenuItemID = MSG_TRAYMENUSTART;
+
+			// Favourites.
+			const Playlist::Ptr favourites = m_Tree.GetPlaylistFavourites();
+			if ( favourites ) {
+				const int itemCount = GetMenuItemCount( traymenu );
+				for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+					HMENU playlistsMenu = GetSubMenu( traymenu, itemIndex );
+					if ( ( nullptr != playlistsMenu ) && ( ID_TRAYMENU_PLAYLISTS == GetMenuItemID( playlistsMenu, 0 /*itemIndex*/ ) ) ) {
+						++itemIndex;
+						LoadString( m_hInst, IDS_FAVOURITES, buffer, buffersize );
+						HMENU favouritesMenu = CreatePlaylistMenu( favourites );
+						const bool disableFavourites = ( nullptr == favouritesMenu );
+						if ( nullptr == favouritesMenu ) {
+							favouritesMenu = CreatePopupMenu();
+						}
+						if ( nullptr != favouritesMenu ) {
+							InsertMenu( traymenu, itemIndex, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>( favouritesMenu ), buffer );
+						}
+						if ( disableFavourites ) {
+							EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_DISABLED );
+						}
+						break;
+					}
+				}
+			}
+
+			// Playlists.
 			const int itemCount = GetMenuItemCount( traymenu );
 			for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
 				HMENU playlistsMenu = GetSubMenu( traymenu, itemIndex );
@@ -257,7 +284,7 @@ HMENU WndTray::CreatePlaylistMenu( const Playlist::Ptr& playlist )
 				const int menuItemHeight = GetSystemMetrics( SM_CYMENU );
 				const int screenHeight = GetSystemMetrics( SM_CYSCREEN );
 				if ( ( menuItemHeight > 0 ) && ( screenHeight > 0 ) ) {
-					itemsPerColumn = screenHeight / menuItemHeight;
+					itemsPerColumn = screenHeight / menuItemHeight - 1;
 				}
 
 				const int maxPlaylistEntries = sMaxPlaylistColumns * itemsPerColumn;

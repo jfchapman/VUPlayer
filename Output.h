@@ -84,6 +84,12 @@ public:
 	// Sets the volume level in the range 0.0 (silent) to 1.0 (full volume).
 	void SetVolume( const float volume );
 
+	// Returns the pitch adjustment factor, with 1.0 representing no adjustment.
+	float GetPitch() const;
+
+	// Sets the pitch adjustment factor, with 1.0 representing no adjustment.
+	void SetPitch( const float pitch );
+
 	// Gets the channel levels for visualisation.
 	// 'left' - out, left channel level in the range 0.0 to 1.0.
 	// 'right' - out, right channel level in the range 0.0 to 1.0.
@@ -175,12 +181,21 @@ public:
 	// Background thread handler for calculating the crossfade point for the current track.
 	void OnCalculateCrossfadeHandler();
 
+	// Returns the maximum pitch adjustment factor.
+	float GetPitchRange() const;
+
+	// Easter egg.
+	void Bling( const int blingID );
+
 private:
 	// Output queue.
 	typedef std::vector<Item> Queue;
 
 	// Maps a playlist item ID to a ReplayGain estimate.
 	typedef std::map<long,float> ReplayGainEstimateMap;
+
+	// Maps an ID to a stream handle.
+	typedef std::map<int,HSTREAM> StreamMap;
 
 	// Initialises the BASS system;
 	void InitialiseBass();
@@ -239,6 +254,9 @@ private:
 
 	// Volume level in the range 0.0 (silent) to 1.0 (full volume).
 	float m_Volume;
+
+	// Pitch adjustment factor, with the default being 1.0 (no adjustment).
+	float m_Pitch;
 
 	// The list of output items with their start times in the output stream.
 	Queue m_OutputQueue;
@@ -317,4 +335,7 @@ private:
 
 	// ReplayGain estimates.
 	ReplayGainEstimateMap m_ReplayGainEstimateMap;
+
+	// Bling map.
+	StreamMap m_BlingMap;
 };

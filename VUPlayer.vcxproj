@@ -192,6 +192,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Artwork.h" />
+    <ClInclude Include="Bling.h" />
     <ClInclude Include="Database.h" />
     <ClInclude Include="DecoderOpus.h" />
     <ClInclude Include="DecoderWavpack.h" />
@@ -220,6 +221,7 @@
     <ClInclude Include="OptionsMod.h" />
     <ClInclude Include="OptionsReplaygain.h" />
     <ClInclude Include="Oscilloscope.h" />
+    <ClInclude Include="PeakMeter.h" />
     <ClInclude Include="ReplayGain.h" />
     <ClInclude Include="ShellMetadata.h" />
     <ClInclude Include="Output.h" />
@@ -244,6 +246,7 @@
     <ClInclude Include="WndStatus.h" />
     <ClInclude Include="WndToolbar.h" />
     <ClInclude Include="WndToolbarCrossfade.h" />
+    <ClInclude Include="WndToolbarFavourites.h" />
     <ClInclude Include="WndToolbarFile.h" />
     <ClInclude Include="WndToolbarFlow.h" />
     <ClInclude Include="WndToolbarInfo.h" />
@@ -296,6 +299,7 @@
     <ClCompile Include="OptionsMod.cpp" />
     <ClCompile Include="OptionsReplaygain.cpp" />
     <ClCompile Include="Oscilloscope.cpp" />
+    <ClCompile Include="PeakMeter.cpp" />
     <ClCompile Include="ReplayGain.cpp" />
     <ClCompile Include="ShellMetadata.cpp" />
     <ClCompile Include="Output.cpp" />
@@ -321,6 +325,7 @@
     <ClCompile Include="WndStatus.cpp" />
     <ClCompile Include="WndToolbar.cpp" />
     <ClCompile Include="WndToolbarCrossfade.cpp" />
+    <ClCompile Include="WndToolbarFavourites.cpp" />
     <ClCompile Include="WndToolbarFile.cpp" />
     <ClCompile Include="WndToolbarFlow.cpp" />
     <ClCompile Include="WndToolbarInfo.cpp" />
@@ -349,6 +354,7 @@
     <Image Include="res\artist.ico" />
     <Image Include="res\artists.ico" />
     <Image Include="res\crossfade.ico" />
+    <Image Include="res\favourites.ico" />
     <Image Include="res\genre.ico" />
     <Image Include="res\icon3.ico" />
     <Image Include="res\info.ico" />
@@ -357,6 +363,7 @@
     <Image Include="res\next.ico" />
     <Image Include="res\options.ico" />
     <Image Include="res\pause.ico" />
+    <Image Include="res\pitch.ico" />
     <Image Include="res\placeholder.png" />
     <Image Include="res\play.ico" />
     <Image Include="res\playlist.ico" />

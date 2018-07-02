@@ -77,6 +77,9 @@ public:
 	// Called when a spectrum analyser colour command is selected.
 	void OnSpectrumAnalyserColour( const UINT commandID );
 
+	// Called when a peak meter colour command is selected.
+	void OnPeakMeterColour( const UINT commandID );
+
 	// Called when a VUMeter decay rate command is selected.
 	void OnVUMeterDecay( const UINT commandID );
 

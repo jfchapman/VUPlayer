@@ -21,9 +21,6 @@ public:
 	// Called when the user drags the trackbar thumb.
 	virtual void OnDrag( const int position );
 
-	// Returns whether the trackbar thumb is being dragged.
-	bool IsDragging() const;
-
 	// Updates the seek control state.
 	// 'output' - output object.
 	// 'playlist' - currently displayed playlist.
@@ -31,6 +28,9 @@ public:
 	void Update( Output& output, const Playlist::Ptr& playlist, const Playlist::Item& selectedItem );
 
 private:
+	// Returns whether the trackbar thumb is being dragged.
+	bool IsDragging() const;
+
 	// Tooltip text.
 	std::wstring m_Tooltip;
 

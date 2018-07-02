@@ -7,6 +7,7 @@
 #include "Artwork.h"
 #include "NullVisual.h"
 #include "Oscilloscope.h"
+#include "PeakMeter.h"
 #include "SpectrumAnalyser.h"
 #include "VUMeter.h"
 #include "VUPlayer.h"
@@ -106,6 +107,7 @@ WndVisual::WndVisual( HINSTANCE instance, HWND parent, Settings& settings, Outpu
 	m_Visuals.insert( Visuals::value_type( ID_VISUAL_SPECTRUMANALYSER, new SpectrumAnalyser( *this ) ) );
 	m_Visuals.insert( Visuals::value_type( ID_VISUAL_ARTWORK, new Artwork( *this ) ) );
 	m_Visuals.insert( Visuals::value_type( ID_VISUAL_NONE, new NullVisual( *this ) ) );
+	m_Visuals.insert( Visuals::value_type( ID_VISUAL_PEAKMETER, new PeakMeter( *this ) ) );
 
 	int visualID = m_Settings.GetVisualID();
 	switch ( visualID ) {
@@ -114,6 +116,7 @@ WndVisual::WndVisual( HINSTANCE instance, HWND parent, Settings& settings, Outpu
 		case ID_VISUAL_OSCILLOSCOPE :
 		case ID_VISUAL_SPECTRUMANALYSER :
 		case ID_VISUAL_ARTWORK :
+		case ID_VISUAL_PEAKMETER :
 		case ID_VISUAL_NONE : {
 			break;
 		}
@@ -490,6 +493,38 @@ void WndVisual::OnSpectrumAnalyserColour( const UINT commandID )
 		}
 		m_Settings.SetSpectrumAnalyserSettings( base, peak, background );
 		auto visual = m_Visuals.find( ID_VISUAL_SPECTRUMANALYSER );
+		if ( m_Visuals.end() != visual ) {
+			visual->second->OnSettingsChanged();
+		}
+	}
+}
+
+void WndVisual::OnPeakMeterColour( const UINT commandID )
+{
+	COLORREF base = 0;
+	COLORREF peak = 0;
+	COLORREF background = 0;
+	m_Settings.GetPeakMeterSettings( base, peak, background );
+	const COLORREF initialColour = ( ID_PEAKMETER_BASECOLOUR == commandID ) ? base : ( ( ID_PEAKMETER_PEAKCOLOUR == commandID ) ? peak : background );
+	CHOOSECOLOR chooseColor = {};
+	chooseColor.lStructSize = sizeof( CHOOSECOLOR );
+	chooseColor.hwndOwner = m_hWnd;
+	chooseColor.rgbResult = initialColour;
+	VUPlayer* vuplayer = VUPlayer::Get();
+	if ( nullptr != vuplayer ) {
+		chooseColor.lpCustColors = vuplayer->GetCustomColours();
+	}
+	chooseColor.Flags = CC_ANYCOLOR | CC_FULLOPEN | CC_RGBINIT;
+	if ( TRUE == ChooseColor( &chooseColor ) && ( initialColour != chooseColor.rgbResult ) ) {
+		if ( ID_PEAKMETER_BASECOLOUR == commandID ) {
+			base = chooseColor.rgbResult;
+		} else if ( ID_PEAKMETER_PEAKCOLOUR == commandID ) {
+			peak = chooseColor.rgbResult;
+		} else {
+			background = chooseColor.rgbResult;
+		}
+		m_Settings.SetPeakMeterSettings( base, peak, background );
+		auto visual = m_Visuals.find( ID_VISUAL_PEAKMETER );
 		if ( m_Visuals.end() != visual ) {
 			visual->second->OnSettingsChanged();
 		}

@@ -219,6 +219,15 @@
     <ClInclude Include="LibraryMaintainer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PeakMeter.h">
+      <Filter>Visuals</Filter>
+    </ClInclude>
+    <ClInclude Include="Bling.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WndToolbarFavourites.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -401,6 +410,12 @@
     <ClCompile Include="LibraryMaintainer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PeakMeter.cpp">
+      <Filter>Visuals</Filter>
+    </ClCompile>
+    <ClCompile Include="WndToolbarFavourites.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="VUPlayer.rc">
@@ -490,6 +505,12 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\library.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\favourites.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\pitch.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

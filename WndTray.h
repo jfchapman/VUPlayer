@@ -14,7 +14,7 @@ static const UINT MSG_TRAYNOTIFY = WM_APP + 84;
 // Command ID of the first playlist item entry on the context menu.
 static const UINT MSG_TRAYMENUSTART = WM_APP + 0x1000;
 
-// Command ID of the first playlist item entry on the context menu.
+// Command ID of the last playlist item entry on the context menu.
 static const UINT MSG_TRAYMENUEND = WM_APP + 0x3000;
 
 // SysTray timer ID.

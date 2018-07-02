@@ -4,6 +4,13 @@
 #include "VUMeter.h"
 #include "VUPlayer.h"
 
+// Pitch range options
+static const Settings::PitchRangeMap s_PitchRanges = {
+		{ Settings::PitchRange::Small, 0.1f },
+		{ Settings::PitchRange::Medium, 0.2f },
+		{ Settings::PitchRange::Large, 0.3f }
+};
+
 Settings::Settings( Database& database, Library& library ) :
 	m_Database( database ),
 	m_Library( library )
@@ -324,7 +331,7 @@ void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const LOGFON
 }
 
 void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour,
-		bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears )
+		bool& showFavourites, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -363,7 +370,14 @@ void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& b
 				sqlite3_finalize( stmt );
 			}
 		}
-
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='TreeFavourites';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				showFavourites = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				sqlite3_finalize( stmt );
+			}
+		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeAllTracks';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
@@ -408,7 +422,7 @@ void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& b
 }
 
 void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF& fontColour, const COLORREF& backgroundColour, const COLORREF& highlightColour,
-		const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears )
+		const bool showFavourites, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -432,6 +446,11 @@ void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF& fontColour,
 
 			sqlite3_bind_text( stmt, 1, "TreeHighlightColour", -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_int( stmt, 2, static_cast<int>( highlightColour ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "TreeFavourites", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( showFavourites ) );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
@@ -505,12 +524,19 @@ Playlists Settings::GetPlaylists()
 	return playlists;
 }
 
+Playlist::Ptr Settings::GetFavourites()
+{
+	Playlist::Ptr playlist( new Playlist( m_Library, Playlist::Type::Favourites ) );
+	ReadPlaylistFiles( *playlist );
+	return playlist;
+}
+
 void Settings::ReadPlaylistFiles( Playlist& playlist )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string& tableName = playlist.GetID();
-		if ( IsValidGUID( tableName ) ) {
+		const std::string tableName = ( Playlist::Type::Favourites == playlist.GetType() ) ? "Favourites" : playlist.GetID();
+		if ( IsValidGUID( tableName ) || ( Playlist::Type::Favourites == playlist.GetType() ) ) {
 			std::string query = "SELECT * FROM \"";
 			query += tableName;
 			query += "\" ORDER BY rowid ASC;";
@@ -590,8 +616,8 @@ void Settings::SavePlaylist( Playlist& playlist )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string& playlistID = playlist.GetID();
-		if ( IsValidGUID( playlistID ) ) {
+		const std::string playlistID = ( Playlist::Type::Favourites == playlist.GetType() ) ? "Favourites" : playlist.GetID();
+		if ( IsValidGUID( playlistID ) || ( Playlist::Type::Favourites == playlist.GetType() ) ) {
 			UpdatePlaylistTable( playlistID );
 
 			std::string clearTableQuery = "DELETE FROM \"";
@@ -630,14 +656,16 @@ void Settings::SavePlaylist( Playlist& playlist )
 			}
 			sqlite3_exec( database, "END TRANSACTION;", NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 
-			const std::string insertPlaylistQuery = "REPLACE INTO Playlists (ID,Name) VALUES (?1,?2);";
-			const std::string playlistName = WideStringToUTF8( playlist.GetName() );
-			stmt = nullptr;
-			if ( ( SQLITE_OK == sqlite3_prepare_v2( database, insertPlaylistQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-					( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, playlistID.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) &&
-					( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, playlistName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) ) {
-				sqlite3_step( stmt );
-				sqlite3_finalize( stmt );
+			if ( Playlist::Type::Favourites != playlist.GetType() ) {
+				const std::string insertPlaylistQuery = "REPLACE INTO Playlists (ID,Name) VALUES (?1,?2);";
+				const std::string playlistName = WideStringToUTF8( playlist.GetName() );
+				stmt = nullptr;
+				if ( ( SQLITE_OK == sqlite3_prepare_v2( database, insertPlaylistQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
+						( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, playlistID.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) &&
+						( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, playlistName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) ) {
+					sqlite3_step( stmt );
+					sqlite3_finalize( stmt );
+				}
 			}
 		}
 	}
@@ -836,6 +864,71 @@ void Settings::SetSpectrumAnalyserSettings( const COLORREF& base, const COLORREF
 			sqlite3_reset( stmt );
 
 			sqlite3_bind_text( stmt, 1, "SpectrumAnalyserBackground", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( background ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+}
+
+void Settings::GetPeakMeterSettings( COLORREF& base, COLORREF& peak, COLORREF& background )
+{
+	base = RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ );
+	peak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
+	background = RGB( 0 /*red*/, 0 /*green*/, 0 /*blue*/ );
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		std::string query = "SELECT Value FROM Settings WHERE Setting='PeakMeterBase';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				base = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				sqlite3_finalize( stmt );
+				stmt = nullptr;
+			}
+		}
+
+		query = "SELECT Value FROM Settings WHERE Setting='PeakMeterPeak';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				peak = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				sqlite3_finalize( stmt );
+				stmt = nullptr;
+			}
+		}
+
+		query = "SELECT Value FROM Settings WHERE Setting='PeakMeterBackground';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				background = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				sqlite3_finalize( stmt );
+				stmt = nullptr;
+			}
+		}
+	}
+}
+
+void Settings::SetPeakMeterSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "PeakMeterBase", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( base ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "PeakMeterPeak", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( peak ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "PeakMeterBackground", -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_int( stmt, 2, static_cast<int>( background ) );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
@@ -1603,6 +1696,78 @@ void Settings::SetHotkeySettings( const bool enable, const HotkeyList& hotkeys )
 				sqlite3_finalize( stmt );
 				stmt = nullptr;
 			}
+		}
+	}
+}
+
+Settings::PitchRange Settings::GetPitchRange()
+{
+	PitchRange range = PitchRange::Small;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='PitchRange';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+				if ( ( value >= static_cast<int>( PitchRange::Small ) ) && ( value <= static_cast<int>( PitchRange::Large ) ) ) {
+					range = static_cast<PitchRange>( value );
+				}
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return range;
+}
+
+void Settings::SetPitchRange( const PitchRange range )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "PitchRange", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( range ) );
+			sqlite3_step( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+Settings::PitchRangeMap Settings::GetPitchRangeOptions() const
+{
+	return s_PitchRanges;
+}
+
+int Settings::GetOutputControlType()
+{
+	int type = 0;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='OutputControlType';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				type = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return type;
+}
+
+void Settings::SetOutputControlType( const int type )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "OutputControlType", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, type );
+			sqlite3_step( stmt );
+			sqlite3_finalize( stmt );
 		}
 	}
 }

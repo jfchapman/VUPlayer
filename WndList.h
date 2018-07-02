@@ -187,6 +187,9 @@ private:
 	// Maps a column type to the column format.
 	typedef std::map<Playlist::Column,ColumnFormat> ColumnFormats;
 
+	// Maps an item ID to a file name.
+	typedef std::map<long,std::wstring> ItemFilenames;
+
 	// Applies the current settings to the list.
 	void ApplySettings();
 
@@ -199,6 +202,9 @@ private:
 	// Inserts a 'playlistItem' into the list control.
 	// 'position' item position, or -1 to append the item to the end of the list control.
 	void InsertListViewItem( const Playlist::Item& playlistItem, const int position = -1 );
+
+	// Deletes the item at 'itemIndex' from the list view control.
+	void DeleteListViewItem( const int position );
 
 	// Sets the text of a list view item.
 	// 'itemIndex' - list view item index.
@@ -279,4 +285,7 @@ private:
 
 	// Cursor to set back when a drag operation finishes.
 	HCURSOR m_OldCursor;
+
+	// Maps an item ID to a filename.
+	ItemFilenames m_ItemFilenames;
 };

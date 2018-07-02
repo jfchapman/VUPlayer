@@ -50,6 +50,10 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 	}
 
 	CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
+	INITCOMMONCONTROLSEX initCC = {};
+	initCC.dwSize = sizeof( INITCOMMONCONTROLSEX );
+	initCC.dwICC = ICC_WIN95_CLASSES | ICC_COOL_CLASSES;
+	InitCommonControlsEx( &initCC );
 
 	GdiplusStartupInput gdiplusStartupInput;
 	ULONG_PTR gdiplusToken;

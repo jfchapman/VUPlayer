@@ -7,12 +7,20 @@
 class WndTrackbar
 {
 public:
+	// Trackbar type
+	enum class Type {
+		Seek,
+		Volume,
+		Pitch
+	};
+
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
 	// 'output' - output object.
 	// 'minValue' - minimum trackbar value.
-	// 'maxValue' maximum trackbar value.
-	WndTrackbar( HINSTANCE instance, HWND parent, Output& output, const int minValue, const int maxValue );
+	// 'maxValue' - maximum trackbar value.
+	// 'type' - trackbar type.
+	WndTrackbar( HINSTANCE instance, HWND parent, Output& output, const int minValue, const int maxValue, const Type type );
 
 	virtual ~WndTrackbar();
 
@@ -28,6 +36,15 @@ public:
 	// Sets whether the trackbar is enabled.
 	void SetEnabled( const bool enabled );
 
+	// Sets whether the trackbar is visible.
+	void SetVisible( const bool visible );
+
+	// Gets the trackbar type.
+	Type GetType() const;
+
+	// Sets the trackbar type.
+	virtual void SetType( const Type type );
+
 	// Returns the tooltip text for the control.
 	virtual const std::wstring& GetTooltipText() = 0;
 
@@ -37,9 +54,15 @@ public:
 	// Called when the user drags the trackbar thumb to a 'position'.
 	virtual void OnDrag( const int position ) = 0;
 
+	// Displays the context menu at the specified 'position', in screen coordinates.
+	virtual void OnContextMenu( const POINT& position );
+
 protected:
 	// Returns the output object.
 	Output& GetOutput();
+
+	// Returns the output object.
+	const Output& GetOutput() const;
 
 	// Returns the module instance handle.
 	HINSTANCE GetInstanceHandle();
@@ -68,5 +91,8 @@ private:
 
 	// Output object.
 	Output& m_Output;
+
+	// Trackbar type.
+	Type m_Type;
 };
 

@@ -1,5 +1,6 @@
 #include "Output.h"
 
+#include "Bling.h"
 #include "Utility.h"
 
 // Output buffer length, in seconds.
@@ -73,7 +74,8 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_OutputStream( 0 ),
 	m_PlaylistMutex(),
 	m_QueueMutex(),
-	m_Volume( 1.0 ),
+	m_Volume( 1.0f ),
+	m_Pitch( 1.0f ),
 	m_OutputQueue(),
 	m_RestartItem( {} ),
 	m_RandomPlay( false ),
@@ -99,10 +101,12 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_CrossfadingStream(),
 	m_CurrentItemCrossfading( {} ),
 	m_CrossfadeSeekOffset( 0 ),
-	m_ReplayGainEstimateMap()
+	m_ReplayGainEstimateMap(),
+	m_BlingMap()
 {
 	InitialiseBass();
 	SetVolume( initialVolume );
+	SetPitch( m_Pitch );
 	m_Settings.GetReplaygainSettings( m_ReplaygainMode, m_ReplaygainPreamp, m_ReplaygainHardlimit );
 	m_Settings.GetPlaybackSettings( m_RandomPlay, m_RepeatTrack, m_RepeatPlaylist, m_Crossfade );
 }
@@ -144,6 +148,9 @@ bool Output::Play( const long playlistID, const float seek )
 			if ( 0 != m_OutputStream ) {
 				m_CurrentItemDecoding = item;
 				BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_VOL, m_Muted ? 0 : m_Volume );
+				if ( 1.0f != m_Pitch ) {
+					BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_FREQ, freq * m_Pitch );
+				}
 				if ( TRUE == BASS_ChannelPlay( m_OutputStream, TRUE /*restart*/ ) ) {
 					Queue queue = GetOutputQueue();
 					queue.push_back( { item, 0, seekPosition } );
@@ -520,10 +527,32 @@ void Output::SetVolume( const float volume )
 	}
 }
 
+float Output::GetPitch() const
+{
+	return m_Pitch;
+}
+
+void Output::SetPitch( const float pitch )
+{
+	float pitchValue = pitch;
+	const float pitchRange = GetPitchRange();
+	if ( pitchValue < ( 1.0f - pitchRange ) ) {
+		pitchValue = 1.0f - pitchRange;
+	} else if ( pitchValue > ( 1.0f + pitchRange ) ) {
+		pitchValue = 1.0f + pitchRange;
+	}
+	if ( pitchValue != m_Pitch ) {
+		m_Pitch = pitchValue;
+		if ( m_DecoderStream && ( 0 != m_OutputStream ) ) {
+			const float freq = static_cast<float>( m_DecoderStream->GetSampleRate() );
+			BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_FREQ, freq * m_Pitch );
+		}
+	}
+}
+
 void Output::GetLevels( float& left, float& right )
 {
-	left = 0.0f;
-	right = 0.0f;
+	left = right = 0;
 	if ( 0 != m_OutputStream ) {
 		float levels[ 2 ] = {};
 		const float length = 0.05f;
@@ -957,4 +986,53 @@ void Output::SetOutputQueue( const Queue& queue )
 {
 	std::lock_guard<std::mutex> lock( m_QueueMutex );
 	m_OutputQueue = queue;
+}
+
+float Output::GetPitchRange() const
+{
+	const float range = m_Settings.GetPitchRangeOptions()[ m_Settings.GetPitchRange() ];
+	return range;
+}
+
+void Output::Bling( const int blingID )
+{
+	auto blingIter = m_BlingMap.find( blingID );
+	if ( m_BlingMap.end() == blingIter ) {
+		const BYTE* bling = nullptr;
+		QWORD blingSize = 0;
+		switch ( blingID ) {
+			case 1 : {
+				bling = bling1;
+				blingSize = sizeof( bling1 );
+				break;
+			}
+			case 2 : {
+				bling = bling2;
+				blingSize = sizeof( bling2 );
+				break;
+			}
+			case 3 : {
+				bling = bling3;
+				blingSize = sizeof( bling3 );
+				break;
+			}
+			case 4 : {
+				bling = bling4;
+				blingSize = sizeof( bling4 );
+				break;
+			}
+			default : {
+				break;
+			}
+		}
+		if ( nullptr != bling ) {
+			const HSTREAM stream = BASS_StreamCreateFile( TRUE /*mem*/, bling, 0 /*offset*/, blingSize, 0 /*flags*/ );
+			if ( 0 != stream ) {
+				blingIter = m_BlingMap.insert( StreamMap::value_type( blingID, stream ) ).first;
+			}
+		}
+	}
+	if ( m_BlingMap.end() != blingIter ) {
+		BASS_ChannelPlay( blingIter->second, TRUE /*restart*/ );
+	}
 }

@@ -51,11 +51,21 @@ public:
 		ShowHide
 	};
 
+	// Pitch range options.
+	enum class PitchRange {
+		Small = 0,
+		Medium,
+		Large
+	};
+
 	// A list of playlist columns.
 	typedef std::list<PlaylistColumn> PlaylistColumns;
 
 	// A list of hotkeys.
 	typedef std::list<Hotkey> HotkeyList;
+
+	// Maps a pitch range option to a pitch adjustment factor.
+	typedef std::map<PitchRange,float> PitchRangeMap;
 
 	// Returns the playlist control settings.
 	// 'columns' - out, column settings.
@@ -80,29 +90,34 @@ public:
 	// 'fontColour' - out, tree control font colour.
 	// 'backgroundColour' - out, tree control background colour.
 	// 'highlightColour' - out, tree control highlight colour.
+	// 'showFavourites' - out, whether Favourites is shown.
 	// 'showAllTracks' - out, whether All Tracks is shown.
 	// 'showArtists' - out, whether Artists are shown.
 	// 'showAlbums' - out, whether Albums are shown.
 	// 'showGenres' - out, whether Genres are shown.
 	// 'showYears' - out, whether Years are shown.
 	void GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour,
-			bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears );
+			bool& showFavourites, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears );
 
 	// Sets the tree control settings.
 	// 'font' - tree control font.
 	// 'fontColour' - tree control font colour.
 	// 'backgroundColour' - tree control background colour.
 	// 'highlightColour' - tree control highlight colour.
+	// 'showFavourites' - whether Favourites is shown.
 	// 'showAllTracks' - whether All Tracks is shown.
 	// 'showArtists' - whether Artists are shown.
 	// 'showAlbums' - whether Albums are shown.
 	// 'showGenres' - whether Genres are shown.
 	// 'showYears' - whether Years are shown.
 	void SetTreeSettings( const LOGFONT& font, const COLORREF& fontColour, const COLORREF& backgroundColour, const COLORREF& highlightColour,
-			const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears );
+			const bool showFavourites, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears );
 
 	// Gets the playlists.
 	Playlists GetPlaylists();
+
+	// Gets the Favourites playlist.
+	Playlist::Ptr GetFavourites();
 
 	// Removes a playlist from the database.
 	void RemovePlaylist( const Playlist& playlist );
@@ -122,7 +137,7 @@ public:
 	// Sets the oscilloscope background colour.
 	void SetOscilloscopeBackground( const COLORREF colour );
 
-	// Sets the oscilloscope weight.
+	// Gets the oscilloscope weight.
 	float GetOscilloscopeWeight();
 
 	// Sets the oscilloscope weight.
@@ -139,6 +154,18 @@ public:
 	// 'peak' - peak colour.
 	// 'background - background colour.
 	void SetSpectrumAnalyserSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background );
+
+	// Gets the peak meter settings.
+	// 'base' - out, base colour.
+	// 'peak' - out, peak colour.
+	// 'background - out, background colour.
+	void GetPeakMeterSettings( COLORREF& base, COLORREF& peak, COLORREF& background );
+
+	// Sets the peak meter settings.
+	// 'base' - base colour.
+	// 'peak' - peak colour.
+	// 'background - background colour.
+	void SetPeakMeterSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background );
 
 	// Gets the VUMeter decay setting.
 	float GetVUMeterDecay();
@@ -289,6 +316,21 @@ public:
 	// 'enable' - whether hotkeys are enabled.
 	// 'hotkeys' - hotkeys.
 	void SetHotkeySettings( const bool enable, const HotkeyList& hotkeys );
+
+	// Gets the pitch range.
+	PitchRange GetPitchRange();
+
+	// Sets the pitch range.
+	void SetPitchRange( const PitchRange range );
+
+	// Returns the available pitch range options.
+	PitchRangeMap GetPitchRangeOptions() const;
+
+	// Gets the output control type (volume, pitch, etc).
+	int GetOutputControlType();
+
+	// Sets the output control type (volume, pitch, etc).
+	void SetOutputControlType( const int type );
 
 private:
 	// Updates the database to the current version if necessary.

@@ -18,6 +18,7 @@
 #include "WndSplit.h"
 #include "WndStatus.h"
 #include "WndToolbarCrossfade.h"
+#include "WndToolbarFavourites.h"
 #include "WndToolbarFile.h"
 #include "WndToolbarFlow.h"
 #include "WndToolbarInfo.h"
@@ -100,9 +101,6 @@ public:
 	// Restarts playback from a playlist 'itemID'.
 	void OnRestartPlayback( const long itemID );
 
-	// Shows the track information dialog.
-	void OnTrackInformation();
-
 	// Returns the custom colours to use for colour selection dialogs.
 	COLORREF* GetCustomColours();
 
@@ -118,19 +116,28 @@ public:
 	// Called when a hotkey message is received.
 	void OnHotkey( WPARAM wParam );
 
-	// Called when the Calculate ReplayGain command is received.
-	void OnCalculateReplayGain();
-
 	// Creates and returns a new playlist.
 	Playlist::Ptr NewPlaylist();
 
 	// Returns the BASS library version.
 	std::wstring GetBassVersion() const;
 
+	// Inserts the Add to Playlists sub menu into the 'menu'.
+	// 'addPrefix' - whether to add an alt prefix to the sub menu.
+	void InsertAddToPlaylists( const HMENU menu, const bool addPrefix );
+
 private:
 	// 'instance' - module instance handle.
 	// 'hwnd' - main window handle.
 	VUPlayer( const HINSTANCE instance, const HWND hwnd );
+
+	virtual ~VUPlayer();
+
+	// Main application instance.
+	static VUPlayer* s_VUPlayer;
+
+	// Maps a menu command ID to a playlist.
+	typedef std::map<UINT,Playlist::Ptr> PlaylistMenuMap;
 
 	// Reads and applies windows position from settings.
 	void ReadWindowSettings();
@@ -153,10 +160,17 @@ private:
 	// Resets the last skip count to the current performance count.
 	void ResetLastSkipCount();
 
-	virtual ~VUPlayer();
+	// Shows the track information dialog.
+	void OnTrackInformation();
 
-	// Main application instance.
-	static VUPlayer* s_VUPlayer;
+	// Called when the Calculate ReplayGain command is received.
+	void OnCalculateReplayGain();
+
+	// Called when the Add to Favourites command is received.
+	void OnAddToFavourites();
+
+	// Called when the Add to Playlist 'command' is received.
+	void OnAddToPlaylist( const UINT command );
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
@@ -227,6 +241,9 @@ private:
 	// Toolbar (playlist).
 	WndToolbarPlaylist m_ToolbarPlaylist;
 
+	// Toolbar (favourites).
+	WndToolbarFavourites m_ToolbarFavourites;
+
 	// Counter control.
 	WndCounter m_Counter;
 
@@ -247,4 +264,7 @@ private:
 
 	// Performance count at which the last skip backwards or forwards occured.
 	LARGE_INTEGER m_LastSkipCount;
+
+	// Maps a menu command ID to a playlist for the Add to Playlist sub menu.
+	PlaylistMenuMap m_AddToPlaylistMenuMap;
 };

@@ -15,7 +15,9 @@ std::set<Hotkeys::ID> Hotkeys::s_Hotkeys = {
 	ID::DecreaseVolume,
 	ID::IncreaseVolume,
 	ID::SkipBackwards,
-	ID::SkipForwards
+	ID::SkipForwards,
+	ID::DecreasePitch,
+	ID::IncreasePitch
 };
 
 // Hotkey commands.
@@ -31,7 +33,9 @@ std::map<Hotkeys::ID,WPARAM> Hotkeys::s_CommandMap = {
 	{ ID::FadeToNext,			ID_CONTROL_FADETONEXT },
 	{ ID::MuteVolume,			ID_CONTROL_MUTE },
 	{ ID::DecreaseVolume,	ID_CONTROL_VOLUMEDOWN },
-	{ ID::IncreaseVolume,	ID_CONTROL_VOLUMEUP }
+	{ ID::IncreaseVolume,	ID_CONTROL_VOLUMEUP },
+	{ ID::DecreasePitch,	ID_CONTROL_PITCHDOWN },
+	{ ID::IncreasePitch,	ID_CONTROL_PITCHUP }
 };
 
 // Hotkey descriptions.
@@ -47,7 +51,9 @@ std::map<Hotkeys::ID,UINT> Hotkeys::s_DescriptionMap = {
 	{ ID::FadeToNext,			IDS_HOTKEY_FADETONEXT },
 	{ ID::MuteVolume,			IDS_HOTKEY_MUTE },
 	{ ID::DecreaseVolume,	IDS_HOTKEY_VOLUMEDOWN },
-	{ ID::IncreaseVolume,	IDS_HOTKEY_VOLUMEUP }
+	{ ID::IncreaseVolume,	IDS_HOTKEY_VOLUMEUP },
+	{ ID::DecreasePitch,	IDS_HOTKEY_PITCHDOWN },
+	{ ID::IncreasePitch,	IDS_HOTKEY_PITCHUP }
 };
 
 Hotkeys::Hotkeys( const HWND wnd, Settings& settings ) :

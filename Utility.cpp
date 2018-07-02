@@ -4,7 +4,6 @@
 
 #include "Gdiplusimaging.h"
 
-#include <algorithm>
 #include <codecvt>
 #include <iomanip>
 #include <locale>

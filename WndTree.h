@@ -65,6 +65,9 @@ public:
 	// Selects a 'playlist'.
 	void SelectPlaylist( const Playlist::Ptr& playlist );
 
+	// Selects, and shows if necessary, the 'All Tracks' playlist.
+	void SelectAllTracks();
+
 	// Displays the font selection dialog for changing the tree control font.
 	void OnSelectFont();
 
@@ -83,6 +86,9 @@ public:
 
 	// Called when media library has been refreshed.
 	void OnMediaLibraryRefreshed();
+
+	// Toggles 'Favourites' on the tree control.
+	void OnFavourites();
 
 	// Toggles 'All Tracks' on the tree control.
 	void OnAllTracks();
@@ -108,12 +114,33 @@ public:
 	// Returns the highlight colour.
 	COLORREF GetHighlightColour() const;
 
+	// Returns the Favourites playlist.
+	Playlist::Ptr GetPlaylistFavourites() const;
+
+	// Returns the All Tracks playlist.
+	Playlist::Ptr GetPlaylistAll() const;
+
+	// Returns whether it is possible to delete the currently selected item.
+	bool IsPlaylistDeleteEnabled();
+
+	// Returns whether it is possible to export the currently selected item.
+	bool IsPlaylistExportEnabled();
+
+	// Returns whether it is possible to rename the currently selected item.
+	bool IsPlaylistRenameEnabled();
+
+	// Starts editing the name of the currently selected playlist.
+	void RenameSelectedPlaylist();
+
 private:
 	// Maps a tree item to a playlist.
 	typedef std::map<HTREEITEM,Playlist::Ptr> PlaylistMap;
 
 	// Maps a playlist type to an icon index.
 	typedef std::map<Playlist::Type,int> IconMap;
+
+	// Maps a playlist type to an item order value.
+	typedef std::map<Playlist::Type,LPARAM> OrderMap;
 
 	// Loads playlists
 	void LoadPlaylists();
@@ -139,6 +166,9 @@ private:
 	// Saves the tree control settings to application settings.
 	void SaveSettings();
 
+	// Adds 'Favourites' to the tree control.
+	void AddFavourites();
+
 	// Adds 'All Tracks' to the tree control.
 	void AddAllTracks();
 
@@ -153,6 +183,9 @@ private:
 
 	// Adds years to the tree control.
 	void AddYears();
+
+	// Removes 'Favourites' from the tree control.
+	void RemoveFavourites();
 
 	// Removes 'All Tracks' from the tree control.
 	void RemoveAllTracks();
@@ -234,6 +267,18 @@ private:
 	// Gets the icon index corresponding to a playlist 'type'.
 	int GetIconIndex( const Playlist::Type type ) const;
 
+	// Loads the 'All Tracks' playlist.
+	void LoadAllTracks();
+
+	// Loads the 'Favourites' playlist.
+	void LoadFavourites();
+
+	// Returns the item order for the root 'item'
+	LPARAM WndTree::GetItemOrder( const HTREEITEM item ) const;
+
+	// Returns the tree insertion position for a root item corresponding to a playlist 'type'.
+	HTREEITEM GetInsertAfter( const Playlist::Type type ) const;
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -261,6 +306,9 @@ private:
 	// All tracks node.
 	HTREEITEM m_NodeAll;
 
+	// Favourites node.
+	HTREEITEM m_NodeFavourites;
+
 	// Media library.
 	Library& m_Library;
 
@@ -285,6 +333,9 @@ private:
 	// All Tracks playlist.
 	Playlist::Ptr m_PlaylistAll;
 
+	// Favourites playlist.
+	Playlist::Ptr m_PlaylistFavourites;
+
 	// The font resulting from the font selection dialog.
 	HFONT m_ChosenFont;
 
@@ -296,5 +347,8 @@ private:
 
 	// Icon map.
 	IconMap m_IconMap;
+
+	// Root item ordering.
+	static OrderMap s_RootOrder;
 };
 

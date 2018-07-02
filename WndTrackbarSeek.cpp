@@ -9,7 +9,7 @@
 static const int s_RangeMax = 2000;
 
 WndTrackbarSeek::WndTrackbarSeek( HINSTANCE instance, HWND parent, Output& output ) :
-	WndTrackbar( instance, parent, output, 0 /*minValue*/, s_RangeMax ),
+	WndTrackbar( instance, parent, output, 0 /*minValue*/, s_RangeMax, Type::Seek ),
 	m_Tooltip(),
 	m_IsDragging( false ),
 	m_OutputItem()
@@ -22,9 +22,13 @@ WndTrackbarSeek::~WndTrackbarSeek()
 
 const std::wstring& WndTrackbarSeek::GetTooltipText()
 {
-	const float duration = m_OutputItem.PlaylistItem.Info.GetDuration();
-	const float seconds = GetPosition() * duration / s_RangeMax;
-	m_Tooltip = DurationToString( GetInstanceHandle(), seconds, false /*colonDelimited*/ );
+	if ( IsDragging() ) {
+		const float duration = m_OutputItem.PlaylistItem.Info.GetDuration();
+		const float seconds = GetPosition() * duration / s_RangeMax;
+		m_Tooltip = DurationToString( GetInstanceHandle(), seconds, false /*colonDelimited*/ );
+	} else {
+		m_Tooltip.clear();
+	}
 	return m_Tooltip;
 }
 

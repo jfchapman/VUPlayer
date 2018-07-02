@@ -14,6 +14,9 @@ static const int s_MinSplit = 200;
 // Maximum split width
 static const int s_MaxSplit = 500;
 
+// Default split width
+static const int s_DefaultSplit = 303;
+
 // Window procedure
 static LRESULT CALLBACK WndSplitProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -114,7 +117,7 @@ WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStat
 
 	m_SplitPosition = m_Settings.GetSplitWidth();
 	if ( ( m_SplitPosition < m_MinSplit ) || ( m_SplitPosition > m_MaxSplit ) ) {
-		m_SplitPosition = ( m_MinSplit + m_MaxSplit ) / 2;
+		m_SplitPosition = s_DefaultSplit;
 	}
 	Resize();
 }

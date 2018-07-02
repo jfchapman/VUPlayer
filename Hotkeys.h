@@ -20,7 +20,9 @@ public:
 		FadeToNext,
 		MuteVolume,
 		DecreaseVolume,
-		IncreaseVolume
+		IncreaseVolume,
+		DecreasePitch,
+		IncreasePitch
 	};
 
 	// Constructor.

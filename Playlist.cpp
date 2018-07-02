@@ -242,7 +242,10 @@ void Playlist::OnPendingThreadHandler()
 			}
 		}
 		if ( !filename.empty() ) {
-			const bool addItem = ( ( GetType() != Type::All ) || !ContainsFilename( filename ) );
+			bool addItem = true;
+			if ( ( Type::All == GetType() ) || ( Type::Favourites == GetType() ) ) {
+				addItem = !ContainsFilename( filename );
+			}
 			if ( addItem ) {
 				MediaInfo mediaInfo( filename );
 				if ( m_Library.GetMediaInfo( mediaInfo ) ) {
