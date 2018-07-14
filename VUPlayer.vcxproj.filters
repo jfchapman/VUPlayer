@@ -207,9 +207,6 @@
     <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\i18n.h">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="libs\sqlite-3.18.0\sqlite3.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
     <ClInclude Include="DecoderOpus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -222,11 +219,14 @@
     <ClInclude Include="PeakMeter.h">
       <Filter>Visuals</Filter>
     </ClInclude>
-    <ClInclude Include="Bling.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="WndToolbarFavourites.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Bling.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\sqlite-3.24.0\sqlite3.h">
+      <Filter>Third Party</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -398,9 +398,6 @@
     <ClCompile Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.c">
       <Filter>Third Party</Filter>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.18.0\sqlite3.c">
-      <Filter>Third Party</Filter>
-    </ClCompile>
     <ClCompile Include="DecoderOpus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -415,6 +412,9 @@
     </ClCompile>
     <ClCompile Include="WndToolbarFavourites.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\sqlite-3.24.0\sqlite3.c">
+      <Filter>Third Party</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
