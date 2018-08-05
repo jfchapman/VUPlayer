@@ -28,7 +28,7 @@ WndToolbarPlaylist::~WndToolbarPlaylist()
 	ImageList_Destroy( m_ImageList );
 }
 
-void WndToolbarPlaylist::Update( Output& /*output*/, const Playlist::Ptr& playlist, const Playlist::Item& selectedItem )
+void WndToolbarPlaylist::Update( Output& /*output*/, const Playlist::Ptr playlist, const Playlist::Item& selectedItem )
 {
 	const bool addFiles = true;
 	const bool removeFiles = ( playlist && ( ( Playlist::Type::User == playlist->GetType() ) || ( Playlist::Type::Favourites == playlist->GetType() ) ) && ( selectedItem.ID > 0 ) );

@@ -22,8 +22,17 @@ MediaInfo::MediaInfo( const std::wstring& filename ) :
 	m_GainAlbum( REPLAYGAIN_NOVALUE ),
 	m_PeakTrack( REPLAYGAIN_NOVALUE ),
 	m_PeakAlbum( REPLAYGAIN_NOVALUE ),
-	m_ArtworkID()
+	m_ArtworkID(),
+	m_Source( Source::File ),
+	m_CDDB( 0 )
 {
+}
+
+MediaInfo::MediaInfo( const long cddbID ) :
+	MediaInfo()
+{
+	m_Source = Source::CDDA;
+	m_CDDB = cddbID;
 }
 
 MediaInfo::~MediaInfo()
@@ -260,4 +269,14 @@ const std::wstring& MediaInfo::GetArtworkID() const
 void MediaInfo::SetArtworkID( const std::wstring& id )
 {
 	m_ArtworkID = id;
+}
+
+MediaInfo::Source MediaInfo::GetSource() const
+{
+	return m_Source;
+}
+
+long MediaInfo::GetCDDB() const
+{
+	return m_CDDB;
 }

@@ -35,7 +35,7 @@ public:
 	// 'output' - output object.
 	// 'playlist' - currently displayed playlist.
 	// 'selectedItem' - currently focused playlist item.
-	virtual void Update( Output& output, const Playlist::Ptr& playlist, const Playlist::Item& selectedItem ) = 0;
+	virtual void Update( Output& output, const Playlist::Ptr playlist, const Playlist::Item& selectedItem ) = 0;
 
 	// Returns the tooltip resource ID corresponding to a 'commandID'.
 	virtual UINT GetTooltip( const UINT commandID ) const = 0;

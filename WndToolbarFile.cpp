@@ -23,7 +23,7 @@ WndToolbarFile::~WndToolbarFile()
 	ImageList_Destroy( m_ImageList );
 }
 
-void WndToolbarFile::Update( Output& /*output*/, const Playlist::Ptr& /*playlist*/, const Playlist::Item& /*selectedItem*/ )
+void WndToolbarFile::Update( Output& /*output*/, const Playlist::Ptr /*playlist*/, const Playlist::Item& /*selectedItem*/ )
 {
 	SetButtonEnabled( ID_FILE_NEWPLAYLIST, true );
 }

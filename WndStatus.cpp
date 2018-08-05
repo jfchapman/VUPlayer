@@ -96,7 +96,7 @@ void WndStatus::Resize( const int width )
 	SendMessage( m_hWnd, SB_SETPARTS, s_PartCount, reinterpret_cast<LPARAM>( parts ) );
 }
 
-void WndStatus::SetPlaylist( const Playlist::Ptr& playlist )
+void WndStatus::SetPlaylist( const Playlist::Ptr playlist )
 {
 	if ( m_Playlist != playlist ) {
 		m_Playlist = playlist;

@@ -60,7 +60,7 @@ public:
 	void Next();
 	
 	// Sets the current 'playlist', setting the current state to stopped if necessary.
-	void SetPlaylist( const Playlist::Ptr& playlist );
+	void SetPlaylist( const Playlist::Ptr playlist );
 
 	// Gets the current playlist.
 	Playlist::Ptr GetPlaylist();

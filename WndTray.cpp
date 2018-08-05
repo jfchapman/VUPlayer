@@ -238,7 +238,7 @@ void WndTray::ShowContextMenu()
 					} else {
 						int playlistMenuCount = 0;
 						for ( auto playlistIter = playlists.begin(); ( playlistMenuCount < sMaxPlaylists ) && ( playlistIter != playlists.end() ); playlistIter++ ) {
-							const Playlist::Ptr& playlist = *playlistIter;
+							const Playlist::Ptr playlist = *playlistIter;
 							HMENU playlistMenu = CreatePlaylistMenu( playlist );
 							if ( nullptr != playlistMenu ) {
 								InsertMenu( playlistsMenu, ++playlistMenuCount, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>( playlistMenu ), playlist->GetName().c_str() );
@@ -271,7 +271,7 @@ void WndTray::ShowContextMenu()
 	}
 }
 
-HMENU WndTray::CreatePlaylistMenu( const Playlist::Ptr& playlist )
+HMENU WndTray::CreatePlaylistMenu( const Playlist::Ptr playlist )
 {
 	HMENU playlistMenu = NULL;
 	if ( playlist ) {

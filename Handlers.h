@@ -28,6 +28,9 @@ public:
 	// Returns the BASS library version.
 	std::wstring GetBassVersion() const;
 
+	// Adds a 'handler'.
+	void AddHandler( Handler::Ptr handler );
+
 private:
 	// Returns a handler supported by the 'filename' extension, or nullptr of there was no match.
 	Handler::Ptr FindHandler( const std::wstring& filename ) const;

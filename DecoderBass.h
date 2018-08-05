@@ -5,7 +5,6 @@
 #include "bass.h"
 
 #include <string>
-#include <stdexcept>
 
 // Bass decoder
 class DecoderBass : public Decoder

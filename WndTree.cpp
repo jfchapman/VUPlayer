@@ -19,13 +19,14 @@ static const int s_IconSize = 16;
 
 // Root item ordering.
 WndTree::OrderMap WndTree::s_RootOrder = {
-	{ Playlist::Type::User,				1 },
-	{ Playlist::Type::Favourites,	2 },
-	{ Playlist::Type::All,				3 },
-	{ Playlist::Type::Artist,			4 },
-	{ Playlist::Type::Album,			5 },
-	{ Playlist::Type::Genre,			6 },
-	{ Playlist::Type::Year,				7 }
+	{ Playlist::Type::CDDA,				1 },
+	{ Playlist::Type::User,				2 },
+	{ Playlist::Type::Favourites,	3 },
+	{ Playlist::Type::All,				4 },
+	{ Playlist::Type::Artist,			5 },
+	{ Playlist::Type::Album,			6 },
+	{ Playlist::Type::Genre,			7 },
+	{ Playlist::Type::Year,				8 }
 };
 
 // Window procedure
@@ -66,7 +67,7 @@ static LRESULT CALLBACK WndTreeProc( HWND hwnd, UINT message, WPARAM wParam, LPA
 	return CallWindowProc( wndTree->GetDefaultWndProc(), hwnd, message, wParam, lParam );
 }
 
-WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings ) :
+WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings, CDDAManager& cddaManager ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_DefaultWndProc( nullptr ),
@@ -79,11 +80,13 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_NodeFavourites( nullptr ),
 	m_Library( library ),
 	m_Settings( settings ),
+	m_CDDAManager( cddaManager ),
 	m_PlaylistMap(),
 	m_ArtistMap(),
 	m_AlbumMap(),
 	m_GenreMap(),
 	m_YearMap(),
+	m_CDDAMap(),
 	m_PlaylistAll( nullptr ),
 	m_PlaylistFavourites( nullptr ),
 	m_ChosenFont( NULL ),
@@ -141,7 +144,7 @@ HTREEITEM WndTree::GetStartupItem()
 	HTREEITEM selectedItem = nullptr;
 	const std::wstring startupPlaylist = m_Settings.GetStartupPlaylist();
 	for ( const auto& playlistIter : m_PlaylistMap ) {
-		const Playlist::Ptr& playlist = playlistIter.second;
+		const Playlist::Ptr playlist = playlistIter.second;
 		if ( playlist && ( UTF8ToWideString( playlist->GetID() ) == startupPlaylist ) ) {
 			selectedItem = playlistIter.first;
 			break;
@@ -169,7 +172,7 @@ HTREEITEM WndTree::GetStartupItem()
 	return selectedItem;
 }
 
-void WndTree::SaveStartupPlaylist( const Playlist::Ptr& playlist )
+void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 {
 	std::wstring startupPlaylist;
 	if ( playlist ) {
@@ -186,7 +189,7 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr& playlist )
 			}
 			case Playlist::Type::Artist : {
 				for ( const auto& artist : m_ArtistMap ) {
-					const Playlist::Ptr& artistPlaylist = artist.second;
+					const Playlist::Ptr artistPlaylist = artist.second;
 					if ( artistPlaylist && ( artistPlaylist->GetID() == playlist->GetID() ) ) {
 						const std::list<std::wstring> parts( { GetItemLabel( m_NodeArtists ), playlist->GetName() } );
 						startupPlaylist = WideStringJoin( parts, '\t' );
@@ -197,7 +200,7 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr& playlist )
 			}
 			case Playlist::Type::Album : {
 				for ( const auto& album : m_AlbumMap ) {
-					const Playlist::Ptr& albumPlaylist = album.second;
+					const Playlist::Ptr albumPlaylist = album.second;
 					if ( albumPlaylist && ( albumPlaylist->GetID() == playlist->GetID() ) ) {
 						std::list<std::wstring> parts;
 						const HTREEITEM parentItem = TreeView_GetParent( m_hWnd, album.first );
@@ -214,7 +217,7 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr& playlist )
 			}
 			case Playlist::Type::Genre : {
 				for ( const auto& genre : m_GenreMap ) {
-					const Playlist::Ptr& genrePlaylist = genre.second;
+					const Playlist::Ptr genrePlaylist = genre.second;
 					if ( genrePlaylist && ( genrePlaylist->GetID() == playlist->GetID() ) ) {
 						const std::list<std::wstring> parts( { GetItemLabel( m_NodeGenres ), playlist->GetName() } );
 						startupPlaylist = WideStringJoin( parts, '\t' );
@@ -225,7 +228,7 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr& playlist )
 			}
 			case Playlist::Type::Year : {
 				for ( const auto& year : m_YearMap ) {
-					const Playlist::Ptr& yearPlaylist = year.second;
+					const Playlist::Ptr yearPlaylist = year.second;
 					if ( yearPlaylist && ( yearPlaylist->GetID() == playlist->GetID() ) ) {
 						const std::list<std::wstring> parts( { GetItemLabel( m_NodeYears ), playlist->GetName() } );
 						startupPlaylist = WideStringJoin( parts, '\t' );
@@ -376,7 +379,7 @@ void WndTree::LoadPlaylists()
 	HTREEITEM selectedItem = NULL;
 	Playlists playlists = m_Settings.GetPlaylists();
 	for ( const auto& iter : playlists ) {
-		const Playlist::Ptr& playlist = iter;
+		const Playlist::Ptr playlist = iter;
 		if ( playlist ) {
 			const HTREEITEM hItem = AddItem( m_NodePlaylists, playlist->GetName(), Playlist::Type::User );
 			m_PlaylistMap.insert( PlaylistMap::value_type( hItem, playlist ) );
@@ -434,7 +437,7 @@ void WndTree::DeleteSelectedPlaylist()
 	HTREEITEM hSelectedItem = TreeView_GetSelection( m_hWnd );
 	const auto playlistIter = m_PlaylistMap.find( hSelectedItem );
 	if ( m_PlaylistMap.end() != playlistIter ) {
-		const Playlist::Ptr& playlist = playlistIter->second;
+		const Playlist::Ptr playlist = playlistIter->second;
 		if ( playlist ) {
 			m_Settings.RemovePlaylist( *playlist );
 			m_PlaylistMap.erase( playlistIter );
@@ -553,6 +556,13 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			}
 			break;
 		}
+		case Playlist::Type::CDDA : {
+			const auto iter = m_CDDAMap.find( node );
+			if ( m_CDDAMap.end() != iter ) {
+				playlist = iter->second;
+			}
+			break;
+		}
 		default : {
 			break;
 		}
@@ -576,14 +586,14 @@ Playlist::Ptr WndTree::GetSelectedPlaylist()
 void WndTree::OnDestroy()
 {
 	for ( const auto& iter : m_PlaylistMap ) {
-		const Playlist::Ptr& playlist = iter.second;
+		const Playlist::Ptr playlist = iter.second;
 		if ( playlist ) {
 			playlist->StopPendingThread();
 		}
 	}
 
 	for ( const auto& iter : m_PlaylistMap ) {
-		const Playlist::Ptr& playlist = iter.second;
+		const Playlist::Ptr playlist = iter.second;
 		if ( playlist ) {
 			m_Settings.SavePlaylist( *playlist );
 		}
@@ -603,7 +613,7 @@ Playlists WndTree::GetPlaylists()
 	while ( nullptr != hPlaylistItem ) {
 		const auto iter = m_PlaylistMap.find( hPlaylistItem );
 		if ( m_PlaylistMap.end() != iter ) {
-			const Playlist::Ptr& playlist = iter->second;
+			const Playlist::Ptr playlist = iter->second;
 			if ( playlist ) {
 				playlists.push_back( playlist );
 			}
@@ -613,7 +623,7 @@ Playlists WndTree::GetPlaylists()
 	return playlists;
 }
 
-void WndTree::AddPlaylist( const Playlist::Ptr& playlist )
+void WndTree::AddPlaylist( const Playlist::Ptr playlist )
 {
 	if ( playlist ) {
 		TVITEMEX tvItem = {};
@@ -897,7 +907,7 @@ void WndTree::ProcessPendingPlaylists()
 	}
 }
 
-void WndTree::SelectPlaylist( const Playlist::Ptr& playlist )
+void WndTree::SelectPlaylist( const Playlist::Ptr playlist )
 {
 	if ( playlist ) {
 		if ( Playlist::Type::Favourites == playlist->GetType() ) {
@@ -1208,6 +1218,33 @@ void WndTree::AddYears()
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 }
 
+void WndTree::AddCDDA()
+{
+	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
+	const CDDAManager::CDDAMediaMap cddaDrives = m_CDDAManager.GetCDDADrives();
+	for ( const auto& drive : cddaDrives ) {
+		const CDDAMedia& cddaMedia = drive.second;
+		Playlist::Ptr cddaPlaylist = cddaMedia.GetPlaylist();
+		if ( cddaPlaylist ) {
+			TVITEMEX tvItem = {};
+			tvItem.mask = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+			tvItem.pszText = const_cast<LPWSTR>( cddaPlaylist->GetName().c_str() );
+			tvItem.iImage = GetIconIndex( Playlist::Type::CDDA );
+			tvItem.iSelectedImage = tvItem.iImage;
+			tvItem.lParam = static_cast<LPARAM>( Playlist::Type::CDDA );
+			TVINSERTSTRUCT tvInsert = {};
+			tvInsert.hParent = TVI_ROOT;
+			tvInsert.hInsertAfter = TVI_FIRST;
+			tvInsert.itemex = tvItem;
+			const HTREEITEM cddaItem = TreeView_InsertItem( m_hWnd, &tvInsert );
+			if ( nullptr != cddaItem ) {
+				m_CDDAMap.insert( PlaylistMap::value_type( cddaItem, cddaPlaylist ) );
+			}		
+		}
+	}
+	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
+}
+
 HTREEITEM WndTree::AddItem( const HTREEITEM parentItem, const std::wstring& label, const Playlist::Type type )
 {
 	HTREEITEM addedItem = nullptr;
@@ -1267,6 +1304,10 @@ void WndTree::RemoveItem( const HTREEITEM item )
 			m_YearMap.erase( item );
 			break;
 		}
+		case Playlist::Type::CDDA : {
+			m_CDDAMap.erase( item );
+			break;
+		}
 		default : {
 			break;
 		}
@@ -1318,14 +1359,27 @@ std::wstring WndTree::GetItemLabel( const HTREEITEM item ) const
 	return label;
 }
 
+void WndTree::SetItemLabel( const HTREEITEM item, const std::wstring& label ) const
+{
+	TVITEMEX tvItem = {};
+	tvItem.mask = TVIF_HANDLE | TVIF_TEXT;
+	tvItem.hItem = item;
+	tvItem.pszText = const_cast<LPWSTR>( label.c_str() );
+	TreeView_SetItem( m_hWnd, &tvItem );
+}
+
 Playlist::Set WndTree::OnUpdatedMedia( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo )
 {
 	Playlist::Set updatedPlaylists;
-	UpdateArtists( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-	UpdateAlbums( m_NodeAlbums, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-	UpdateGenres( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-	UpdateYears( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-	UpdatePlaylists( updatedMediaInfo, updatedPlaylists );
+	if ( MediaInfo::Source::CDDA == updatedMediaInfo.GetSource() ) {
+		UpdateCDDA( updatedMediaInfo, updatedPlaylists );
+	} else {
+		UpdateArtists( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdateAlbums( m_NodeAlbums, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdateGenres( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdateYears( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdatePlaylists( updatedMediaInfo, updatedPlaylists );
+	}
 	return updatedPlaylists;
 }
 
@@ -1352,7 +1406,7 @@ void WndTree::OnMediaLibraryRefreshed()
 			case Playlist::Type::User : {
 				for ( const auto& iter : m_PlaylistMap ) {
 					HTREEITEM hItem = iter.first;
-					const Playlist::Ptr& playlist = iter.second;
+					const Playlist::Ptr playlist = iter.second;
 					if ( playlist && ( playlist->GetID() == previousSelectedPlaylist->GetID() ) ) {
 						hSelectedItem = hItem;
 						break;
@@ -1443,32 +1497,32 @@ void WndTree::OnMediaLibraryRefreshed()
 void WndTree::UpdatePlaylists( const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists )
 {
 	for ( const auto& playlistIter : m_ArtistMap ) {
-		const Playlist::Ptr& playlist = playlistIter.second;
+		const Playlist::Ptr playlist = playlistIter.second;
 		if ( ( updatedPlaylists.end() == updatedPlaylists.find( playlist ) ) && playlist && playlist->OnUpdatedMedia( updatedMediaInfo ) ) {
 			updatedPlaylists.insert( playlist );
 		}
 	}
 	for ( const auto& playlistIter : m_AlbumMap ) {
-		const Playlist::Ptr& playlist = playlistIter.second;
+		const Playlist::Ptr playlist = playlistIter.second;
 		if ( ( updatedPlaylists.end() == updatedPlaylists.find( playlist ) ) && playlist && playlist->OnUpdatedMedia( updatedMediaInfo ) ) {
 			updatedPlaylists.insert( playlist );
 		}
 	}
 	for ( const auto& playlistIter : m_GenreMap ) {
-		const Playlist::Ptr& playlist = playlistIter.second;
+		const Playlist::Ptr playlist = playlistIter.second;
 		if ( ( updatedPlaylists.end() == updatedPlaylists.find( playlist ) ) && playlist && playlist->OnUpdatedMedia( updatedMediaInfo ) ) {
 			updatedPlaylists.insert( playlist );
 		}
 	}
 	for ( const auto& playlistIter : m_YearMap ) {
-		const Playlist::Ptr& playlist = playlistIter.second;
+		const Playlist::Ptr playlist = playlistIter.second;
 		if ( ( updatedPlaylists.end() == updatedPlaylists.find( playlist ) ) && playlist && playlist->OnUpdatedMedia( updatedMediaInfo ) ) {
 			updatedPlaylists.insert( playlist );
 		}
 	}
 
 	for ( const auto& playlistIter : m_PlaylistMap ) {
-		const Playlist::Ptr& playlist = playlistIter.second;
+		const Playlist::Ptr playlist = playlistIter.second;
 		if ( playlist && playlist->OnUpdatedMedia( updatedMediaInfo ) ) {
 			updatedPlaylists.insert( playlist );
 		}
@@ -1480,6 +1534,19 @@ void WndTree::UpdatePlaylists( const MediaInfo& updatedMediaInfo, Playlist::Set&
 
 	if ( m_PlaylistFavourites && m_PlaylistFavourites->OnUpdatedMedia( updatedMediaInfo ) ) {
 		updatedPlaylists.insert( m_PlaylistFavourites );
+	}
+}
+
+void WndTree::UpdateCDDA( const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists )
+{
+	for ( const auto& playlistIter : m_CDDAMap ) {
+		const Playlist::Ptr playlist = playlistIter.second;
+		if ( playlist && playlist->OnUpdatedMedia( updatedMediaInfo ) ) {
+			updatedPlaylists.insert( playlist );
+			if ( GetItemLabel( playlistIter.first ) != playlist->GetName() ) {
+				SetItemLabel( playlistIter.first, playlist->GetName() );
+			}
+		}
 	}
 }
 
@@ -1947,6 +2014,24 @@ void WndTree::RemoveYears()
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 }
 
+void WndTree::RemoveCDDA()
+{
+	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
+	std::set<HTREEITEM> cddaNodes;
+	HTREEITEM currentItem = TreeView_GetRoot( m_hWnd );
+	while ( nullptr != currentItem ) {
+		if ( Playlist::Type::CDDA == GetItemType( currentItem ) ) {
+			cddaNodes.insert( currentItem );
+		}
+		currentItem = TreeView_GetNextSibling( m_hWnd, currentItem );
+	}
+	for ( const auto& node : cddaNodes ) {
+		TreeView_DeleteItem( m_hWnd, node );
+	}
+	m_CDDAMap.clear();
+	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
+}
+
 void WndTree::Populate()
 {
 	HCURSOR oldCursor = SetCursor( LoadCursor( NULL /*instance*/, IDC_WAIT ) );
@@ -1957,6 +2042,7 @@ void WndTree::Populate()
 	m_AlbumMap.clear();
 	m_GenreMap.clear();
 	m_YearMap.clear();
+	m_CDDAMap.clear();
 
 	LoadAllTracks();
 	LoadFavourites();
@@ -1993,6 +2079,8 @@ void WndTree::Populate()
 	LoadPlaylists();
 	ProcessPendingPlaylists();
 
+	AddCDDA();
+
 	SetCursor( oldCursor );
 }
 
@@ -2021,7 +2109,9 @@ void WndTree::CreateImageList()
 
 	hIcon = static_cast<HICON>( LoadImage( m_hInst, MAKEINTRESOURCE( IDI_ALBUM ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
 	if ( NULL != hIcon ) {
-		m_IconMap.insert( IconMap::value_type( Playlist::Type::Album, ImageList_ReplaceIcon( m_ImageList, -1, hIcon ) ) );
+		const int iconIndex = ImageList_ReplaceIcon( m_ImageList, -1, hIcon );
+		m_IconMap.insert( IconMap::value_type( Playlist::Type::Album, iconIndex ) );
+		m_IconMap.insert( IconMap::value_type( Playlist::Type::CDDA, iconIndex ) );
 	}
 
 	hIcon = static_cast<HICON>( LoadImage( m_hInst, MAKEINTRESOURCE( IDI_GENRE ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
@@ -2098,7 +2188,7 @@ bool WndTree::IsPlaylistExportEnabled()
 {
 	const HTREEITEM hSelectedItem = TreeView_GetSelection( m_hWnd );
 	const Playlist::Ptr playlist = GetPlaylist( hSelectedItem );
-	const bool enabled = ( nullptr != playlist.get() );
+	const bool enabled = ( playlist && ( playlist->GetType() != Playlist::Type::CDDA ) );
 	return enabled;
 }
 
@@ -2130,4 +2220,10 @@ HTREEITEM WndTree::GetInsertAfter( const Playlist::Type type ) const
 		currentItem = TreeView_GetNextSibling( m_hWnd, currentItem );
 	}
 	return insertAfter;
+}
+
+void WndTree::OnCDDARefreshed()
+{
+	RemoveCDDA();
+	AddCDDA();
 }

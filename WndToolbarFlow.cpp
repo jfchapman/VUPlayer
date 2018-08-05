@@ -28,7 +28,7 @@ WndToolbarFlow::~WndToolbarFlow()
 	ImageList_Destroy( m_ImageList );
 }
 
-void WndToolbarFlow::Update( Output& output, const Playlist::Ptr& /*playlist*/, const Playlist::Item& /*selectedItem*/ )
+void WndToolbarFlow::Update( Output& output, const Playlist::Ptr /*playlist*/, const Playlist::Item& /*selectedItem*/ )
 {
 	SetButtonEnabled( ID_CONTROL_RANDOMPLAY, true );
 	SetButtonEnabled( ID_CONTROL_REPEATTRACK, true );

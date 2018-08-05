@@ -49,7 +49,7 @@ public:
 
 	// Sets the current playlist.
 	// 'initSelection' - whether to select the first playlist item (or the currently playing item if it's in the list).
-	void SetPlaylist( const Playlist::Ptr& playlist, const bool initSelection = true );
+	void SetPlaylist( const Playlist::Ptr playlist, const bool initSelection = true );
 
 	// Called when an 'item' is added to the 'playlist' at a (0-based) 'position'.
 	void OnFileAdded( Playlist* playlist, const Playlist::Item& item, const int position );

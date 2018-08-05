@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <stdexcept>
 
 // Decoder interface.
 class Decoder
@@ -49,7 +50,7 @@ public:
 
 	// Returns the ReplayGain track gain, in dB.
 	// 'secondslimit' - number of seconds to devote to calculating an estimate, or 0 to perform a complete calculation.
-	float CalculateTrackGain( const float secondsLimit = 0 );
+	virtual float CalculateTrackGain( const float secondsLimit = 0 );
 
 	// Skips any leading silence.
 	void SkipSilence();

@@ -4,6 +4,7 @@
 
 #include "resource.h"
 
+#include "CDDAManager.h"
 #include "Database.h"
 #include "Hotkeys.h"
 #include "Library.h"
@@ -40,6 +41,11 @@ static const UINT MSG_MEDIAUPDATED = WM_APP + 77;
 // 'wParam' : unused.
 // 'lParam' : unused.
 static const UINT MSG_LIBRARYREFRESHED = WM_APP + 78;
+
+// Message ID for signalling that the available CD audio discs has been refreshed.
+// 'wParam' : unused.
+// 'lParam' : unused.
+static const UINT MSG_CDDAREFRESHED = WM_APP + 79;
 
 // Main application singleton
 class VUPlayer
@@ -98,6 +104,9 @@ public:
 	// Handles a media library refresh, from the main thread.
 	void OnHandleLibraryRefreshed();
 
+	// Handles the refreshing of available CD audio discs.
+	void OnHandleCDDARefreshed();
+
 	// Restarts playback from a playlist 'itemID'.
 	void OnRestartPlayback( const long itemID );
 
@@ -125,6 +134,9 @@ public:
 	// Inserts the Add to Playlists sub menu into the 'menu'.
 	// 'addPrefix' - whether to add an alt prefix to the sub menu.
 	void InsertAddToPlaylists( const HMENU menu, const bool addPrefix );
+
+	// Called when a device change has occurred.
+	void OnDeviceChange();
 
 private:
 	// 'instance' - module instance handle.
@@ -198,6 +210,9 @@ private:
 
 	// ReplayGain calculator.
 	ReplayGain m_ReplayGain;
+
+	// CD audio manager.
+	CDDAManager m_CDDAManager;
 
 	// Rebar control.
 	WndRebar m_Rebar;

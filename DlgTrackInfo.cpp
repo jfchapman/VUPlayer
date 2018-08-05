@@ -320,6 +320,12 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 	m_Bitmap = GetArtwork( m_InitialInfo );
 	m_ClosingInfo.SetArtworkID( m_InitialInfo.GetArtworkID() );
 	EnableControls( hwnd );
+
+	HWND hwndTrack = GetDlgItem( hwnd, IDC_TRACKINFO_TRACKNUMBER );
+	if ( nullptr != hwndTrack ) {
+		const BOOL enable = m_Items.empty() ? FALSE : ( MediaInfo::Source::File == m_Items.front().Info.GetSource() );
+		EnableWindow( hwndTrack, enable );
+	}
 }
 
 std::shared_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const MediaInfo& mediaInfo )

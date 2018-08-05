@@ -4,9 +4,11 @@
 
 #include "Gdiplusimaging.h"
 
+#include <chrono>
 #include <codecvt>
 #include <iomanip>
 #include <locale>
+#include <random>
 #include <sstream>
 
 // UTF-8 converter object.
@@ -14,6 +16,12 @@ static std::wstring_convert<std::codecvt_utf8<wchar_t>> convert;
 
 // Maximum size when converting images.
 static const int sMaxConvertImageBytes = 0x1000000;
+
+// Random number seed.
+static const long long seed = std::chrono::system_clock::now().time_since_epoch().count();
+
+// Random number engine.
+static std::mt19937_64 engine( seed );
 
 std::wstring UTF8ToWideString( const std::string& text )
 {
@@ -58,6 +66,21 @@ std::string WideStringToAnsiCodePage( const std::wstring& text )
 		if ( bufferSize > 0 ) {
 			char* buffer = new char[ bufferSize ];
 			WideCharToMultiByte( CP_ACP, 0 /*flags*/, text.c_str(), -1 /*strLen*/, buffer, bufferSize, NULL /*defaultChar*/, NULL /*usedDefaultChar*/ );
+			result = buffer;
+			delete [] buffer;
+		}
+	}
+	return result;
+}
+
+std::wstring CodePageToWideString( const std::string& text, const UINT codePage )
+{
+	std::wstring result;
+	if ( !text.empty() ) {
+		const int bufferSize = MultiByteToWideChar( codePage, MB_PRECOMPOSED, text.c_str(), -1 /*strLen*/, nullptr /*buffer*/, 0 /*bufferSize*/ );
+		if ( bufferSize > 0 ) {
+			WCHAR* buffer = new WCHAR[ bufferSize ];
+			MultiByteToWideChar( codePage, MB_PRECOMPOSED, text.c_str(), -1 /*strLen*/, buffer, bufferSize );
 			result = buffer;
 			delete [] buffer;
 		}
@@ -452,4 +475,11 @@ float GetDPIScaling()
 	const float scaling = static_cast<float>( GetDeviceCaps( dc, LOGPIXELSX ) ) / 96;
 	ReleaseDC( 0, dc );
 	return scaling;
+}
+
+long long GetRandomNumber( const long long minimum, const long long maximum )
+{
+	std::uniform_int_distribution<long long> dist( minimum, maximum );
+	const long long value = dist( engine );
+	return value;
 }

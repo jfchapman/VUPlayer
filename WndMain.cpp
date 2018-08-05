@@ -206,6 +206,12 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
+		case WM_DEVICECHANGE : {
+			if ( nullptr != vuplayer ) {
+				vuplayer->OnDeviceChange();
+			}
+			break;
+		}
 		case MSG_RESTARTPLAYBACK : {
 			if ( nullptr != vuplayer ) {
 				const long itemID = static_cast<long>( wParam );
@@ -226,7 +232,15 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			break;
 		}
 		case MSG_LIBRARYREFRESHED : {
-			vuplayer->OnHandleLibraryRefreshed();
+			if ( nullptr != vuplayer ) {
+				vuplayer->OnHandleLibraryRefreshed();
+			}
+			break;
+		}
+		case MSG_CDDAREFRESHED : {
+			if ( nullptr != vuplayer ) {
+				vuplayer->OnHandleCDDARefreshed();
+			}
 			break;
 		}
 		case MSG_TRAYNOTIFY : {

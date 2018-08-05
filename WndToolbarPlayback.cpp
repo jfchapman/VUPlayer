@@ -30,7 +30,7 @@ WndToolbarPlayback::~WndToolbarPlayback()
 	ImageList_Destroy( m_ImageList );
 }
 
-void WndToolbarPlayback::Update( Output& output, const Playlist::Ptr& playlist, const Playlist::Item& selectedItem )
+void WndToolbarPlayback::Update( Output& output, const Playlist::Ptr playlist, const Playlist::Item& selectedItem )
 {
 	bool playEnabled = false;
 	bool stopEnabled = false;

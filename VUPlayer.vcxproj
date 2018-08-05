@@ -201,7 +201,10 @@
   <ItemGroup>
     <ClInclude Include="Artwork.h" />
     <ClInclude Include="Bling.h" />
+    <ClInclude Include="CDDAManager.h" />
+    <ClInclude Include="CDDAMedia.h" />
     <ClInclude Include="Database.h" />
+    <ClInclude Include="DecoderCDDA.h" />
     <ClInclude Include="DecoderOpus.h" />
     <ClInclude Include="DecoderWavpack.h" />
     <ClInclude Include="DlgHotkey.h" />
@@ -209,6 +212,7 @@
     <ClInclude Include="DlgTrackInfo.h" />
     <ClInclude Include="Handler.h" />
     <ClInclude Include="HandlerBass.h" />
+    <ClInclude Include="HandlerCDDA.h" />
     <ClInclude Include="HandlerFlac.h" />
     <ClInclude Include="HandlerOpus.h" />
     <ClInclude Include="Handlers.h" />
@@ -270,14 +274,23 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Artwork.cpp" />
+    <ClCompile Include="CDDAManager.cpp" />
+    <ClCompile Include="CDDAMedia.cpp">
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4815</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4815</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4815</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4815</DisableSpecificWarnings>
+    </ClCompile>
     <ClCompile Include="Database.cpp" />
     <ClCompile Include="Decoder.cpp" />
+    <ClCompile Include="DecoderCDDA.cpp" />
     <ClCompile Include="DecoderOpus.cpp" />
     <ClCompile Include="DecoderWavpack.cpp" />
     <ClCompile Include="DlgHotkey.cpp" />
     <ClCompile Include="DlgOptions.cpp" />
     <ClCompile Include="DlgTrackInfo.cpp" />
     <ClCompile Include="HandlerBass.cpp" />
+    <ClCompile Include="HandlerCDDA.cpp" />
     <ClCompile Include="HandlerFlac.cpp" />
     <ClCompile Include="HandlerOpus.cpp" />
     <ClCompile Include="Handlers.cpp" />

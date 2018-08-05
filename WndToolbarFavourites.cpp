@@ -23,9 +23,9 @@ WndToolbarFavourites::~WndToolbarFavourites()
 	ImageList_Destroy( m_ImageList );
 }
 
-void WndToolbarFavourites::Update( Output& /*output*/, const Playlist::Ptr& playlist, const Playlist::Item& selectedItem )
+void WndToolbarFavourites::Update( Output& /*output*/, const Playlist::Ptr playlist, const Playlist::Item& selectedItem )
 {
-	const bool enabled = ( playlist && ( Playlist::Type::Favourites != playlist->GetType() ) && ( selectedItem.ID > 0 ) );
+	const bool enabled = ( playlist && ( Playlist::Type::Favourites != playlist->GetType() ) && ( Playlist::Type::CDDA != playlist->GetType() ) && ( selectedItem.ID > 0 ) );
 	SetButtonEnabled( ID_FILE_ADDTOFAVOURITES, enabled );
 }
 

@@ -73,7 +73,7 @@ private:
 	void ShowContextMenu();
 
 	// Returns a 'playlist' menu, or a NULL menu if the playlist is empty.
-	HMENU CreatePlaylistMenu( const Playlist::Ptr& playlist );
+	HMENU CreatePlaylistMenu( const Playlist::Ptr playlist );
 
 	// Does a 'command'.
 	void DoCommand( const Settings::SystrayCommand command );

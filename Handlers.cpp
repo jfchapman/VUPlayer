@@ -104,3 +104,10 @@ std::wstring Handlers::GetBassVersion() const
 	}
 	return version; 
 }
+
+void Handlers::AddHandler( Handler::Ptr handler )
+{
+	if ( handler ) {
+		m_Handlers.push_back( handler );
+	}
+}

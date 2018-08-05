@@ -38,6 +38,7 @@ public:
 		PeakTrack,
 		PeakAlbum,
 		Artwork,
+		CDDB,
 
 		_Undefined
 	};
@@ -130,6 +131,9 @@ private:
 	// Updates the media table if necessary.
 	void UpdateMediaTable();
 
+	// Updates the CDDA table if necessary.
+	void UpdateCDDATable();
+
 	// Updates the artwork table if necessary.
 	void UpdateArtworkTable();
 
@@ -176,6 +180,9 @@ private:
 	// Sets 'mediaInfo' from a SQLite 'stmt'.
 	void ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo );
 
+	// Returns the library columns corresponding to 'source'.
+	const Columns& GetColumns( const MediaInfo::Source source ) const;
+
 	// Database.
 	Database& m_Database;
 
@@ -185,6 +192,9 @@ private:
 	// Tag information waiting to be written.
 	FileTags m_PendingTags;
 
-	// Media library columns
+	// Media library columns.
 	Columns m_MediaColumns;
+
+	// CD audio columns.
+	Columns m_CDDAColumns;
 };

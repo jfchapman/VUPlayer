@@ -60,9 +60,10 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_Settings( m_Database, m_Library ),
 	m_Output( m_hWnd, m_Handlers, m_Settings, m_Settings.GetVolume() ),
 	m_ReplayGain( m_Library, m_Handlers ),
+	m_CDDAManager( m_hInst, m_hWnd, m_Library, m_Handlers ),
 	m_Rebar( m_hInst, m_hWnd ),
 	m_Status( m_hInst, m_hWnd ),
-	m_Tree( m_hInst, m_hWnd, m_Library, m_Settings ),
+	m_Tree( m_hInst, m_hWnd, m_Library, m_Settings, m_CDDAManager ),
 	m_Visual( m_hInst, m_hWnd, m_Settings, m_Output, m_Library ),
 	m_List( m_hInst, m_hWnd, m_Settings, m_Output ),
 	m_SeekControl( m_hInst, m_Rebar.GetWindowHandle(), m_Output ),
@@ -80,7 +81,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_Tray( m_hInst, m_hWnd, m_Library, m_Settings, m_Output, m_Tree, m_List ),
 	m_CurrentOutput(),
 	m_CustomColours(),
-	m_Hotkeys( hwnd, m_Settings ),
+	m_Hotkeys( m_hWnd, m_Settings ),
 	m_LastSkipCount( {} ),
 	m_AddToPlaylistMenuMap()
 {
@@ -255,10 +256,8 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				LPNMTREEVIEW nmTreeView = reinterpret_cast<LPNMTREEVIEW>( lParam );
 				if ( ( nullptr != nmTreeView ) && ( nullptr != nmTreeView->itemNew.hItem ) ) {
 					Playlist::Ptr playlist = m_Tree.GetPlaylist( nmTreeView->itemNew.hItem );
-					if ( playlist ) {
-						m_List.SetPlaylist( playlist );
-						m_Status.SetPlaylist( playlist );
-					}
+					m_List.SetPlaylist( playlist );
+					m_Status.SetPlaylist( playlist );
 				}
 				break;
 			}
@@ -436,7 +435,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		}
 		m_CurrentOutput = currentPlaying;
 
-		const Playlist::Ptr& currentPlaylist = m_List.GetPlaylist();
+		const Playlist::Ptr currentPlaylist = m_List.GetPlaylist();
 		const Playlist::Item currentSelectedPlaylistItem = m_List.GetCurrentSelectedItem();
 
 		m_SeekControl.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
@@ -1029,7 +1028,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | MF_ENABLED );
 		const UINT removeFilesEnabled = ( playlist && ( ( ( Playlist::Type::User == playlist->GetType() ) || ( Playlist::Type::Favourites == playlist->GetType() ) ) ) && selectedItems ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
-		const UINT addToFavouritesEnabled = ( playlist && ( Playlist::Type::Favourites != playlist->GetType() ) && selectedItems ) ? MF_ENABLED : MF_DISABLED;
+		const UINT addToFavouritesEnabled = ( playlist && ( Playlist::Type::Favourites != playlist->GetType() ) && ( Playlist::Type::CDDA != playlist->GetType() ) && selectedItems ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | addToFavouritesEnabled );
 		const UINT replaygainEnabled = selectedItems ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_CALCULATEREPLAYGAIN, MF_BYCOMMAND | replaygainEnabled );
@@ -1160,7 +1159,7 @@ void VUPlayer::OnMediaUpdated( const MediaInfo& previousMediaInfo, const MediaIn
 
 void VUPlayer::OnHandleMediaUpdate( const MediaInfo* previousMediaInfo, const MediaInfo* updatedMediaInfo )
 {
-	if ( ( nullptr != previousMediaInfo ) && ( nullptr != updatedMediaInfo ) ) {
+	if ( ( nullptr != previousMediaInfo ) && ( nullptr != updatedMediaInfo ) && ( previousMediaInfo->GetSource() == updatedMediaInfo->GetSource() ) ) {
 		const Playlist::Set updatedPlaylists = m_Tree.OnUpdatedMedia( *previousMediaInfo, *updatedMediaInfo );
 		const Playlist::Ptr currentPlaylist = m_List.GetPlaylist();
 		if ( currentPlaylist && ( updatedPlaylists.end() != updatedPlaylists.find( currentPlaylist ) ) ) {
@@ -1184,6 +1183,11 @@ void VUPlayer::OnLibraryRefreshed()
 void VUPlayer::OnHandleLibraryRefreshed()
 {
 	m_Tree.OnMediaLibraryRefreshed();
+}
+
+void VUPlayer::OnHandleCDDARefreshed()
+{
+	m_Tree.OnCDDARefreshed();
 }
 
 void VUPlayer::OnRestartPlayback( const long itemID )
@@ -1357,7 +1361,8 @@ void VUPlayer::InsertAddToPlaylists( const HMENU menu, const bool addPrefix )
 			}
 			playlistMenu = CreatePopupMenu();
 			if ( nullptr != playlistMenu ) {
-				const bool enableMenu = ( m_List.GetSelectedCount() > 0 );
+				const Playlist::Ptr currentPlaylist = m_List.GetPlaylist();
+				const bool enableMenu = ( m_List.GetSelectedCount() > 0 ) && currentPlaylist && ( Playlist::Type::CDDA != currentPlaylist->GetType() );
 				if ( enableMenu ) {
 					const Playlists playlists = m_Tree.GetPlaylists();
 					for ( const auto& playlist : playlists ) {
@@ -1380,4 +1385,9 @@ void VUPlayer::InsertAddToPlaylists( const HMENU menu, const bool addPrefix )
 			break;
 		}
 	}
+}
+
+void VUPlayer::OnDeviceChange()
+{
+	m_CDDAManager.OnDeviceChange();
 }

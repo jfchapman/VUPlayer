@@ -228,6 +228,18 @@
     <ClInclude Include="libs\sqlite-3.24.0\sqlite3.h">
       <Filter>Third Party</Filter>
     </ClInclude>
+    <ClInclude Include="CDDAManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CDDAMedia.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DecoderCDDA.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HandlerCDDA.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -415,6 +427,18 @@
     </ClCompile>
     <ClCompile Include="libs\sqlite-3.24.0\sqlite3.c">
       <Filter>Third Party</Filter>
+    </ClCompile>
+    <ClCompile Include="CDDAManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CDDAMedia.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DecoderCDDA.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlerCDDA.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

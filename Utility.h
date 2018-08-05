@@ -20,6 +20,9 @@ std::wstring AnsiCodePageToWideString( const std::string& text );
 // Converts wide 'text' to the default Windows ANSI code page.
 std::string WideStringToAnsiCodePage( const std::wstring& text );
 
+// Converts 'text' to a wide string using the 'codePage'.
+std::wstring CodePageToWideString( const std::string& text, const UINT codePage );
+
 // Converts 'text' to lowercase.
 std::wstring WideStringToLower( const std::wstring& text );
 
@@ -80,3 +83,6 @@ std::wstring WideStringJoin( const std::list<std::wstring>& parts, const wchar_t
 
 // Gets the system DPI scaling factor.
 float GetDPIScaling();
+
+// Returns a random number in the range ['minimum','maximum'].
+long long GetRandomNumber( const long long minimum, const long long maximum );

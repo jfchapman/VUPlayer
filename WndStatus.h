@@ -23,7 +23,7 @@ public:
 	void Resize( const int width );
 
 	// Sets the current playlist.
-	void SetPlaylist( const Playlist::Ptr& playlist );
+	void SetPlaylist( const Playlist::Ptr playlist );
 
 	// Called when an 'playlist' is updated.
 	void Update( Playlist* playlist );

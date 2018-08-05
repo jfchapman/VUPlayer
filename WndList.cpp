@@ -616,6 +616,7 @@ void WndList::OnContextMenu( const POINT& position )
 			const bool hasSelectedItems = ( ListView_GetSelectedCount( m_hWnd ) > 0 );
 			const bool allowPaste = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
 			const bool allowCut = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
+			const bool allowCopy = ( m_Playlist && ( Playlist::Type::CDDA != m_Playlist->GetType() ) );
 
 			const UINT enablePaste = ( allowPaste && ( ( FALSE != IsClipboardFormatAvailable( CF_TEXT ) ) || ( FALSE != IsClipboardFormatAvailable( CF_UNICODETEXT ) ) ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PASTE, MF_BYCOMMAND | enablePaste );
@@ -623,7 +624,7 @@ void WndList::OnContextMenu( const POINT& position )
 			const UINT enableCut = ( allowCut && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_CUT, MF_BYCOMMAND | enableCut );
 
-			const UINT enableCopy = hasSelectedItems ? MF_ENABLED : MF_DISABLED;
+			const UINT enableCopy = ( allowCopy && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_COPY, MF_BYCOMMAND | enableCopy );
 
 			const UINT enableSelectAll = hasItems ? MF_ENABLED : MF_DISABLED;
@@ -637,7 +638,7 @@ void WndList::OnContextMenu( const POINT& position )
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | enableAddFiles );
 			const UINT enableRemoveFiles = ( allowCut && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | enableRemoveFiles );
-			const UINT enableAddToFavourites = ( m_Playlist && ( Playlist::Type::Favourites != m_Playlist->GetType() ) && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableAddToFavourites = ( m_Playlist && ( Playlist::Type::Favourites != m_Playlist->GetType() ) && ( Playlist::Type::CDDA != m_Playlist->GetType() ) && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | enableAddToFavourites );
 
 			const UINT enableReplayGain = hasSelectedItems ? MF_ENABLED : MF_DISABLED;
@@ -793,7 +794,7 @@ void WndList::DeleteSelectedItems()
 	}
 }
 
-void WndList::SetPlaylist( const Playlist::Ptr& playlist, const bool initSelection )
+void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelection )
 {
 	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
 	ListView_DeleteAllItems( m_hWnd );
@@ -1023,7 +1024,8 @@ BOOL WndList::OnBeginLabelEdit( const LVITEM& item )
 		if ( TRUE == ListView_GetColumn( m_hWnd, lvh.iSubItem, &lvc ) ) {
 			const Playlist::Column columnID = static_cast<Playlist::Column>( lvc.iSubItem );
 			const auto columnIter = s_ColumnFormats.find( columnID );
-			if ( ( s_ColumnFormats.end() != columnIter ) && ( columnIter->second.CanEdit ) ) {
+			const bool denyTrackNumberEdit = ( Playlist::Column::Track == columnID ) && m_Playlist && ( Playlist::Type::CDDA == m_Playlist->GetType() );
+			if ( ( s_ColumnFormats.end() != columnIter ) && ( columnIter->second.CanEdit ) && !denyTrackNumberEdit ) {
 				m_EditControl = ListView_GetEditControl( m_hWnd );
 				if ( nullptr != m_EditControl ) {
 					const int bufSize = 1024;

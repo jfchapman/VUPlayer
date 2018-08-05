@@ -33,6 +33,23 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "PeakTrack", Column::PeakTrack ),
 		Columns::value_type( "PeakAlbum", Column::PeakAlbum ),
 		Columns::value_type( "Artwork", Column::Artwork )
+	} ),
+	m_CDDAColumns( {
+		Columns::value_type( "CDDB", Column::CDDB ),
+		Columns::value_type( "Track", Column::Track ),
+		Columns::value_type( "Filesize", Column::Filesize ),
+		Columns::value_type( "Duration", Column::Duration ),
+		Columns::value_type( "Artist", Column::Artist ),
+		Columns::value_type( "Title", Column::Title ),
+		Columns::value_type( "Album", Column::Album ),
+		Columns::value_type( "Genre", Column::Genre ),
+		Columns::value_type( "Year", Column::Year ),
+		Columns::value_type( "Comment", Column::Comment ),
+		Columns::value_type( "GainTrack", Column::GainTrack ),
+		Columns::value_type( "GainAlbum", Column::GainAlbum ),
+		Columns::value_type( "PeakTrack", Column::PeakTrack ),
+		Columns::value_type( "PeakAlbum", Column::PeakAlbum ),
+		Columns::value_type( "Artwork", Column::Artwork )
 	} )
 {
 	UpdateDatabase();
@@ -51,6 +68,7 @@ Library::~Library()
 void Library::UpdateDatabase()
 {
 	UpdateMediaTable();
+	UpdateCDDATable();
 	UpdateArtworkTable();
 	CreateIndices();
 }
@@ -95,6 +113,55 @@ void Library::UpdateMediaTable()
 				} else {
 					for ( const auto& iter : missingColumns ) {
 						std::string addColumnQuery = "ALTER TABLE Media ADD COLUMN ";
+						addColumnQuery += iter.first + ";";
+						sqlite3_exec( database, addColumnQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+					}
+				}
+			}
+		}
+	}
+}
+
+void Library::UpdateCDDATable()
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		// Create the CDDA table (if necessary).
+		std::string createTableQuery = "CREATE TABLE IF NOT EXISTS CDDA(";
+		for ( const auto& iter : m_CDDAColumns ) {
+			const std::string& columnName = iter.first;
+			createTableQuery += columnName + ",";
+		}
+		createTableQuery += "PRIMARY KEY(CDDB,Track));";
+		sqlite3_exec( database, createTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+
+		// Check the columns in the CDDA table.
+		const std::string tableInfoQuery = "PRAGMA table_info('CDDA')";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, tableInfoQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			Columns missingColumns( m_CDDAColumns );
+			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				const int columnCount = sqlite3_column_count( stmt );
+				for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
+					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
+					if ( columnName == "name" ) {
+						const std::string name = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) );
+						missingColumns.erase( name );
+						break;
+					}
+				}
+			}
+			sqlite3_finalize( stmt );
+
+			if ( !missingColumns.empty() ) {
+				if ( ( missingColumns.find( "CDDB" ) != missingColumns.end() ) || ( missingColumns.find( "Track" ) != missingColumns.end() ) ) {
+					// No primary index, just drop the table and recreate.
+					const std::string dropTableQuery = "DROP TABLE CDDA;";
+					sqlite3_exec( database, dropTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+					sqlite3_exec( database, createTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+				} else {
+					for ( const auto& iter : missingColumns ) {
+						std::string addColumnQuery = "ALTER TABLE CDDA ADD COLUMN ";
 						addColumnQuery += iter.first + ";";
 						sqlite3_exec( database, addColumnQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 					}
@@ -155,45 +222,50 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		MediaInfo info( mediaInfo );
-		const std::string query = "SELECT * FROM Media WHERE Filename = ?1;";
+		const std::string query = ( MediaInfo::Source::CDDA == info.GetSource() ) ? "SELECT * FROM CDDA WHERE CDDB=?1 AND Track=?2;" : "SELECT * FROM Media WHERE Filename=?1;";
 		sqlite3_stmt* stmt = nullptr;
-		if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( info.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
-			// Should be a maximum of one entry.
-			const int result = sqlite3_step( stmt );
-			if ( SQLITE_ROW == result ) {
-				ExtractMediaInfo( stmt, info );
-				if ( checkFileAttributes ) {
-					long long filetime = 0;
-					long long filesize = 0;
-					GetFileInfo( info.GetFilename(), filetime, filesize );
-					success = ( info.GetFiletime() == filetime ) && ( info.GetFilesize() == filesize );
-				} else {
-					success = true;
-				}
-			}
-
-			sqlite3_finalize( stmt );
-
-			if ( !success && scanMedia ) {
-				success = GetDecoderInfo( info );
-				if ( success ) {
-					success = UpdateMediaLibrary( info );
-					if ( success && sendNotification ) {
-						VUPlayer* vuplayer = VUPlayer::Get();
-						if ( nullptr != vuplayer ) {
-							vuplayer->OnMediaUpdated( mediaInfo /*previousInfo*/, info /*updatedInfo*/ );
-						}
-					}
-				} else if ( removeMissing ) {
-					RemoveFromLibrary( info );
-				}
-			}
-
+		success = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) );
+		if ( success ) {
+			success = ( MediaInfo::Source::CDDA == mediaInfo.GetSource() ) ?
+				( ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( info.GetCDDB() ) ) ) && ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( info.GetTrack() ) ) ) ) :
+				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( info.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
 			if ( success ) {
-				mediaInfo = info;
+				// Should be a maximum of one entry.
+				const int result = sqlite3_step( stmt );
+				success = ( SQLITE_ROW == result );
+				if ( success ) {
+					ExtractMediaInfo( stmt, info );
+					if ( checkFileAttributes ) {
+						long long filetime = 0;
+						long long filesize = 0;
+						GetFileInfo( info.GetFilename(), filetime, filesize );
+						success = ( info.GetFiletime() == filetime ) && ( info.GetFilesize() == filesize );
+					} else {
+						success = true;
+					}
+				}
+
+				if ( !success && scanMedia && ( MediaInfo::Source::File == info.GetSource() ) ) {
+					success = GetDecoderInfo( info );
+					if ( success ) {
+						success = UpdateMediaLibrary( info );
+						if ( success && sendNotification ) {
+							VUPlayer* vuplayer = VUPlayer::Get();
+							if ( nullptr != vuplayer ) {
+								vuplayer->OnMediaUpdated( mediaInfo /*previousInfo*/, info /*updatedInfo*/ );
+							}
+						}
+					} else if ( removeMissing ) {
+						RemoveFromLibrary( info );
+					}
+				}
+
+				if ( success ) {
+					mediaInfo = info;
+				}
 			}
 		}
+		sqlite3_finalize( stmt );
 	}
 	return success;
 }
@@ -336,9 +408,10 @@ void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 {
 	if ( nullptr != stmt ) {
 		const int columnCount = sqlite3_column_count( stmt );
+		const Columns& columns = GetColumns( mediaInfo.GetSource() );
 		for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
-			const auto columnIter = m_MediaColumns.find( sqlite3_column_name( stmt, columnIndex ) );
-			if ( columnIter != m_MediaColumns.end() ) {
+			const auto columnIter = columns.find( sqlite3_column_name( stmt, columnIndex ) );
+			if ( columnIter != columns.end() ) {
 				switch ( columnIter->second ) {
 					case Column::Filename : {						
 						const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) );
@@ -460,20 +533,24 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
+
+		const Columns& columnMap = GetColumns( mediaInfo.GetSource() );
+		const std::string tableName = ( MediaInfo::Source::CDDA == mediaInfo.GetSource() ) ? "CDDA" : "Media";
+
 		std::string columns = " (";
 		std::string values = " VALUES (";
 		int param = 0;
-		for ( const auto& iter : m_MediaColumns ) {
+		for ( const auto& iter : columnMap ) {
 			columns += iter.first + ",";
 			values += "?" + std::to_string( ++param ) + ",";
 		}
 		columns.back() = ')';
 		values.back() = ')';
-		const std::string query = "REPLACE INTO Media" + columns + values + ";";
+		const std::string query = "REPLACE INTO " + tableName + columns + values + ";";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			param = 0;
-			for ( const auto& iter : m_MediaColumns ) {
+			for ( const auto& iter : columnMap ) {
 				switch ( iter.second ) {
 					case Column::Album : {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetAlbum() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
@@ -573,6 +650,10 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 					}
 					case Column::Artwork : {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetArtworkID() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+						break;
+					}
+					case Column::CDDB : {
+						sqlite3_bind_int( stmt, ++param, static_cast<int>( mediaInfo.GetCDDB() ) );
 						break;
 					}
 					default : {
@@ -681,10 +762,12 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 
 void Library::WriteFileTags( MediaInfo& mediaInfo, const Handler::Tags& tags )
 {
-	if ( m_Handlers.SetTags( mediaInfo.GetFilename(), tags ) ) {
-		GetDecoderInfo( mediaInfo );
-	} else {
-		m_PendingTags.push_back( FileTag( mediaInfo.GetFilename(), tags ) );
+	if ( MediaInfo::Source::File == mediaInfo.GetSource() ) {
+		if ( m_Handlers.SetTags( mediaInfo.GetFilename(), tags ) ) {
+			GetDecoderInfo( mediaInfo );
+		} else {
+			m_PendingTags.push_back( FileTag( mediaInfo.GetFilename(), tags ) );
+		}
 	}
 	UpdateMediaLibrary( mediaInfo );
 }
@@ -1146,4 +1229,10 @@ bool Library::RemoveFromLibrary( const MediaInfo& mediaInfo )
 		}
 	}
 	return removed;
+}
+
+const Library::Columns& Library::GetColumns( const MediaInfo::Source source ) const
+{
+	const Columns& columns = ( MediaInfo::Source::CDDA == source ) ? m_CDDAColumns : m_MediaColumns;
+	return columns;
 }

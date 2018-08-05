@@ -23,7 +23,7 @@ WndToolbarCrossfade::~WndToolbarCrossfade()
 	ImageList_Destroy( m_ImageList );
 }
 
-void WndToolbarCrossfade::Update( Output& output, const Playlist::Ptr& /*playlist*/, const Playlist::Item& /*selectedItem*/ )
+void WndToolbarCrossfade::Update( Output& output, const Playlist::Ptr /*playlist*/, const Playlist::Item& /*selectedItem*/ )
 {
 	SetButtonEnabled( ID_CONTROL_CROSSFADE, true );
 	SetButtonChecked( ID_CONTROL_CROSSFADE, output.GetCrossfade() );

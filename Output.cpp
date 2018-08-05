@@ -4,7 +4,7 @@
 #include "Utility.h"
 
 // Output buffer length, in seconds.
-static const float s_BufferLength = 1.0f;
+static const float s_BufferLength = 2.0f;
 
 // Cutoff point, in seconds, within which previous track replays the current track from the beginning.
 static const float s_PreviousTrackCutoff = 2.0f;
@@ -237,7 +237,7 @@ void Output::Next()
 	}
 }
 
-void Output::SetPlaylist( const Playlist::Ptr& playlist )
+void Output::SetPlaylist( const Playlist::Ptr playlist )
 {
 	std::lock_guard<std::mutex> lock( m_PlaylistMutex );
 	if ( m_Playlist != playlist ) {
@@ -781,7 +781,10 @@ void Output::EstimateReplayGain( Playlist::Item& item )
 	if ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) {
 		float gain = item.Info.GetGainAlbum();
 		if ( ( REPLAYGAIN_NOVALUE == gain ) || ( Settings::ReplaygainMode::Track == m_ReplaygainMode ) ) {
-			gain = item.Info.GetGainTrack();
+			const float trackGain = item.Info.GetGainTrack();
+			if ( REPLAYGAIN_NOVALUE != trackGain ) {
+				gain = trackGain;
+			}
 		}
 		if ( REPLAYGAIN_NOVALUE == gain ) {
 			const auto estimateIter = m_ReplayGainEstimateMap.find( item.ID );

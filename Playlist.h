@@ -20,6 +20,7 @@ public:
 		Genre,
 		Year,
 		Favourites,
+		CDDA,
 
 		_Undefined
 	};

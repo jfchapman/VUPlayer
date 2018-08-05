@@ -23,7 +23,7 @@ WndToolbarInfo::~WndToolbarInfo()
 	ImageList_Destroy( m_ImageList );
 }
 
-void WndToolbarInfo::Update( Output& /*output*/, const Playlist::Ptr& /*playlist*/, const Playlist::Item& selectedItem )
+void WndToolbarInfo::Update( Output& /*output*/, const Playlist::Ptr /*playlist*/, const Playlist::Item& selectedItem )
 {
 	const bool enabled = ( 0 != selectedItem.ID );
 	SetButtonEnabled( ID_VIEW_TRACKINFORMATION, enabled );

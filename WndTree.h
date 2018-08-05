@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 
+#include "CDDAManager.h"
 #include "Library.h"
 #include "Settings.h"
 
@@ -12,7 +13,8 @@ public:
 	// 'parent' - parent window handle.
 	// 'library' - media library.
 	// 'settings' - application settings.
-	WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings );
+	// 'cddaManager' - CD audio manager.
+	WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings, CDDAManager& cddaManager );
 
 	virtual ~WndTree();
 
@@ -48,7 +50,7 @@ public:
 	Playlists GetPlaylists();
 
 	// Adds a 'playlist'.
-	void AddPlaylist( const Playlist::Ptr& playlist );
+	void AddPlaylist( const Playlist::Ptr playlist );
 
 	// Creates and returns a new playlist.
 	Playlist::Ptr NewPlaylist();
@@ -63,7 +65,7 @@ public:
 	void ExportSelectedPlaylist();
 
 	// Selects a 'playlist'.
-	void SelectPlaylist( const Playlist::Ptr& playlist );
+	void SelectPlaylist( const Playlist::Ptr playlist );
 
 	// Selects, and shows if necessary, the 'All Tracks' playlist.
 	void SelectAllTracks();
@@ -87,6 +89,9 @@ public:
 	// Called when media library has been refreshed.
 	void OnMediaLibraryRefreshed();
 
+	// Called when the available CD audio discs have been refreshed.
+	void OnCDDARefreshed();
+
 	// Toggles 'Favourites' on the tree control.
 	void OnFavourites();
 
@@ -109,7 +114,7 @@ public:
 	bool IsShown( const UINT commandID ) const;
 
 	// Saves the startup 'playlist' to application settings.
-	void SaveStartupPlaylist( const Playlist::Ptr& playlist );
+	void SaveStartupPlaylist( const Playlist::Ptr playlist );
 
 	// Returns the highlight colour.
 	COLORREF GetHighlightColour() const;
@@ -184,6 +189,9 @@ private:
 	// Adds years to the tree control.
 	void AddYears();
 
+	// Adds CD audio discs to the tree control.
+	void AddCDDA();
+
 	// Removes 'Favourites' from the tree control.
 	void RemoveFavourites();
 
@@ -202,6 +210,9 @@ private:
 	// Removes years from the tree control.
 	void RemoveYears();
 
+	// Removes CD audio discs from the tree control.
+	void RemoveCDDA();
+
 	// Adds an item to the tree control.
 	// 'parentItem' - parent tree item.
 	// 'label' - item label.
@@ -218,6 +229,9 @@ private:
 
 	// Gets the tree 'item' label.
 	std::wstring GetItemLabel( const HTREEITEM item ) const;
+
+	// Sets the tree 'item' 'label'.
+	void SetItemLabel( const HTREEITEM item, const std::wstring& label ) const;
 
 	// Returns all the playlist names.
 	std::set<std::wstring> GetPlaylistNames() const;
@@ -254,6 +268,11 @@ private:
 	// 'updatedMediaInfo' - updated media information.
 	// 'updatedPlaylists' - in/out, the playlists that have been updated.
 	void UpdatePlaylists( const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists );
+
+	// Updates CD audio playlists when CD audio information has been updated.
+	// 'updatedMediaInfo' - updated media information.
+	// 'updatedPlaylists' - in/out, the playlists that have been updated.
+	void UpdateCDDA( const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists );
 
 	// Returns the initial selected tree item from application settings.
 	HTREEITEM GetStartupItem();
@@ -315,6 +334,9 @@ private:
 	// Application settings.
 	Settings& m_Settings;
 
+	// CD audio manager.
+	CDDAManager& m_CDDAManager;
+
 	// Playlists.
 	PlaylistMap m_PlaylistMap;
 
@@ -329,6 +351,9 @@ private:
 
 	// Years.
 	PlaylistMap m_YearMap;
+
+	// CD audio playlists.
+	PlaylistMap m_CDDAMap;
 
 	// All Tracks playlist.
 	Playlist::Ptr m_PlaylistAll;

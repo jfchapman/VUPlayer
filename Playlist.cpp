@@ -4,8 +4,8 @@
 #include "VUPlayer.h"
 
 #include <fstream>
-#include <random>
 
+// Next available playlist item ID.
 long Playlist::s_NextItemID = 0;
 
 // Pending file thread proc
@@ -176,10 +176,7 @@ Playlist::Item Playlist::GetRandomItem()
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	Item item;
 	if ( !m_Playlist.empty() ) {
-		const long long seed = std::chrono::system_clock::now().time_since_epoch().count();
-		std::mt19937_64 engine( seed );
-		std::uniform_int_distribution<long long> dist( 0, m_Playlist.size() -1 );
-		const long long itemPosition = dist( engine );
+		const long long itemPosition = GetRandomNumber( 0 /*minimum*/, m_Playlist.size() -1 /*maximum*/ );
 		auto iter = m_Playlist.begin();
 		std::advance( iter, itemPosition );
 		item = *iter;
@@ -479,6 +476,14 @@ bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 		if ( iter.Info.GetFilename() == mediaInfo.GetFilename() ) {
 			iter.Info = mediaInfo;
 			updated = true;
+		}
+	}
+	if ( updated && ( Type::CDDA == GetType() ) ) {
+		for ( const auto& item : m_Playlist ) {
+			if ( !item.Info.GetAlbum().empty() ) {
+				SetName( item.Info.GetAlbum() );
+				break;
+			}
 		}
 	}
 	return updated;

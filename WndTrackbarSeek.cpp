@@ -55,7 +55,7 @@ bool WndTrackbarSeek::IsDragging() const
 	return m_IsDragging;
 }
 
-void WndTrackbarSeek::Update( Output& output, const Playlist::Ptr& playlist, const Playlist::Item& selectedItem )
+void WndTrackbarSeek::Update( Output& output, const Playlist::Ptr playlist, const Playlist::Item& selectedItem )
 {
 	if ( !IsDragging() ) {
 		const Output::State state = output.GetState();

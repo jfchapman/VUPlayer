@@ -25,7 +25,7 @@ public:
 	// 'output' - output object.
 	// 'playlist' - currently displayed playlist.
 	// 'selectedItem' - currently focused playlist item.
-	void Update( Output& output, const Playlist::Ptr& playlist, const Playlist::Item& selectedItem );
+	void Update( Output& output, const Playlist::Ptr playlist, const Playlist::Item& selectedItem );
 
 private:
 	// Returns whether the trackbar thumb is being dragged.

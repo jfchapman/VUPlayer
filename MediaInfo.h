@@ -17,10 +17,19 @@ class MediaInfo
 {
 public:
 	// A list of media information.
-	typedef std::list<MediaInfo> List;	
+	typedef std::list<MediaInfo> List;
 
-	// 'filename' - media file name.
+	// Source types.
+	enum class Source {
+		File,
+		CDDA
+	};
+
+	// 'filename' - media file name (for file sources).
 	MediaInfo( const std::wstring& filename = std::wstring() );
+
+	// 'cddbID' - CDDB ID (for CDDA sources).
+	MediaInfo( const long cddbID );
 
 	virtual ~MediaInfo();
 
@@ -151,6 +160,12 @@ public:
 	// Sets the artwork ID.
 	void SetArtworkID( const std::wstring& id );
 
+	// Returns the media source.
+	Source GetSource() const;
+
+	// Returns the CDDB ID.
+	long GetCDDB() const;
+
 private:
 	std::wstring m_Filename;
 	long long m_Filetime;
@@ -172,5 +187,7 @@ private:
 	float m_PeakTrack;
 	float m_PeakAlbum;
 	std::wstring m_ArtworkID;
+	Source m_Source;
+	long m_CDDB;
 };
 
