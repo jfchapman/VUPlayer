@@ -35,10 +35,13 @@ public:
 	// Called when the visual settings have changed.
 	virtual void OnSettingsChanged();
 
+private:
+	// Render thread procedure.
+	static DWORD WINAPI RenderThreadProc( LPVOID lpParam );
+
 	// Render thread handler.
 	void RenderThreadHandler();
 
-private:
 	// Starts the rendering thread.
 	void StartRenderThread();
 

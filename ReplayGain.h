@@ -25,15 +25,18 @@ public:
 	// Returns the number of ReplayGain calculations pending.
 	int GetPendingCount() const;
 
-	// Calculation thread handler.
-	void Handler();
-
 private:
 	// ReplayGain album key.
 	typedef std::tuple<long,long,std::wstring> AlbumKey;
 
 	// Associates an album key with a list of media information.
 	typedef std::map<AlbumKey,MediaInfo::List> AlbumMap;
+
+	// Calculation thread procedure.
+	static DWORD WINAPI CalcThreadProc( LPVOID lpParam );
+
+	// Calculation thread handler.
+	void Handler();
 
 	// Adds a 'mediaInfo' to the queue of pending tasks.
 	void AddPending( const MediaInfo& mediaInfo );

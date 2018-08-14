@@ -3,8 +3,7 @@
 // Render thread millisecond interval.
 static const DWORD s_RenderThreadInterval = 15;
 
-// Render thread procedure
-static DWORD WINAPI RenderThreadProc( LPVOID lpParam )
+DWORD WINAPI Oscilloscope::RenderThreadProc( LPVOID lpParam )
 {
 	Oscilloscope* oscilloscope = reinterpret_cast<Oscilloscope*>( lpParam );
 	if ( nullptr != oscilloscope ) {

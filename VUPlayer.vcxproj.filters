@@ -240,6 +240,21 @@
     <ClInclude Include="HandlerCDDA.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DlgConvert.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgConvertFilename.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Encoder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EncoderFlac.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CDDAExtract.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -438,6 +453,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HandlerCDDA.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgConvert.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgConvertFilename.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EncoderFlac.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CDDAExtract.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

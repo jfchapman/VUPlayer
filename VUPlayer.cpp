@@ -1,7 +1,11 @@
 #include "VUPlayer.h"
 
-#include "DlgTrackInfo.h"
+#include "CDDAExtract.h"
+
+#include "DlgConvert.h"
 #include "DlgOptions.h"
+#include "DlgTrackInfo.h"
+
 #include "Utility.h"
 
 #include <fstream>
@@ -876,6 +880,10 @@ void VUPlayer::OnCommand( const int commandID )
 			m_Maintainer.Start();
 			break;
 		}
+		case ID_FILE_CONVERT : {
+			OnConvert();
+			break;
+		}
 		case ID_VIEW_COUNTER_FONTSTYLE : {
 			m_Counter.OnSelectFont();
 			break;
@@ -1034,6 +1042,8 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_CALCULATEREPLAYGAIN, MF_BYCOMMAND | replaygainEnabled );
 		const UINT refreshLibraryEnabled = ( 0 == m_Maintainer.GetPendingCount() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
+		const UINT convertEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
+		EnableMenuItem( menu, ID_FILE_CONVERT, MF_BYCOMMAND | convertEnabled );
 
 		// View menu
 		CheckMenuItem( menu, ID_TREEMENU_FAVOURITES, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_FAVOURITES ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1390,4 +1400,25 @@ void VUPlayer::InsertAddToPlaylists( const HMENU menu, const bool addPrefix )
 void VUPlayer::OnDeviceChange()
 {
 	m_CDDAManager.OnDeviceChange();
+}
+
+void VUPlayer::OnConvert()
+{
+	Playlist::Ptr playlist = m_List.GetPlaylist();
+	Playlist::ItemList itemList = playlist ? playlist->GetItems() : Playlist::ItemList();
+	if ( !itemList.empty() ) {
+		MediaInfo::List tracks;
+		for ( const auto& item : itemList ) {
+			tracks.push_back( item.Info );
+		}
+		DlgConvert dlgConvert( m_hInst, m_hWnd, m_Settings, tracks );
+		tracks = dlgConvert.GetSelectedTracks();
+		if ( !tracks.empty() ) {
+			playlist = m_Output.GetPlaylist();
+			if ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) {
+				m_Output.Stop();
+			}
+			CDDAExtract extract( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, m_CDDAManager, tracks );
+		}
+	}
 }

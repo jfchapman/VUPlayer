@@ -14,8 +14,7 @@ static const float s_RiseFactor = 0.2f;
 // Rounded corner width.
 static const float s_RoundedCornerWidth = 16.0f;
 
-// Render thread procedure
-static DWORD WINAPI RenderThreadProc( LPVOID lpParam )
+DWORD WINAPI VUMeter::RenderThreadProc( LPVOID lpParam )
 {
 	VUMeter* vumeter = reinterpret_cast<VUMeter*>( lpParam );
 	if ( nullptr != vumeter ) {

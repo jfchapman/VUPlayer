@@ -33,6 +33,9 @@ public:
 
 	virtual ~MediaInfo();
 
+	// Less than operator.
+	bool operator<( const MediaInfo& other ) const;
+
 	// Returns the filename.
 	const std::wstring& GetFilename() const;
 

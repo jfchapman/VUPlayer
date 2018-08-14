@@ -162,12 +162,6 @@ private:
 	// Returns true if the library was updated.
 	bool RemoveFromLibrary( const MediaInfo& mediaInfo );
 
-	// Converts a 'gain' value to a string tag.
-	std::wstring GainToString( const float gain ) const;
-
-	// Converts a 'peak' value to a string tag.
-	std::wstring PeakToString( const float peak ) const;
-
 	// Adds an artwork to the media library.
 	// 'id' - artwork ID.
 	// 'artwork' - artwork image.

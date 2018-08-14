@@ -4,6 +4,7 @@
 
 #include <list>
 
+// Audio format handlers
 class Handlers
 {
 public:

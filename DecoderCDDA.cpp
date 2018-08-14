@@ -37,7 +37,7 @@ long DecoderCDDA::Read( float* buffer, const long sampleCount )
 			buffer[ outputBufPos++ ] = static_cast<float>( m_Buffer[ m_CurrentBufPos++ ] ) / 32768.0f;
 			++samplesRead;
 		} else {
-			if ( ( m_CurrentSector < m_SectorEnd ) && ( m_CDDAMedia.Read( m_Handle, m_CurrentSector++, m_Buffer ) ) ) {
+			if ( ( m_CurrentSector < m_SectorEnd ) && ( m_CDDAMedia.Read( m_Handle, m_CurrentSector++, true /*useCache*/, m_Buffer ) ) ) {
 				m_CurrentBufPos = 0;
 			} else {
 				break;

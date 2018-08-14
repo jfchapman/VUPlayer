@@ -2,8 +2,7 @@
 
 #include "resource.h"
 
-// Dialog box window procedure
-static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+INT_PTR CALLBACK DlgHotkey::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
 		case WM_INITDIALOG : {
@@ -34,8 +33,7 @@ static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 	return FALSE;
 }
 
-// Cancel button window procedure
-static LRESULT CALLBACK ButtonProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK DlgHotkey::ButtonProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	DlgHotkey* dialog = reinterpret_cast<DlgHotkey*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != dialog ) {
@@ -56,7 +54,6 @@ static LRESULT CALLBACK ButtonProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 	}
 	return CallWindowProc( dialog->GetDefaultButtonProc(), hwnd, message, wParam, lParam );
 }
-
 
 DlgHotkey::DlgHotkey( const HINSTANCE instance, const HWND parent ) :
 	m_Hotkey( {} ),

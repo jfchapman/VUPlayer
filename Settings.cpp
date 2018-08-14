@@ -11,6 +11,9 @@ static const Settings::PitchRangeMap s_PitchRanges = {
 		{ Settings::PitchRange::Large, 0.3f }
 };
 
+// Default extract filename format.
+static const wchar_t s_DefaultExtractFilename[] = L"%A\\%D\\%N - %T";
+
 Settings::Settings( Database& database, Library& library ) :
 	m_Database( database ),
 	m_Library( library )
@@ -1768,6 +1771,85 @@ void Settings::SetOutputControlType( const int type )
 			sqlite3_bind_int( stmt, 2, type );
 			sqlite3_step( stmt );
 			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename, bool& addToLibrary )
+{
+	folder.clear();
+	filename.clear();
+	addToLibrary = false;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		std::string query = "SELECT Value FROM Settings WHERE Setting='ExtractFolder';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
+				if ( nullptr != text ) {
+					folder = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
+				}
+				sqlite3_finalize( stmt );
+			}
+		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='ExtractFilename';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
+				if ( nullptr != text ) {
+					filename = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
+				}
+				sqlite3_finalize( stmt );
+			}
+		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='ExtractToLibrary';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				addToLibrary = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				sqlite3_finalize( stmt );
+			}
+		}
+	}
+	if ( folder.empty() || !FolderExists( folder ) ) {
+		PWSTR path = nullptr;
+		HRESULT hr = SHGetKnownFolderPath( FOLDERID_Music, KF_FLAG_DEFAULT, NULL /*token*/, &path );
+		if ( SUCCEEDED( hr ) ) {
+			folder = path;
+			CoTaskMemFree( path );
+		}
+	}
+	if ( filename.empty() ) {
+		filename = s_DefaultExtractFilename;
+	}
+}
+
+void Settings::SetExtractSettings( const std::wstring& folder, const std::wstring& filename, const bool addToLibrary )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "ExtractFolder", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_text( stmt, 2, WideStringToUTF8( folder ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "ExtractFilename", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_text( stmt, 2, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "ExtractToLibrary", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, addToLibrary );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
 		}
 	}
 }

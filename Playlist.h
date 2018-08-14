@@ -138,9 +138,6 @@ public:
 	// Stops the thread for adding pending files to the playlist.
 	void StopPendingThread();
 
-	// Thread handler for processing the list of pending files.
-	void OnPendingThreadHandler();
-
 	// Returns the media library.
 	Library& GetLibrary();
 
@@ -184,6 +181,9 @@ public:
 	Type GetType() const;
 
 private:
+	// Pending file thread proc.
+	static DWORD WINAPI PendingThreadProc( LPVOID lpParam );
+
 	// Returns true if 'item1' is less than 'item2' when comparing by 'column' type.
 	static bool LessThan( const Item& item1, const Item& item2, const Column column );
 
@@ -192,6 +192,9 @@ private:
 
 	// Next available playlist item ID.
 	static long s_NextItemID;
+
+	// Thread handler for processing the list of pending files.
+	void OnPendingThreadHandler();
 
 	// Returns whether the playlist contains 'filename'.
 	bool ContainsFilename( const std::wstring& filename );

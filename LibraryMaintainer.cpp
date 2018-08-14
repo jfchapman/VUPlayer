@@ -2,8 +2,7 @@
 
 #include "VUPlayer.h"
 
-// Thread procedure.
-static DWORD WINAPI MaintainerThreadProc( LPVOID lpParam )
+DWORD WINAPI LibraryMaintainer::MaintainerThreadProc( LPVOID lpParam )
 {
 	LibraryMaintainer* maintainer = static_cast<LibraryMaintainer*>( lpParam );
 	if ( nullptr != maintainer ) {

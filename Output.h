@@ -71,13 +71,6 @@ public:
 	// Returns the currently playing item.
 	Item GetCurrentPlaying();
 
-	// Reads sample data from the current decoder.
-	// 'buffer' - sample buffer.
-	// 'byteCount' - number of bytes to read.
-	// 'handle' - stream handle.
-	// Returns the number of bytes read.
-	DWORD ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM handle );
-
 	// Returns the volume level in the range 0.0 (silent) to 1.0 (full volume).
 	float GetVolume() const;
 
@@ -104,9 +97,6 @@ public:
 	// Gets FFT data for visualisation.
 	// 'fft' - out, FFT data.
 	void GetFFTData( std::vector<float>& fft );
-
-	// Signals that playback should be restarted.
-	void RestartPlayback();
 
 	// Gets whether random play is enabled.
 	bool GetRandomPlay() const;
@@ -178,9 +168,6 @@ public:
 	// Returns whether we are fading into the next track.
 	bool GetFadeToNext() const;
 
-	// Background thread handler for calculating the crossfade point for the current track.
-	void OnCalculateCrossfadeHandler();
-
 	// Returns the maximum pitch adjustment factor.
 	float GetPitchRange() const;
 
@@ -196,6 +183,28 @@ private:
 
 	// Maps an ID to a stream handle.
 	typedef std::map<int,HSTREAM> StreamMap;
+
+	// BASS stream callback.
+	static DWORD CALLBACK StreamProc( HSTREAM handle, void *buf, DWORD len, void *user );
+
+	// BASS sync callback.
+	static void CALLBACK SyncProc( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data*/, void *user );
+
+	// Crossfade calculation thread procedure.
+	static DWORD WINAPI CrossfadeThreadProc( LPVOID lpParam );
+
+	// Reads sample data from the current decoder.
+	// 'buffer' - sample buffer.
+	// 'byteCount' - number of bytes to read.
+	// 'handle' - stream handle.
+	// Returns the number of bytes read.
+	DWORD ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM handle );
+
+	// Signals that playback should be restarted.
+	void RestartPlayback();
+
+	// Background thread handler for calculating the crossfade point for the current track.
+	void OnCalculateCrossfadeHandler();
 
 	// Initialises the BASS system;
 	void InitialiseBass();

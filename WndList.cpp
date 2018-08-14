@@ -641,6 +641,9 @@ void WndList::OnContextMenu( const POINT& position )
 			const UINT enableAddToFavourites = ( m_Playlist && ( Playlist::Type::Favourites != m_Playlist->GetType() ) && ( Playlist::Type::CDDA != m_Playlist->GetType() ) && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | enableAddToFavourites );
 
+			const UINT enableExtract = ( m_Playlist && ( Playlist::Type::CDDA == m_Playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
+			EnableMenuItem( listmenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
+
 			const UINT enableReplayGain = hasSelectedItems ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_CALCULATEREPLAYGAIN, MF_BYCOMMAND | enableReplayGain );
 

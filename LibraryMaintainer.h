@@ -22,10 +22,13 @@ public:
 	// Returns the number of remaining items to update.
 	int GetPendingCount() const;
 
-	// Maintenance handler.
+private:
+	// Thread procedure.
+	static DWORD WINAPI MaintainerThreadProc( LPVOID lpParam );
+
+	// Maintenance thread handler.
 	void Handler();
 
-private:
 	// Media library.
 	Library& m_Library;
 

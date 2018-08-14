@@ -30,8 +30,7 @@ static const float s_FadeToNextDuration = 3.0f;
 // Indicates when fading to the next track.
 static const long s_ItemIsFadingToNext = -1;
 
-// BASS stream callback
-static DWORD CALLBACK StreamProc( HSTREAM handle, void *buf, DWORD len, void *user )
+DWORD CALLBACK Output::StreamProc( HSTREAM handle, void *buf, DWORD len, void *user )
 {
 	DWORD bytesRead = 0;
 	Output* output = reinterpret_cast<Output*>( user );
@@ -45,8 +44,7 @@ static DWORD CALLBACK StreamProc( HSTREAM handle, void *buf, DWORD len, void *us
 	return bytesRead;
 }
 
-// BASS sync callback
-static void CALLBACK SyncProc( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data*/, void *user )
+void CALLBACK Output::SyncProc( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data*/, void *user )
 {
 	Output* output = reinterpret_cast<Output*>( user );
 	if ( nullptr != output ) {
@@ -54,8 +52,7 @@ static void CALLBACK SyncProc( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data
 	}
 }
 
-// Crossfade calculation thread procedure
-static DWORD WINAPI CrossfadeThreadProc( LPVOID lpParam )
+DWORD WINAPI Output::CrossfadeThreadProc( LPVOID lpParam )
 {
 	Output* output = reinterpret_cast<Output*>( lpParam );
 	if ( nullptr != output ) {

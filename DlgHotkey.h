@@ -16,6 +16,13 @@ public:
 	// Gets the 'hotkey', returning true if the hot key is valid.
 	bool GetHotkey( Settings::Hotkey& hotkey ) const;
 
+private:
+	// Dialog box procedure.
+	static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
+	// Cancel button procedure.
+	static LRESULT CALLBACK ButtonProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// WM_KEYDOWN message handler, returns true if a valid hotkey was pressed.
 	bool OnKeyDown( WPARAM wParam, LPARAM lParam );
 
@@ -26,7 +33,6 @@ public:
 	// Returns the default window procedure for the dialog button.
 	WNDPROC GetDefaultButtonProc();
 
-private:
 	// Initialises the allowed hotkeys.
 	void InitAllowedHotkeys();
 

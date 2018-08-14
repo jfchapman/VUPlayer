@@ -332,6 +332,12 @@ public:
 	// Sets the output control type (volume, pitch, etc).
 	void SetOutputControlType( const int type );
 
+	// Returns the extract tracks settings.
+	void GetExtractSettings( std::wstring& folder, std::wstring& filename, bool& addToLibrary );
+
+	// Sets the extract tracks settings.
+	void SetExtractSettings( const std::wstring& folder, const std::wstring& filename, const bool addToLibrary );
+
 private:
 	// Updates the database to the current version if necessary.
 	void UpdateDatabase();

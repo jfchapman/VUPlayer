@@ -86,3 +86,16 @@ float GetDPIScaling();
 
 // Returns a random number in the range ['minimum','maximum'].
 long long GetRandomNumber( const long long minimum, const long long maximum );
+
+// Returns whether the 'folder' exists.
+bool FolderExists( const std::wstring& folder );
+
+// Replaces invalid characters in 'filename' with 'replacement'.
+// 'replaceFolderDelimiters' - whether folder delimiters should be replaced.
+void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const std::wstring& replacement, const bool replaceFolderDelimiters ); 
+
+// Converts a 'gain' value to a string.
+std::wstring GainToWideString( const float gain );
+
+// Converts a 'peak' value to a string.
+std::wstring PeakToWideString( const float peak );

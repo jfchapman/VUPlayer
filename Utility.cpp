@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <locale>
 #include <random>
+#include <set>
 #include <sstream>
 
 // UTF-8 converter object.
@@ -482,4 +483,42 @@ long long GetRandomNumber( const long long minimum, const long long maximum )
 	std::uniform_int_distribution<long long> dist( minimum, maximum );
 	const long long value = dist( engine );
 	return value;
+}
+
+bool FolderExists( const std::wstring& folder )
+{
+	const DWORD attributes = GetFileAttributes( folder.c_str() );
+	const bool exists = ( INVALID_FILE_ATTRIBUTES != attributes ) ? ( attributes & FILE_ATTRIBUTE_DIRECTORY ) : false;
+	return exists;
+}
+
+void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const std::wstring& replacement, const bool replaceFolderDelimiters )
+{
+	std::wstring output;
+	const std::wstring invalid( replaceFolderDelimiters ? L"\\/:*?\"<>|" : L":*?\"<>|" );
+	for ( const auto& c : filename ) {
+		if ( ( c < 0x20 ) || ( ( c >= 0x7f ) && ( c <= 0xa0 ) ) || ( std::wstring::npos != invalid.find( c ) ) ) {
+			output += replacement;
+		} else {
+			output += c;
+		}
+	}
+	filename = output;
+}
+
+std::wstring GainToWideString( const float gain )
+{
+	std::wstringstream ss;
+	if ( gain > 0 ) {
+		ss << L"+";
+	}
+	ss << std::fixed << std::setprecision( 2 ) << gain << L" dB";
+	return ss.str();
+}
+
+std::wstring PeakToWideString( const float peak )
+{
+	std::wstringstream ss;
+	ss << std::fixed << std::setprecision( 6 ) << peak;
+	return ss.str();
 }

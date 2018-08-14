@@ -42,8 +42,7 @@ static const UINT MSG_UPDATEPROGRESS = WM_APP + 65;
 // Message ID for indicating that the saving of media information has been completed.
 static const UINT MSG_SAVECOMPLETED = WM_APP + 66;
 
-// Dialog box window procedure
-static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
 		case WM_INITDIALOG : {
@@ -185,8 +184,7 @@ static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 	return FALSE;
 }
 
-// Save thread procedure.
-static DWORD WINAPI SaveThreadProc( LPVOID lpParam )
+DWORD WINAPI DlgTrackInfo::SaveThreadProc( LPVOID lpParam )
 {
 	HWND hwnd = static_cast<HWND>( lpParam );
 	DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );

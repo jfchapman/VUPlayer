@@ -300,6 +300,10 @@ void WndTree::OnCommand( const UINT command )
 			break;
 		}
 		default : {
+			VUPlayer* vuplayer = VUPlayer::Get();
+			if ( nullptr != vuplayer ) {
+				vuplayer->OnCommand( command );
+			}
 			break;
 		}
 	}
@@ -321,6 +325,11 @@ void WndTree::OnContextMenu( const POINT& position )
 			CheckMenuItem( treemenu, ID_TREEMENU_ALBUMS, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_ALBUMS ) ? MF_CHECKED : MF_UNCHECKED ) );
 			CheckMenuItem( treemenu, ID_TREEMENU_GENRES, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_GENRES ) ? MF_CHECKED : MF_UNCHECKED ) );
 			CheckMenuItem( treemenu, ID_TREEMENU_YEARS, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_YEARS ) ? MF_CHECKED : MF_UNCHECKED ) );
+
+			const HTREEITEM hSelectedItem = TreeView_GetSelection( m_hWnd );
+			const Playlist::Ptr playlist = GetPlaylist( hSelectedItem );
+			const UINT enableExtract = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
+			EnableMenuItem( treemenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
 			const UINT flags = TPM_RIGHTBUTTON;
 			TrackPopupMenu( treemenu, flags, position.x, position.y, 0 /*reserved*/, m_hWnd, NULL /*rect*/ );

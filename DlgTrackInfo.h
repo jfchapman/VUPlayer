@@ -14,6 +14,23 @@ public:
 
 	virtual ~DlgTrackInfo();
 
+private:
+	// Returns the artwork bitmap for 'mediaInfo', or a null pointer if there is no bitmap.
+	std::shared_ptr<Gdiplus::Bitmap> GetArtwork( const MediaInfo& mediaInfo );
+
+	// Returns the artwork bitmap for 'image', or a null pointer if a bitmap could not be created.
+	std::shared_ptr<Gdiplus::Bitmap> GetArtwork( const std::vector<BYTE>& image );
+
+	// Dialog box procedure.
+	static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
+	// Save thread procedure.
+	static DWORD WINAPI SaveThreadProc( LPVOID lpParam );
+
+	// Enables the controls according to the current dialog state.
+	// 'hwnd' - dialog window handle.
+	void EnableControls( HWND hwnd );
+
 	// Called immediately before the dialog is shown.
 	// 'hwnd' - dialog window handle.
 	void OnInitDialog( HWND hwnd );
@@ -61,17 +78,6 @@ public:
 
 	// Called when the Cancel control is chosen when saving media information.
 	void OnCancelSave();
-
-private:
-	// Returns the artwork bitmap for 'mediaInfo', or a null pointer if there is no bitmap.
-	std::shared_ptr<Gdiplus::Bitmap> GetArtwork( const MediaInfo& mediaInfo );
-
-	// Returns the artwork bitmap for 'image', or a null pointer if a bitmap could not be created.
-	std::shared_ptr<Gdiplus::Bitmap> GetArtwork( const std::vector<BYTE>& image );
-
-	// Enables the controls according to the current dialog state.
-	// 'hwnd' - dialog window handle.
-	void EnableControls( HWND hwnd );
 
 	// Module instance handle.
 	HINSTANCE m_hInst;

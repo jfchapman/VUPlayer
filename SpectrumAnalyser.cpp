@@ -6,8 +6,7 @@ static const DWORD s_RenderThreadInterval = 15;
 // Decay factor.
 static const int s_DecayFactor = 40;
 
-// Render thread procedure
-static DWORD WINAPI RenderThreadProc( LPVOID lpParam )
+DWORD WINAPI SpectrumAnalyser::RenderThreadProc( LPVOID lpParam )
 {
 	SpectrumAnalyser* analyser = reinterpret_cast<SpectrumAnalyser*>( lpParam );
 	if ( nullptr != analyser ) {

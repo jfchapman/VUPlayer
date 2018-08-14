@@ -699,8 +699,8 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 		if ( REPLAYGAIN_NOVALUE == updatedMediaInfo.GetGainAlbum() ) {
 			tags.insert( Handler::Tags::value_type( Handler::Tag::GainAlbum, std::wstring() ) );
 		} else {
-			const std::wstring previousGain = GainToString( previousMediaInfo.GetGainAlbum() );
-			const std::wstring updatedGain = GainToString( updatedMediaInfo.GetGainAlbum() );
+			const std::wstring previousGain = GainToWideString( previousMediaInfo.GetGainAlbum() );
+			const std::wstring updatedGain = GainToWideString( updatedMediaInfo.GetGainAlbum() );
 			if ( previousGain != updatedGain ) {
 				tags.insert( Handler::Tags::value_type( Handler::Tag::GainAlbum, updatedGain ) );
 			}
@@ -710,8 +710,8 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 		if ( REPLAYGAIN_NOVALUE == updatedMediaInfo.GetGainTrack() ) {
 			tags.insert( Handler::Tags::value_type( Handler::Tag::GainTrack, std::wstring() ) );
 		} else {
-			const std::wstring previousGain = GainToString( previousMediaInfo.GetGainTrack() );
-			const std::wstring updatedGain = GainToString( updatedMediaInfo.GetGainTrack() );
+			const std::wstring previousGain = GainToWideString( previousMediaInfo.GetGainTrack() );
+			const std::wstring updatedGain = GainToWideString( updatedMediaInfo.GetGainTrack() );
 			if ( previousGain != updatedGain ) {
 				tags.insert( Handler::Tags::value_type( Handler::Tag::GainTrack, updatedGain ) );
 			}
@@ -721,8 +721,8 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 		if ( REPLAYGAIN_NOVALUE == updatedMediaInfo.GetPeakAlbum() ) {
 			tags.insert( Handler::Tags::value_type( Handler::Tag::PeakAlbum, std::wstring() ) );
 		} else {
-			const std::wstring previousPeak = PeakToString( previousMediaInfo.GetPeakAlbum() );
-			const std::wstring updatedPeak = PeakToString( updatedMediaInfo.GetPeakAlbum() );
+			const std::wstring previousPeak = PeakToWideString( previousMediaInfo.GetPeakAlbum() );
+			const std::wstring updatedPeak = PeakToWideString( updatedMediaInfo.GetPeakAlbum() );
 			if ( previousPeak != updatedPeak ) {
 				tags.insert( Handler::Tags::value_type( Handler::Tag::PeakAlbum, updatedPeak ) );		
 			}
@@ -732,8 +732,8 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 		if ( REPLAYGAIN_NOVALUE == updatedMediaInfo.GetPeakTrack() ) {
 			tags.insert( Handler::Tags::value_type( Handler::Tag::PeakTrack, std::wstring() ) );
 		} else {
-			const std::wstring previousPeak = PeakToString( previousMediaInfo.GetPeakTrack() );
-			const std::wstring updatedPeak = PeakToString( updatedMediaInfo.GetPeakTrack() );
+			const std::wstring previousPeak = PeakToWideString( previousMediaInfo.GetPeakTrack() );
+			const std::wstring updatedPeak = PeakToWideString( updatedMediaInfo.GetPeakTrack() );
 			if ( previousPeak != updatedPeak ) {
 				tags.insert( Handler::Tags::value_type( Handler::Tag::PeakTrack, updatedPeak ) );		
 			}
@@ -770,23 +770,6 @@ void Library::WriteFileTags( MediaInfo& mediaInfo, const Handler::Tags& tags )
 		}
 	}
 	UpdateMediaLibrary( mediaInfo );
-}
-
-std::wstring Library::GainToString( const float gain ) const
-{
-	std::wstringstream ss;
-	if ( gain > 0 ) {
-		ss << L"+";
-	}
-	ss << std::fixed << std::setprecision( 2 ) << gain << L" dB";
-	return ss.str();
-}
-
-std::wstring Library::PeakToString( const float peak ) const
-{
-	std::wstringstream ss;
-	ss << std::fixed << std::setprecision( 6 ) << peak;
-	return ss.str();
 }
 
 bool Library::AddArtwork( const std::wstring& id, const std::vector<BYTE>& image )

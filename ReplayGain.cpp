@@ -1,7 +1,6 @@
 #include "ReplayGain.h"
 
-// Calculation thread procedure.
-static DWORD WINAPI CalcThreadProc( LPVOID lpParam )
+DWORD WINAPI ReplayGain::CalcThreadProc( LPVOID lpParam )
 {
 	ReplayGain* replaygain = reinterpret_cast<ReplayGain*>( lpParam );
 	if ( nullptr != replaygain ) {

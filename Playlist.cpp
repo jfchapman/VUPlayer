@@ -8,8 +8,7 @@
 // Next available playlist item ID.
 long Playlist::s_NextItemID = 0;
 
-// Pending file thread proc
-static DWORD WINAPI PendingThreadProc( LPVOID lpParam )
+DWORD WINAPI Playlist::PendingThreadProc( LPVOID lpParam )
 {
 	Playlist* playlist = reinterpret_cast<Playlist*>( lpParam );
 	if ( nullptr != playlist ) {

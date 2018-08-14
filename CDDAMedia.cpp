@@ -24,7 +24,8 @@ CDDAMedia::CDDAMedia( const wchar_t drive, Library& library ) :
 	m_DiskGeometry( {} ),
 	m_TOC( {} ),
 	m_CDDB( 0 ),
-	m_Playlist( new Playlist( m_Library, Playlist::Type::CDDA ) )
+	m_Playlist( new Playlist( m_Library, Playlist::Type::CDDA ) ),
+	m_Cache( std::make_shared<Cache>() )
 {
 	if ( !ReadTOC() || !GeneratePlaylist( drive ) ) {
 		throw std::runtime_error( "No audio CD in drive " + std::string( 1, static_cast<char>( drive ) ) );
@@ -244,19 +245,29 @@ void CDDAMedia::Close( const HANDLE handle ) const
 	}
 }
 
-bool CDDAMedia::Read( const HANDLE handle, const long sector, Data& data ) const
+bool CDDAMedia::Read( const HANDLE handle, const long sector, const bool useCache, Data& data ) const
 {
 	bool success = false;
 	if ( nullptr != handle ) {
-		data.resize( SECTORSIZE / 2 );
+		if ( useCache ) {
+			success = m_Cache->GetData( sector, data );
+		}
+		
+		if ( !success ) {
+			data.resize( SECTORSIZE / 2 );
 
-		RAW_READ_INFO info = {};
-		info.SectorCount = 1;
-		info.TrackMode = CDDA;
-		info.DiskOffset.QuadPart = ( sector - PREGAP ) * m_DiskGeometry.BytesPerSector;
+			RAW_READ_INFO info = {};
+			info.SectorCount = 1;
+			info.TrackMode = CDDA;
+			info.DiskOffset.QuadPart = ( sector - PREGAP ) * m_DiskGeometry.BytesPerSector;
 
-		DWORD bytesRead = 0;
-		success = ( FALSE != DeviceIoControl( handle, IOCTL_CDROM_RAW_READ, &info, sizeof( RAW_READ_INFO ), &data[ 0 ], SECTORSIZE, &bytesRead, 0 ) ) && ( SECTORSIZE == bytesRead );
+			DWORD bytesRead = 0;
+			success = ( FALSE != DeviceIoControl( handle, IOCTL_CDROM_RAW_READ, &info, sizeof( RAW_READ_INFO ), &data[ 0 ], SECTORSIZE, &bytesRead, 0 ) ) && ( SECTORSIZE == bytesRead );
+
+			if ( success && useCache ) {
+				m_Cache->SetData( sector, data );
+			}
+		}
 	}
 	return success;
 }

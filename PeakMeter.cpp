@@ -6,8 +6,7 @@ static const DWORD s_RenderThreadInterval = 15;
 // Decay factor.
 static const float s_DecayFactor = 0.02f;
 
-// Render thread procedure
-static DWORD WINAPI RenderThreadProc( LPVOID lpParam )
+DWORD WINAPI PeakMeter::RenderThreadProc( LPVOID lpParam )
 {
 	PeakMeter* meter = reinterpret_cast<PeakMeter*>( lpParam );
 	if ( nullptr != meter ) {

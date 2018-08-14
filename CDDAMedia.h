@@ -42,9 +42,13 @@ public:
 	// Closes the CD 'handle'.
 	void Close( const HANDLE handle ) const;
 
-	// Reads the CD 'sector' into 'data', using the opened 'handle'.
+	// Reads a CD audio sector.
+	// 'handle' - CD handle.
+	// 'sector' - sector index.
+	// 'useCache' - whether to cache the read sector.
+	// 'data' - out, the CD audio data.
 	// Returns whether the sector was read successfully.
-	bool Read( const HANDLE handle, const long sector, Data& data ) const;
+	bool Read( const HANDLE handle, const long sector, const bool useCache, Data& data ) const;
 
 	// Returns the start sector of the CD audio 'track'.
 	long GetStartSector( const long track ) const;
@@ -56,6 +60,43 @@ public:
 	long GetTrackLength( const long track ) const;
 
 private:
+	// Data cache.
+	class Cache
+	{
+		public:
+			Cache() :
+				m_Cache(),
+				m_Mutex()
+			{
+			}
+
+			// Gets CD audio 'data' for the 'sector' index, returning whether the sector data was retrieved.
+			bool GetData( const long sector, Data& data )
+			{
+				std::lock_guard<std::mutex> lock( m_Mutex );
+				const auto iter = m_Cache.find( sector );
+				const bool success = ( m_Cache.end() != iter );
+				if ( success ) {
+					data = iter->second;
+				}
+				return success;
+			}
+
+			// Caches the CD audio 'data' for the 'sector' index.
+			void SetData( const long sector, const Data& data )
+			{
+				std::lock_guard<std::mutex> lock( m_Mutex );
+				m_Cache.insert( std::map<long,Data>::value_type( sector, data ) );
+			}
+
+		private:
+			// CD audio data, mapped by sector.
+			std::map<long,Data> m_Cache;
+			
+			// Cache mutex.
+			std::mutex m_Mutex;
+	};
+
 	// A string pair.
 	typedef std::pair<std::wstring,std::wstring> StringPair;
 
@@ -103,4 +144,7 @@ private:
 
 	// Playlist.
 	Playlist::Ptr m_Playlist;
+
+	// CD audio data cache.
+	std::shared_ptr<Cache> m_Cache;
 };

@@ -184,6 +184,9 @@ private:
 	// Called when the Add to Playlist 'command' is received.
 	void OnAddToPlaylist( const UINT command );
 
+	// Called when the convert tracks command is received.
+	void OnConvert();
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
