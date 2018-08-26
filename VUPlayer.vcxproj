@@ -90,7 +90,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.24.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.24.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;libs\gnsdk_vuplayer\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>
       </LanguageStandard>
@@ -101,7 +101,12 @@
       <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;libs\bass-2.4.13.8\c\bass.lib;libs\libvorbis-1.3.6\x86\libvorbis_static.lib;libs\libvorbis-1.3.6\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\opus-1.2.1\x86\opus.lib;libs\opusfile-0.10\x86\opusfile.lib;libs\flac-1.3.2\x86\debug\libFLAC_static.lib;libs\flac-1.3.2\x86\debug\libFLAC++_static.lib;libs\flac-1.3.2\x86\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\bass.dll" "$(OutDir)bass.dll"</Command>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\bass.dll" "$(OutDir)bass.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_vuplayer.dll" "$(OutDir)gnsdk_vuplayer.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_manager.dll" "$(OutDir)gnsdk_manager.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_musicid.dll" "$(OutDir)gnsdk_musicid.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_storage_sqlite.dll" "$(OutDir)gnsdk_storage_sqlite.dll"
+</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -116,7 +121,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.24.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.24.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;libs\gnsdk_vuplayer\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>
       </LanguageStandard>
@@ -127,7 +132,12 @@
       <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;libs\bass-2.4.13.8\c\x64\bass.lib;libs\libvorbis-1.3.6\x64\libvorbis_static.lib;libs\libvorbis-1.3.6\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\opus-1.2.1\x64\opus.lib;libs\opusfile-0.10\x64\opusfile.lib;libs\flac-1.3.2\x64\debug\libFLAC_static.lib;libs\flac-1.3.2\x64\debug\libFLAC++_static.lib;libs\flac-1.3.2\x64\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\x64\bass.dll" "$(OutDir)bass.dll"</Command>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\x64\bass.dll" "$(OutDir)bass.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_vuplayer.dll" "$(OutDir)gnsdk_vuplayer.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_manager.dll" "$(OutDir)gnsdk_manager.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_musicid.dll" "$(OutDir)gnsdk_musicid.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)gnsdk_storage_sqlite.dll"
+</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -144,7 +154,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.24.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.24.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;libs\gnsdk_vuplayer\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>
       </LanguageStandard>
@@ -158,7 +168,12 @@
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\bass.dll" "$(OutDir)bass.dll"</Command>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\bass.dll" "$(OutDir)bass.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_vuplayer.dll" "$(OutDir)gnsdk_vuplayer.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_manager.dll" "$(OutDir)gnsdk_manager.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_musicid.dll" "$(OutDir)gnsdk_musicid.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_storage_sqlite.dll" "$(OutDir)gnsdk_storage_sqlite.dll"
+</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -175,7 +190,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.24.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.13.8\c;libs\sqlite-3.24.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;libs\gnsdk_vuplayer\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>
       </LanguageStandard>
@@ -189,7 +204,12 @@
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\x64\bass.dll" "$(OutDir)bass.dll"</Command>
+      <Command>copy "$(ProjectDir)libs\bass-2.4.13.8\x64\bass.dll" "$(OutDir)bass.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_vuplayer.dll" "$(OutDir)gnsdk_vuplayer.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_manager.dll" "$(OutDir)gnsdk_manager.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_musicid.dll" "$(OutDir)gnsdk_musicid.dll"
+copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)gnsdk_storage_sqlite.dll"
+</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -215,6 +235,7 @@
     <ClInclude Include="DlgTrackInfo.h" />
     <ClInclude Include="Encoder.h" />
     <ClInclude Include="EncoderFlac.h" />
+    <ClInclude Include="Gracenote.h" />
     <ClInclude Include="Handler.h" />
     <ClInclude Include="HandlerBass.h" />
     <ClInclude Include="HandlerCDDA.h" />
@@ -298,6 +319,7 @@
     <ClCompile Include="DlgOptions.cpp" />
     <ClCompile Include="DlgTrackInfo.cpp" />
     <ClCompile Include="EncoderFlac.cpp" />
+    <ClCompile Include="Gracenote.cpp" />
     <ClCompile Include="HandlerBass.cpp" />
     <ClCompile Include="HandlerCDDA.cpp" />
     <ClCompile Include="HandlerFlac.cpp" />
@@ -386,6 +408,7 @@
     <Image Include="res\crossfade.ico" />
     <Image Include="res\favourites.ico" />
     <Image Include="res\genre.ico" />
+    <Image Include="res\gracenote.png" />
     <Image Include="res\icon3.ico" />
     <Image Include="res\info.ico" />
     <Image Include="res\library.ico" />

@@ -255,6 +255,9 @@
     <ClInclude Include="CDDAExtract.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Gracenote.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -467,6 +470,9 @@
     <ClCompile Include="CDDAExtract.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Gracenote.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="VUPlayer.rc">
@@ -562,6 +568,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\pitch.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\gracenote.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

@@ -338,6 +338,18 @@ public:
 	// Sets the extract tracks settings.
 	void SetExtractSettings( const std::wstring& folder, const std::wstring& filename, const bool addToLibrary );
 
+	// Gets Gracenote settings.
+	// 'userID' - Gracenote user ID string.
+	// 'enable' - whether to enable Gracenote functionality.
+	// 'enableLog' - whether to enable logging of Gracenote functionality.
+	void GetGracenoteSettings( std::string& userID, bool& enable, bool& enableLog );
+
+	// Sets Gracenote settings.
+	// 'userID' - Gracenote user ID string.
+	// 'enable' - whether to enable Gracenote functionality.
+	// 'enableLog' - whether to enable logging of Gracenote functionality.
+	void SetGracenoteSettings( const std::string& userID, const bool enable, const bool enableLog );
+
 private:
 	// Updates the database to the current version if necessary.
 	void UpdateDatabase();

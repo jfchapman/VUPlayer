@@ -18,9 +18,10 @@ static const unsigned long SECTORSIZE = 2352;
 // CDDA pregap in sectors.
 static const unsigned long PREGAP = 150;
 
-CDDAMedia::CDDAMedia( const wchar_t drive, Library& library ) :
+CDDAMedia::CDDAMedia( const wchar_t drive, Library& library, Gracenote& gracenote ) :
 	m_DrivePath( L"\\\\.\\" + std::wstring( 1, drive ) + L":" ),
 	m_Library( library ),
+	m_Gracenote( gracenote ),
 	m_DiskGeometry( {} ),
 	m_TOC( {} ),
 	m_CDDB( 0 ),
@@ -153,10 +154,12 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 {
 	bool success = false;
 	if ( m_Playlist ) {
+		bool isNewMedia = false;
 
 		// Read CD-Text and just keep the first block.
 		BlockMap cdTextBlocks;
 		ReadCDText( cdTextBlocks );
+
 		const StringPairMap& cdTextStrings = !cdTextBlocks.empty() ? cdTextBlocks.begin()->second : StringPairMap();
 		std::wstring cdTextDiscArtist;
 		auto cdTextIter = cdTextStrings.find( 0 );
@@ -202,6 +205,8 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 					}
 
 					m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
+
+					isNewMedia = true;
 				}
 
 				m_Playlist->AddItem( mediaInfo );
@@ -220,6 +225,10 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 		}
 
 		success = ( m_Playlist->GetCount() > 0 );
+
+		if ( success && isNewMedia ) {
+			m_Gracenote.Query( GetGracenoteTOC(), false /*forceDialog*/ );	
+		}
 	}
 	return success;
 }
@@ -370,4 +379,16 @@ void CDDAMedia::GetDataBlockText( const CDROM_TOC_CD_TEXT_DATA& data, const int 
 			}
 		}
 	}
+}
+
+std::string CDDAMedia::GetGracenoteTOC() const
+{
+	std::string toc;
+	for ( long track = m_TOC.FirstTrack; track <= ( 1 + m_TOC.LastTrack ); track++ ) {
+		toc += std::to_string( GetStartSector( track ) ) + " ";
+	}
+	if ( !toc.empty() ) {
+		toc.pop_back();
+	}
+	return toc;
 }

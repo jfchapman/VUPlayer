@@ -99,3 +99,6 @@ std::wstring GainToWideString( const float gain );
 
 // Converts a 'peak' value to a string.
 std::wstring PeakToWideString( const float peak );
+
+// Centres a 'dialog' with respect to its parent window, or the desktop window if the parent is not visible.
+void CentreDialog( const HWND dialog );

@@ -64,7 +64,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_Settings( m_Database, m_Library ),
 	m_Output( m_hWnd, m_Handlers, m_Settings, m_Settings.GetVolume() ),
 	m_ReplayGain( m_Library, m_Handlers ),
-	m_CDDAManager( m_hInst, m_hWnd, m_Library, m_Handlers ),
+	m_Gracenote( m_hInst, m_hWnd, m_Settings ),
+	m_CDDAManager( m_hInst, m_hWnd, m_Library, m_Handlers, m_Gracenote ),
 	m_Rebar( m_hInst, m_hWnd ),
 	m_Status( m_hInst, m_hWnd ),
 	m_Tree( m_hInst, m_hWnd, m_Library, m_Settings, m_CDDAManager ),
@@ -453,7 +454,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_ToolbarPlayback.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_Rebar.Update();
 		m_Counter.Refresh();
-		m_Status.Update( m_ReplayGain, m_Maintainer );
+		m_Status.Update( m_ReplayGain, m_Maintainer, m_Gracenote );
 		m_Tray.Update( m_CurrentOutput );
 	}
 	if ( !handled ) {
@@ -884,6 +885,10 @@ void VUPlayer::OnCommand( const int commandID )
 			OnConvert();
 			break;
 		}
+		case ID_FILE_GRACENOTE_QUERY : {
+			OnGracenoteQuery();
+			break;
+		}
 		case ID_VIEW_COUNTER_FONTSTYLE : {
 			m_Counter.OnSelectFont();
 			break;
@@ -1044,6 +1049,8 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
 		const UINT convertEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_CONVERT, MF_BYCOMMAND | convertEnabled );
+		const UINT gracenoteEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) && IsGracenoteEnabled() ) ? MF_ENABLED : MF_DISABLED;
+		EnableMenuItem( menu, ID_FILE_GRACENOTE_QUERY, MF_BYCOMMAND | gracenoteEnabled );
 
 		// View menu
 		CheckMenuItem( menu, ID_TREEMENU_FAVOURITES, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_FAVOURITES ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1231,10 +1238,10 @@ COLORREF* VUPlayer::GetCustomColours()
 	return m_CustomColours;
 }
 
-std::shared_ptr<Gdiplus::Bitmap> VUPlayer::GetPlaceholderImage()
+std::shared_ptr<Gdiplus::Bitmap> VUPlayer::LoadResourcePNG( const WORD resourceID )
 {
 	std::shared_ptr<Gdiplus::Bitmap> bitmapPtr;
-	HRSRC resource = FindResource( m_hInst, MAKEINTRESOURCE( IDB_PLACEHOLDER ), L"PNG" );
+	HRSRC resource = FindResource( m_hInst, MAKEINTRESOURCE( resourceID ), L"PNG" );
 	if ( nullptr != resource ) {
 		HGLOBAL hGlobal = LoadResource( m_hInst, resource );
 		if ( nullptr != hGlobal ) {
@@ -1260,6 +1267,47 @@ std::shared_ptr<Gdiplus::Bitmap> VUPlayer::GetPlaceholderImage()
 		bitmapPtr.reset();
 	}
 	return bitmapPtr;
+}
+
+std::shared_ptr<Gdiplus::Bitmap> VUPlayer::GetPlaceholderImage()
+{
+	const std::shared_ptr<Gdiplus::Bitmap> bitmap = LoadResourcePNG( IDB_PLACEHOLDER );
+	return bitmap;
+}
+
+HBITMAP VUPlayer::GetGracenoteLogo( const RECT& rect )
+{
+	HBITMAP hBitmap = nullptr;
+	const std::shared_ptr<Gdiplus::Bitmap> gracenoteLogo = LoadResourcePNG( IDB_GRACENOTE );
+	if ( gracenoteLogo ) {
+		Gdiplus::Bitmap bitmap( rect.right - rect.left, rect.bottom - rect.top, PixelFormat32bppARGB );
+		Gdiplus::Graphics graphics( &bitmap );
+		graphics.SetInterpolationMode( Gdiplus::InterpolationModeHighQualityBicubic );
+		const Gdiplus::RectF destRect( 0, 0, static_cast<Gdiplus::REAL>( bitmap.GetWidth() ), static_cast<Gdiplus::REAL>( bitmap.GetHeight() ) );
+		const Gdiplus::RectF logoRect( 0, 0, static_cast<Gdiplus::REAL>( gracenoteLogo->GetWidth() ), static_cast<Gdiplus::REAL>( gracenoteLogo->GetHeight() ) );
+		if ( ( destRect.Width > 0 ) && ( destRect.Height > 0 ) && ( logoRect.Width > 0 ) && ( logoRect.Height > 0 ) ) {
+			Gdiplus::REAL x = 0;
+			Gdiplus::REAL y = 0;
+			Gdiplus::REAL width = 0;
+			Gdiplus::REAL height = 0;
+			const Gdiplus::REAL destAspectRatio = destRect.Width / destRect.Height;
+			const Gdiplus::REAL logoAspectRatio = logoRect.Width / logoRect.Height;
+			if ( destAspectRatio < logoAspectRatio ) {
+				width = destRect.Width;
+				height = destRect.Width / logoAspectRatio;
+				y = ( destRect.Height - height ) / 2;
+			} else {
+				height = destRect.Height;
+				width = destRect.Height * logoAspectRatio;
+				x = ( destRect.Width - width ) / 2;
+			}
+			if ( Gdiplus::Ok == graphics.DrawImage( gracenoteLogo.get(), x, y, width, height ) ) {
+				const Gdiplus::Color background( static_cast<Gdiplus::ARGB>( Gdiplus::Color::Transparent ) );
+				bitmap.GetHBITMAP( background, &hBitmap );
+			}
+		}
+	}
+	return hBitmap;
 }
 
 void VUPlayer::OnOptions()
@@ -1421,4 +1469,85 @@ void VUPlayer::OnConvert()
 			CDDAExtract extract( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, m_CDDAManager, tracks );
 		}
 	}
+}
+
+void VUPlayer::OnGracenoteQuery()
+{
+	const Playlist::Ptr playlist = m_List.GetPlaylist();
+	if ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) {
+		const Playlist::ItemList playlistItems = playlist->GetItems();
+		if ( !playlistItems.empty() ) {
+			const long cddbID = playlistItems.front().Info.GetCDDB();
+			const CDDAManager::CDDAMediaMap drives = m_CDDAManager.GetCDDADrives();
+			for ( const auto& drive : drives ) {
+				if ( cddbID == drive.second.GetCDDB() ) {
+					const std::string toc = drives.begin()->second.GetGracenoteTOC();
+					m_Gracenote.Query( toc, true /*forceDialog*/ );
+					break;
+				}
+			}
+		}
+	}
+}
+
+void VUPlayer::OnGracenoteResult( const Gracenote::Result& result, const bool forceDialog )
+{
+	const int selectedResult = ( result.m_ExactMatch && !forceDialog ) ? 0 : m_Gracenote.ShowMatchesDialog( result );
+	if ( ( selectedResult >= 0 ) && ( selectedResult < static_cast<int>( result.m_Albums.size() ) ) ) {
+		const Gracenote::Album& album = result.m_Albums[ selectedResult ];
+		const CDDAManager::CDDAMediaMap drives = m_CDDAManager.GetCDDADrives();
+		for ( const auto& drive : drives ) {
+			if ( result.m_TOC == drive.second.GetGracenoteTOC() ) {
+				const CDDAMedia& cddaMedia = drive.second;
+				const Playlist::Ptr playlist = cddaMedia.GetPlaylist();
+				if ( playlist ) {
+					const Playlist::ItemList items = playlist->GetItems();
+					for ( const auto& item : items ) {
+						const MediaInfo previousMediaInfo( item.Info );
+						MediaInfo mediaInfo( item.Info );
+						mediaInfo.SetAlbum( album.m_Title );
+						mediaInfo.SetArtist( album.m_Artist );
+						mediaInfo.SetGenre( album.m_Genre );
+						mediaInfo.SetYear( album.m_Year );
+
+						mediaInfo.SetArtworkID( m_Library.AddArtwork( album.m_Artwork ) );
+
+						const auto trackIter = album.m_Tracks.find( mediaInfo.GetTrack() );
+						if ( album.m_Tracks.end() != trackIter ) {
+							const Gracenote::Track& track = trackIter->second;
+							mediaInfo.SetTitle( track.m_Title );
+							if ( !track.m_Artist.empty() ) {
+								mediaInfo.SetArtist( track.m_Artist );
+							}
+							if ( !track.m_Genre.empty() ) {
+								mediaInfo.SetGenre( track.m_Genre );
+							}
+							if ( 0 != track.m_Year ) {
+								mediaInfo.SetYear( track.m_Year );
+							}
+						}
+						m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
+					}
+				}
+				break;
+			}
+		}
+	}
+}
+
+bool VUPlayer::IsGracenoteAvailable()
+{
+	const bool available = m_Gracenote.IsAvailable();
+	return available;
+}
+
+bool VUPlayer::IsGracenoteEnabled()
+{
+	bool enabled = IsGracenoteAvailable();
+	if ( enabled ) {
+		std::string userID;
+		bool enableLog = true;
+		m_Settings.GetGracenoteSettings( userID, enabled, enableLog );
+	}
+	return enabled;
 }

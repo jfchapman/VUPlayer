@@ -47,6 +47,7 @@ WndStatus::WndStatus( HINSTANCE instance, HWND parent ) :
 	m_Playlist(),
 	m_ReplayGainStatusCount( -1 ),
 	m_LibraryStatusCount( -1 ),
+	m_GracenoteActive( false ),
 	m_IdleText()
 {
 	const int versionSize = 16;
@@ -111,14 +112,20 @@ void WndStatus::Update( Playlist* playlist )
 	}
 }
 
-void WndStatus::Update( const ReplayGain& replayGain, const LibraryMaintainer& libraryMaintainer )
+void WndStatus::Update( const ReplayGain& replayGain, const LibraryMaintainer& libraryMaintainer, const Gracenote& gracenote )
 {
 	const int pendingReplayGain = replayGain.GetPendingCount();
 	const int pendingLibrary = libraryMaintainer.GetPendingCount();
-	if ( ( pendingReplayGain != m_ReplayGainStatusCount ) || ( pendingLibrary != m_LibraryStatusCount ) ) {
+	const bool gracenoteActive = gracenote.IsActive();
+	if ( ( pendingReplayGain != m_ReplayGainStatusCount ) || ( pendingLibrary != m_LibraryStatusCount ) || ( gracenoteActive != m_GracenoteActive ) ) {
 		std::wstring idleText = m_IdleText;
-		if ( 0 != pendingLibrary ) {
-			const int bufSize = 256;
+		if ( gracenoteActive ) {
+			const int bufSize = 64;
+			WCHAR buf[ bufSize ];
+			LoadString( m_hInst, IDS_GRACENOTE_ACTIVE, buf, bufSize );
+			idleText = buf;
+		} else if ( 0 != pendingLibrary ) {
+			const int bufSize = 64;
 			WCHAR buf[ bufSize ];
 			LoadString( m_hInst, IDS_STATUS_LIBRARY, buf, bufSize );
 			idleText = buf;
@@ -127,7 +134,7 @@ void WndStatus::Update( const ReplayGain& replayGain, const LibraryMaintainer& l
 				idleText.replace( pos, 1 /*len*/, std::to_wstring( pendingLibrary ) );
 			}
 		} else if ( 0 != pendingReplayGain ) {
-			const int bufSize = 256;
+			const int bufSize = 64;
 			WCHAR buf[ bufSize ];
 			LoadString( m_hInst, IDS_STATUS_REPLAYGAIN, buf, bufSize );
 			idleText = buf;
@@ -139,6 +146,7 @@ void WndStatus::Update( const ReplayGain& replayGain, const LibraryMaintainer& l
 		SendMessage( m_hWnd, SB_SETTEXT, 0, reinterpret_cast<LPARAM>( idleText.c_str() ) );
 		m_ReplayGainStatusCount = pendingReplayGain;
 		m_LibraryStatusCount = pendingLibrary;
+		m_GracenoteActive = gracenoteActive;
 	}
 }
 

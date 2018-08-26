@@ -5,8 +5,9 @@
 
 #include <vector>
 
-CDDAManager::CDDAManager( const HINSTANCE instance, const HWND hwnd, Library& library, Handlers& handlers ) :
+CDDAManager::CDDAManager( const HINSTANCE instance, const HWND hwnd, Library& library, Handlers& handlers, Gracenote& gracenote ) :
 	m_Library( library ),
+	m_Gracenote( gracenote ),
 	m_Media(),
 	m_MediaMutex(),
 	m_UpdateThread( nullptr ),
@@ -86,7 +87,7 @@ void CDDAManager::UpdateThreadHandler()
 		// Deal with any devices or media being added/removed.
 		for ( const wchar_t drive : drives ) {
 			try {
-				CDDAMedia cddaMedia( drive, m_Library );
+				CDDAMedia cddaMedia( drive, m_Library, m_Gracenote );
 				std::lock_guard<std::mutex> lock( m_MediaMutex );
 				const auto mediaIter = m_Media.find( drive );
 				if ( ( m_Media.end() != mediaIter ) && ( mediaIter->second.GetCDDB() != cddaMedia.GetCDDB() ) ) {

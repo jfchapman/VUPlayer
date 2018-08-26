@@ -1,6 +1,7 @@
 #include "DlgHotkey.h"
 
 #include "resource.h"
+#include "Utility.h"
 
 INT_PTR CALLBACK DlgHotkey::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -76,6 +77,7 @@ DlgHotkey::~DlgHotkey()
 void DlgHotkey::OnInitDialog( const HWND hwnd )
 {
 	m_hWnd = hwnd;
+	CentreDialog( m_hWnd );
 	const HWND buttonWnd = GetDlgItem( m_hWnd, IDCANCEL );
 	SetWindowLongPtr( buttonWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultButtonProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( buttonWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( ButtonProc ) ) );

@@ -221,8 +221,8 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 		}
 		case MSG_MEDIAUPDATED : {
 			if ( nullptr != vuplayer ) {
-				const MediaInfo* previousMediaInfo = reinterpret_cast<MediaInfo*>( wParam );
-				const MediaInfo* updatedMediaInfo = reinterpret_cast<MediaInfo*>( lParam );
+				const MediaInfo* previousMediaInfo = reinterpret_cast<const MediaInfo*>( wParam );
+				const MediaInfo* updatedMediaInfo = reinterpret_cast<const MediaInfo*>( lParam );
 				vuplayer->OnHandleMediaUpdate( previousMediaInfo, updatedMediaInfo );
 				delete previousMediaInfo;
 				previousMediaInfo = nullptr;
@@ -240,6 +240,17 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 		case MSG_CDDAREFRESHED : {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnHandleCDDARefreshed();
+			}
+			break;
+		}
+		case MSG_GRACENOTEQUERYRESULT : {
+			if ( nullptr != vuplayer ) {
+				const Gracenote::Result* result = reinterpret_cast<const Gracenote::Result*>( wParam );
+				if ( nullptr != result ) {
+					vuplayer->OnGracenoteResult( *result, lParam );
+					delete result;
+					result = nullptr;
+				}
 			}
 			break;
 		}
@@ -262,10 +273,22 @@ INT_PTR CALLBACK About( HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam )
 	UNREFERENCED_PARAMETER( lParam );
 	switch ( message ) {
 		case WM_INITDIALOG: {
+			CentreDialog( hDlg );
 			VUPlayer* vuplayer = reinterpret_cast<VUPlayer*>( lParam );
 			if ( nullptr != vuplayer ) {
 				const std::wstring bassVersion = vuplayer->GetBassVersion();
 				SetDlgItemText( hDlg, IDC_ABOUT_BASSVERSION, bassVersion.c_str() );
+
+				const HWND wndLogo = GetDlgItem( hDlg, IDC_ABOUT_GRACENOTE );
+				if ( nullptr != wndLogo ) {
+					RECT clientRect = {};
+					GetClientRect( wndLogo, &clientRect );
+					const HBITMAP hBitmap = vuplayer->GetGracenoteLogo( clientRect );
+					if ( nullptr != hBitmap ) {
+						SendDlgItemMessage( hDlg, IDC_ABOUT_GRACENOTE, STM_SETIMAGE, IMAGE_BITMAP, reinterpret_cast<LPARAM>( hBitmap ) );
+						DeleteObject( hBitmap );
+					}
+				}
 			}
 			return (INT_PTR)TRUE;
 		}

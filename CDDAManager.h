@@ -17,7 +17,8 @@ public:
 	// 'hwnd' - application window handle.
 	// 'library' - media library.
 	// 'handlers' - available handlers.
-	CDDAManager( const HINSTANCE instance, const HWND hwnd, Library& library, Handlers& handlers );
+	// 'gracenote' - Gracenote handler.
+	CDDAManager( const HINSTANCE instance, const HWND hwnd, Library& library, Handlers& handlers, Gracenote& gracenote );
 
 	virtual ~CDDAManager();
 
@@ -49,6 +50,9 @@ private:
 
 	// Media library.
 	Library& m_Library;
+
+	// Gracenote handler.
+	Gracenote& m_Gracenote;
 
 	// Available CD audio media.
 	CDDAMediaMap m_Media;

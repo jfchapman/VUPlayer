@@ -220,6 +220,7 @@ DlgTrackInfo::~DlgTrackInfo()
 
 void DlgTrackInfo::OnInitDialog( HWND hwnd )
 {
+	CentreDialog( hwnd );
 	HWND genreWnd = GetDlgItem( hwnd, IDC_TRACKINFO_GENRE );
 	if ( nullptr != genreWnd ) {
 		for ( const auto& iter : s_GenreList ) {

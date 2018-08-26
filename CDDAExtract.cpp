@@ -134,7 +134,8 @@ CDDAExtract::~CDDAExtract()
 void CDDAExtract::OnInitDialog( const HWND hwnd )
 {
 	m_hWnd = hwnd;
-	
+	CentreDialog( m_hWnd );
+
 	const HWND progressRead = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_READ );
 	if ( nullptr != progressRead ) {
 		RECT rect = {};
@@ -289,7 +290,7 @@ void CDDAExtract::ReadHandler()
 					media->Close( mediaHandle );
 
 					if ( !Cancelled() ) {
-						if ( sectorsRemaining.empty() && ( sectorMap.size() == sectorCount ) ) {
+						if ( sectorsRemaining.empty() && ( sectorMap.size() == static_cast<size_t>( sectorCount ) ) ) {
 							// Concatenate sector data and pass off to the encoder.
 							const size_t totalSize = sectorMap.begin()->second.begin()->size() * sectorCount;
 							DataPtr trackData( new CDDAMedia::Data() );

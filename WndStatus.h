@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Gracenote.h"
 #include "LibraryMaintainer.h"
 #include "Playlist.h"
 #include "ReplayGain.h"
@@ -28,8 +29,8 @@ public:
 	// Called when an 'playlist' is updated.
 	void Update( Playlist* playlist );
 
-	// Updates the status text based on the 'replayGain' & 'libraryMaintainer' state.
-	void Update( const ReplayGain& replayGain, const LibraryMaintainer& libraryMaintainer );
+	// Updates the status text based on the 'replayGain', 'libraryMaintainer' & 'gracenote' state.
+	void Update( const ReplayGain& replayGain, const LibraryMaintainer& libraryMaintainer, const Gracenote& gracenote );
 
 	// Refreshes the status bar contents.
 	void Refresh();
@@ -52,6 +53,9 @@ private:
 
 	// Indicates the number of pending library maintenance items currently displayed.
 	int m_LibraryStatusCount;
+
+	// Indicates whether the Gracenote activity state is currently displayed.
+	bool m_GracenoteActive;
 
 	// The idle status text.
 	std::wstring m_IdleText;

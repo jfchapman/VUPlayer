@@ -1,6 +1,7 @@
 #include "OptionsGeneral.h"
 
 #include "resource.h"
+#include "VUPlayer.h"
 #include "windowsx.h"
 
 OptionsGeneral::OptionsGeneral( HINSTANCE instance, Settings& settings, Output& output ) :
@@ -34,6 +35,19 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 			Button_SetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_USESPECIFIC ), BST_CHECKED );
 			EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_DEVICE ), TRUE );
 		}
+	}
+
+	// Gracenote settings
+	VUPlayer* vuplayer = VUPlayer::Get();
+	const bool gracenoteAvailable = ( nullptr != vuplayer ) && vuplayer->IsGracenoteAvailable();
+	std::string userID;
+	bool gracenoteEnabled = true;
+	bool gracenoteLog = true;
+	GetSettings().GetGracenoteSettings( userID, gracenoteEnabled, gracenoteLog );
+	const HWND hwndGracenote = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_GRACENOTE_ENABLE );
+	if ( nullptr != hwndGracenote ) {
+		Button_SetCheck( hwndGracenote, ( gracenoteEnabled ? BST_CHECKED : BST_UNCHECKED ) );
+		EnableWindow( hwndGracenote, gracenoteAvailable ? TRUE : FALSE );
 	}
 
 	// Notification area settings
@@ -88,6 +102,14 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 		}
 	}
 	GetSettings().SetOutputDevice( deviceName );
+
+	// Gracenote settings
+	std::string userID;
+	bool gracenoteEnabled = true;
+	bool gracenoteLog = true;
+	GetSettings().GetGracenoteSettings( userID, gracenoteEnabled, gracenoteLog );
+	gracenoteEnabled = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_GRACENOTE_ENABLE ) ) );
+	GetSettings().SetGracenoteSettings( userID, gracenoteEnabled, gracenoteLog );
 
 	// Notification area settings
 	const bool enable = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_ENABLE ) ) );

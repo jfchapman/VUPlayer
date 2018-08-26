@@ -3,6 +3,7 @@
 
 #define MyAppName "VUPlayer"
 #define MyAppVersion "4.2"
+#define MyAppFullVersion "4.2.0.0"
 #define MyAppMainVersion "4"
 #define MyAppDefaultDir "VUPlayer 4"
 #define MyAppPublisher "James Chapman"
@@ -21,6 +22,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
+VersionInfoVersion={#MyAppFullVersion}
 DefaultDirName={pf}\{#MyAppDefaultDir}
 UninstallDisplayIcon={app}\VUPlayer.exe
 DisableProgramGroupPage=yes
@@ -38,8 +40,16 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "x64\Release\VUPlayer.exe"; DestDir: "{app}\"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\bass.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\gnsdk_manager.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\gnsdk_musicid.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\gnsdk_storage_sqlite.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\gnsdk_vuplayer.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\VUPlayer.exe"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: solidbreak ignoreversion
 Source: "Release\bass.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\gnsdk_manager.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: solidbreak ignoreversion
+Source: "Release\gnsdk_musicid.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\gnsdk_storage_sqlite.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: solidbreak ignoreversion
+Source: "Release\gnsdk_vuplayer.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "readme.txt"; DestDir: "{app}"; Flags: solidbreak
 
 [Icons]

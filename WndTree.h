@@ -217,8 +217,9 @@ private:
 	// 'parentItem' - parent tree item.
 	// 'label' - item label.
 	// 'type' - item type.
+	// 'redraw' - whether to redraw the control.
 	// Returns the added item.
-	HTREEITEM AddItem( const HTREEITEM parentItem, const std::wstring& label, const Playlist::Type type );
+	HTREEITEM AddItem( const HTREEITEM parentItem, const std::wstring& label, const Playlist::Type type, const bool redraw = true );
 
 	// Removes an item from the tree control.
 	// 'item' - item to remove.

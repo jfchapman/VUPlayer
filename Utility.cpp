@@ -522,3 +522,23 @@ std::wstring PeakToWideString( const float peak )
 	ss << std::fixed << std::setprecision( 6 ) << peak;
 	return ss.str();
 }
+
+void CentreDialog( const HWND dialog )
+{
+	if ( nullptr != dialog ) {
+		const HWND parent = ( nullptr != GetParent( dialog ) ) ? GetParent( dialog ) : GetDesktopWindow();
+		if ( nullptr != parent ) {
+			RECT parentRect = {};
+			RECT dialogRect = {};
+			if ( ( FALSE != GetWindowRect( parent, &parentRect ) ) && ( FALSE != GetWindowRect( dialog, &dialogRect ) ) ) {
+				const int parentWidth = parentRect.right - parentRect.left;
+				const int parentHeight = parentRect.bottom - parentRect.top;
+				const int dialogWidth = dialogRect.right - dialogRect.left;
+				const int dialogHeight = dialogRect.bottom - dialogRect.top;
+				const int x = parentRect.left + ( parentWidth - dialogWidth ) / 2;
+				const int y = parentRect.top + ( parentHeight - dialogHeight ) / 2;
+				SetWindowPos( dialog, HWND_TOP, x, y, 0 /*cx*/, 0 /*cy*/, SWP_NOSIZE );
+			}
+		}
+	}
+}

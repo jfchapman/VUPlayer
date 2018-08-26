@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 
+#include "Gracenote.h"
 #include "Playlist.h"
 
 #include <winioctl.h>
@@ -15,8 +16,9 @@ class CDDAMedia
 public:
 	// 'drive' - CD-ROM drive letter.
 	// 'library' - media library.
+	// 'gracenote' - Gracenote handler.
 	// Throws a std::runtime_error exception if there are no audio tracks available.
-	CDDAMedia( const wchar_t drive, Library& library );
+	CDDAMedia( const wchar_t drive, Library& library, Gracenote& gracenote );
 
 	virtual ~CDDAMedia();
 
@@ -58,6 +60,9 @@ public:
 
 	// Returns the 'track' length, in bytes.
 	long GetTrackLength( const long track ) const;
+
+	// Returns the table of contents in string form.
+	std::string GetGracenoteTOC() const;
 
 private:
 	// Data cache.
@@ -132,6 +137,9 @@ private:
 
 	// Media library.
 	Library& m_Library;
+
+	// Gracenote handler.
+	Gracenote& m_Gracenote;
 
 	// Disk geometry.
 	DISK_GEOMETRY m_DiskGeometry;

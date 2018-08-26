@@ -331,6 +331,10 @@ void WndTree::OnContextMenu( const POINT& position )
 			const UINT enableExtract = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( treemenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
+			VUPlayer* vuplayer = VUPlayer::Get();
+			const UINT gracenoteEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) && ( nullptr != vuplayer ) && vuplayer->IsGracenoteEnabled() ) ? MF_ENABLED : MF_DISABLED;
+			EnableMenuItem( treemenu, ID_FILE_GRACENOTE_QUERY, MF_BYCOMMAND | gracenoteEnabled );
+
 			const UINT flags = TPM_RIGHTBUTTON;
 			TrackPopupMenu( treemenu, flags, position.x, position.y, 0 /*reserved*/, m_hWnd, NULL /*rect*/ );
 		}
@@ -1137,11 +1141,11 @@ void WndTree::AddArtists()
 	if ( nullptr != m_NodeArtists ) {
 		const std::set<std::wstring> artists = m_Library.GetArtists();
 		for ( const auto& artist : artists ) {
-			const HTREEITEM artistNode = AddItem( m_NodeArtists, artist, Playlist::Type::Artist );
+			const HTREEITEM artistNode = AddItem( m_NodeArtists, artist, Playlist::Type::Artist, false /*redraw*/ );
 			if ( nullptr != artistNode ) {
 				const std::set<std::wstring> albums = m_Library.GetAlbums( artist );
 				for ( const auto& album : albums ) {
-					AddItem( artistNode, album, Playlist::Type::Album );
+					AddItem( artistNode, album, Playlist::Type::Album, false /*redraw*/ );
 				}
 			}
 		}
@@ -1169,7 +1173,7 @@ void WndTree::AddAlbums()
 	if ( nullptr != m_NodeAlbums ) {
 		const std::set<std::wstring> albums = m_Library.GetAlbums();
 		for ( const auto& album : albums ) {
-			AddItem( m_NodeAlbums, album, Playlist::Type::Album );
+			AddItem( m_NodeAlbums, album, Playlist::Type::Album, false /*redraw*/ );
 		}
 	}
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
@@ -1195,7 +1199,7 @@ void WndTree::AddGenres()
 	if ( nullptr != m_NodeGenres ) {
 		const std::set<std::wstring> genres = m_Library.GetGenres();
 		for ( const auto& genre : genres ) {
-			AddItem( m_NodeGenres, genre, Playlist::Type::Genre );
+			AddItem( m_NodeGenres, genre, Playlist::Type::Genre, false /*redraw*/ );
 		}
 	}
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
@@ -1221,7 +1225,7 @@ void WndTree::AddYears()
 	if ( nullptr != m_NodeYears ) {
 		const std::set<long> years = m_Library.GetYears();
 		for ( const auto& year : years ) {
-			AddItem( m_NodeYears, std::to_wstring( year ), Playlist::Type::Year );
+			AddItem( m_NodeYears, std::to_wstring( year ), Playlist::Type::Year, false /*redraw*/ );
 		}
 	}
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
@@ -1254,7 +1258,7 @@ void WndTree::AddCDDA()
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 }
 
-HTREEITEM WndTree::AddItem( const HTREEITEM parentItem, const std::wstring& label, const Playlist::Type type )
+HTREEITEM WndTree::AddItem( const HTREEITEM parentItem, const std::wstring& label, const Playlist::Type type, const bool redraw )
 {
 	HTREEITEM addedItem = nullptr;
 	if ( ( nullptr != parentItem ) && !label.empty() ) {
@@ -1270,7 +1274,7 @@ HTREEITEM WndTree::AddItem( const HTREEITEM parentItem, const std::wstring& labe
 		tvInsert.hInsertAfter = TVI_SORT;
 		tvInsert.itemex = tvItem;
 		addedItem = TreeView_InsertItem( m_hWnd, &tvInsert );
-		if ( ( nullptr != addedItem ) && isFirstChildItem ) {
+		if ( ( nullptr != addedItem ) && isFirstChildItem && redraw ) {
 			RedrawWindow( m_hWnd, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW );
 		}
 	}

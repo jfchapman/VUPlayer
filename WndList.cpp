@@ -648,6 +648,10 @@ void WndList::OnContextMenu( const POINT& position )
 			EnableMenuItem( listmenu, ID_FILE_CALCULATEREPLAYGAIN, MF_BYCOMMAND | enableReplayGain );
 
 			VUPlayer* vuplayer = VUPlayer::Get();
+
+			const UINT gracenoteEnabled = ( m_Playlist && ( Playlist::Type::CDDA == m_Playlist->GetType() ) && ( nullptr != vuplayer ) && vuplayer->IsGracenoteEnabled() ) ? MF_ENABLED : MF_DISABLED;
+			EnableMenuItem( listmenu, ID_FILE_GRACENOTE_QUERY, MF_BYCOMMAND | gracenoteEnabled );
+
 			if ( nullptr != vuplayer ) {
 				vuplayer->InsertAddToPlaylists( listmenu, false /*addPrefix*/ );
 			}

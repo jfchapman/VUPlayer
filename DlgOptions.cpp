@@ -6,10 +6,11 @@
 #include "OptionsReplaygain.h"
 
 #include "resource.h"
+#include "Utility.h"
 #include "windowsx.h"
 
-// Property page procedure
-static INT_PTR CALLBACK OptionsProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+// Property sheet procedure
+INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
 		case WM_INITDIALOG : {
@@ -21,6 +22,7 @@ static INT_PTR CALLBACK OptionsProc( HWND hwnd, UINT message, WPARAM wParam, LPA
 					options->OnInit( hwnd );
 				}
 			}
+			CentreDialog( GetParent( hwnd ) );
 			break;
 		}
 		case WM_NOTIFY : {

@@ -15,6 +15,9 @@ public:
 	virtual ~DlgOptions();
 
 private:
+	// Options dialog procedure.
+	static INT_PTR CALLBACK OptionsProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 

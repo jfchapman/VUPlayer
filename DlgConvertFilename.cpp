@@ -60,6 +60,7 @@ DlgConvertFilename::~DlgConvertFilename()
 void DlgConvertFilename::OnInitDialog( const HWND hwnd )
 {
 	m_hWnd = hwnd;
+	CentreDialog( m_hWnd );
 	std::wstring folder;
 	std::wstring filename;
 	bool extractToLibrary = false;

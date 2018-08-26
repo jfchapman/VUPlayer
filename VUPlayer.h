@@ -6,6 +6,7 @@
 
 #include "CDDAManager.h"
 #include "Database.h"
+#include "Gracenote.h"
 #include "Hotkeys.h"
 #include "Library.h"
 #include "LibraryMaintainer.h"
@@ -46,6 +47,11 @@ static const UINT MSG_LIBRARYREFRESHED = WM_APP + 78;
 // 'wParam' : unused.
 // 'lParam' : unused.
 static const UINT MSG_CDDAREFRESHED = WM_APP + 79;
+
+// Message ID for signalling that a Gracenote result has arrived.
+// 'wParam' : pointer to Gracenote::Result, to be deleted by the message handler.
+// 'lParam' : non-zero to force a dialog to be shown even for an exact match.
+static const UINT MSG_GRACENOTEQUERYRESULT = WM_APP + 80;
 
 // Main application singleton
 class VUPlayer
@@ -116,6 +122,9 @@ public:
 	// Returns the placeholder image.
 	std::shared_ptr<Gdiplus::Bitmap> GetPlaceholderImage();
 
+	// Returns the Gracenote logo, suitably resized for 'rect'.
+	HBITMAP GetGracenoteLogo( const RECT& rect );
+
 	// Returns the application settings.
 	Settings& GetApplicationSettings();
 
@@ -137,6 +146,20 @@ public:
 
 	// Called when a device change has occurred.
 	void OnDeviceChange();
+
+	// Performs a Gracenote query for the current Audio CD.
+	void OnGracenoteQuery();
+
+	// Called when a Gracenote query is received.
+	// 'result' - the query result.
+	// 'forceDialog' - whether a dialog should be shown even for an exact match.
+	void OnGracenoteResult( const Gracenote::Result& result, const bool forceDialog );
+
+	// Returns whether Gracenote library is loaded.
+	bool IsGracenoteAvailable();
+
+	// Returns whether Gracenote is enabled.
+	bool IsGracenoteEnabled();
 
 private:
 	// 'instance' - module instance handle.
@@ -187,6 +210,10 @@ private:
 	// Called when the convert tracks command is received.
 	void OnConvert();
 
+	// Loads a PNG resource and returns a bitmap.
+	// Returns null if the resource was not loaded.
+	std::shared_ptr<Gdiplus::Bitmap> LoadResourcePNG( const WORD resourceID );
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -213,6 +240,9 @@ private:
 
 	// ReplayGain calculator.
 	ReplayGain m_ReplayGain;
+
+	// Gracenote manager.
+	Gracenote m_Gracenote;
 
 	// CD audio manager.
 	CDDAManager m_CDDAManager;

@@ -78,6 +78,7 @@ DlgConvert::~DlgConvert()
 void DlgConvert::OnInitDialog( const HWND hwnd )
 {
 	m_hWnd = hwnd;
+	CentreDialog( m_hWnd );
 
 	const HWND listWnd = GetDlgItem( m_hWnd, IDC_CONVERT_TRACKLIST );
 	if ( nullptr != listWnd ) {
