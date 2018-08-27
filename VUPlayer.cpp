@@ -81,9 +81,11 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_ToolbarPlayback( m_hInst, m_Rebar.GetWindowHandle() ),
 	m_ToolbarPlaylist( m_hInst, m_Rebar.GetWindowHandle() ),
 	m_ToolbarFavourites( m_hInst, m_Rebar.GetWindowHandle() ),
+	m_ToolbarEQ( m_hInst, m_Rebar.GetWindowHandle() ),
 	m_Counter( m_hInst, m_Rebar.GetWindowHandle(), m_Settings, m_Output, m_ToolbarPlayback.GetHeight() - 1 ),
 	m_Splitter( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Tree.GetWindowHandle(), m_Visual.GetWindowHandle(), m_List.GetWindowHandle(), m_Settings ),
 	m_Tray( m_hInst, m_hWnd, m_Library, m_Settings, m_Output, m_Tree, m_List ),
+	m_EQ( m_hInst, m_Settings, m_Output ),
 	m_CurrentOutput(),
 	m_CustomColours(),
 	m_Hotkeys( m_hWnd, m_Settings ),
@@ -99,6 +101,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_Rebar.AddControl( m_ToolbarFavourites.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarOptions.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarInfo.GetWindowHandle() );
+	m_Rebar.AddControl( m_ToolbarEQ.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarCrossfade.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarFlow.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarPlayback.GetWindowHandle() );
@@ -148,6 +151,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_Status.SetPlaylist( m_List.GetPlaylist() );
 
 	OnListSelectionChanged();
+
+	m_EQ.Init( m_hWnd );
 
 	SetTimer( m_hWnd, s_TimerID, s_TimerInterval, NULL /*timerProc*/ );
 }
@@ -452,6 +457,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_ToolbarCrossfade.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarFlow.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarPlayback.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
+		m_ToolbarEQ.Update( m_EQ.IsVisible() );
 		m_Rebar.Update();
 		m_Counter.Refresh();
 		m_Status.Update( m_ReplayGain, m_Maintainer, m_Gracenote );
@@ -910,6 +916,10 @@ void VUPlayer::OnCommand( const int commandID )
 			m_VolumeControl.SetType( WndTrackbar::Type::Pitch );
 			break;
 		}
+		case ID_VIEW_EQ : {
+			m_EQ.ToggleVisibility();
+			break;
+		}
 		case ID_SHOWCOLUMNS_ARTIST :
 		case ID_SHOWCOLUMNS_ALBUM :
 		case ID_SHOWCOLUMNS_GENRE :
@@ -1107,6 +1117,8 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const WndTrackbar::Type trackbarType = m_VolumeControl.GetType();
 		CheckMenuItem( menu, ID_VIEW_TRACKBAR_VOLUME, ( ( WndTrackbar::Type::Volume == trackbarType ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_VIEW_TRACKBAR_PITCH, ( ( WndTrackbar::Type::Pitch == trackbarType ) ? MF_CHECKED : MF_UNCHECKED ) );
+
+		CheckMenuItem( menu, ID_VIEW_EQ, m_EQ.IsVisible() ? MF_CHECKED : MF_UNCHECKED );
 
 		// Control menu
 		const Output::State outputState = m_Output.GetState();
@@ -1492,12 +1504,12 @@ void VUPlayer::OnGracenoteQuery()
 
 void VUPlayer::OnGracenoteResult( const Gracenote::Result& result, const bool forceDialog )
 {
-	const int selectedResult = ( result.m_ExactMatch && !forceDialog ) ? 0 : m_Gracenote.ShowMatchesDialog( result );
-	if ( ( selectedResult >= 0 ) && ( selectedResult < static_cast<int>( result.m_Albums.size() ) ) ) {
-		const Gracenote::Album& album = result.m_Albums[ selectedResult ];
+	const int selectedResult = ( result.ExactMatch && !forceDialog ) ? 0 : m_Gracenote.ShowMatchesDialog( result );
+	if ( ( selectedResult >= 0 ) && ( selectedResult < static_cast<int>( result.Albums.size() ) ) ) {
+		const Gracenote::Album& album = result.Albums[ selectedResult ];
 		const CDDAManager::CDDAMediaMap drives = m_CDDAManager.GetCDDADrives();
 		for ( const auto& drive : drives ) {
-			if ( result.m_TOC == drive.second.GetGracenoteTOC() ) {
+			if ( result.TOC == drive.second.GetGracenoteTOC() ) {
 				const CDDAMedia& cddaMedia = drive.second;
 				const Playlist::Ptr playlist = cddaMedia.GetPlaylist();
 				if ( playlist ) {
@@ -1505,25 +1517,25 @@ void VUPlayer::OnGracenoteResult( const Gracenote::Result& result, const bool fo
 					for ( const auto& item : items ) {
 						const MediaInfo previousMediaInfo( item.Info );
 						MediaInfo mediaInfo( item.Info );
-						mediaInfo.SetAlbum( album.m_Title );
-						mediaInfo.SetArtist( album.m_Artist );
-						mediaInfo.SetGenre( album.m_Genre );
-						mediaInfo.SetYear( album.m_Year );
+						mediaInfo.SetAlbum( album.Title );
+						mediaInfo.SetArtist( album.Artist );
+						mediaInfo.SetGenre( album.Genre );
+						mediaInfo.SetYear( album.Year );
 
-						mediaInfo.SetArtworkID( m_Library.AddArtwork( album.m_Artwork ) );
+						mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
 
-						const auto trackIter = album.m_Tracks.find( mediaInfo.GetTrack() );
-						if ( album.m_Tracks.end() != trackIter ) {
+						const auto trackIter = album.Tracks.find( mediaInfo.GetTrack() );
+						if ( album.Tracks.end() != trackIter ) {
 							const Gracenote::Track& track = trackIter->second;
-							mediaInfo.SetTitle( track.m_Title );
-							if ( !track.m_Artist.empty() ) {
-								mediaInfo.SetArtist( track.m_Artist );
+							mediaInfo.SetTitle( track.Title );
+							if ( !track.Artist.empty() ) {
+								mediaInfo.SetArtist( track.Artist );
 							}
-							if ( !track.m_Genre.empty() ) {
-								mediaInfo.SetGenre( track.m_Genre );
+							if ( !track.Genre.empty() ) {
+								mediaInfo.SetGenre( track.Genre );
 							}
-							if ( 0 != track.m_Year ) {
-								mediaInfo.SetYear( track.m_Year );
+							if ( 0 != track.Year ) {
+								mediaInfo.SetYear( track.Year );
 							}
 						}
 						m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );

@@ -16,17 +16,10 @@ public:
 	// Track information.
 	struct Track
 	{
-		// Title.
-		std::wstring m_Title;
-
-		// Artist.
-		std::wstring m_Artist;
-
-		// Genre.
-		std::wstring m_Genre;
-
-		// Year.
-		long m_Year;		
+		std::wstring Title;
+		std::wstring Artist;
+		std::wstring Genre;
+		long Year;		
 	};
 
 	// Album information.
@@ -35,23 +28,13 @@ public:
 		// Maps a track number to its information
 		typedef std::map<long,Track> TrackMap;
 
-		// Track information.
-		TrackMap m_Tracks;
+		TrackMap Tracks;
 
-		// Title.
-		std::wstring m_Title;
-
-		// Artist.
-		std::wstring m_Artist;
-
-		// Genre.
-		std::wstring m_Genre;
-
-		// Year.
-		long m_Year;		
-
-		// Album artwork.
-		std::vector<BYTE> m_Artwork;
+		std::wstring Title;
+		std::wstring Artist;
+		std::wstring Genre;
+		long Year;		
+		std::vector<BYTE> Artwork;
 	};
 
 	// An array of albums.
@@ -60,14 +43,9 @@ public:
 	// Query result.
 	struct Result
 	{
-		// CD table of contents.
-		std::string m_TOC;
-
-		// Indicates whether there was an exact match.
-		bool m_ExactMatch;
-
-		// Matching albums.
-		Albums m_Albums;
+		std::string TOC;	// CD table of contents.
+		bool ExactMatch;	// Indicates whether there was an exact match.
+		Albums Albums;		// Matching albums.
 	};
 
 	// 'instance' - module instance handle.

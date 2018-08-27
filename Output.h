@@ -174,6 +174,9 @@ public:
 	// Easter egg.
 	void Bling( const int blingID );
 
+	// Updates the EQ settings.
+	void UpdateEQ( const Settings::EQ& eq );
+
 private:
 	// Output queue.
 	typedef std::vector<Item> Queue;
@@ -183,6 +186,9 @@ private:
 
 	// Maps an ID to a stream handle.
 	typedef std::map<int,HSTREAM> StreamMap;
+
+	// A list of FX.
+	typedef std::list<HFX> FXList;
 
 	// BASS stream callback.
 	static DWORD CALLBACK StreamProc( HSTREAM handle, void *buf, DWORD len, void *user );
@@ -225,7 +231,7 @@ private:
 	// Sets the crossfade 'position' for the current track, in seconds.
 	void SetCrossfadePosition( const float position );
 
-	// Applies ReplayGain to an to an output 'buffer' of 'bufferSize' in bytes, using 'item' information.
+	// Applies ReplayGain (and EQ preamp) to an to an output 'buffer' of 'bufferSize' in bytes, using 'item' information.
 	void ApplyReplayGain( float* buffer, const long bufferSize, const Playlist::Item& item );
 
 	// Gets the output queue.
@@ -252,6 +258,9 @@ private:
 	// The currently decoding stream.
 	Decoder::Ptr m_DecoderStream;
 
+	// The sample rate of the currently decoding stream.
+	std::atomic<long> m_DecoderSampleRate;
+
 	// The current BASS output stream.
 	HSTREAM m_OutputStream;
 
@@ -270,20 +279,20 @@ private:
 	// The list of output items with their start times in the output stream.
 	Queue m_OutputQueue;
 
-	// Playlist item to restart playback from, if stream playback has ended.
-	Playlist::Item m_RestartItem;
+	// Playlist item ID to restart playback from, if stream playback has ended.
+	std::atomic<long> m_RestartItemID;
 
 	// Indicates whether random play is enabled.
-	bool m_RandomPlay;
+	std::atomic<bool> m_RandomPlay;
 
 	// Indicates whether track repeat is enabled.
-	bool m_RepeatTrack;
+	std::atomic<bool> m_RepeatTrack;
 
 	// Indicates whether playlist repeat is enabled.
-	bool m_RepeatPlaylist;
+	std::atomic<bool> m_RepeatPlaylist;
 
 	// Indicates whether crossfade is enabled.
-	bool m_Crossfade;
+	std::atomic<bool> m_Crossfade;
 
 	// The currently selected playlist item (this can be different from the currently playing item).
 	Playlist::Item m_CurrentSelectedPlaylistItem;
@@ -292,31 +301,31 @@ private:
 	bool m_UsingDefaultDevice;
 
 	// ReplayGain mode.
-	Settings::ReplaygainMode m_ReplaygainMode;
+	std::atomic<Settings::ReplaygainMode> m_ReplaygainMode;
 
 	// ReplayGain preamp in dB.
-	float m_ReplaygainPreamp;
+	std::atomic<float> m_ReplaygainPreamp;
 
 	// ReplayGain hard limit flag.
-	bool m_ReplaygainHardlimit;
+	std::atomic<bool> m_ReplaygainHardlimit;
 
 	// Indicates whether to stop playback at the end of the current track.
-	bool m_StopAtTrackEnd;
+	std::atomic<bool> m_StopAtTrackEnd;
 
 	// Indicates whether the output is muted.
 	bool m_Muted;
 
 	// Indicates whether the current track is being faded out.
-	bool m_FadeOut;
+	std::atomic<bool> m_FadeOut;
 
 	// Indicates whether we are fading into the next track.
-	bool m_FadeToNext;
+	std::atomic<bool> m_FadeToNext;
 
 	// Indicates whether to switch to the next track when we are fading out.
-	bool m_SwitchToNext;
+	std::atomic<bool> m_SwitchToNext;
 
 	// Position in the output stream when fade out was started, in seconds.
-	float m_FadeOutStartPosition;
+	std::atomic<float> m_FadeOutStartPosition;
 
 	// Position of the last transition in the output stream, in seconds.
 	float m_LastTransitionPosition;
@@ -336,6 +345,9 @@ private:
 	// The decoding stream that is being faded out during a crossfade.
 	Decoder::Ptr m_CrossfadingStream;
 
+	// Crossfading stream mutex.
+	std::mutex m_CrossfadingStreamMutex;
+
 	// The item that is being faded out during a crossfade.
 	Playlist::Item m_CurrentItemCrossfading;
 
@@ -347,4 +359,16 @@ private:
 
 	// Bling map.
 	StreamMap m_BlingMap;
+
+	// Current EQ settings.
+	Settings::EQ m_CurrentEQ;
+
+	// EQ FX handles.
+	FXList m_FX;
+
+	// Indicates whether EQ is enabled.
+	std::atomic<bool> m_EQEnabled;
+
+	// EQ preamp in dB.
+	std::atomic<float> m_EQPreamp;
 };

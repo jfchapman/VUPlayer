@@ -204,7 +204,7 @@ void Gracenote::QueryHandler()
 
 		if ( !toc.empty() ) {
 			Result* result = new Result();
-			result->m_TOC = toc;
+			result->TOC = toc;
 
 			if ( nullptr != m_Handle ) {
 				std::string userID;
@@ -228,9 +228,9 @@ void Gracenote::QueryHandler()
 
 						const gn_result* queryResult = m_Query( m_UserID.c_str(), toc.c_str() );
 						if ( nullptr != queryResult ) {
-							result->m_ExactMatch = queryResult->exact_match;
+							result->ExactMatch = queryResult->exact_match;
 							const size_t albumCount = queryResult->album_count;
-							result->m_Albums.reserve( albumCount );
+							result->Albums.reserve( albumCount );
 							for ( size_t albumIndex = 0; albumIndex < albumCount; albumIndex++ ) {
 								const gn_album* albumResult = queryResult->albums + albumIndex;
 								if ( nullptr != albumResult ) {
@@ -238,17 +238,17 @@ void Gracenote::QueryHandler()
 
 									// Copy across album information.
 									if ( nullptr != albumResult->artwork_data ) {
-										album.m_Artwork.resize( albumResult->artwork_data_size );
-										std::copy( albumResult->artwork_data, albumResult->artwork_data + albumResult->artwork_data_size, album.m_Artwork.begin() );
+										album.Artwork.resize( albumResult->artwork_data_size );
+										std::copy( albumResult->artwork_data, albumResult->artwork_data + albumResult->artwork_data_size, album.Artwork.begin() );
 									}
 									const gn_track& albumInfo = albumResult->tracks[ 0 ];
-									album.m_Title = ( nullptr != albumInfo.title ) ? UTF8ToWideString( albumInfo.title ) : std::wstring();
-									album.m_Artist = ( nullptr != albumInfo.artist ) ? UTF8ToWideString( albumInfo.artist ) : std::wstring();
-									album.m_Genre = ( nullptr != albumInfo.genre ) ? UTF8ToWideString( albumInfo.genre ) : std::wstring();
-									album.m_Year = 0;
+									album.Title = ( nullptr != albumInfo.title ) ? UTF8ToWideString( albumInfo.title ) : std::wstring();
+									album.Artist = ( nullptr != albumInfo.artist ) ? UTF8ToWideString( albumInfo.artist ) : std::wstring();
+									album.Genre = ( nullptr != albumInfo.genre ) ? UTF8ToWideString( albumInfo.genre ) : std::wstring();
+									album.Year = 0;
 									if ( nullptr != albumInfo.year ) {
 										try {
-											album.m_Year = std::stol( albumInfo.year );
+											album.Year = std::stol( albumInfo.year );
 										} catch ( ... ) {
 										}
 									}
@@ -262,21 +262,21 @@ void Gracenote::QueryHandler()
 										const char* year = trackInfo.year;
 										if ( ( nullptr != title ) || ( nullptr != artist ) || ( nullptr != genre ) || ( nullptr != year ) ) {
 											Track track;
-											track.m_Title = ( nullptr != title ) ? UTF8ToWideString( title ) : std::wstring();
-											track.m_Artist = ( nullptr != artist ) ? UTF8ToWideString( artist ) : std::wstring();
-											track.m_Genre = ( nullptr != genre ) ? UTF8ToWideString( genre ) : std::wstring();
-											track.m_Year = 0;
+											track.Title = ( nullptr != title ) ? UTF8ToWideString( title ) : std::wstring();
+											track.Artist = ( nullptr != artist ) ? UTF8ToWideString( artist ) : std::wstring();
+											track.Genre = ( nullptr != genre ) ? UTF8ToWideString( genre ) : std::wstring();
+											track.Year = 0;
 											if ( nullptr != year ) {
 												try {
-													track.m_Year = std::stol( year );
+													track.Year = std::stol( year );
 												} catch ( ... ) {
 												}
 											}
-											album.m_Tracks.insert( Album::TrackMap::value_type( static_cast<long>( trackIndex ), track ) );
+											album.Tracks.insert( Album::TrackMap::value_type( static_cast<long>( trackIndex ), track ) );
 										}
 									}
 
-									result->m_Albums.push_back( album );
+									result->Albums.push_back( album );
 								}
 							}
 							m_FreeResult( queryResult );
@@ -286,7 +286,7 @@ void Gracenote::QueryHandler()
 				}
 			}
 
-			if ( result->m_Albums.empty() ) {
+			if ( result->Albums.empty() ) {
 				delete result;
 				result = nullptr;
 			} else {
@@ -352,13 +352,13 @@ void Gracenote::OnInitMatchDialog( const HWND hwnd, const Result& result )
 		ImageIndexMap imageIndexMap;
 
 		int albumIndex = 0;
-		for ( const auto& album : result.m_Albums ) {
+		for ( const auto& album : result.Albums ) {
 			std::shared_ptr<Gdiplus::Bitmap> artwork;
 
-			if ( !album.m_Artwork.empty() ) {
+			if ( !album.Artwork.empty() ) {
 				IStream* stream = nullptr;
 				if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
-					if ( SUCCEEDED( stream->Write( &album.m_Artwork[ 0 ], static_cast<ULONG>( album.m_Artwork.size() ), NULL /*bytesWritten*/ ) ) ) {
+					if ( SUCCEEDED( stream->Write( &album.Artwork[ 0 ], static_cast<ULONG>( album.Artwork.size() ), NULL /*bytesWritten*/ ) ) ) {
 						try {
 							artwork = std::shared_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap( stream ) );
 						} catch ( ... ) {
@@ -392,7 +392,7 @@ void Gracenote::OnInitMatchDialog( const HWND hwnd, const Result& result )
 		item.mask = LVIF_IMAGE | LVIF_TEXT;
 		item.iItem = 0;
 		item.iImage = 0;
-		for ( const auto& album : result.m_Albums ) {
+		for ( const auto& album : result.Albums ) {
 			const auto imageIter = imageIndexMap.find( item.iItem );
 			if ( imageIndexMap.end() != imageIter ) {
 				item.iImage = imageIter->second;
@@ -400,7 +400,7 @@ void Gracenote::OnInitMatchDialog( const HWND hwnd, const Result& result )
 			} else {
 				item.mask = LVIF_TEXT;
 			}
-			item.pszText = const_cast<LPWSTR>( album.m_Title.c_str() );
+			item.pszText = const_cast<LPWSTR>( album.Title.c_str() );
 			ListView_InsertItem( hwndList, &item );
 			item.iItem++;
 		}

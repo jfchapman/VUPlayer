@@ -509,10 +509,7 @@ void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const s
 std::wstring GainToWideString( const float gain )
 {
 	std::wstringstream ss;
-	if ( gain > 0 ) {
-		ss << L"+";
-	}
-	ss << std::fixed << std::setprecision( 2 ) << gain << L" dB";
+	ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain << L" dB";
 	return ss.str();
 }
 

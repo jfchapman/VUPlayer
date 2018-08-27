@@ -58,6 +58,40 @@ public:
 		Large
 	};
 
+	// EQ settings.
+	struct EQ {
+		// Maps a centre frequency, in Hz, to a gain value.
+		typedef std::map<int,float> GainMap;
+
+		// Indicates that the EQ window is centred.
+		static const int Centred = INT_MIN;
+
+		// Maximum gain in dB.
+		static const int MaxGain = 9;
+
+		// Minimum gain in dB.
+		static const int MinGain = -9;
+
+		EQ() :
+			Visible( true ),
+			X( Centred ),
+			Y( Centred ),
+			Enabled( false ),
+			Preamp( 0 ),
+			Gains( { { 80, 0.f }, { 140, 0.f }, { 250, 0.f }, { 500, 0.f }, { 1000, 0.f }, { 2000, 0.f }, { 4000, 0.f }, { 8000, 0.f }, { 14000, 0.f } } ),
+			Bandwidth( 12 )
+		{
+		}
+
+		bool Visible;						// Indicates whether the EQ window is shown.
+		int X;									// EQ window X position.
+		int Y;									// EQ window Y position.
+		bool Enabled;						// Indicates whether EQ is enabled.
+		float Preamp;						// Preamp in the range -15 to +15dB.
+		GainMap Gains;					// Gains in the range -15 to +15dB.
+		float Bandwidth;				// Bandwidth in semitones.
+	};
+
 	// A list of playlist columns.
 	typedef std::list<PlaylistColumn> PlaylistColumns;
 
@@ -349,6 +383,12 @@ public:
 	// 'enable' - whether to enable Gracenote functionality.
 	// 'enableLog' - whether to enable logging of Gracenote functionality.
 	void SetGracenoteSettings( const std::string& userID, const bool enable, const bool enableLog );
+
+	// Gets EQ settings.
+	EQ GetEQSettings();
+
+	// Sets EQ settings.
+	void SetEQSettings( const EQ& eq );
 
 private:
 	// Updates the database to the current version if necessary.

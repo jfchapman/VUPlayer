@@ -14,12 +14,15 @@
 #include "ReplayGain.h"
 #include "Settings.h"
 
+#include "DlgEQ.h"
+
 #include "WndCounter.h"
 #include "WndList.h"
 #include "WndRebar.h"
 #include "WndSplit.h"
 #include "WndStatus.h"
 #include "WndToolbarCrossfade.h"
+#include "WndToolbarEQ.h"
 #include "WndToolbarFavourites.h"
 #include "WndToolbarFile.h"
 #include "WndToolbarFlow.h"
@@ -292,6 +295,9 @@ private:
 	// Toolbar (favourites).
 	WndToolbarFavourites m_ToolbarFavourites;
 
+	// Toolbar (EQ).
+	WndToolbarEQ m_ToolbarEQ;
+
 	// Counter control.
 	WndCounter m_Counter;
 
@@ -300,6 +306,9 @@ private:
 
 	// Notification area control.
 	WndTray m_Tray;
+
+	// EQ dialog.
+	DlgEQ m_EQ;
 
 	// The current output item.
 	Output::Item m_CurrentOutput;

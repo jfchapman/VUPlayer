@@ -198,8 +198,8 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	const int height = 400;
 	LPVOID param = NULL;
 	m_hWnd = CreateWindowEx( exStyle, className, windowName, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndListID++ ), instance, param );
-	ListView_SetExtendedListViewStyle( m_hWnd, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_HEADERDRAGDROP | LVS_EX_DOUBLEBUFFER );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
+	ListView_SetExtendedListViewStyle( m_hWnd, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_HEADERDRAGDROP | LVS_EX_DOUBLEBUFFER );
 	SetWindowLongPtr( ListView_GetHeader( m_hWnd ), GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( WndListProc ) ) );
 
@@ -525,10 +525,7 @@ void WndList::SetListViewItemText( int itemIndex, const MediaInfo& mediaInfo )
 					const int bufSize = 16;
 					WCHAR buf[ bufSize ] = {};
 					if ( 0 != LoadString( m_hInst, IDS_UNITS_DB, buf, bufSize ) ) {
-						if ( gain > 0 ) {
-							ss << L"+";
-						}
-						ss << std::fixed << std::setprecision( 2 ) << gain << L" " << buf;
+						ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain << L" " << buf;
 					}
 				}
 				const std::wstring str = ss.str();
@@ -810,7 +807,7 @@ void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelectio
 		m_Playlist = playlist;
 	}
 	if ( m_Playlist ) {
-		const Playlist::ItemList& playlistItems = m_Playlist->GetItems();
+		const Playlist::ItemList playlistItems = m_Playlist->GetItems();
 		for ( const auto& iter : playlistItems ) {
 			InsertListViewItem( iter );
 		}

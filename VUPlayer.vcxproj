@@ -230,6 +230,7 @@ copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)g
     <ClInclude Include="DecoderWavpack.h" />
     <ClInclude Include="DlgConvert.h" />
     <ClInclude Include="DlgConvertFilename.h" />
+    <ClInclude Include="DlgEQ.h" />
     <ClInclude Include="DlgHotkey.h" />
     <ClInclude Include="DlgOptions.h" />
     <ClInclude Include="DlgTrackInfo.h" />
@@ -284,6 +285,7 @@ copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)g
     <ClInclude Include="WndStatus.h" />
     <ClInclude Include="WndToolbar.h" />
     <ClInclude Include="WndToolbarCrossfade.h" />
+    <ClInclude Include="WndToolbarEQ.h" />
     <ClInclude Include="WndToolbarFavourites.h" />
     <ClInclude Include="WndToolbarFile.h" />
     <ClInclude Include="WndToolbarFlow.h" />
@@ -315,6 +317,7 @@ copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)g
     <ClCompile Include="DecoderWavpack.cpp" />
     <ClCompile Include="DlgConvert.cpp" />
     <ClCompile Include="DlgConvertFilename.cpp" />
+    <ClCompile Include="DlgEQ.cpp" />
     <ClCompile Include="DlgHotkey.cpp" />
     <ClCompile Include="DlgOptions.cpp" />
     <ClCompile Include="DlgTrackInfo.cpp" />
@@ -377,6 +380,7 @@ copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)g
     <ClCompile Include="WndStatus.cpp" />
     <ClCompile Include="WndToolbar.cpp" />
     <ClCompile Include="WndToolbarCrossfade.cpp" />
+    <ClCompile Include="WndToolbarEQ.cpp" />
     <ClCompile Include="WndToolbarFavourites.cpp" />
     <ClCompile Include="WndToolbarFile.cpp" />
     <ClCompile Include="WndToolbarFlow.cpp" />
@@ -406,6 +410,7 @@ copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)g
     <Image Include="res\artist.ico" />
     <Image Include="res\artists.ico" />
     <Image Include="res\crossfade.ico" />
+    <Image Include="res\eq.ico" />
     <Image Include="res\favourites.ico" />
     <Image Include="res\genre.ico" />
     <Image Include="res\gracenote.png" />

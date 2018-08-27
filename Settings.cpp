@@ -1917,3 +1917,126 @@ void Settings::SetGracenoteSettings( const std::string& userID, const bool enabl
 		}
 	}
 }
+
+Settings::EQ Settings::GetEQSettings()
+{
+	EQ eq;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		std::string query = "SELECT Value FROM Settings WHERE Setting='EQVisible';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				eq.Visible = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				sqlite3_finalize( stmt );
+			}
+		}
+
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='EQX';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				eq.X = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+				sqlite3_finalize( stmt );
+			}
+		}
+
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='EQY';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				eq.Y = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+				sqlite3_finalize( stmt );
+			}
+		}
+
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='EQEnable';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				eq.Enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				sqlite3_finalize( stmt );
+			}
+		}
+
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='EQPreamp';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				float preamp = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
+				if ( preamp < EQ::MinGain ) {
+					preamp = EQ::MinGain;
+				} else if ( preamp > EQ::MaxGain ) {
+					preamp = EQ::MaxGain;
+				}
+				eq.Preamp = preamp;
+				sqlite3_finalize( stmt );
+			}
+		}
+
+		for ( auto& gainIter : eq.Gains ) {
+			stmt = nullptr;
+			query = "SELECT Value FROM Settings WHERE Setting='EQ" + std::to_string( gainIter.first ) + "';";
+			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+				if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+					float gain = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
+					if ( gain < EQ::MinGain ) {
+						gain = EQ::MinGain;
+					} else if ( gain > EQ::MaxGain ) {
+						gain = EQ::MaxGain;
+					}
+					gainIter.second = gain;
+					sqlite3_finalize( stmt );
+				}
+			}
+		}
+	}
+	return eq;
+}
+
+void Settings::SetEQSettings( const EQ& eq )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "EQVisible", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, eq.Visible );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "EQX", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, eq.X );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "EQY", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, eq.Y );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "EQEnable", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, eq.Enabled );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "EQPreamp", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_double( stmt, 2, eq.Preamp );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			for ( auto& gainIter : eq.Gains ) {
+				const std::string setting = "EQ" + std::to_string( gainIter.first );
+				const float gain = gainIter.second;
+				sqlite3_bind_text( stmt, 1, setting.c_str(), -1 /*strLen*/, SQLITE_STATIC );
+				sqlite3_bind_double( stmt, 2, gain );
+				sqlite3_step( stmt );
+				sqlite3_reset( stmt );
+			}
+
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+}

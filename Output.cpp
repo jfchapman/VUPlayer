@@ -68,13 +68,14 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_Playlist(),
 	m_CurrentItemDecoding( {} ),
 	m_DecoderStream(),
+	m_DecoderSampleRate( 0 ),
 	m_OutputStream( 0 ),
 	m_PlaylistMutex(),
 	m_QueueMutex(),
 	m_Volume( 1.0f ),
 	m_Pitch( 1.0f ),
 	m_OutputQueue(),
-	m_RestartItem( {} ),
+	m_RestartItemID( 0 ),
 	m_RandomPlay( false ),
 	m_RepeatTrack( false ),
 	m_RepeatPlaylist( false ),
@@ -96,16 +97,37 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_CrossfadeThread( nullptr ),
 	m_CrossfadeStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
 	m_CrossfadingStream(),
+	m_CrossfadingStreamMutex(),
 	m_CurrentItemCrossfading( {} ),
 	m_CrossfadeSeekOffset( 0 ),
 	m_ReplayGainEstimateMap(),
-	m_BlingMap()
+	m_BlingMap(),
+	m_CurrentEQ( m_Settings.GetEQSettings() ),
+	m_FX(),
+	m_EQEnabled( m_CurrentEQ.Enabled ),
+	m_EQPreamp( m_CurrentEQ.Preamp )
 {
 	InitialiseBass();
 	SetVolume( initialVolume );
 	SetPitch( m_Pitch );
-	m_Settings.GetReplaygainSettings( m_ReplaygainMode, m_ReplaygainPreamp, m_ReplaygainHardlimit );
-	m_Settings.GetPlaybackSettings( m_RandomPlay, m_RepeatTrack, m_RepeatPlaylist, m_Crossfade );
+
+	Settings::ReplaygainMode replaygainMode = Settings::ReplaygainMode::Disabled;
+	float replaygainPreamp = 0;
+	bool replaygainHardlimit = false;
+	m_Settings.GetReplaygainSettings( replaygainMode, replaygainPreamp, replaygainHardlimit );
+	m_ReplaygainMode = replaygainMode;
+	m_ReplaygainPreamp = replaygainPreamp;
+	m_ReplaygainHardlimit = replaygainHardlimit;
+
+	bool randomPlay = false;
+	bool repeatTrack = false;
+	bool repeatPlaylist = false;
+	bool crossfade = false;
+	m_Settings.GetPlaybackSettings( randomPlay, repeatTrack, repeatPlaylist, crossfade );
+	m_RandomPlay = randomPlay;
+	m_RepeatTrack = repeatTrack;
+	m_RepeatPlaylist = repeatPlaylist;
+	m_Crossfade = crossfade;
 }
 
 Output::~Output()
@@ -126,7 +148,8 @@ bool Output::Play( const long playlistID, const float seek )
 		m_DecoderStream = m_Handlers.OpenDecoder( filename );
 		if ( m_DecoderStream ) {
 			EstimateReplayGain( item );
-			const DWORD freq = static_cast<DWORD>( m_DecoderStream->GetSampleRate() );
+			m_DecoderSampleRate = m_DecoderStream->GetSampleRate();
+			const DWORD freq = static_cast<DWORD>( m_DecoderSampleRate );
 			const DWORD channels = static_cast<DWORD>( m_DecoderStream->GetChannels() );
 			const DWORD flags = BASS_SAMPLE_FLOAT;
 			float seekPosition = seek;
@@ -148,6 +171,7 @@ bool Output::Play( const long playlistID, const float seek )
 				if ( 1.0f != m_Pitch ) {
 					BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_FREQ, freq * m_Pitch );
 				}
+				UpdateEQ( m_CurrentEQ );
 				if ( TRUE == BASS_ChannelPlay( m_OutputStream, TRUE /*restart*/ ) ) {
 					Queue queue = GetOutputQueue();
 					queue.push_back( { item, 0, seekPosition } );
@@ -168,11 +192,13 @@ void Output::Stop()
 	BASS_ChannelStop( m_OutputStream );
 	BASS_StreamFree( m_OutputStream );
 	m_OutputStream = 0;
+	m_FX.clear();
+	m_DecoderSampleRate = 0;
 	m_DecoderStream.reset();
 	m_CrossfadingStream.reset();
 	m_CurrentItemDecoding = {};
 	m_CurrentItemCrossfading = {};
-	m_RestartItem = {};
+	m_RestartItemID = 0;
 	SetOutputQueue( Queue() );
 	m_FadeOut = false;
 	m_FadeToNext = false;
@@ -325,6 +351,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 								if ( samplesToRead <= 0 ) {
 									samplesToRead = 0;
 									// Hold on the the decoder, and indicate its fade out position.
+									std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 									m_CrossfadingStream = m_DecoderStream;
 									m_CurrentItemCrossfading = m_CurrentItemDecoding;
 								}
@@ -335,6 +362,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 			} else if ( GetFadeToNext() && m_SwitchToNext ) {
 				ToggleFadeToNext();
 				samplesToRead = 0;
+				std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 				m_CrossfadingStream = m_DecoderStream;
 				m_CurrentItemCrossfading = m_CurrentItemDecoding;
 				m_CurrentItemCrossfading.ID = s_ItemIsFadingToNext;
@@ -393,9 +421,10 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 
 			if ( ( 0 == bytesRead ) && ( nextItem.ID > 0 ) && !GetFadeOut() ) {
 				// Signal that playback should be restarted from the next playlist item.
-				m_RestartItem = nextItem;
+				m_RestartItemID = nextItem.ID;
 				BASS_ChannelSetSync( handle, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncProc, this );
 
+				std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 				if ( m_CrossfadingStream ) {
 					m_CrossfadingStream.reset();
 					m_CurrentItemCrossfading = {};
@@ -407,6 +436,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 	if ( 0 != bytesRead ) {
 		ApplyReplayGain( buffer, static_cast<long>( bytesRead ), m_CurrentItemDecoding );
 
+		std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 		if ( m_CrossfadingStream ) {
 			// Decode and fade out the crossfading stream and mix with the final output buffer.
 			const long channels = m_CurrentItemCrossfading.Info.GetChannels();
@@ -540,9 +570,9 @@ void Output::SetPitch( const float pitch )
 	}
 	if ( pitchValue != m_Pitch ) {
 		m_Pitch = pitchValue;
-		if ( m_DecoderStream && ( 0 != m_OutputStream ) ) {
-			const float freq = static_cast<float>( m_DecoderStream->GetSampleRate() );
-			BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_FREQ, freq * m_Pitch );
+		const long sampleRate = m_DecoderSampleRate;
+		if ( ( 0 != sampleRate ) && ( 0 != m_OutputStream ) ) {
+			BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_FREQ, sampleRate * m_Pitch );
 		}
 	}
 }
@@ -584,12 +614,12 @@ void Output::GetFFTData( std::vector<float>& fft )
 
 void Output::RestartPlayback()
 {
-	if ( m_RestartItem.ID > 0 ) {
+	if ( m_RestartItemID > 0 ) {
 		if ( GetStopAtTrackEnd() ) {
 			ToggleStopAtTrackEnd();
-			m_RestartItem = {};
+			m_RestartItemID = 0;
 		} else {
-			PostMessage( m_Parent, MSG_RESTARTPLAYBACK, m_RestartItem.ID, NULL /*lParam*/ );
+			PostMessage( m_Parent, MSG_RESTARTPLAYBACK, m_RestartItemID, NULL /*lParam*/ );
 		}
 	}
 }
@@ -934,6 +964,7 @@ void Output::ToggleFadeToNext()
 		m_FadeOutStartPosition = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytePos ) );
 	} else {
 		m_SwitchToNext = false;
+		std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 		if ( m_CrossfadingStream ) {
 			m_CrossfadingStream.reset();
 			m_CurrentItemCrossfading = {};
@@ -948,22 +979,31 @@ bool Output::GetFadeToNext() const
 
 void Output::ApplyReplayGain( float* buffer, const long bufferSize, const Playlist::Item& item )
 {
-	if ( ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) && ( 0 != bufferSize ) ) {
-		float gain = item.Info.GetGainAlbum();
-		if ( ( REPLAYGAIN_NOVALUE == gain ) || ( Settings::ReplaygainMode::Track == m_ReplaygainMode ) ) {
-			gain = item.Info.GetGainTrack();
-		}
-		if ( REPLAYGAIN_NOVALUE != gain ) {
-			if ( gain < s_ReplayGainMin ) {
-				gain = s_ReplayGainMin;
-			} else if ( gain > s_ReplayGainMax ) {
-				gain = s_ReplayGainMax;
+	const bool eqEnabled = m_EQEnabled;
+	if ( ( 0 != bufferSize ) && ( ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) || eqEnabled ) ) {
+		float preamp = eqEnabled ? m_EQPreamp.load() : 0;
+
+		if ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) {
+			float gain = item.Info.GetGainAlbum();
+			if ( ( REPLAYGAIN_NOVALUE == gain ) || ( Settings::ReplaygainMode::Track == m_ReplaygainMode ) ) {
+				gain = item.Info.GetGainTrack();
 			}
-			const float scale = powf( 10.0f, m_ReplaygainPreamp / 20.0f ) * powf( 10.0f, gain / 20.0f );
+			if ( REPLAYGAIN_NOVALUE != gain ) {
+				if ( gain < s_ReplayGainMin ) {
+					gain = s_ReplayGainMin;
+				} else if ( gain > s_ReplayGainMax ) {
+					gain = s_ReplayGainMax;
+				}
+				preamp += gain;
+			}
+		}
+
+		if ( 0 != preamp ) {
+			const float scale = powf( 10.0f, preamp / 20.0f );
 			const long sampleCount = bufferSize / 4;
 			for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
 				buffer[ sampleIndex ] *= scale;
-				if ( m_ReplaygainHardlimit ) {
+				if ( m_ReplaygainHardlimit && !eqEnabled ) {
 					if ( buffer[ sampleIndex ] < -1.0f ) {
 						buffer[ sampleIndex ] = -1.0f;
 					} else if ( buffer[ sampleIndex ] > 1.0f ) {
@@ -1034,5 +1074,61 @@ void Output::Bling( const int blingID )
 	}
 	if ( m_BlingMap.end() != blingIter ) {
 		BASS_ChannelPlay( blingIter->second, TRUE /*restart*/ );
+	}
+}
+
+void Output::UpdateEQ( const Settings::EQ& eq )
+{
+	m_EQEnabled = eq.Enabled;
+	m_EQPreamp = eq.Preamp;
+
+	m_CurrentEQ = eq;
+	if ( 0 != m_OutputStream ) {
+		if ( eq.Enabled ) {	
+			if ( m_FX.empty() ) {
+				// Add FX to current output stream.
+				BASS_DX8_PARAMEQ params = {};
+				params.fBandwidth = eq.Bandwidth;
+				for ( const auto& setting : eq.Gains ) {
+					const int freq = setting.first;
+					const HFX fx = BASS_ChannelSetFX( m_OutputStream, BASS_FX_DX8_PARAMEQ, 100 /*priority*/ );
+					if ( 0 != fx ) {
+						params.fCenter = static_cast<float>( freq );
+						params.fGain = setting.second;
+						BASS_FXSetParameters( fx, &params );
+
+						BASS_FXGetParameters( fx, &params );
+						if ( static_cast<int>( params.fCenter ) != freq ) {
+							// The centre frequency was too high for the stream, so remove the FX.
+							BASS_ChannelRemoveFX( m_OutputStream, fx );
+						} else {
+							m_FX.push_back( fx );
+						}
+					}
+				}
+			} else {
+				// Modify FX on the current output stream.
+				for ( const auto& fx : m_FX ) {
+					BASS_DX8_PARAMEQ params = {};
+					if ( BASS_FXGetParameters( fx, &params ) ) {
+						const int freq = static_cast<int>( params.fCenter );
+						const auto setting = eq.Gains.find( freq );
+						if ( eq.Gains.end() != setting ) {
+							const float gain = setting->second;
+							if ( gain != params.fGain ) {
+								params.fGain = gain;
+								BASS_FXSetParameters( fx, &params );
+							}
+						}
+					}
+				}
+			}
+		} else {
+			// Disable EQ.
+			for ( const auto& fx : m_FX ) {
+				BASS_ChannelRemoveFX( m_OutputStream, fx );
+			}
+			m_FX.clear();
+		}
 	}
 }
