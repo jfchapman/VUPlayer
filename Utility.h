@@ -102,3 +102,12 @@ std::wstring PeakToWideString( const float peak );
 
 // Centres a 'dialog' with respect to its parent window, or the desktop window if the parent is not visible.
 void CentreDialog( const HWND dialog );
+
+// Converts a floating point sample 'value' to 24-bit (clamping any value outside the range -1.0 to +1.0).
+int FloatTo24( const float value );
+
+// Converts a floating point sample 'value' to 16-bit (clamping any value outside the range -1.0 to +1.0).
+short FloatTo16( const float value );
+
+// Converts a floating point sample 'value' to 8-bit (clamping any value outside the range -1.0 to +1.0).
+char FloatTo8( const float value );

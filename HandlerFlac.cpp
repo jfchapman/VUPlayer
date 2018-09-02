@@ -1,6 +1,7 @@
 #include "HandlerFlac.h"
 
 #include "DecoderFlac.h"
+#include "EncoderFlac.h"
 
 #include "Utility.h"
 
@@ -18,7 +19,7 @@ HandlerFlac::~HandlerFlac()
 
 std::wstring HandlerFlac::GetDescription() const
 {
-	const std::wstring description = L"FLAC " + UTF8ToWideString( FLAC__VERSION_STRING );
+	const std::wstring description = L"Free Lossless Audio Codec " + UTF8ToWideString( FLAC__VERSION_STRING );
 	return description;
 }
 
@@ -332,4 +333,30 @@ Decoder::Ptr HandlerFlac::OpenDecoder( const std::wstring& filename ) const
 	}
 	const Decoder::Ptr stream( streamFlac );
 	return stream;
+}
+
+Encoder::Ptr HandlerFlac::OpenEncoder() const
+{
+	Encoder::Ptr encoder( new EncoderFlac() );
+	return encoder;
+}
+
+bool HandlerFlac::IsDecoder() const
+{
+	return true;
+}
+
+bool HandlerFlac::IsEncoder() const
+{
+	return true;
+}
+
+bool HandlerFlac::CanConfigureEncoder() const
+{
+	return false;
+}
+
+bool HandlerFlac::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*parent*/, std::string& /*settings*/ ) const
+{
+	return false;
 }

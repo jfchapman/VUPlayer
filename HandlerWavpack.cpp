@@ -149,3 +149,28 @@ Decoder::Ptr HandlerWavpack::OpenDecoder( const std::wstring& filename ) const
 	const Decoder::Ptr stream( decoderWavpack );
 	return stream;
 }
+
+Encoder::Ptr HandlerWavpack::OpenEncoder() const
+{
+	return nullptr;
+}
+
+bool HandlerWavpack::IsDecoder() const
+{
+	return true;
+}
+
+bool HandlerWavpack::IsEncoder() const
+{
+	return false;
+}
+
+bool HandlerWavpack::CanConfigureEncoder() const
+{
+	return false;
+}
+
+bool HandlerWavpack::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*parent*/, std::string& /*settings*/ ) const
+{
+	return false;
+}

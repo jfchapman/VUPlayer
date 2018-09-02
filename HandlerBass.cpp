@@ -99,6 +99,31 @@ Decoder::Ptr HandlerBass::OpenDecoder( const std::wstring& filename ) const
 	return stream;
 }
 
+Encoder::Ptr HandlerBass::OpenEncoder() const
+{
+	return nullptr;
+}
+
+bool HandlerBass::IsDecoder() const
+{
+	return true;
+}
+
+bool HandlerBass::IsEncoder() const
+{
+	return false;
+}
+
+bool HandlerBass::CanConfigureEncoder() const
+{
+	return false;
+}
+
+bool HandlerBass::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*parent*/, std::string& /*settings*/ ) const
+{
+	return false;
+}
+
 void HandlerBass::ReadOggTags( const char* oggTags, Tags& tags ) const
 {
 	if ( nullptr != oggTags ) {

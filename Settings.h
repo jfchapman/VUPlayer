@@ -366,10 +366,10 @@ public:
 	// Sets the output control type (volume, pitch, etc).
 	void SetOutputControlType( const int type );
 
-	// Returns the extract tracks settings.
+	// Returns the track conversion/extraction settings.
 	void GetExtractSettings( std::wstring& folder, std::wstring& filename, bool& addToLibrary );
 
-	// Sets the extract tracks settings.
+	// Sets the track conversion/extraction settings.
 	void SetExtractSettings( const std::wstring& folder, const std::wstring& filename, const bool addToLibrary );
 
 	// Gets Gracenote settings.
@@ -389,6 +389,18 @@ public:
 
 	// Sets EQ settings.
 	void SetEQSettings( const EQ& eq );
+
+	// Gets the name of the encoder to use for conversion.
+	std::wstring GetEncoder();
+
+	// Sets the name of the 'encoder' to use for conversion.
+	void SetEncoder( const std::wstring& encoder );
+
+	// Gets the settings for the 'encoder' name.
+	std::string GetEncoderSettings( const std::wstring& encoder );
+
+	// Sets the 'settings' for the 'encoder' name.
+	void SetEncoderSettings( const std::wstring& encoder, const std::string& settings );
 
 private:
 	// Updates the database to the current version if necessary.

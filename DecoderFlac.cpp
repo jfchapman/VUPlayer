@@ -70,8 +70,18 @@ float DecoderFlac::Seek( const float position )
 
 FLAC__StreamDecoderReadStatus DecoderFlac::read_callback( FLAC__byte buf[], size_t * size )
 {
-	m_FileStream.read( reinterpret_cast<char*>( buf ), *size );
-	return FLAC__STREAM_DECODER_READ_STATUS_CONTINUE;
+	FLAC__StreamDecoderReadStatus status = FLAC__STREAM_DECODER_READ_STATUS_ABORT;
+	if ( m_FileStream.eof() ) {
+		*size = 0;
+		status = FLAC__STREAM_DECODER_READ_STATUS_END_OF_STREAM;
+	} else {
+		m_FileStream.read( reinterpret_cast<char*>( buf ), *size );
+		*size = static_cast<size_t>( m_FileStream.gcount() );
+		if ( *size > 0 ) {
+			status = FLAC__STREAM_DECODER_READ_STATUS_CONTINUE;
+		}
+	}
+	return status;
 }
 
 FLAC__StreamDecoderSeekStatus DecoderFlac::seek_callback( FLAC__uint64 pos )
@@ -106,7 +116,8 @@ FLAC__StreamDecoderLengthStatus DecoderFlac::length_callback( FLAC__uint64 * pos
 
 bool DecoderFlac::eof_callback()
 {
-	return m_FileStream.eof();
+	const bool eof = m_FileStream.eof();
+	return eof;
 }
 
 FLAC__StreamDecoderWriteStatus DecoderFlac::write_callback( const FLAC__Frame * frame, const FLAC__int32 *const buffer[] )
@@ -116,14 +127,14 @@ FLAC__StreamDecoderWriteStatus DecoderFlac::write_callback( const FLAC__Frame * 
 	return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
 }
 
-void DecoderFlac::metadata_callback( const FLAC__StreamMetadata * metadata)
+void DecoderFlac::metadata_callback( const FLAC__StreamMetadata * metadata )
 {
 	if ( metadata->type == FLAC__METADATA_TYPE_STREAMINFO ) {
 		SetBPS( metadata->data.stream_info.bits_per_sample );
 		SetChannels( metadata->data.stream_info.channels );
 		SetSampleRate( metadata->data.stream_info.sample_rate );
 		if ( GetSampleRate() > 0 ) {
-			SetDuration( static_cast<float>( metadata->data.stream_info.total_samples ) / ( GetSampleRate() ) );
+			SetDuration( static_cast<float>( metadata->data.stream_info.total_samples ) / GetSampleRate() );
 		}
 		m_Valid = true;
 	}

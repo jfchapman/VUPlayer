@@ -23,7 +23,7 @@ public:
 	// Writes 'tags' to 'filename', returning true if the tags were written.
 	bool SetTags( const std::wstring& filename, const Handler::Tags& tags ) const;
 
-	// Returns all the file extensions supported by the handlers.
+	// Returns all the file extensions supported by the decoders.
 	std::set<std::wstring> GetAllSupportedFileExtensions() const;
 
 	// Returns the BASS library version.
@@ -32,11 +32,24 @@ public:
 	// Adds a 'handler'.
 	void AddHandler( Handler::Ptr handler );
 
+	// Returns the available encoders.
+	Handler::List GetEncoders() const;
+
+	// Opens a encoder matching the 'description'.
+	// Returns the encoder, or nullptr if an encoder could not be opened.
+	Encoder::Ptr OpenEncoder( const std::wstring& description ) const;
+
 private:
-	// Returns a handler supported by the 'filename' extension, or nullptr of there was no match.
-	Handler::Ptr FindHandler( const std::wstring& filename ) const;
+	// Returns a decoder handler supported by the 'filename' extension, or nullptr of there was no match.
+	Handler::Ptr FindDecoderHandler( const std::wstring& filename ) const;
 
 	// Available handlers.
-	std::list<Handler::Ptr> m_Handlers;
+	Handler::List m_Handlers;
+
+	// Available decoders.
+	Handler::List m_Decoders;
+
+	// Available encoders.
+	Handler::List m_Encoders;
 };
 

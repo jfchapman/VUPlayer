@@ -22,7 +22,7 @@ INT_PTR CALLBACK DlgConvertFilename::DialogProc( HWND hwnd, UINT message, WPARAM
 					if ( nullptr != dialog ) {
 						dialog->OnClose( ( IDOK == LOWORD( wParam ) ) );
 					}
-					EndDialog( hwnd, LOWORD( lParam ) );
+					EndDialog( hwnd, 0 );
 					return TRUE;
 				}
 				case IDC_CONVERT_FILENAME_DEFAULT : {

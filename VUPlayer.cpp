@@ -1,6 +1,7 @@
 #include "VUPlayer.h"
 
 #include "CDDAExtract.h"
+#include "Converter.h"
 
 #include "DlgConvert.h"
 #include "DlgOptions.h"
@@ -57,6 +58,7 @@ void VUPlayer::Release()
 VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_hInst( instance ),
 	m_hWnd( hwnd ),
+	m_hAccel( LoadAccelerators( m_hInst, MAKEINTRESOURCE( IDC_VUPLAYER ) ) ),
 	m_Handlers(),
 	m_Database( DocumentsFolder() + L"VUPlayer.db" ),
 	m_Library( m_Database, m_Handlers ),
@@ -1057,10 +1059,24 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_CALCULATEREPLAYGAIN, MF_BYCOMMAND | replaygainEnabled );
 		const UINT refreshLibraryEnabled = ( 0 == m_Maintainer.GetPendingCount() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
-		const UINT convertEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
-		EnableMenuItem( menu, ID_FILE_CONVERT, MF_BYCOMMAND | convertEnabled );
 		const UINT gracenoteEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) && IsGracenoteEnabled() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_GRACENOTE_QUERY, MF_BYCOMMAND | gracenoteEnabled );
+
+		const int bufferSize = 64;
+		WCHAR buffer[ bufferSize ] = {};
+		if ( 0 != GetMenuString( menu, ID_FILE_CONVERT, buffer, bufferSize, MF_BYCOMMAND ) ) {
+			std::wstring convertMenuTitle = buffer;
+			LoadString( m_hInst, ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) ? IDS_EXTRACT_TRACKS_MENU : IDS_CONVERT_TRACKS_MENU, buffer, bufferSize );
+			const size_t accelDelimiter = convertMenuTitle.find( '\t' );
+			if ( std::wstring::npos == accelDelimiter ) {
+				convertMenuTitle = buffer;
+			} else {
+				convertMenuTitle = buffer + convertMenuTitle.substr( accelDelimiter );
+			}
+			ModifyMenu( menu, ID_FILE_CONVERT, MF_BYCOMMAND | MF_STRING, ID_FILE_CONVERT, convertMenuTitle.c_str() );
+		}
+		const UINT convertEnabled = ( playlist && ( playlist->GetCount() > 0 ) ) ? MF_ENABLED : MF_DISABLED;
+		EnableMenuItem( menu, ID_FILE_CONVERT, MF_BYCOMMAND | convertEnabled );
 
 		// View menu
 		CheckMenuItem( menu, ID_TREEMENU_FAVOURITES, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_FAVOURITES ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1122,9 +1138,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 
 		// Control menu
 		const Output::State outputState = m_Output.GetState();
-		const int buffersize = 16;
-		WCHAR buffer[ buffersize ] = {};
-		LoadString( m_hInst, ( Output::State::Playing == outputState ) ? IDS_CONTROL_PAUSEMENU : IDS_CONTROL_PLAYMENU, buffer, buffersize );
+		LoadString( m_hInst, ( Output::State::Playing == outputState ) ? IDS_CONTROL_PAUSEMENU : IDS_CONTROL_PLAYMENU, buffer, bufferSize );
 		ModifyMenu( menu, ID_CONTROL_PLAY, MF_BYCOMMAND | MF_STRING, ID_CONTROL_PLAY, buffer );
 
 		const UINT playEnabled = m_ToolbarPlayback.IsButtonEnabled( ID_CONTROL_PLAY ) ? MF_ENABLED : MF_DISABLED;
@@ -1465,20 +1479,29 @@ void VUPlayer::OnDeviceChange()
 void VUPlayer::OnConvert()
 {
 	Playlist::Ptr playlist = m_List.GetPlaylist();
-	Playlist::ItemList itemList = playlist ? playlist->GetItems() : Playlist::ItemList();
+	const Playlist::ItemList itemList = playlist ? playlist->GetItems() : Playlist::ItemList();
 	if ( !itemList.empty() ) {
-		MediaInfo::List tracks;
-		for ( const auto& item : itemList ) {
-			tracks.push_back( item.Info );
-		}
-		DlgConvert dlgConvert( m_hInst, m_hWnd, m_Settings, tracks );
-		tracks = dlgConvert.GetSelectedTracks();
-		if ( !tracks.empty() ) {
-			playlist = m_Output.GetPlaylist();
-			if ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) {
-				m_Output.Stop();
+		Playlist::ItemList selectedItemList = m_List.GetSelectedPlaylistItems();
+		DlgConvert dlgConvert( m_hInst, m_hWnd, m_Settings, m_Handlers, itemList, selectedItemList );
+		if ( !selectedItemList.empty() ) {
+			const Handler::Ptr handler = dlgConvert.GetSelectedHandler();
+			if ( handler ) {
+				MediaInfo::List tracks;
+				for ( const auto& item : selectedItemList ) {
+					tracks.push_back( item.Info );
+				}
+
+				m_Settings.SetEncoder( handler->GetDescription() );
+				Playlist::Ptr outputPlaylist = m_Output.GetPlaylist();
+				if ( ( Playlist::Type::CDDA == playlist->GetType() ) && outputPlaylist && ( Playlist::Type::CDDA == outputPlaylist->GetType() ) ) {
+					m_Output.Stop();
+				}
+				if ( Playlist::Type::CDDA == playlist->GetType() ) {
+					CDDAExtract extract( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, m_CDDAManager, tracks, handler );
+				} else {
+					Converter converter( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, tracks, handler );
+				}
 			}
-			CDDAExtract extract( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, m_CDDAManager, tracks );
 		}
 	}
 }
@@ -1562,4 +1585,9 @@ bool VUPlayer::IsGracenoteEnabled()
 		m_Settings.GetGracenoteSettings( userID, enabled, enableLog );
 	}
 	return enabled;
+}
+
+HACCEL VUPlayer::GetAcceleratorTable() const
+{
+	return m_hAccel;
 }

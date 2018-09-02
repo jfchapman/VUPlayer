@@ -164,6 +164,9 @@ public:
 	// Returns whether Gracenote is enabled.
 	bool IsGracenoteEnabled();
 
+	// Returns the accelerator table.
+	HACCEL GetAcceleratorTable() const;
+
 private:
 	// 'instance' - module instance handle.
 	// 'hwnd' - main window handle.
@@ -222,6 +225,9 @@ private:
 
 	// Application window handle.
 	HWND m_hWnd;
+
+	// Accelerator table.
+	HACCEL m_hAccel;
 
 	// Audio format handlers.
 	Handlers m_Handlers;

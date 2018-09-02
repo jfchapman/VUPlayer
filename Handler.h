@@ -1,7 +1,10 @@
 #pragma once
+#include "stdafx.h"
 
 #include "Decoder.h"
+#include "Encoder.h"
 
+#include <list>
 #include <map>
 #include <memory>
 #include <set>
@@ -21,6 +24,9 @@ public:
 
 	// Handler shared pointer type.
 	typedef std::shared_ptr<Handler> Ptr;
+
+	// A list of handlers.
+	typedef std::list<Ptr> List;
 
 	// Tag types.
 	enum class Tag {
@@ -56,4 +62,23 @@ public:
 
 	// Returns a decoder for 'filename', or nullptr if a decoder cannot be created.
 	virtual Decoder::Ptr OpenDecoder( const std::wstring& filename ) const = 0;
+
+	// Returns an encoder, or nullptr if an encoder cannot be created.
+	virtual Encoder::Ptr OpenEncoder() const = 0;
+
+	// Returns whether the handler can decode.
+	virtual bool IsDecoder() const = 0;
+
+	// Returns whether the handler can encode.
+	virtual bool IsEncoder() const = 0;
+
+	// Returns whether the handler supports encoder configuration.
+	virtual bool CanConfigureEncoder() const = 0;
+
+	// Displays an encoder configuration dialog for the handler.
+	// 'instance' - application instance handle.
+	// 'parent' - application window handle.
+	// 'settings' - in/out, encoder settings.
+	// Returns whether the encoder has been configured.
+	virtual bool ConfigureEncoder( const HINSTANCE instance, const HWND parent, std::string& settings ) const = 0;
 };

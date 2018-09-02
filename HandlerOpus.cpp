@@ -96,3 +96,28 @@ Decoder::Ptr HandlerOpus::OpenDecoder( const std::wstring& filename ) const
 	const Decoder::Ptr stream( streamOpus );
 	return stream;
 }
+
+Encoder::Ptr HandlerOpus::OpenEncoder() const
+{
+	return nullptr;
+}
+
+bool HandlerOpus::IsDecoder() const
+{
+	return true;
+}
+
+bool HandlerOpus::IsEncoder() const
+{
+	return false;
+}
+
+bool HandlerOpus::CanConfigureEncoder() const
+{
+	return false;
+}
+
+bool HandlerOpus::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*parent*/, std::string& /*settings*/ ) const
+{
+	return false;
+}

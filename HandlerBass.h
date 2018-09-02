@@ -11,19 +11,38 @@ public:
 	virtual ~HandlerBass();
 
 	// Returns a description of the handler.
-	virtual std::wstring GetDescription() const;
+	std::wstring GetDescription() const override;
 
 	// Returns the supported file extensions.
-	virtual std::set<std::wstring> GetSupportedFileExtensions() const;
+	std::set<std::wstring> GetSupportedFileExtensions() const override;
 
 	// Reads 'tags' from 'filename', returning true if the tags were read.
-	virtual bool GetTags( const std::wstring& filename, Tags& tags ) const;
+	bool GetTags( const std::wstring& filename, Tags& tags ) const override;
 
 	// Writes 'tags' to 'filename', returning true if the tags were written.
-	virtual bool SetTags( const std::wstring& filename, const Handler::Tags& tags ) const;
+	bool SetTags( const std::wstring& filename, const Handler::Tags& tags ) const override;
 
 	// Returns a decoder for 'filename', or nullptr if a decoder cannot be created.
-	virtual Decoder::Ptr OpenDecoder( const std::wstring& filename ) const;
+	Decoder::Ptr OpenDecoder( const std::wstring& filename ) const override;
+
+	// Returns an encoder, or nullptr if an encoder cannot be created.
+	Encoder::Ptr OpenEncoder() const override;
+
+	// Returns whether the handler can decode.
+	bool IsDecoder() const override;
+
+	// Returns whether the handler can encode.
+	bool IsEncoder() const override;
+
+	// Returns whether the handler supports encoder configuration.
+	bool CanConfigureEncoder() const override;
+
+	// Displays an encoder configuration dialog for the handler.
+	// 'instance' - application instance handle.
+	// 'parent' - application window handle.
+	// 'settings' - in/out, encoder settings.
+	// Returns whether the encoder has been configured.
+	bool ConfigureEncoder( const HINSTANCE instance, const HWND parent, std::string& settings ) const override;
 
 private:
 	// Reads Ogg tags.

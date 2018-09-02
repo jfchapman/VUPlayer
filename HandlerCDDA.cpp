@@ -59,3 +59,28 @@ Decoder::Ptr HandlerCDDA::OpenDecoder( const std::wstring& filename ) const
 	const Decoder::Ptr stream( decoderCDDA );
 	return stream;
 }
+
+Encoder::Ptr HandlerCDDA::OpenEncoder() const
+{
+	return nullptr;
+}
+
+bool HandlerCDDA::IsDecoder() const
+{
+	return true;
+}
+
+bool HandlerCDDA::IsEncoder() const
+{
+	return false;
+}
+
+bool HandlerCDDA::CanConfigureEncoder() const
+{
+	return false;
+}
+
+bool HandlerCDDA::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*parent*/, std::string& /*settings*/ ) const
+{
+	return false;
+}

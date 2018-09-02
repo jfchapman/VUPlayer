@@ -4,7 +4,7 @@
 #include "Utility.h"
 
 // Output buffer length, in seconds.
-static const float s_BufferLength = 2.0f;
+static const float s_BufferLength = 1.5f;
 
 // Cutoff point, in seconds, within which previous track replays the current track from the beginning.
 static const float s_PreviousTrackCutoff = 2.0f;
@@ -111,23 +111,8 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	SetVolume( initialVolume );
 	SetPitch( m_Pitch );
 
-	Settings::ReplaygainMode replaygainMode = Settings::ReplaygainMode::Disabled;
-	float replaygainPreamp = 0;
-	bool replaygainHardlimit = false;
-	m_Settings.GetReplaygainSettings( replaygainMode, replaygainPreamp, replaygainHardlimit );
-	m_ReplaygainMode = replaygainMode;
-	m_ReplaygainPreamp = replaygainPreamp;
-	m_ReplaygainHardlimit = replaygainHardlimit;
-
-	bool randomPlay = false;
-	bool repeatTrack = false;
-	bool repeatPlaylist = false;
-	bool crossfade = false;
-	m_Settings.GetPlaybackSettings( randomPlay, repeatTrack, repeatPlaylist, crossfade );
-	m_RandomPlay = randomPlay;
-	m_RepeatTrack = repeatTrack;
-	m_RepeatPlaylist = repeatPlaylist;
-	m_Crossfade = crossfade;
+	m_Settings.GetReplaygainSettings( m_ReplaygainMode, m_ReplaygainPreamp, m_ReplaygainHardlimit );
+	m_Settings.GetPlaybackSettings( m_RandomPlay, m_RepeatTrack, m_RepeatPlaylist, m_Crossfade );
 }
 
 Output::~Output()
@@ -147,6 +132,13 @@ bool Output::Play( const long playlistID, const float seek )
 		const std::wstring& filename = item.Info.GetFilename();
 		m_DecoderStream = m_Handlers.OpenDecoder( filename );
 		if ( m_DecoderStream ) {
+
+			const DWORD outputBufferSize = static_cast<DWORD>( 1000 * ( ( ( MediaInfo::Source::CDDA ) == item.Info.GetSource() ) ? ( 2 * s_BufferLength ) : s_BufferLength ) );
+			const DWORD previousOutputBufferSize = BASS_GetConfig( BASS_CONFIG_BUFFER );
+			if ( previousOutputBufferSize != outputBufferSize ) {
+				BASS_SetConfig( BASS_CONFIG_BUFFER, outputBufferSize );
+			}
+
 			EstimateReplayGain( item );
 			m_DecoderSampleRate = m_DecoderStream->GetSampleRate();
 			const DWORD freq = static_cast<DWORD>( m_DecoderSampleRate );
@@ -164,6 +156,7 @@ bool Output::Play( const long playlistID, const float seek )
 			} else if ( GetCrossfade() ) {
 				m_DecoderStream->SkipSilence();
 			}
+
 			m_OutputStream = BASS_StreamCreate( freq, channels, flags, StreamProc, this );
 			if ( 0 != m_OutputStream ) {
 				m_CurrentItemDecoding = item;
@@ -172,6 +165,7 @@ bool Output::Play( const long playlistID, const float seek )
 					BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_FREQ, freq * m_Pitch );
 				}
 				UpdateEQ( m_CurrentEQ );
+
 				if ( TRUE == BASS_ChannelPlay( m_OutputStream, TRUE /*restart*/ ) ) {
 					Queue queue = GetOutputQueue();
 					queue.push_back( { item, 0, seekPosition } );
@@ -784,7 +778,6 @@ void Output::SettingsChanged()
 
 void Output::InitialiseBass()
 {
-	BASS_SetConfig( BASS_CONFIG_BUFFER, static_cast<DWORD>( s_BufferLength * 1000 ) );
 	int deviceNum = -1;
 	const std::wstring deviceName = m_Settings.GetOutputDevice();
 	if ( !deviceName.empty() ) {
@@ -909,12 +902,12 @@ void Output::StopCrossfadeThread()
 
 float Output::GetCrossfadePosition() const
 {
-	return m_CrossfadePosition.load();
+	return m_CrossfadePosition;
 }
 
 void Output::SetCrossfadePosition( const float position )
 {
-	m_CrossfadePosition.store( position );
+	m_CrossfadePosition = position;
 }
 
 void Output::ToggleStopAtTrackEnd()
@@ -981,7 +974,7 @@ void Output::ApplyReplayGain( float* buffer, const long bufferSize, const Playli
 {
 	const bool eqEnabled = m_EQEnabled;
 	if ( ( 0 != bufferSize ) && ( ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) || eqEnabled ) ) {
-		float preamp = eqEnabled ? m_EQPreamp.load() : 0;
+		float preamp = eqEnabled ? m_EQPreamp : 0;
 
 		if ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) {
 			float gain = item.Info.GetGainAlbum();

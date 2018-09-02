@@ -539,3 +539,27 @@ void CentreDialog( const HWND dialog )
 		}
 	}
 }
+
+int FloatTo24( const float value )
+{
+	const float scaledValue = value * 8388608;
+	const int result = ( scaledValue > static_cast<float>( 8388607 ) ) ? 8388607 :
+		( ( scaledValue < static_cast<float>( -8388608 ) ) ? -8388608 : static_cast<int>( scaledValue ) );
+	return result;
+}
+
+short FloatTo16( const float value )
+{
+	const float scaledValue = value * 32768;
+	const short result = ( scaledValue > static_cast<float>( 32767 ) ) ? 32767 :
+		( ( scaledValue < static_cast<float>( -32768 ) ) ? -32768 : static_cast<short>( scaledValue ) );
+	return result;
+}
+
+char FloatTo8( const float value )
+{
+	const float scaledValue = value * 128;
+	const char result = ( scaledValue > static_cast<float>( 127 ) ) ? 127 :
+		( ( scaledValue < static_cast<float>( -128 ) ) ? -128 : static_cast<char>( scaledValue ) );
+	return result;
+}

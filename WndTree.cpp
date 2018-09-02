@@ -328,7 +328,15 @@ void WndTree::OnContextMenu( const POINT& position )
 
 			const HTREEITEM hSelectedItem = TreeView_GetSelection( m_hWnd );
 			const Playlist::Ptr playlist = GetPlaylist( hSelectedItem );
-			const UINT enableExtract = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
+
+			if ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) {		
+				const int bufferSize = 64;
+				WCHAR buffer[ bufferSize ] = {};
+				LoadString( m_hInst, IDS_EXTRACT_TRACKS, buffer, bufferSize );
+				ModifyMenu( menu, ID_FILE_CONVERT, MF_BYCOMMAND | MF_STRING, ID_FILE_CONVERT, buffer );
+			}
+
+			const UINT enableExtract = ( playlist && ( playlist->GetCount() > 0 ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( treemenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
 			VUPlayer* vuplayer = VUPlayer::Get();

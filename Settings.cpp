@@ -11,7 +11,7 @@ static const Settings::PitchRangeMap s_PitchRanges = {
 		{ Settings::PitchRange::Large, 0.3f }
 };
 
-// Default extract filename format.
+// Default conversion/extraction filename format.
 static const wchar_t s_DefaultExtractFilename[] = L"%A\\%D\\%N - %T";
 
 Settings::Settings( Database& database, Library& library ) :
@@ -1898,7 +1898,7 @@ void Settings::SetGracenoteSettings( const std::string& userID, const bool enabl
 		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			sqlite3_bind_text( stmt, 1, "GracenoteUserID", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, userID.c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+			sqlite3_bind_text( stmt, 2, userID.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
@@ -2035,6 +2035,83 @@ void Settings::SetEQSettings( const EQ& eq )
 				sqlite3_reset( stmt );
 			}
 
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+}
+
+std::wstring Settings::GetEncoder()
+{
+	std::wstring encoderName;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		std::string query = "SELECT Value FROM Settings WHERE Setting='Encoder';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
+				if ( nullptr != text ) {
+					encoderName = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
+				}
+				sqlite3_finalize( stmt );
+			}
+		}
+	}
+	return encoderName;
+}
+
+void Settings::SetEncoder( const std::wstring& encoder )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "Encoder", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_text( stmt, 2, WideStringToUTF8( encoder ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+}
+
+std::string Settings::GetEncoderSettings( const std::wstring& encoder )
+{
+	std::string settings;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string settingName = WideStringToUTF8( L"Encoder_" + encoder );
+		sqlite3_stmt* stmt = nullptr;
+		std::string query = "SELECT Value FROM Settings WHERE Setting=?1;";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) &&
+				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, settingName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
+				if ( nullptr != text ) {
+					settings = reinterpret_cast<const char*>( text );
+				}
+				sqlite3_finalize( stmt );
+			}
+		}
+	}
+	return settings;
+}
+
+void Settings::SetEncoderSettings( const std::wstring& encoder, const std::string& settings )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string settingName = WideStringToUTF8( L"Encoder_" + encoder );
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, settingName.c_str(), -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_text( stmt, 2, settings.c_str(), -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
 			sqlite3_finalize( stmt );
 			stmt = nullptr;
 		}

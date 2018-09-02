@@ -19,7 +19,8 @@ public:
 	// 'handlers' - audio format handlers.
 	// 'cddaManager' - CD audio manager.
 	// 'tracks' - tracks to extract.
-	CDDAExtract( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, CDDAManager& cddaManager, const MediaInfo::List& tracks );
+	// 'encoderHandler' - encoder handler to use.
+	CDDAExtract( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, CDDAManager& cddaManager, const MediaInfo::List& tracks, const Handler::Ptr encoderHandler );
 
 	virtual ~CDDAExtract();
 
@@ -62,7 +63,8 @@ private:
 	void UpdateStatus();
 
 	// Called if there was an error during the extraction process.
-	void Error();
+	// 'errorID' - error resource ID.
+	void Error( const WORD errorID );
 
 	// Writes track specific tags to 'filename' based on the 'mediaInfo'.
 	void WriteTrackTags( const std::wstring& filename, const MediaInfo& mediaInfo );
@@ -73,7 +75,7 @@ private:
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
-	// Window handle to notify when the available CD audio media has changed.
+	// Dialog window handle.
 	HWND m_hWnd;
 
 	// Media library.
@@ -132,4 +134,10 @@ private:
 
 	// The total number of samples to extract.
 	long m_TotalSamples;
+
+	// The encoder to use.
+	Encoder::Ptr m_Encoder;
+
+	// The encoder settings to use.
+	std::string m_EncoderSettings;
 };

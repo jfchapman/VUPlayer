@@ -264,6 +264,21 @@
     <ClInclude Include="WndToolbarEQ.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="EncoderMP3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HandlerMP3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EncoderPCM.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HandlerPCM.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Converter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -483,6 +498,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WndToolbarEQ.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EncoderMP3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlerMP3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EncoderPCM.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlerPCM.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Converter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

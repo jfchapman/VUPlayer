@@ -1,22 +1,19 @@
 #pragma once
 
-#include <memory>
-#include <string>
+#include "Encoder.h"
 
-// Encoder interface.
-class Encoder
+#include "lame.h"
+
+// LAME MP3 encoder
+class EncoderMP3 : public Encoder
 {
 public:
-	Encoder()
-	{
-	}
+	EncoderMP3();
 
-	virtual ~Encoder()
-	{
-	}
+	virtual ~EncoderMP3();
 
-	// Encoder shared pointer type.
-	typedef std::shared_ptr<Encoder> Ptr;
+	// Returns the VBR quality from the encoder 'settings'.
+	static int GetVBRQuality( const std::string& settings );
 
 	// Opens the encoder.
 	// 'filename' - (in) output file name without file extension, (out) output file name with file extension.
@@ -25,14 +22,21 @@ public:
 	// 'bitsPerSample' - bits per sample if applicable, zero if not.
 	// 'settings' - encoder settings.
 	// Returns whether the encoder was opened.
-	virtual bool Open( std::wstring& filename, const long sampleRate, const long channels, const long bitsPerSample, const std::string& settings ) = 0;
+	bool Open( std::wstring& filename, const long sampleRate, const long channels, const long bitsPerSample, const std::string& settings ) override;
 
 	// Writes sample data.
 	// 'samples' - input samples (floating point format scaled to +/-1.0f).
 	// 'sampleCount' - number of samples to write.
 	// Returns whether the samples were written successfully.
-	virtual bool Write( float* samples, const long sampleCount ) = 0;
+	bool Write( float* samples, const long sampleCount ) override;
 
 	// Closes the encoder.
-	virtual void Close() = 0;
+	void Close() override;
+
+private:
+	// LAME flags.
+	lame_global_flags* m_flags;
+
+	// Output file.
+	FILE* m_file;
 };

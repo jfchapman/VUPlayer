@@ -18,7 +18,7 @@ INT_PTR CALLBACK DlgHotkey::DialogProc( HWND hwnd, UINT message, WPARAM wParam, 
 			switch ( LOWORD( wParam ) ) {
 				case IDCANCEL : 
 				case IDOK : {
-					EndDialog( hwnd, LOWORD( lParam ) );
+					EndDialog( hwnd, 0 );
 					return TRUE;
 				}
 				default : {

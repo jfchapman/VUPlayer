@@ -3,17 +3,13 @@
 #include "resource.h"
 #include "Utility.h"
 
-#include "EncoderFlac.h"
-#include "HandlerFlac.h"
 #include "replaygain_analysis.h"
-
-#include <Shlwapi.h>
 
 #include <iomanip>
 #include <sstream>
 
 // The maximum number of times to read a CDDA sector.
-static const long s_MaxReadPasses = 10;
+static const long s_MaxReadPasses = 9;
 
 // Timer ID.
 static const long s_TimerID = 1212;
@@ -21,13 +17,20 @@ static const long s_TimerID = 1212;
 // Timer interval in milliseconds.
 static const long s_TimerInterval = 250;
 
-// ID to indicate the the read thread has finished.
+// ID to indicate that the read thread is fixing sectors.
+static const long s_ReadFixingSectors = 110;
+
+// ID to indicate that the read thread has finished.
 static const long s_ReadFinished = 111;
 
 // Message ID sent when the extraction has finished successfully.
+// 'wParam' - unused.
+// 'lParam' - unused.
 static const UINT MSG_EXTRACTFINISHED = WM_APP + 90;
 
 // Message ID sent when there has been an error during extraction.
+// 'wParam' - error message resource ID.
+// 'lParam' - unused.
 static const UINT MSG_EXTRACTERROR = WM_APP + 91;
 
 INT_PTR CALLBACK CDDAExtract::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -73,7 +76,7 @@ INT_PTR CALLBACK CDDAExtract::DialogProc( HWND hwnd, UINT message, WPARAM wParam
 		case MSG_EXTRACTERROR : {
 			CDDAExtract* dialog = reinterpret_cast<CDDAExtract*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != dialog ) {
-				dialog->Error();
+				dialog->Error( static_cast<WORD>( wParam ) );
 			}
 			break;
 		}
@@ -97,12 +100,14 @@ DWORD WINAPI CDDAExtract::EncodeThreadProc( LPVOID lpParam )
 {
 	CDDAExtract* extract = reinterpret_cast<CDDAExtract*>( lpParam );
 	if ( nullptr != extract ) {
+		CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
 		extract->EncodeHandler();
+		CoUninitialize();
 	}
 	return 0;
 }
 
-CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, CDDAManager& cddaManager, const MediaInfo::List& tracks ) :
+CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, CDDAManager& cddaManager, const MediaInfo::List& tracks, const Handler::Ptr encoderHandler ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_Library( library ),
@@ -122,9 +127,11 @@ CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& 
 	m_ProgressEncode( 0 ),
 	m_ProgressRange( 100 ),
 	m_DisplayedTrack( 0 ),
-	m_DisplayedPass( 0 )
+	m_DisplayedPass( 0 ),
+	m_Encoder( encoderHandler ? encoderHandler->OpenEncoder() : nullptr ),
+	m_EncoderSettings( m_Encoder ? m_Settings.GetEncoderSettings( encoderHandler->GetDescription() ) : std::string() )
 {
-	DialogBoxParam( instance, MAKEINTRESOURCE( IDD_EXTRACT_PROGRESS ), parent, DialogProc, reinterpret_cast<LPARAM>( this ) );
+	DialogBoxParam( instance, MAKEINTRESOURCE( IDD_CONVERT_PROGRESS ), parent, DialogProc, reinterpret_cast<LPARAM>( this ) );
 }
 
 CDDAExtract::~CDDAExtract()
@@ -136,7 +143,7 @@ void CDDAExtract::OnInitDialog( const HWND hwnd )
 	m_hWnd = hwnd;
 	CentreDialog( m_hWnd );
 
-	const HWND progressRead = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_READ );
+	const HWND progressRead = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TRACK );
 	if ( nullptr != progressRead ) {
 		RECT rect = {};
 		GetClientRect( progressRead, &rect );
@@ -145,7 +152,7 @@ void CDDAExtract::OnInitDialog( const HWND hwnd )
 			SendMessage( progressRead, PBM_SETRANGE, 0, MAKELONG( 0, m_ProgressRange ) );
 		}
 	}
-	const HWND progressEncode = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_ENCODE );
+	const HWND progressEncode = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TOTAL );
 	if ( nullptr != progressEncode ) {
 		SendMessage( progressEncode, PBM_SETRANGE, 0, MAKELONG( 0, m_ProgressRange ) );
 	}
@@ -187,27 +194,30 @@ bool CDDAExtract::Cancelled() const
 	return cancelled;
 }
 
-void CDDAExtract::Error()
+void CDDAExtract::Error( const WORD errorID )
 {
 	SetEvent( m_CancelEvent );
 	KillTimer( m_hWnd, s_TimerID );
 	
-	WCHAR buffer[ 32 ] = {};
-	LoadString( m_hInst, IDS_EXTRACT_ERROR, buffer, 32 );
-	SetDlgItemText( m_hWnd, IDC_EXTRACT_STATE_READ, buffer );
+	const int bufferSize = 256;
+	WCHAR buffer[ bufferSize ] = {};
+	if ( FALSE != LoadString( m_hInst, errorID, buffer, bufferSize ) ) {
+		SetDlgItemText( m_hWnd, IDC_EXTRACT_STATE_READ, buffer );
+		SetDlgItemText( m_hWnd, IDC_EXTRACT_STATE_ENCODER, buffer );
+	}
 
-	LoadString( m_hInst, IDS_CLOSE, buffer, 32 );
-	SetDlgItemText( m_hWnd, IDCANCEL, buffer );
-
-	const HWND progressRead = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_READ );
+	const HWND progressRead = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TRACK );
 	if ( nullptr != progressRead ) {
-		SendMessage( progressRead, PBM_SETPOS, 0, 0 );	
+		SendMessage( progressRead, PBM_SETPOS, m_ProgressRange, 0 );			
 	}
 
-	const HWND progressEncode = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_ENCODE );
+	const HWND progressEncode = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TOTAL );
 	if ( nullptr != progressEncode ) {
-		SendMessage( progressEncode, PBM_SETPOS, 0, 0 );	
+		SendMessage( progressEncode, PBM_SETPOS, m_ProgressRange, 0 );			
 	}
+
+	LoadString( m_hInst, IDS_CLOSE, buffer, bufferSize );
+	SetDlgItemText( m_hWnd, IDCANCEL, buffer );
 }
 
 void CDDAExtract::ReadHandler()
@@ -290,21 +300,69 @@ void CDDAExtract::ReadHandler()
 					media->Close( mediaHandle );
 
 					if ( !Cancelled() ) {
-						if ( sectorsRemaining.empty() && ( sectorMap.size() == static_cast<size_t>( sectorCount ) ) ) {
-							// Concatenate sector data and pass off to the encoder.
-							const size_t totalSize = sectorMap.begin()->second.begin()->size() * sectorCount;
-							DataPtr trackData( new CDDAMedia::Data() );
-							trackData->reserve( totalSize );
-							for ( const auto& sector : sectorMap ) {
-								const CDDAMedia::Data& sectorData = *sector.second.begin();
-								trackData->insert( trackData->end(), sectorData.begin(), sectorData.end() );
+						if ( sectorMap.size() == static_cast<size_t>( sectorCount ) ) {
+
+							if ( !sectorsRemaining.empty() ) {
+								// For each inconsistent sector, take the modal value for each sample.
+								m_StatusPass.store( s_ReadFixingSectors );
+								typedef std::map<short,int> SampleMap;
+								SampleMap sampleMap;
+
+								auto sectorIter = sectorsRemaining.begin();
+								const size_t sectorsRemainingCount = sectorsRemaining.size();
+								size_t currentSector = 0;
+								while ( !Cancelled() && ( sectorsRemaining.end() != sectorIter ) ) {
+									m_ProgressRead.store( static_cast<float>( currentSector ) / sectorsRemainingCount );
+									SectorSet& sectorSet = sectorMap[ *sectorIter ];
+									if ( sectorSet.size() > 1 ) {
+										const size_t sampleCount = sectorSet.begin()->size();
+										CDDAMedia::Data fixedSector( sampleCount );
+										for ( size_t sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
+											sampleMap.clear();
+											for ( const auto& sector : sectorSet ) {
+												auto sampleMapIter = sampleMap.insert( SampleMap::value_type( sector[ sampleIndex ], 0 ) ).first;
+												if ( sampleMap.end() != sampleMapIter ) {
+													sampleMapIter->second++;
+												}
+											}
+											if ( 1 == sampleMap.size() ) {
+												fixedSector[ sampleIndex ] = sampleMap.begin()->first;
+											} else {
+												int sampleSize = INT_MIN;
+												short modalValue = 0;
+												for ( const auto& sampleIter : sampleMap ) {
+													if ( sampleIter.second > sampleSize ) {
+														sampleSize = sampleIter.second;
+														modalValue = sampleIter.first;
+													}
+												}
+												fixedSector[ sampleIndex ] = modalValue;
+											}
+										}
+										sectorSet.clear();
+										sectorSet.insert( fixedSector );
+									}
+									++sectorIter;
+									++currentSector;
+								}
 							}
-							std::lock_guard<std::mutex> lock( m_PendingEncodeMutex );
-							m_PendingEncode.insert( MediaData::value_type( *trackIter, trackData ) );
-							SetEvent( m_PendingEncodeEvent );
+
+							if ( !Cancelled() ) {
+								// Concatenate sector data and pass off to the encoder.
+								const size_t totalSize = sectorMap.begin()->second.begin()->size() * sectorCount;
+								DataPtr trackData( new CDDAMedia::Data() );
+								trackData->reserve( totalSize );
+								for ( const auto& sector : sectorMap ) {
+									const CDDAMedia::Data& sectorData = *sector.second.begin();
+									trackData->insert( trackData->end(), sectorData.begin(), sectorData.end() );
+								}
+								std::lock_guard<std::mutex> lock( m_PendingEncodeMutex );
+								m_PendingEncode.insert( MediaData::value_type( *trackIter, trackData ) );
+								SetEvent( m_PendingEncodeEvent );
+							}
 						} else {
 							readError = true;
-							PostMessage( m_hWnd, MSG_EXTRACTERROR, 0, 0 );
+							PostMessage( m_hWnd, MSG_EXTRACTERROR, IDS_EXTRACT_ERROR_READ, 0 );
 							break;
 						}
 					}
@@ -320,126 +378,128 @@ void CDDAExtract::ReadHandler()
 
 void CDDAExtract::EncodeHandler()
 {
-	long long totalSamples = 0;
-	for ( const auto& media : m_Tracks ) {
-		totalSamples += ( media.GetFilesize() / 4 );
-	}
-	long long totalSamplesEncoded = 0;
-
-	const size_t trackCount = m_Tracks.size();
-	size_t tracksEncoded = 0;
-	MediaInfo::List encodedMediaList;
-
-	replaygain_analysis analysis;
-	analysis.InitGainAnalysis( 44100 );
-	float albumPeak = 0;
-
-	const HANDLE eventHandles[ 2 ] = { m_CancelEvent, m_PendingEncodeEvent };
-	while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
-		MediaInfo mediaInfo;
-		DataPtr data;
-		m_PendingEncodeMutex.lock();
-		auto dataIter = m_PendingEncode.begin();
-		if ( m_PendingEncode.end() != dataIter ) {
-			mediaInfo = dataIter->first;
-			data = dataIter->second;
-			m_PendingEncode.erase( dataIter );
-			if ( m_PendingEncode.empty() ) {
-				ResetEvent( m_PendingEncodeEvent );
-			}
+	if ( m_Encoder ) {
+		long long totalSamples = 0;
+		for ( const auto& media : m_Tracks ) {
+			totalSamples += ( media.GetFilesize() / 4 );
 		}
-		m_PendingEncodeMutex.unlock();
+		long long totalSamplesEncoded = 0;
 
-		if ( data ) {
-			float trackPeak = 0;
-			long long samplesEncoded = 0;
-			const std::wstring filename = GetOutputFilename( mediaInfo );
-			if ( !filename.empty() ) {
-				Encoder::Ptr encoder( new EncoderFlac() );
-				const long sampleRate = mediaInfo.GetSampleRate();
-				const long channels = mediaInfo.GetChannels();
-				const long bps = mediaInfo.GetBitsPerSample();
-				if ( encoder->Open( filename, sampleRate, channels, bps ) ) {
-					const long sampleBufferSize = 65536;
-					std::vector<float> sampleBuffer( sampleBufferSize * channels );
+		const size_t trackCount = m_Tracks.size();
+		size_t tracksEncoded = 0;
+		MediaInfo::List encodedMediaList;
 
-					std::vector<float> analysisLeft( sampleBufferSize );
-					std::vector<float> analysisRight( sampleBufferSize );
+		replaygain_analysis analysis;
+		analysis.InitGainAnalysis( 44100 );
+		const long replayGainScale = 1 << 15;
+		float albumPeak = 0;
 
-					auto sourceIter = data->begin();
-					while ( !Cancelled() && ( data->end() != sourceIter ) ) {
-						auto destIter = sampleBuffer.begin();
-						while ( ( data->end() != sourceIter ) && ( sampleBuffer.end() != destIter ) ) {
-							*destIter++ = *sourceIter++ / 32768.0f;
-						}
-						const long sampleCount = static_cast<long>( destIter - sampleBuffer.begin() ) / channels;
-						if ( encoder->Write( &sampleBuffer[ 0 ], sampleCount ) ) {
-
-							for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
-								analysisLeft[ sampleIndex ] = sampleBuffer[ sampleIndex * channels ] * 32768.0f;
-								if ( analysisLeft[ sampleIndex ] > trackPeak ) {
-									trackPeak = analysisLeft[ sampleIndex ];
-								}
-								analysisRight[ sampleIndex ] = sampleBuffer[ sampleIndex * channels + 1 ] * 32768.0f;
-								if ( analysisRight[ sampleIndex ] > trackPeak ) {
-									trackPeak = analysisRight[ sampleIndex ];
-								}
-							}
-							analysis.AnalyzeSamples( &analysisLeft[ 0 ], &analysisRight[ 0 ], sampleCount, channels );
-
-							samplesEncoded += sampleCount;
-							totalSamplesEncoded += sampleCount;
-							m_ProgressEncode.store( static_cast<float>( totalSamplesEncoded ) / totalSamples );
-						} else {
-							break;
-						}
-					}
-					encoder->Close();
+		const HANDLE eventHandles[ 2 ] = { m_CancelEvent, m_PendingEncodeEvent };
+		while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
+			MediaInfo mediaInfo;
+			DataPtr data;
+			m_PendingEncodeMutex.lock();
+			auto dataIter = m_PendingEncode.begin();
+			if ( m_PendingEncode.end() != dataIter ) {
+				mediaInfo = dataIter->first;
+				data = dataIter->second;
+				m_PendingEncode.erase( dataIter );
+				if ( m_PendingEncode.empty() ) {
+					ResetEvent( m_PendingEncodeEvent );
 				}
 			}
-			if ( !Cancelled() ) {
-				const bool encodeSuccess = ( ( mediaInfo.GetFilesize() / 4 ) == samplesEncoded );
-				if ( encodeSuccess ) {
+			m_PendingEncodeMutex.unlock();
 
-					if ( trackPeak > albumPeak ) {
-						albumPeak = trackPeak;
-					}
-					float trackGain = analysis.GetTitleGain();
-					if ( GAIN_NOT_ENOUGH_SAMPLES == trackGain ) {
-						trackGain = REPLAYGAIN_NOVALUE;
-					}
-					mediaInfo.SetPeakTrack( trackPeak );
-					mediaInfo.SetGainTrack( trackGain );
-					WriteTrackTags( filename, mediaInfo );
+			if ( data ) {
+				float trackPeak = 0;
+				long long samplesEncoded = 0;
+				std::wstring filename = GetOutputFilename( mediaInfo );
+				if ( !filename.empty() ) {
+					const long sampleRate = mediaInfo.GetSampleRate();
+					const long channels = mediaInfo.GetChannels();
+					const long bps = mediaInfo.GetBitsPerSample();
+					if ( m_Encoder->Open( filename, sampleRate, channels, bps, m_EncoderSettings ) ) {
+						const long sampleBufferSize = 65536;
+						std::vector<float> sampleBuffer( sampleBufferSize * channels );
 
-					encodedMediaList.push_back( MediaInfo( filename ) );
+						std::vector<float> analysisLeft( sampleBufferSize );
+						std::vector<float> analysisRight( sampleBufferSize );
 
-					if ( ++tracksEncoded == trackCount ) {
-						
-						std::wstring extractFolder;
-						std::wstring extractFilename;
-						bool extractToLibrary = false;
-						m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+						auto sourceIter = data->begin();
+						while ( !Cancelled() && ( data->end() != sourceIter ) ) {
+							auto destIter = sampleBuffer.begin();
+							while ( ( data->end() != sourceIter ) && ( sampleBuffer.end() != destIter ) ) {
+								*destIter++ = *sourceIter++ / 32768.0f;
+							}
+							const long sampleCount = static_cast<long>( destIter - sampleBuffer.begin() ) / channels;
+							if ( m_Encoder->Write( &sampleBuffer[ 0 ], sampleCount ) ) {
 
-						float albumGain = analysis.GetAlbumGain();
-						if ( GAIN_NOT_ENOUGH_SAMPLES == albumGain ) {
-							albumGain = REPLAYGAIN_NOVALUE;
-						}
-						mediaInfo.SetPeakAlbum( albumPeak );
-						mediaInfo.SetGainAlbum( albumGain );
-						for ( auto& encodedMedia : encodedMediaList ) {
-							WriteAlbumTags( encodedMedia.GetFilename(), mediaInfo );					
-							if ( extractToLibrary ) {
-								m_Library.GetMediaInfo( encodedMedia );
+								for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
+									analysisLeft[ sampleIndex ] = sampleBuffer[ sampleIndex * channels ] * replayGainScale;
+									if ( sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] ) > trackPeak ) {
+										trackPeak = sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] );
+									}
+									analysisRight[ sampleIndex ] = sampleBuffer[ sampleIndex * channels + 1 ] * replayGainScale;
+									if ( sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] ) > trackPeak ) {
+										trackPeak = sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] );
+									}
+								}
+								analysis.AnalyzeSamples( &analysisLeft[ 0 ], &analysisRight[ 0 ], sampleCount, channels );
+
+								samplesEncoded += sampleCount;
+								totalSamplesEncoded += sampleCount;
+								m_ProgressEncode.store( static_cast<float>( totalSamplesEncoded ) / totalSamples );
+							} else {
+								break;
 							}
 						}
+						m_Encoder->Close();
+					}
+				}
+				if ( !Cancelled() ) {
+					const bool encodeSuccess = ( ( mediaInfo.GetFilesize() / 4 ) == samplesEncoded );
+					if ( encodeSuccess ) {
 
-						PostMessage( m_hWnd, MSG_EXTRACTFINISHED, 0, 0 );
+						if ( trackPeak > albumPeak ) {
+							albumPeak = trackPeak;
+						}
+						float trackGain = analysis.GetTitleGain();
+						if ( GAIN_NOT_ENOUGH_SAMPLES == trackGain ) {
+							trackGain = REPLAYGAIN_NOVALUE;
+						}
+						mediaInfo.SetPeakTrack( trackPeak );
+						mediaInfo.SetGainTrack( trackGain );
+						WriteTrackTags( filename, mediaInfo );
+
+						encodedMediaList.push_back( MediaInfo( filename ) );
+
+						if ( ++tracksEncoded == trackCount ) {
+						
+							std::wstring extractFolder;
+							std::wstring extractFilename;
+							bool extractToLibrary = false;
+							m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+
+							float albumGain = analysis.GetAlbumGain();
+							if ( GAIN_NOT_ENOUGH_SAMPLES == albumGain ) {
+								albumGain = REPLAYGAIN_NOVALUE;
+							}
+							mediaInfo.SetPeakAlbum( albumPeak );
+							mediaInfo.SetGainAlbum( albumGain );
+							for ( auto& encodedMedia : encodedMediaList ) {
+								WriteAlbumTags( encodedMedia.GetFilename(), mediaInfo );					
+								if ( extractToLibrary ) {
+									m_Library.GetMediaInfo( encodedMedia );
+								}
+							}
+
+							PostMessage( m_hWnd, MSG_EXTRACTFINISHED, 0, 0 );
+							break;
+						}
+					} else {
+						PostMessage( m_hWnd, MSG_EXTRACTERROR, IDS_EXTRACT_ERROR_ENCODER, 0 );
 						break;
 					}
-				} else {
-					PostMessage( m_hWnd, MSG_EXTRACTERROR, 0, 0 );
-					break;
 				}
 			}
 		}
@@ -537,7 +597,6 @@ std::wstring CDDAExtract::GetOutputFilename( const MediaInfo& mediaInfo ) const
 	if ( outputFilename.empty() ) {
 		outputFilename = std::to_wstring( mediaInfo.GetTrack() );
 	}
-	outputFilename += L".flac";
 	outputFilename = extractFolder + outputFilename;
 
 	// Create the output folder, if necessary.
@@ -558,24 +617,36 @@ void CDDAExtract::UpdateStatus()
 	if ( ( currentTrack != m_DisplayedTrack ) || ( currentPass != m_DisplayedPass ) ) {
 		m_DisplayedTrack = currentTrack;
 		m_DisplayedPass = currentPass;
-		WCHAR buffer[ 32 ];
+		const int bufSize = 128;
+		WCHAR buffer[ bufSize ];
 		std::wstring readStatus;
 		if ( s_ReadFinished == m_DisplayedTrack ) {
-			LoadString( m_hInst, IDS_EXTRACT_STATUS_READCOMPLETE, buffer, 32 );
+			LoadString( m_hInst, IDS_EXTRACT_STATUS_READCOMPLETE, buffer, bufSize );
 			readStatus = buffer;
+			const HWND progressRead = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TRACK );
+			if ( nullptr != progressRead ) {
+				SendMessage( progressRead, PBM_SETPOS, m_ProgressRange, 0 );			
+			}
 		} else {
-			LoadString( m_hInst, IDS_EXTRACT_STATUS_TRACK, buffer, 32 );
-			std::wstring trackStr( buffer );
-			WideStringReplace( trackStr, L"%", std::to_wstring( m_DisplayedTrack ) );
-			LoadString( m_hInst, IDS_EXTRACT_STATUS_PASS, buffer, 32 );
-			std::wstring passStr( buffer );
-			WideStringReplace( passStr, L"%", std::to_wstring( m_DisplayedPass ) );
-			readStatus = trackStr + L" (" + passStr + L"):";
+			if ( s_ReadFixingSectors == m_DisplayedPass ) {
+				LoadString( m_hInst, IDS_EXTRACT_STATUS_FIXING, buffer, bufSize );
+				readStatus = buffer;
+				WideStringReplace( readStatus, L"%", std::to_wstring( m_DisplayedTrack ) );
+				readStatus += L":";
+			} else {
+				LoadString( m_hInst, IDS_EXTRACT_STATUS_TRACK, buffer, bufSize );
+				std::wstring trackStr( buffer );
+				WideStringReplace( trackStr, L"%", std::to_wstring( m_DisplayedTrack ) );
+				LoadString( m_hInst, IDS_EXTRACT_STATUS_PASS, buffer, bufSize );
+				std::wstring passStr( buffer );
+				WideStringReplace( passStr, L"%", std::to_wstring( m_DisplayedPass ) );
+				readStatus = trackStr + L" (" + passStr + L"):";
+			}
 		}
 		SetDlgItemText( m_hWnd, IDC_EXTRACT_STATE_READ, readStatus.c_str() );
 	}
 
-	const HWND progressRead = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_READ );
+	const HWND progressRead = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TRACK );
 	if ( nullptr != progressRead ) {
 		const long displayPosition = static_cast<long>( SendMessage( progressRead, PBM_GETPOS, 0, 0 ) );
 		const long currentPosition = static_cast<long>( m_ProgressRead * m_ProgressRange );
@@ -584,7 +655,7 @@ void CDDAExtract::UpdateStatus()
 		}
 	}
 
-	const HWND progressEncode = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_ENCODE );
+	const HWND progressEncode = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TOTAL );
 	if ( nullptr != progressEncode ) {
 		const long displayPosition = static_cast<long>( SendMessage( progressEncode, PBM_GETPOS, 0, 0 ) );
 		const long currentPosition = static_cast<long>( m_ProgressEncode * m_ProgressRange );
@@ -640,8 +711,7 @@ void CDDAExtract::WriteTrackTags( const std::wstring& filename, const MediaInfo&
 	}
 
 	if ( !tags.empty() ) {
-		HandlerFlac handler;
-		handler.SetTags( filename, tags );
+		m_Handlers.SetTags( filename, tags );
 	}
 }
 
@@ -658,7 +728,6 @@ void CDDAExtract::WriteAlbumTags( const std::wstring& filename, const MediaInfo&
 	}
 
 	if ( !tags.empty() ) {
-		HandlerFlac handler;
-		handler.SetTags( filename, tags );
+		m_Handlers.SetTags( filename, tags );
 	}
 }

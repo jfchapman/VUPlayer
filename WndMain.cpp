@@ -61,11 +61,8 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 
 	VUPlayer* vuplayer = VUPlayer::Get( g_hInst, g_hWnd );
 	SetWindowLongPtr( g_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( vuplayer ) );
-
-	HACCEL hAccelTable = LoadAccelerators( hInstance, MAKEINTRESOURCE( IDC_VUPLAYER ) );
-
+	const HACCEL hAccelTable = vuplayer ? vuplayer->GetAcceleratorTable() : nullptr;
 	MSG msg;
-
 	// Main message loop
 	while ( GetMessage( &msg, nullptr, 0, 0 ) ) {
 		if ( !TranslateAccelerator( g_hWnd, hAccelTable, &msg ) ) {

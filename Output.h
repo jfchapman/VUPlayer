@@ -259,7 +259,7 @@ private:
 	Decoder::Ptr m_DecoderStream;
 
 	// The sample rate of the currently decoding stream.
-	std::atomic<long> m_DecoderSampleRate;
+	long m_DecoderSampleRate;
 
 	// The current BASS output stream.
 	HSTREAM m_OutputStream;
@@ -280,19 +280,19 @@ private:
 	Queue m_OutputQueue;
 
 	// Playlist item ID to restart playback from, if stream playback has ended.
-	std::atomic<long> m_RestartItemID;
+	long m_RestartItemID;
 
 	// Indicates whether random play is enabled.
-	std::atomic<bool> m_RandomPlay;
+	bool m_RandomPlay;
 
 	// Indicates whether track repeat is enabled.
-	std::atomic<bool> m_RepeatTrack;
+	bool m_RepeatTrack;
 
 	// Indicates whether playlist repeat is enabled.
-	std::atomic<bool> m_RepeatPlaylist;
+	bool m_RepeatPlaylist;
 
 	// Indicates whether crossfade is enabled.
-	std::atomic<bool> m_Crossfade;
+	bool m_Crossfade;
 
 	// The currently selected playlist item (this can be different from the currently playing item).
 	Playlist::Item m_CurrentSelectedPlaylistItem;
@@ -301,37 +301,37 @@ private:
 	bool m_UsingDefaultDevice;
 
 	// ReplayGain mode.
-	std::atomic<Settings::ReplaygainMode> m_ReplaygainMode;
+	Settings::ReplaygainMode m_ReplaygainMode;
 
 	// ReplayGain preamp in dB.
-	std::atomic<float> m_ReplaygainPreamp;
+	float m_ReplaygainPreamp;
 
 	// ReplayGain hard limit flag.
-	std::atomic<bool> m_ReplaygainHardlimit;
+	bool m_ReplaygainHardlimit;
 
 	// Indicates whether to stop playback at the end of the current track.
-	std::atomic<bool> m_StopAtTrackEnd;
+	bool m_StopAtTrackEnd;
 
 	// Indicates whether the output is muted.
 	bool m_Muted;
 
 	// Indicates whether the current track is being faded out.
-	std::atomic<bool> m_FadeOut;
+	bool m_FadeOut;
 
 	// Indicates whether we are fading into the next track.
-	std::atomic<bool> m_FadeToNext;
+	bool m_FadeToNext;
 
 	// Indicates whether to switch to the next track when we are fading out.
-	std::atomic<bool> m_SwitchToNext;
+	bool m_SwitchToNext;
 
 	// Position in the output stream when fade out was started, in seconds.
-	std::atomic<float> m_FadeOutStartPosition;
+	float m_FadeOutStartPosition;
 
 	// Position of the last transition in the output stream, in seconds.
 	float m_LastTransitionPosition;
 
 	// Crossfade position for the current track, in seconds.
-	std::atomic<float> m_CrossfadePosition;
+	float m_CrossfadePosition;
 
 	// Filename of the track for which to calculate the crossfade position.
 	std::wstring m_CrossfadeFilename;
@@ -367,8 +367,8 @@ private:
 	FXList m_FX;
 
 	// Indicates whether EQ is enabled.
-	std::atomic<bool> m_EQEnabled;
+	bool m_EQEnabled;
 
 	// EQ preamp in dB.
-	std::atomic<float> m_EQPreamp;
+	float m_EQPreamp;
 };

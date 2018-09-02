@@ -1,16 +1,16 @@
 #pragma once
 
+#include "stdafx.h"
+
 #include "Encoder.h"
 
-#include "FLAC++/all.h"
-
-// FLAC encoder
-class EncoderFlac : public Encoder, public FLAC::Encoder::File
+// PCM encoder
+class EncoderPCM : public Encoder
 {
 public:
-	EncoderFlac();
+	EncoderPCM();
 
-	virtual ~EncoderFlac();
+	virtual ~EncoderPCM();
 
 	// Opens the encoder.
 	// 'filename' - (in) output file name without file extension, (out) output file name with file extension.
@@ -29,4 +29,29 @@ public:
 
 	// Closes the encoder.
 	void Close() override;
+
+private:
+	// RIFF header.
+	struct WaveFileHeader 
+	{
+		BYTE hdrRIFF[ 4 ];
+		DWORD dwTotalLength;
+		BYTE hdrWAVE[ 4 ];
+		BYTE hdrFMT[ 4 ];
+		DWORD nFmtLength;
+		WORD wFormatTag; 
+		WORD nChannels; 
+		DWORD nSamplesPerSec; 
+		DWORD nAvgBytesPerSec; 
+		WORD nBlockAlign; 
+		WORD wBitsPerSample;
+		BYTE hdrDATA[ 4 ];
+		DWORD nDataLength;
+	};
+
+	// Wave file header.
+	WaveFileHeader m_header;
+
+	// Output file.
+	FILE* m_file;
 };

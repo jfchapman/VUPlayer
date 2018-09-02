@@ -1,17 +1,15 @@
 #pragma once
-
 #include "Handler.h"
 
-#include "CDDAManager.h"
+#include <string>
 
-class HandlerCDDA : public Handler
+// PCM encoder handler
+class HandlerPCM :	public Handler
 {
 public:
-	// 'instance' - module instance handle.
-	// 'cddaManager' - CD audio manager.
-	HandlerCDDA( const HINSTANCE instance, CDDAManager& cddaManager );
+	HandlerPCM();
 
-	virtual ~HandlerCDDA();
+	virtual ~HandlerPCM();
 
 	// Returns a description of the handler.
 	std::wstring GetDescription() const override;
@@ -46,12 +44,4 @@ public:
 	// 'settings' - in/out, encoder settings.
 	// Returns whether the encoder has been configured.
 	bool ConfigureEncoder( const HINSTANCE instance, const HWND parent, std::string& settings ) const override;
-
-private:
-	// Module instance handle.
-	HINSTANCE m_hInst;
-
-	// CD audio manager
-	CDDAManager& m_CDDAManager;
 };
-

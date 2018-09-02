@@ -118,16 +118,16 @@ void ReplayGain::Handler()
 							for ( long index = 0; index < samplesRead; index++ ) {
 								const float sampleValue = buffer[ index * channels ];
 								leftSamples[ index ] = sampleValue * scale;
-								if ( sampleValue > trackPeak ) {
-									trackPeak = sampleValue;
+								if ( sqrt( sampleValue * sampleValue ) > trackPeak ) {
+									trackPeak = sqrt( sampleValue * sampleValue );
 								}
 							}
 							if ( nullptr != rightSamples ) {
 								for ( long index = 0; index < samplesRead; index++ ) {
 									const float sampleValue = buffer[ index * channels + 1 ];
 									rightSamples[ index ] = sampleValue * scale;
-									if ( sampleValue > trackPeak ) {
-										trackPeak = sampleValue;
+									if ( sqrt( sampleValue * sampleValue ) > trackPeak ) {
+										trackPeak = sqrt( sampleValue * sampleValue );
 									}
 								}
 							}
