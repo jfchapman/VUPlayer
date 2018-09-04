@@ -35,8 +35,7 @@ static const std::map<UINT,float> s_VUMeterDecay = {
 		{ ID_VUMETER_FASTDECAY, VUMeterDecayMaximum }
 };
 
-// Window procedure
-static LRESULT CALLBACK WndVisualProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK WndVisual::VisualProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndVisual* wndVisual = reinterpret_cast<WndVisual*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndVisual ) {
@@ -67,9 +66,12 @@ static LRESULT CALLBACK WndVisualProc( HWND hwnd, UINT message, WPARAM wParam, L
 	return DefWindowProc( hwnd, message, wParam, lParam );
 }
 
-WndVisual::WndVisual( HINSTANCE instance, HWND parent, Settings& settings, Output& output, Library& library ) :
+WndVisual::WndVisual( HINSTANCE instance, HWND parent, HWND rebarWnd, HWND statusWnd, Settings& settings, Output& output, Library& library ) :
 	m_hInst( instance ),
 	m_hWnd( NULL ),
+	m_hWndParent( parent ),
+	m_hWndRebar( rebarWnd ),
+	m_hWndStatus( statusWnd ),
 	m_Settings( settings ),
 	m_Output( output ),
 	m_Library( library ),
@@ -82,7 +84,7 @@ WndVisual::WndVisual( HINSTANCE instance, HWND parent, Settings& settings, Outpu
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof( WNDCLASSEX );
 	wc.hInstance = instance;
-	wc.lpfnWndProc = WndVisualProc;
+	wc.lpfnWndProc = VisualProc;
 	wc.lpszClassName = s_VisualClass;
 	wc.hCursor = LoadCursor( 0, IDC_ARROW );
 	wc.hbrBackground = reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 );
@@ -341,6 +343,20 @@ void WndVisual::Resize( WINDOWPOS* windowPos )
 			if ( requestedHeight != windowPos->cy ) {
 				windowPos->y -= ( requestedHeight - windowPos->cy );
 				windowPos->cy = requestedHeight;
+			}
+
+			RECT parentRect = {};
+			RECT rebarRect = {};
+			RECT statusRect = {};
+			if ( ( 0 != GetClientRect( m_hWndParent, &parentRect ) ) && ( 0 != GetWindowRect( m_hWndRebar, &rebarRect ) ) && ( 0 != GetWindowRect( m_hWndStatus, &statusRect ) ) ) {
+				const int minY = rebarRect.bottom - rebarRect.top;
+				const int maxCY = ( parentRect.bottom - parentRect.top ) - minY - ( statusRect.bottom - statusRect.top );
+				if ( windowPos->y < minY ) {
+					windowPos->y = minY;
+				}
+				if ( windowPos->cy > maxCY ) {
+					windowPos->cy = maxCY;
+				}
 			}
 			ResizeD2DSwapChain( windowPos );
 		}

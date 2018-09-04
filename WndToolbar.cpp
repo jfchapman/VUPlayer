@@ -3,8 +3,7 @@
 // Toolbar control ID
 UINT_PTR WndToolbar::s_WndToolbarID = 1700;
 
-// Window procedure
-static LRESULT CALLBACK WndToolbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK WndToolbar::ToolbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndToolbar* wndToolbar = reinterpret_cast<WndToolbar*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndToolbar ) {
@@ -43,7 +42,7 @@ WndToolbar::WndToolbar( HINSTANCE instance, HWND parent ) :
 
 	m_hWnd = CreateWindowEx( 0, TOOLBARCLASSNAME, 0, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndToolbarID++ ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
-	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( WndToolbarProc ) ) );
+	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( ToolbarProc ) ) );
 }
 
 WndToolbar::~WndToolbar()

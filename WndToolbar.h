@@ -42,6 +42,9 @@ protected:
 	void SetButtonChecked( const UINT commandID, const bool checked );
 
 private:
+	// Window procedure
+	static LRESULT CALLBACK ToolbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// Next available child window ID.
 	static UINT_PTR s_WndToolbarID;
 

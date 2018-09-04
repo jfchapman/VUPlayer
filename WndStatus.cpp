@@ -19,8 +19,7 @@ static const int s_PartWidth = 110;
 // File added message ID.
 static const UINT MSG_UPDATESTATUS = WM_APP + 147;
 
-// Window procedure
-static LRESULT CALLBACK WndStatusProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK WndStatus::StatusProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndStatus* wndStatus = reinterpret_cast<WndStatus*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndStatus ) {
@@ -63,7 +62,7 @@ WndStatus::WndStatus( HINSTANCE instance, HWND parent ) :
 	LPVOID param = NULL;
 	m_hWnd=CreateWindowEx( 0, STATUSCLASSNAME, 0, style ,x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndStatusID ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
-	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( WndStatusProc ) ) );
+	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( StatusProc ) ) );
 
 	RECT rect;
 	GetWindowRect( m_hWnd, &rect );

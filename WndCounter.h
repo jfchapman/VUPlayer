@@ -17,26 +17,11 @@ public:
 
 	virtual ~WndCounter();
 
-	// Returns the default window procedure.
-	WNDPROC GetDefaultWndProc();
-
 	// Gets the counter window handle.
 	HWND GetWindowHandle();
 
 	// Refreshes the counter display.
 	void Refresh();
-
-	// Called when the control needs painting.
-	void OnPaint( const PAINTSTRUCT& ps );
-
-	// Displays the context menu at the specified 'position', in screen coordinates.
-	void OnContextMenu( const POINT& position );
-
-	// Called when a 'command' is received.
-	void OnCommand( const UINT command );
-
-	// Toggles the counter between track elapsed & track remaining.
-	void Toggle();
 
 	// Returns true if showing track remaining or false if showing track elapsed.
 	bool GetTrackRemaining() const;
@@ -50,13 +35,31 @@ public:
 
 	// Displays the colour selection dialog for the counter.
 	void OnSelectColour();
+
 private:
+	// Window procedure
+	static LRESULT CALLBACK CounterProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
+	// Called when the control needs painting.
+	void OnPaint( const PAINTSTRUCT& ps );
+
+	// Displays the context menu at the specified 'position', in screen coordinates.
+	void OnContextMenu( const POINT& position );
+
+	// Called when a 'command' is received.
+	void OnCommand( const UINT command );
 
 	// Sets the counter font.
 	void SetCounterFont( const LOGFONT& font );
 
 	// Redraws the counter.
 	void Redraw();
+
+	// Toggles the counter between track elapsed & track remaining.
+	void Toggle();
+
+	// Returns the default window procedure.
+	WNDPROC GetDefaultWndProc();
 
 	// Returns the background on which to draw the counter.
 	std::shared_ptr<Gdiplus::Bitmap> GetBackgroundBitmap();

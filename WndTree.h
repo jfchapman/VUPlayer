@@ -138,6 +138,9 @@ public:
 	void RenameSelectedPlaylist();
 
 private:
+	// Window procedure
+	static LRESULT CALLBACK TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// Maps a tree item to a playlist.
 	typedef std::map<HTREEITEM,Playlist::Ptr> PlaylistMap;
 

@@ -77,6 +77,9 @@ protected:
 	int GetRange() const;
 
 private:
+	// Window procedure
+	static LRESULT CALLBACK TrackbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// Next available child window ID.
 	static UINT_PTR s_WndTrackbarID;
 

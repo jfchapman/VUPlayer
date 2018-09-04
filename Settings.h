@@ -73,7 +73,7 @@ public:
 		static const int MinGain = -9;
 
 		EQ() :
-			Visible( true ),
+			Visible( false ),
 			X( Centred ),
 			Y( Centred ),
 			Enabled( false ),

@@ -53,8 +53,7 @@ static const UINT_PTR s_DragTimerID = 1010;
 // Drag timer millisecond interval.
 static const UINT s_DragTimerInterval = 20;
 
-// Window procedure
-static LRESULT CALLBACK WndListProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndList* wndList = reinterpret_cast<WndList*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndList ) {
@@ -201,7 +200,7 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	ListView_SetExtendedListViewStyle( m_hWnd, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_HEADERDRAGDROP | LVS_EX_DOUBLEBUFFER );
 	SetWindowLongPtr( ListView_GetHeader( m_hWnd ), GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
-	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( WndListProc ) ) );
+	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( ListProc ) ) );
 
 	// Insert a dummy column.
 	LVCOLUMN lvc = {};

@@ -12,8 +12,7 @@ static const int s_TrackbarWidth = 127;
 // Trackbar height
 static const int s_TrackbarHeight = 26;
 
-// Window procedure
-static LRESULT CALLBACK WndTrackbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK WndTrackbar::TrackbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndTrackbar* wndTrackbar = reinterpret_cast<WndTrackbar*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndTrackbar ) {
@@ -92,7 +91,7 @@ WndTrackbar::WndTrackbar( HINSTANCE instance, HWND parent, Output& output, const
 
 	m_hWnd = CreateWindowEx( 0, TRACKBAR_CLASS, 0, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndTrackbarID ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
-	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( WndTrackbarProc ) ) );
+	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( TrackbarProc ) ) );
 	
 	SendMessage( m_hWnd, TBM_SETRANGEMIN, 0 /*redraw*/, static_cast<LPARAM>( minValue ) );
 	SendMessage( m_hWnd, TBM_SETRANGEMAX, 0 /*redraw*/, static_cast<LPARAM>( maxValue ) );

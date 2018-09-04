@@ -36,6 +36,9 @@ public:
 	void Refresh();
 
 private:
+	// Window procedure
+	static LRESULT CALLBACK StatusProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 

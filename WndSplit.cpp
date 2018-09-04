@@ -17,8 +17,7 @@ static const int s_MaxSplit = 500;
 // Default split width
 static const int s_DefaultSplit = 303;
 
-// Window procedure
-static LRESULT CALLBACK WndSplitProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK WndSplit::SplitProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndSplit* wndSplit = reinterpret_cast<WndSplit*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndSplit ) {
@@ -101,7 +100,7 @@ WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStat
 	wc.hCursor = LoadCursor( 0, IDC_SIZEWE );
 	wc.hbrBackground = reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 );
 	wc.hInstance = instance;
-	wc.lpfnWndProc = WndSplitProc;
+	wc.lpfnWndProc = SplitProc;
 	wc.lpszClassName = s_SplitClass;
 	RegisterClassEx( &wc );
 

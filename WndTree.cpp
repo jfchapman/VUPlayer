@@ -29,8 +29,7 @@ WndTree::OrderMap WndTree::s_RootOrder = {
 	{ Playlist::Type::Year,				8 }
 };
 
-// Window procedure
-static LRESULT CALLBACK WndTreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndTree* wndTree = reinterpret_cast<WndTree*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndTree ) {
@@ -106,7 +105,7 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_hWnd = CreateWindowEx( exStyle, className, windowName, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndTreeID ), instance, param );
 	TreeView_SetExtendedStyle( m_hWnd, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
-	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( WndTreeProc ) ) );
+	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( TreeProc ) ) );
 	ApplySettings();
 	CreateImageList();
 }

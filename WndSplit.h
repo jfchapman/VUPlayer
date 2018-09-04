@@ -42,6 +42,9 @@ public:
 	void Resize();
 
 private:
+	// Window procedure
+	static LRESULT CALLBACK SplitProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// Next available child window ID.
 	static UINT_PTR s_WndSplitID;
 

@@ -32,14 +32,16 @@ public:
 	// Adds a control to a new rebar band.
 	// 'hwnd' - control window handle.
 	// 'iconCallback' - callback for returning the icon resource ID for the control.
-	void AddControl( HWND hwnd );
+	// 'canHide' - indicates whether the control can be hidden when the rebar is shrunk.
+	void AddControl( HWND hwnd, const bool canHide = true );
 
 	// Adds a control to a new rebar band, with an associated icon.
 	// 'hwnd' - control window handle.
 	// 'icons' - the set of icons which can be displayed.
 	// 'iconCallback' - callback for returning the current icon resource ID for the control.
 	// 'iconCallback' - callback which handles clicking on the rebar band icon.
-	void AddControl( HWND hwnd, const std::set<UINT>& icons, IconCallback iconCallback, ClickCallback clickCallback );
+	// 'canHide' - indicates whether the control can be hidden when the rebar is shrunk.
+	void AddControl( HWND hwnd, const std::set<UINT>& icons, IconCallback iconCallback, ClickCallback clickCallback, const bool canHide = true );
 
 	// Returns the (0-based) position of the 'hwnd' in the rebar control.
 	int GetPosition( const HWND hwnd ) const;
@@ -50,12 +52,9 @@ public:
 	// Updates the rebar state.
 	void Update();
 
-	// Called when the caption of a 'bandID' is clicked.
-	void OnClickCaption( const UINT bandID );
-
 private:
-	// Creates the image list.
-	void CreateImageList();
+	// Window procedure.
+	static LRESULT CALLBACK RebarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
 	// Maps an icon resource ID to an image list index.
 	typedef std::map<UINT,int> ImageListMap;
@@ -66,8 +65,26 @@ private:
 	// Maps a rebar band ID to an click callback.
 	typedef std::map<UINT,ClickCallback> ClickCallbackMap;
 
+	// A set of rebar band IDs.
+	typedef std::set<UINT> BandIDSet;
+
+	// Maps a rebar band ID to a child window.
+	typedef std::map<UINT,HWND> BandChildMap;
+
 	// Returns the current image list index value for a rebar 'bandID'.
 	int GetImageListIndex( const UINT bandID ) const;
+
+	// Called when the caption of a 'bandID' is clicked.
+	void OnClickCaption( const UINT bandID );
+
+	// Creates the image list.
+	void CreateImageList();
+
+	// Rearranges the rebar bands on initialisation or resizing, to ensure there is only a single row of buttons.
+	void RearrangeBands();
+
+	// Reorders rebar bands by ID.
+	void ReorderBandsByID();
 
 	// Next available rebar band ID.
 	static UINT s_BandID;
@@ -95,4 +112,19 @@ private:
 
 	// Maps a rebar band ID to a click callback.
 	ClickCallbackMap m_ClickCallbackMap;
+
+	// The set of rebar bands that can be hidden.
+	BandIDSet m_BandCanBeHidden;
+
+	// The set of rebar bands that are hidden.
+	BandIDSet m_HiddenBands;
+
+	// Maps a rebar band ID to its child window handle.
+	BandChildMap m_BandChildWindows;
+
+	// Indicates whether to prevent rearrangement of rebar bands.
+	bool m_PreventBandRearrangement;
+
+	// The previous rebar width.
+	int m_PreviousRebarWidth;
 };

@@ -14,8 +14,7 @@ static const wchar_t s_CounterClass[] = L"VUCounterClass";
 // Counter width
 static const int s_CounterWidth = 130;
 
-// Window procedure
-static LRESULT CALLBACK WndCounterProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK WndCounter::CounterProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndCounter* wndCounter = reinterpret_cast<WndCounter*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndCounter ) {
@@ -66,7 +65,7 @@ WndCounter::WndCounter( HINSTANCE instance, HWND parent, Settings& settings, Out
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof( WNDCLASSEX );
 	wc.hInstance = instance;
-	wc.lpfnWndProc = WndCounterProc;
+	wc.lpfnWndProc = CounterProc;
 	wc.lpszClassName = s_CounterClass;
 	RegisterClassEx( &wc );
 

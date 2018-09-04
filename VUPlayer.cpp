@@ -21,10 +21,10 @@ static const UINT_PTR s_TimerID = 42;
 static const UINT s_TimerInterval = 100;
 
 // Minimum application width.
-static const int s_MinAppWidth = 1024;
+static const int s_MinAppWidth = 640;
 
 // Minimum application height.
-static const int s_MinAppHeight = 768;
+static const int s_MinAppHeight = 480;
 
 // Skip duration, in seconds.
 static const float s_SkipDuration = 5.0f;
@@ -71,7 +71,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_Rebar( m_hInst, m_hWnd ),
 	m_Status( m_hInst, m_hWnd ),
 	m_Tree( m_hInst, m_hWnd, m_Library, m_Settings, m_CDDAManager ),
-	m_Visual( m_hInst, m_hWnd, m_Settings, m_Output, m_Library ),
+	m_Visual( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Settings, m_Output, m_Library ),
 	m_List( m_hInst, m_hWnd, m_Settings, m_Output ),
 	m_SeekControl( m_hInst, m_Rebar.GetWindowHandle(), m_Output ),
 	m_VolumeControl( m_hInst, m_Rebar.GetWindowHandle(), m_Output, m_Settings ),
@@ -96,8 +96,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 {
 	ReadWindowSettings();
 
-	m_Rebar.AddControl( m_SeekControl.GetWindowHandle() );
-	m_Rebar.AddControl( m_Counter.GetWindowHandle() );
+	m_Rebar.AddControl( m_SeekControl.GetWindowHandle(), false /*canHide*/ );
+	m_Rebar.AddControl( m_Counter.GetWindowHandle(), false /*canHide*/ );
 	m_Rebar.AddControl( m_ToolbarFile.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarPlaylist.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarFavourites.GetWindowHandle() );
@@ -117,7 +117,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 			output.ToggleMuted();
 		}
 	} );
-	m_Rebar.AddControl( m_VolumeControl.GetWindowHandle(), { IDI_VOLUME, IDI_VOLUME_MUTE, IDI_PITCH }, iconCallback, clickCallback );
+	m_Rebar.AddControl( m_VolumeControl.GetWindowHandle(), { IDI_VOLUME, IDI_VOLUME_MUTE, IDI_PITCH }, iconCallback, clickCallback, false /*canHide*/ );
 
 	const int seekPosition = m_Rebar.GetPosition( m_SeekControl.GetWindowHandle() );
 	if ( 0 != seekPosition ) {

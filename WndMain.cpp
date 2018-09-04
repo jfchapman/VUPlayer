@@ -114,8 +114,8 @@ BOOL InitInstance( HINSTANCE hInstance, int /*nCmdShow*/ )
 	const DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
 	const int x = 0;
 	const int y = 0;
-	const int width = static_cast<int>( 1024 * GetDPIScaling() );
-	const int height = static_cast<int>( 768 * GetDPIScaling() );
+	const int width = static_cast<int>( 900 * GetDPIScaling() );
+	const int height = static_cast<int>( 600 * GetDPIScaling() );
 	g_hWnd = CreateWindowW( g_szWindowClass, g_szTitle, style, x, y, width, height, nullptr, nullptr, hInstance, nullptr );
 	const BOOL success = ( NULL != g_hWnd );
 

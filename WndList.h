@@ -184,6 +184,9 @@ private:
 		int Position;					// Added item position (0-based).
 	};
 
+	// Window procedure
+	static LRESULT CALLBACK ListProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// Maps a column type to the column format.
 	typedef std::map<Playlist::Column,ColumnFormat> ColumnFormats;
 

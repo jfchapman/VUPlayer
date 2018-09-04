@@ -18,10 +18,12 @@ class WndVisual
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
+	// 'rebarWnd' - rebar window handle.
+	// 'statusWnd' - status bar window handle.
 	// 'settings' - application settings.
 	// 'output' - output object.
 	// 'library' - media library.
-	WndVisual( HINSTANCE instance, HWND parent, Settings& settings, Output& output, Library& library );
+	WndVisual( HINSTANCE instance, HWND parent, HWND rebarWnd, HWND statusWnd, Settings& settings, Output& output, Library& library );
 
 	virtual ~WndVisual();
 
@@ -90,6 +92,9 @@ public:
 	std::map<UINT,float> GetVUMeterDecayRates() const;
 
 private:
+	// Window procedure
+	static LRESULT CALLBACK VisualProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// Maps an ID to a visual.
 	typedef std::map<UINT,Visual*> Visuals;
 
@@ -114,6 +119,15 @@ private:
 
 	// Window handle.
 	HWND m_hWnd;
+
+	// Parent window handle.
+	HWND m_hWndParent;
+
+	// Rebar window handle.
+	HWND m_hWndRebar;
+	
+	// Status window handle.
+	HWND m_hWndStatus;
 
 	// Application settings.
 	Settings& m_Settings;
