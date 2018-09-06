@@ -21,6 +21,7 @@
 #include "WndRebar.h"
 #include "WndSplit.h"
 #include "WndStatus.h"
+#include "WndToolbarConvert.h"
 #include "WndToolbarCrossfade.h"
 #include "WndToolbarEQ.h"
 #include "WndToolbarFavourites.h"
@@ -167,6 +168,9 @@ public:
 	// Returns the accelerator table.
 	HACCEL GetAcceleratorTable() const;
 
+	// Removes the 'mediaList' from the media library and updates the tree control.
+	void OnRemoveFromLibrary( const MediaInfo::List& mediaList );
+
 private:
 	// 'instance' - module instance handle.
 	// 'hwnd' - main window handle.
@@ -303,6 +307,9 @@ private:
 
 	// Toolbar (EQ).
 	WndToolbarEQ m_ToolbarEQ;
+
+	// Toolbar (convert).
+	WndToolbarConvert m_ToolbarConvert;
 
 	// Counter control.
 	WndCounter m_Counter;

@@ -289,6 +289,7 @@ copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)g
     <ClInclude Include="WndSplit.h" />
     <ClInclude Include="WndStatus.h" />
     <ClInclude Include="WndToolbar.h" />
+    <ClInclude Include="WndToolbarConvert.h" />
     <ClInclude Include="WndToolbarCrossfade.h" />
     <ClInclude Include="WndToolbarEQ.h" />
     <ClInclude Include="WndToolbarFavourites.h" />
@@ -389,6 +390,7 @@ copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)g
     <ClCompile Include="WndSplit.cpp" />
     <ClCompile Include="WndStatus.cpp" />
     <ClCompile Include="WndToolbar.cpp" />
+    <ClCompile Include="WndToolbarConvert.cpp" />
     <ClCompile Include="WndToolbarCrossfade.cpp" />
     <ClCompile Include="WndToolbarEQ.cpp" />
     <ClCompile Include="WndToolbarFavourites.cpp" />
@@ -419,6 +421,7 @@ copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)g
     <Image Include="res\album.ico" />
     <Image Include="res\artist.ico" />
     <Image Include="res\artists.ico" />
+    <Image Include="res\convert.ico" />
     <Image Include="res\crossfade.ico" />
     <Image Include="res\eq.ico" />
     <Image Include="res\favourites.ico" />

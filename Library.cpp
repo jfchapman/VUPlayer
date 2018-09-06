@@ -1201,7 +1201,7 @@ bool Library::RemoveFromLibrary( const MediaInfo& mediaInfo )
 	bool removed = false;
 	sqlite3* database = m_Database.GetDatabase();
 	const std::wstring& filename = mediaInfo.GetFilename();
-	if ( ( nullptr != database ) && !filename.empty() ) {
+	if ( ( nullptr != database ) && !filename.empty() && ( MediaInfo::Source::File == mediaInfo.GetSource() ) ) {
 		const std::string query = "DELETE FROM Media WHERE Filename=?1;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&

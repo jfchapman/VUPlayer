@@ -1403,6 +1403,26 @@ Playlist::Set WndTree::OnUpdatedMedia( const MediaInfo& previousMediaInfo, const
 	return updatedPlaylists;
 }
 
+void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList )
+{
+	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
+	const Playlist::Ptr selectedPlaylist = GetSelectedPlaylist();
+	const bool updateAllTracks = m_PlaylistAll && ( selectedPlaylist != m_PlaylistAll );
+
+	for ( const auto& previousMediaInfo : mediaList ) {
+		Playlist::Set updatedPlaylists;
+		MediaInfo updatedMediaInfo( previousMediaInfo.GetFilename() );
+		UpdateArtists( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdateAlbums( m_NodeAlbums, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdateGenres( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdateYears( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		if ( updateAllTracks ) {
+			m_PlaylistAll->RemoveItem( previousMediaInfo );
+		}
+	}
+	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
+}
+
 void WndTree::OnMediaLibraryRefreshed()
 {
 	Playlist::Ptr previousSelectedPlaylist = GetSelectedPlaylist();

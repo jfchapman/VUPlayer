@@ -252,8 +252,8 @@ void Converter::EncodeHandler()
 
 			WriteTags( filename, mediaInfo );
 			if ( extractToLibrary ) {
-				mediaInfo.SetFilename( filename );
-				m_Library.GetMediaInfo( mediaInfo );
+				MediaInfo extractedMediaInfo( filename );
+				m_Library.GetMediaInfo( extractedMediaInfo );
 			}
 
 			++track;

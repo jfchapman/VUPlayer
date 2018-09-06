@@ -1779,7 +1779,7 @@ void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename,
 {
 	folder.clear();
 	filename.clear();
-	addToLibrary = false;
+	addToLibrary = true;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		sqlite3_stmt* stmt = nullptr;

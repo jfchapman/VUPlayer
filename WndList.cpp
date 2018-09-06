@@ -632,7 +632,7 @@ void WndList::OnContextMenu( const POINT& position )
 			const UINT enableAddFiles = allowPaste ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDFOLDER, MF_BYCOMMAND | enableAddFiles );
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | enableAddFiles );
-			const UINT enableRemoveFiles = ( allowCut && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableRemoveFiles = ( m_Playlist && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | enableRemoveFiles );
 			const UINT enableAddToFavourites = ( m_Playlist && ( Playlist::Type::Favourites != m_Playlist->GetType() ) && ( Playlist::Type::CDDA != m_Playlist->GetType() ) && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | enableAddToFavourites );
@@ -789,18 +789,42 @@ void WndList::RefreshListViewItemText()
 
 void WndList::DeleteSelectedItems()
 {
-	if ( m_Playlist && ( ( m_Playlist->GetType() == Playlist::Type::User ) || ( m_Playlist->GetType() == Playlist::Type::Favourites ) ) ) {
+	if ( m_Playlist ) {
+		MediaInfo::List deletedMedia;
+
 		SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
 		int itemIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
 		const int selectItem = itemIndex;
 		while ( itemIndex != -1 ) {
-			Playlist::Item playlistItem( { GetPlaylistItemID( itemIndex ), MediaInfo() } );
-			m_Playlist->RemoveItem( playlistItem );
+			Playlist::Item playlistItem = {};
+			playlistItem.ID = GetPlaylistItemID( itemIndex );
+			if ( m_Playlist->GetItem( playlistItem ) ) {
+				deletedMedia.push_back( playlistItem.Info );
+				m_Playlist->RemoveItem( playlistItem );
+			}
 			DeleteListViewItem( itemIndex );
 			itemIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
 		}
 		ListView_SetItemState( m_hWnd, selectItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 		SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
+
+		const Playlist::Type type = m_Playlist->GetType();
+		switch ( type ) {
+			case Playlist::Type::All :
+			case Playlist::Type::Artist :
+			case Playlist::Type::Album :
+			case Playlist::Type::Genre :
+			case Playlist::Type::Year : {
+				VUPlayer* vuplayer = VUPlayer::Get();
+				if ( nullptr != vuplayer ) {
+					vuplayer->OnRemoveFromLibrary( deletedMedia );
+				}
+				break;
+			}
+			default : {
+				break;
+			}
+		}
 	}
 }
 
@@ -891,7 +915,7 @@ void WndList::AddFileHandler( WPARAM wParam )
 
 void WndList::OnFileRemoved( Playlist* playlist, const Playlist::Item& item )
 {
-	if ( nullptr != playlist ) {
+	if ( playlist == m_Playlist.get() ) {
 		PostMessage( m_hWnd, MSG_FILEREMOVED, item.ID, 0 /*lParam*/ );
 	}
 }

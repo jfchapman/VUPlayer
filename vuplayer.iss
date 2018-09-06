@@ -2,8 +2,8 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "VUPlayer"
-#define MyAppVersion "4.2"
-#define MyAppFullVersion "4.2.0.0"
+#define MyAppVersion "4.3"
+#define MyAppFullVersion "4.3.0.0"
 #define MyAppMainVersion "4"
 #define MyAppDefaultDir "VUPlayer 4"
 #define MyAppPublisher "James Chapman"

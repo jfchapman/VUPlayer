@@ -11,7 +11,7 @@ public:
 
 	virtual ~WndToolbarEQ();
 
-	// Updates the tooolbar state.
+	// Updates the toolbar state.
 	// 'eqVisible' - indicates whether the EQ dialog is visible.
 	virtual void Update( const bool eqVisible );
 

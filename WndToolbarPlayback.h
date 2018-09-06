@@ -11,7 +11,7 @@ public:
 
 	virtual ~WndToolbarPlayback();
 
-	// Updates the tooolbar state.
+	// Updates the toolbar state.
 	// 'output' - output object.
 	// 'playlist' - currently displayed playlist.
 	// 'selectedItem' - currently focused playlist item.

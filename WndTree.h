@@ -86,6 +86,9 @@ public:
 	// Returns the playlists that have been updated.
 	Playlist::Set OnUpdatedMedia( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo );
 
+	// Called when the 'mediaList' has been removed from the media library.
+	void OnRemovedMedia( const MediaInfo::List& mediaList );
+
 	// Called when media library has been refreshed.
 	void OnMediaLibraryRefreshed();
 

@@ -279,6 +279,9 @@
     <ClInclude Include="Converter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="WndToolbarConvert.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -515,6 +518,9 @@
     <ClCompile Include="Converter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="WndToolbarConvert.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="VUPlayer.rc">
@@ -616,6 +622,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\eq.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\convert.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

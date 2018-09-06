@@ -91,7 +91,7 @@ bool CDDAMedia::CalculateCDDBID()
 		const unsigned long trackCount = m_TOC.LastTrack - m_TOC.FirstTrack + 1;
 		if ( trackCount < MAXIMUM_NUMBER_TRACKS ) {
 			while ( trackIndex < trackCount ) {
-				containsAudio = ( 0 == ( m_TOC.TrackData[ trackIndex ].Control & 4 ) );
+				containsAudio |= ( 0 == ( m_TOC.TrackData[ trackIndex ].Control & 4 ) );
 				trackSum += CDDBSum( ( m_TOC.TrackData[ trackIndex ].Address[ 1 ] * 60 ) + m_TOC.TrackData[ trackIndex ].Address[ 2 ] );
 				++trackIndex;
 			}

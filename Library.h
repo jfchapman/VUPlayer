@@ -115,6 +115,10 @@ public:
 	// Returns whether the 'year' exists in the media library.
 	bool GetYearExists( const long year );
 
+	// Removes 'mediaInfo' from the library.
+	// Returns true if the library was updated.
+	bool RemoveFromLibrary( const MediaInfo& mediaInfo );
+
 private:
 	// Media library columns.
 	typedef std::map<std::string,Column> Columns;
@@ -157,10 +161,6 @@ private:
 	// 'mediaInfo' - in/out, media information which will be modified if tags are successfully written.
 	// 'tags' - tags to write.
 	void WriteFileTags( MediaInfo& mediaInfo, const Handler::Tags& tags );
-
-	// Removes 'mediaInfo' from the library.
-	// Returns true if the library was updated.
-	bool RemoveFromLibrary( const MediaInfo& mediaInfo );
 
 	// Adds an artwork to the media library.
 	// 'id' - artwork ID.

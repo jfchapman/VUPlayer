@@ -84,6 +84,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_ToolbarPlaylist( m_hInst, m_Rebar.GetWindowHandle() ),
 	m_ToolbarFavourites( m_hInst, m_Rebar.GetWindowHandle() ),
 	m_ToolbarEQ( m_hInst, m_Rebar.GetWindowHandle() ),
+	m_ToolbarConvert( m_hInst, m_Rebar.GetWindowHandle() ),
 	m_Counter( m_hInst, m_Rebar.GetWindowHandle(), m_Settings, m_Output, m_ToolbarPlayback.GetHeight() - 1 ),
 	m_Splitter( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Tree.GetWindowHandle(), m_Visual.GetWindowHandle(), m_List.GetWindowHandle(), m_Settings ),
 	m_Tray( m_hInst, m_hWnd, m_Library, m_Settings, m_Output, m_Tree, m_List ),
@@ -101,6 +102,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_Rebar.AddControl( m_ToolbarFile.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarPlaylist.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarFavourites.GetWindowHandle() );
+	m_Rebar.AddControl( m_ToolbarConvert.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarOptions.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarInfo.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarEQ.GetWindowHandle() );
@@ -460,6 +462,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_ToolbarFlow.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarPlayback.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarEQ.Update( m_EQ.IsVisible() );
+		m_ToolbarConvert.Update( currentPlaylist );
 		m_Rebar.Update();
 		m_Counter.Refresh();
 		m_Status.Update( m_ReplayGain, m_Maintainer, m_Gracenote );
@@ -1051,7 +1054,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_EXPORTPLAYLIST, MF_BYCOMMAND | exportPlaylistEnabled );
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDFOLDER, MF_BYCOMMAND | MF_ENABLED );
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | MF_ENABLED );
-		const UINT removeFilesEnabled = ( playlist && ( ( ( Playlist::Type::User == playlist->GetType() ) || ( Playlist::Type::Favourites == playlist->GetType() ) ) ) && selectedItems ) ? MF_ENABLED : MF_DISABLED;
+		const UINT removeFilesEnabled = ( playlist && selectedItems ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
 		const UINT addToFavouritesEnabled = ( playlist && ( Playlist::Type::Favourites != playlist->GetType() ) && ( Playlist::Type::CDDA != playlist->GetType() ) && selectedItems ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | addToFavouritesEnabled );
@@ -1590,4 +1593,12 @@ bool VUPlayer::IsGracenoteEnabled()
 HACCEL VUPlayer::GetAcceleratorTable() const
 {
 	return m_hAccel;
+}
+
+void VUPlayer::OnRemoveFromLibrary( const MediaInfo::List& mediaList )
+{
+	for ( const auto& mediaInfo : mediaList ) {
+		m_Library.RemoveFromLibrary( mediaInfo );
+	}
+	m_Tree.OnRemovedMedia( mediaList );
 }

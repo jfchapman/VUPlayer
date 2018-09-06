@@ -1,4 +1,4 @@
-VUPlayer 4.2
+VUPlayer 4.3
 Copyright (c) 2018 James Chapman
 ------------------------------------------------------------------------------
 website:	http://www.vuplayer.com
@@ -8,6 +8,7 @@ email: 		james@vuplayer.com
 Overview
 --------
 VUPlayer is a freeware multi-format audio player for Windows 7 or later.
+Gracenote functionality requires an internet connection.
 
 
 Credits
@@ -29,6 +30,9 @@ http://xiph.org/flac/
 
 WavPack is Copyright (c) 1998-2017 David Bryant
 http://www.wavpack.com
+
+Gracenote is Copyright (c) 2000-2018 Gracenote, Inc.
+http://www.gracenote.com/
 
 
 License

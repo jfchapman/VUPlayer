@@ -2,20 +2,18 @@
 
 #include "WndToolbar.h"
 
-class WndToolbarFile : public WndToolbar
+class WndToolbarConvert : public WndToolbar
 {
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndToolbarFile( HINSTANCE instance, HWND parent );
+	WndToolbarConvert( HINSTANCE instance, HWND parent );
 
-	virtual ~WndToolbarFile();
+	virtual ~WndToolbarConvert();
 
 	// Updates the toolbar state.
-	// 'output' - output object.
 	// 'playlist' - currently displayed playlist.
-	// 'selectedItem' - currently focused playlist item.
-	virtual void Update( Output& output, const Playlist::Ptr playlist, const Playlist::Item& selectedItem );
+	virtual void Update( const Playlist::Ptr playlist );
 
 	// Returns the tooltip resource ID corresponding to a 'commandID'.
 	virtual UINT GetTooltip( const UINT commandID ) const;
@@ -29,5 +27,8 @@ private:
 
 	// Image list.
 	HIMAGELIST m_ImageList;
+
+	// The current tooltip resource ID.
+	WORD m_TooltipID;
 };
 
