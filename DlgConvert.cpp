@@ -205,7 +205,7 @@ void DlgConvert::OnInitDialog( const HWND hwnd )
 	UpdateFolderControl();
 
 
-	if ( MediaInfo::Source::CDDA == m_Tracks.begin()->Info.GetSource() ) {
+	if ( !m_Tracks.empty() && ( MediaInfo::Source::CDDA == m_Tracks.begin()->Info.GetSource() ) ) {
 		const HWND addToLibraryWnd = GetDlgItem( m_hWnd, IDC_CONVERT_ADDTOLIBRARY );
 		if ( nullptr != addToLibraryWnd ) {
 			const int bufSize = 128;
