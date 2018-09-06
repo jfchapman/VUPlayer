@@ -204,6 +204,17 @@ void DlgConvert::OnInitDialog( const HWND hwnd )
 
 	UpdateFolderControl();
 
+
+	if ( MediaInfo::Source::CDDA == m_Tracks.begin()->Info.GetSource() ) {
+		const HWND addToLibraryWnd = GetDlgItem( m_hWnd, IDC_CONVERT_ADDTOLIBRARY );
+		if ( nullptr != addToLibraryWnd ) {
+			const int bufSize = 128;
+			WCHAR buffer[ bufSize ] = {};
+			LoadString( m_hInst, IDS_EXTRACT_ADDTOLIBRARY, buffer, bufSize );
+			SetWindowText( addToLibraryWnd, buffer );
+		}
+	}
+
 	std::wstring extractFolder;
 	std::wstring extractFilename;
 	bool extractToLibrary = false;
