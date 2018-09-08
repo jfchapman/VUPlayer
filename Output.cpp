@@ -977,6 +977,7 @@ void Output::ApplyReplayGain( float* buffer, const long bufferSize, const Playli
 		float preamp = eqEnabled ? m_EQPreamp : 0;
 
 		if ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) {
+			preamp += m_ReplaygainPreamp;
 			float gain = item.Info.GetGainAlbum();
 			if ( ( REPLAYGAIN_NOVALUE == gain ) || ( Settings::ReplaygainMode::Track == m_ReplaygainMode ) ) {
 				gain = item.Info.GetGainTrack();
