@@ -282,6 +282,9 @@
     <ClInclude Include="WndToolbarConvert.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FolderMonitor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -521,6 +524,9 @@
     <ClCompile Include="WndToolbarConvert.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FolderMonitor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="VUPlayer.rc">
@@ -625,6 +631,15 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\convert.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\folder.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\computer.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\disk.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

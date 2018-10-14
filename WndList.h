@@ -47,9 +47,10 @@ public:
 	// Sorts the playlist by 'column' type.
 	void SortPlaylist( const Playlist::Column column );
 
-	// Sets the current playlist.
+	// Sets the current 'playlist'.
 	// 'initSelection' - whether to select the first playlist item (or the currently playing item if it's in the list).
-	void SetPlaylist( const Playlist::Ptr playlist, const bool initSelection = true );
+	// 'filename' - the filename to select.
+	void SetPlaylist( const Playlist::Ptr playlist, const bool initSelection = true, const std::wstring& filename = std::wstring() );
 
 	// Called when an 'item' is added to the 'playlist' at a (0-based) 'position'.
 	void OnFileAdded( Playlist* playlist, const Playlist::Item& item, const int position );
@@ -291,4 +292,7 @@ private:
 
 	// Maps an item ID to a filename.
 	ItemFilenames m_ItemFilenames;
+
+	// The filename to select when setting the playlist.
+	std::wstring m_FilenameToSelect;
 };

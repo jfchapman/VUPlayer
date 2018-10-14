@@ -25,8 +25,12 @@ LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LP
 				SendMessage( reinterpret_cast<HWND>( lParam ) /*trackbarWnd*/, message, wParam, lParam );
 				break;
 			}
-			case WM_LBUTTONDOWN : {
-				const POINT pt = { GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ) };
+			case WM_LBUTTONDOWN : 
+			case WM_CONTEXTMENU : {
+				POINT pt = { GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ) };
+				if ( WM_CONTEXTMENU == message ) {
+					ScreenToClient( hwnd, &pt );
+				}
 				RBHITTESTINFO hitTestInfo = {};
 				hitTestInfo.pt = pt;
 				const int bandIndex = static_cast<int>( SendMessage( hwnd, RB_HITTEST, 0, reinterpret_cast<LPARAM>( &hitTestInfo ) ) );
@@ -35,7 +39,7 @@ LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LP
 					bandInfo.cbSize = sizeof( REBARBANDINFO );
 					bandInfo.fMask = RBBIM_ID;
 					SendMessage( hwnd, RB_GETBANDINFO, bandIndex, reinterpret_cast<LPARAM>( &bandInfo ) );
-					wndRebar->OnClickCaption( bandInfo.wID );
+					wndRebar->OnClickCaption( bandInfo.wID, ( WM_CONTEXTMENU == message ) );
 				}
 				break;
 			}
@@ -225,13 +229,13 @@ void WndRebar::Update()
 	}
 }
 
-void WndRebar::OnClickCaption( const UINT bandID )
+void WndRebar::OnClickCaption( const UINT bandID, const bool rightClick )
 {
 	const auto callbackIter = m_ClickCallbackMap.find( bandID );
 	if ( m_ClickCallbackMap.end() != callbackIter ) {
 		ClickCallback callback = callbackIter->second;
 		if ( nullptr != callback ) {
-			callback();
+			callback( rightClick );
 		}
 	}
 }

@@ -21,7 +21,8 @@ public:
 	typedef std::function<UINT()> IconCallback;
 
 	// Callback which handles clicking on a rebar band icon.
-	typedef std::function<void()> ClickCallback;
+	// 'rightClick' - true indicates a right click, false indicates a left click.
+	typedef std::function<void( const bool rightClick )> ClickCallback;
 
 	// Returns the default window procedure.
 	WNDPROC GetDefaultWndProc();
@@ -74,8 +75,8 @@ private:
 	// Returns the current image list index value for a rebar 'bandID'.
 	int GetImageListIndex( const UINT bandID ) const;
 
-	// Called when the caption of a 'bandID' is clicked.
-	void OnClickCaption( const UINT bandID );
+	// Called when the caption of a 'bandID' is clicked, and whether it was a 'rightClick'.
+	void OnClickCaption( const UINT bandID, const bool rightClick );
 
 	// Creates the image list.
 	void CreateImageList();

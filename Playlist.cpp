@@ -29,6 +29,7 @@ Playlist::Playlist( Library& library, const Type& type ) :
 	m_PendingThread( NULL ),
 	m_PendingStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
 	m_PendingWakeEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
+	m_RestartPendingThread( false ),
 	m_Library( library ),
 	m_SortColumn( Column::_Undefined ),
 	m_SortAscending( false ),
@@ -46,6 +47,7 @@ Playlist::Playlist( Library& library, const std::string& id, const Type& type ) 
 	m_PendingThread( NULL ),
 	m_PendingStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
 	m_PendingWakeEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
+	m_RestartPendingThread( false ),
 	m_Library( library ),
 	m_Type( type )
 {
@@ -215,9 +217,10 @@ Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position )
 
 void Playlist::AddPending( const std::wstring& filename, const bool startPendingThread )
 {
-	std::lock_guard<std::mutex> lock( m_MutexPending );
-	m_Pending.push_back( filename );
-	SetEvent( m_PendingWakeEvent );
+	{
+		std::lock_guard<std::mutex> lock( m_MutexPending );
+		m_Pending.push_back( filename );
+	}
 	if ( startPendingThread ) {
 		StartPendingThread();
 	}
@@ -225,18 +228,29 @@ void Playlist::AddPending( const std::wstring& filename, const bool startPending
 
 void Playlist::OnPendingThreadHandler()
 {
+	m_RestartPendingThread = false;
+	const DWORD timeout = 10 * 1000 /*msec*/;
 	HANDLE eventHandles[ 2 ] = { m_PendingStopEvent, m_PendingWakeEvent };
-	while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
+
+	while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, timeout ) != WAIT_OBJECT_0 ) {
 		std::wstring filename;
 		{
 			std::lock_guard<std::mutex> lock( m_MutexPending );
 			if ( m_Pending.empty() ) {
-				ResetEvent( m_PendingWakeEvent );
+				if ( WAIT_OBJECT_0 == WaitForSingleObject( m_PendingWakeEvent, 0 ) ) {
+					// Hang around for additional pending files.
+					ResetEvent( m_PendingWakeEvent );
+				} else {
+					// We've timed out, so self-terminate and signal that the thread should be restarted.
+					m_RestartPendingThread = true;
+					break;
+				}
 			} else {
 				filename = m_Pending.front();
 				m_Pending.pop_front();
 			}
 		}
+
 		if ( !filename.empty() ) {
 			bool addItem = true;
 			if ( ( Type::All == GetType() ) || ( Type::Favourites == GetType() ) ) {
@@ -259,9 +273,21 @@ void Playlist::OnPendingThreadHandler()
 
 void Playlist::StartPendingThread()
 {
+	std::lock_guard<std::mutex> lock( m_MutexPending );
+	if ( nullptr != m_PendingThread ) {
+		if ( m_RestartPendingThread ) {
+			WaitForSingleObject( m_PendingThread, INFINITE );
+			CloseHandle( m_PendingThread );
+			m_PendingThread = nullptr;		
+			m_RestartPendingThread = false;
+		}
+	}
+
 	if ( nullptr == m_PendingThread ) {
 		m_PendingThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, PendingThreadProc, reinterpret_cast<LPVOID>( this ), 0 /*flags*/, NULL /*threadId*/ );
 	}
+
+	SetEvent( m_PendingWakeEvent );
 }
 
 void Playlist::StopPendingThread()

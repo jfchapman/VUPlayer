@@ -563,3 +563,10 @@ char FloatTo8( const float value )
 		( ( scaledValue < static_cast<float>( -128 ) ) ? -128 : static_cast<char>( scaledValue ) );
 	return result;
 }
+
+std::wstring GetFileExtension( const std::wstring filename )
+{
+	const size_t pos = filename.rfind( '.' );
+	const std::wstring ext = ( std::wstring::npos != pos ) ? WideStringToLower( filename.substr( pos + 1 ) ) : std::wstring();
+	return ext;
+}

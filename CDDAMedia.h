@@ -31,6 +31,9 @@ public:
 	// Converts the formatted media 'filepath' to the corresponding 'drive' & 'track', returning whether the conversion was successful.
 	static bool FromMediaFilepath( const std::wstring& filepath, wchar_t& drive, long& track );
 
+	// Returns whether the table of contents for a CD-ROM 'drive' letter contains any data tracks.
+	static bool	ContainsData( const wchar_t drive );
+
 	// Returns the CDDB ID.
 	long GetCDDB() const;
 

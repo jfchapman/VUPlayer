@@ -8,6 +8,8 @@
 #include <list>
 #include <sstream>
 
+std::set<std::wstring> HandlerBass::s_SupportedFileExtensions( { L"mod", L"s3m", L"xm", L"it", L"mtm", L"mo3", L"umx", L"mp3", L"ogg", L"wav", L"mp4", L"m4a" } );
+
 HandlerBass::HandlerBass() :
 	Handler()
 {
@@ -31,8 +33,7 @@ std::wstring HandlerBass::GetDescription() const
 
 std::set<std::wstring> HandlerBass::GetSupportedFileExtensions() const
 {
-	const std::set<std::wstring> fileTypes = { L"mod", L"s3m", L"xm", L"it", L"mtm", L"mo3", L"umx", L"mp3", L"ogg", L"wav", L"mp4", L"m4a" };
-	return fileTypes;
+	return s_SupportedFileExtensions;
 }
 
 bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
@@ -91,7 +92,21 @@ Decoder::Ptr HandlerBass::OpenDecoder( const std::wstring& filename ) const
 {
 	DecoderBass* streamBass = nullptr;
 	try {
-		streamBass = new DecoderBass( filename );
+		bool ignoreFile = false;
+		if ( s_SupportedFileExtensions.end() == s_SupportedFileExtensions.find( WideStringToLower( GetFileExtension( filename ) ) ) ) {
+			// Prevent executables from incorrectly being identified as streams.
+			FILE* f = nullptr;
+			if ( 0 == _wfopen_s( &f, filename.c_str(), L"rb" ) ) {
+				const int bufferSize = 2;
+				char buffer[ bufferSize ] = {};
+				fread_s( buffer, bufferSize, 1 /*size*/, 2 /*count*/, f );
+				fclose( f );
+				ignoreFile = ( "MZ" == std::string( buffer, 2 ) );
+			}
+		}
+		if ( !ignoreFile ) {
+			streamBass = new DecoderBass( filename );
+		}
 	} catch ( const std::runtime_error& ) {
 
 	}

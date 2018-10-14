@@ -3,6 +3,7 @@
 #include "stdafx.h"
 
 #include "CDDAManager.h"
+#include "FolderMonitor.h"
 #include "Library.h"
 #include "Settings.h"
 
@@ -58,8 +59,9 @@ public:
 	// Deletes the currently selected playlist.
 	void DeleteSelectedPlaylist();
 
-	// Launches a file selector dialog to import a playlist.
-	void ImportPlaylist();
+	// Imports a playlist.
+	// 'filename' - the playlist to import, or an empty string to launch a file selection dialog.
+	void ImportPlaylist( const std::wstring& filename = std::wstring() );
 
 	// Launches a file selector dialog to export the currently selected playlist.
 	void ExportSelectedPlaylist();
@@ -140,9 +142,44 @@ public:
 	// Starts editing the name of the currently selected playlist.
 	void RenameSelectedPlaylist();
 
+	// Called when a tree 'item' is about to be expanded.
+	void OnItemExpanding( const HTREEITEM item );
+
+	// Called when a logical 'drive' has arrived.
+	void OnDriveArrived( const wchar_t drive );
+	
+	// Called when a logical 'drive' has been removed.
+	void OnDriveRemoved( const wchar_t drive );
+
+	// Called when a file system device 'handle' is being removed.
+	void OnDeviceHandleRemoved( const HANDLE handle );
+
+	// Sets and selects the playlist used for files passed via the shell (e.g on startup).
+	// 'mediaList' - media list with which to populate the scratch list.
+	// Returns the scratch list.
+	Playlist::Ptr SetScratchList( const MediaInfo::List& mediaList );
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
+	// Thread for updating media information in the scratch list.
+	static DWORD WINAPI ScratchListUpdateProc( LPVOID lpParam );
+
+	// Information for the scratch list update thread.
+	struct ScratchListUpdateInfo {
+		// 'library' - media library.
+		// 'stopEvent' - indicates whether the thread should stop.
+		// 'mediaList' - the media to update.
+		ScratchListUpdateInfo( Library& library, const HANDLE stopEvent, const MediaInfo::List& mediaList ) :
+			MediaLibrary( library ),
+			StopEvent( stopEvent ),
+			MediaList( mediaList ) {}
+
+		Library& MediaLibrary;
+		HANDLE StopEvent;
+		MediaInfo::List MediaList;
+	};
 
 	// Maps a tree item to a playlist.
 	typedef std::map<HTREEITEM,Playlist::Ptr> PlaylistMap;
@@ -152,6 +189,36 @@ private:
 
 	// Maps a playlist type to an item order value.
 	typedef std::map<Playlist::Type,LPARAM> OrderMap;
+
+	// Root folder type.
+	enum class RootFolderType { UserFolder, Drive };
+
+	// Root folder information.
+	struct RootFolderInfo {
+		std::wstring Name;				// Folder name.
+		std::wstring Path;				// Folder path.
+		int IconIndex;						// Folder icon index.
+		RootFolderType Type;			// Folder type.
+
+		bool operator<( const RootFolderInfo& other ) const
+		{
+			return std::tie( Name, Path, IconIndex, Type ) < std::tie( other.Name, other.Path, other.IconIndex, other.Type );
+		}
+
+		bool operator==( const RootFolderInfo& other ) const
+		{
+			return std::tie( Name, Path, IconIndex, Type ) == std::tie( other.Name, other.Path, other.IconIndex, other.Type );
+		}
+	};
+
+	// A folder information list.
+	typedef std::list<RootFolderInfo> RootFolderInfoList;
+
+	// Maps a tree item to folder information.
+	typedef std::map<HTREEITEM,RootFolderInfo> RootFolderInfoMap;
+
+	// Maps a string to a set of tree item nodes.
+	typedef std::map<std::wstring,std::set<HTREEITEM>> StringToNodesMap;
 
 	// Loads playlists
 	void LoadPlaylists();
@@ -305,6 +372,61 @@ private:
 	// Returns the tree insertion position for a root item corresponding to a playlist 'type'.
 	HTREEITEM GetInsertAfter( const Playlist::Type type ) const;
 
+	// Refreshes the computer tree control item.
+	void RefreshComputerNode();
+
+	// Returns the user folders.
+	RootFolderInfoList GetUserFolders() const;
+
+	// Returns the logical drives.
+	RootFolderInfoList GetComputerDrives() const;
+
+	// Returns the sub folders of the 'parent' folder.
+	std::set<std::wstring> GetSubFolders( const std::wstring& parent ) const;
+
+	// Gets the folder 'path' of the tree 'item'.
+	void GetFolderPath( const HTREEITEM item, std::wstring& path ) const;
+
+	// Adds sub folders to the tree 'item'.
+	void AddSubFolders( const HTREEITEM item );
+
+	// Adds tracks to the folder 'playlist' represented by the tree 'item'.
+	void AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist ) const;
+
+	// Folder monitor callback.
+	// 'monitorEvent' - event type.
+	// 'oldFilename' - the old file or folder name.
+	// 'newFilename' - the new file or folder name.
+	void OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, const std::wstring& oldFilename, const std::wstring& newFilename );
+
+	// Returns the 'children' (including all sub-children) of the tree 'item'.
+	void GetAllChildren( const HTREEITEM item, std::set<HTREEITEM>& children ) const;
+
+	// Called when a 'folder' needs to be added to the 'parent' tree item. 
+	// Returns the added folder tree item.
+	HTREEITEM OnFolderAdd( const HTREEITEM parent, const std::wstring& folder );
+
+	// Called when a folder 'item' needs to be deleted from the tree.
+	void OnFolderDelete( const HTREEITEM item );
+
+	// Called when an 'item' needs to be renamed to the new 'folder'.
+	void OnFolderRename( const HTREEITEM item, const std::wstring& folder );
+
+	// Adds the tree 'item' to the folder nodes map.
+	void AddToFolderNodesMap( const HTREEITEM item );
+
+	// Removes a tree 'item from the folder nodes map.
+	void RemoveFromFolderNodesMap( const HTREEITEM item );
+
+	// Returns the tree item corresponding to the computer 'folder', or nullptr if the node was not found.
+	HTREEITEM GetComputerFolderNode( const std::wstring& folder );
+
+	// Starts the thread which updates the media information for the 'scratchList'.
+	void StartScratchListUpdateThread( Playlist::Ptr scratchList );
+
+	// Stops the thread which updates the media information for the scratch list.
+	void StopScratchListUpdateThread();
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -335,6 +457,9 @@ private:
 	// Favourites node.
 	HTREEITEM m_NodeFavourites;
 
+	// Computer node.
+	HTREEITEM m_NodeComputer;
+
 	// Media library.
 	Library& m_Library;
 
@@ -362,6 +487,9 @@ private:
 	// CD audio playlists.
 	PlaylistMap m_CDDAMap;
 
+	// Folder playlists.
+	PlaylistMap m_FolderPlaylistMap;
+
 	// All Tracks playlist.
 	Playlist::Ptr m_PlaylistAll;
 
@@ -379,6 +507,36 @@ private:
 
 	// Icon map.
 	IconMap m_IconMap;
+
+	// Icon index for the computer icon.
+	int m_IconIndexComputer;
+
+	// Icon index for the folder icon.
+	int m_IconIndexFolder;
+
+	// Icon index for the drive icon.
+	int m_IconIndexDrive;
+
+	// The root computer folders.
+	RootFolderInfoMap m_RootComputerFolders;
+
+	// Maps a folder path to the set of tree items.
+	StringToNodesMap m_FolderNodesMap;
+
+	// Mutex for the folder nodes map.
+	std::mutex m_FolderNodesMapMutex;
+
+	// Mutex for the folder playlists map.
+	std::mutex m_FolderPlaylistMapMutex;
+
+	// Folder monitor.
+	FolderMonitor m_FolderMonitor;
+
+	// Scratch list update thread handle.
+	HANDLE m_ScratchListUpdateThread;
+
+	// Scratch list stop event handle.
+	HANDLE m_ScratchListUpdateStopEvent;
 
 	// Root item ordering.
 	static OrderMap s_RootOrder;

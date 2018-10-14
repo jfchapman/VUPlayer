@@ -249,11 +249,11 @@ public:
 	// Sets the startup 'playlist'.
 	void SetStartupPlaylist( const std::wstring& playlist );
 
-	// Gets the startup playlist selected index.
-	int GetStartupPlaylistSelection();
+	// Gets the startup filename.
+	std::wstring GetStartupFilename();
 
-	// Sets the startup playlist selected index.
-	void SetStartupPlaylistSelection( const int selected );
+	// Sets the startup 'filename'.
+	void SetStartupFilename( const std::wstring& filename );
 
 	// Gets the counter settings.
 	// 'font' - out, counter font.

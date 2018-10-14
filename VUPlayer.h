@@ -62,13 +62,17 @@ class VUPlayer
 {
 public:
 	// Gets the main application instance.
-	static VUPlayer* Get( const HINSTANCE instance = NULL, const HWND hwnd = NULL );
-
-	// Releases the main application instance.
-	static void Release();
+	static VUPlayer* Get();
 
 	// Returns (and creates if necessary) the VUPlayer documents folder (with a trailing slash).
 	static std::wstring DocumentsFolder();
+
+	// 'instance' - module instance handle.
+	// 'hwnd' - main window handle.
+	// 'startupFilenames' - tracks to play (or the playlist to open) on startup.
+	VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<std::wstring>& startupFilenames );
+
+	virtual ~VUPlayer();
 
 	// Called when the application window is resized.
 	void OnSize( WPARAM wParam, LPARAM lParam );
@@ -148,8 +152,8 @@ public:
 	// 'addPrefix' - whether to add an alt prefix to the sub menu.
 	void InsertAddToPlaylists( const HMENU menu, const bool addPrefix );
 
-	// Called when a device change has occurred.
-	void OnDeviceChange();
+	// Processes a device change message.
+	void OnDeviceChange( const WPARAM wParam, const LPARAM lParam );
 
 	// Performs a Gracenote query for the current Audio CD.
 	void OnGracenoteQuery();
@@ -171,13 +175,11 @@ public:
 	// Removes the 'mediaList' from the media library and updates the tree control.
 	void OnRemoveFromLibrary( const MediaInfo::List& mediaList );
 
+	// Handles any 'filenames' passed in via the command line.
+	// Returns whether any valid files were received.
+	bool OnCommandLineFiles( const std::list<std::wstring>& filenames );
+
 private:
-	// 'instance' - module instance handle.
-	// 'hwnd' - main window handle.
-	VUPlayer( const HINSTANCE instance, const HWND hwnd );
-
-	virtual ~VUPlayer();
-
 	// Main application instance.
 	static VUPlayer* s_VUPlayer;
 

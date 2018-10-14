@@ -185,7 +185,8 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	m_IsDragging( false ),
 	m_DragImage( NULL ),
 	m_OldCursor( NULL ),
-	m_ItemFilenames()
+	m_ItemFilenames(),
+	m_FilenameToSelect()
 {
 	const DWORD exStyle = WS_EX_ACCEPTFILES;
 	LPCTSTR className = WC_LISTVIEW;
@@ -632,7 +633,7 @@ void WndList::OnContextMenu( const POINT& position )
 			const UINT enableAddFiles = allowPaste ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDFOLDER, MF_BYCOMMAND | enableAddFiles );
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | enableAddFiles );
-			const UINT enableRemoveFiles = ( m_Playlist && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableRemoveFiles = ( m_Playlist && hasSelectedItems && ( Playlist::Type::CDDA != m_Playlist->GetType() ) && ( Playlist::Type::Folder != m_Playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | enableRemoveFiles );
 			const UINT enableAddToFavourites = ( m_Playlist && ( Playlist::Type::Favourites != m_Playlist->GetType() ) && ( Playlist::Type::CDDA != m_Playlist->GetType() ) && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | enableAddToFavourites );
@@ -828,18 +829,28 @@ void WndList::DeleteSelectedItems()
 	}
 }
 
-void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelection )
+void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelection, const std::wstring& filename )
 {
 	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
 	ListView_DeleteAllItems( m_hWnd );
 	m_ItemFilenames.clear();
+	m_FilenameToSelect = filename;
 	if ( m_Playlist != playlist ) {
 		m_Playlist = playlist;
 	}
 	if ( m_Playlist ) {
+		int selectedIndex = -1;
 		const Playlist::ItemList playlistItems = m_Playlist->GetItems();
 		for ( const auto& iter : playlistItems ) {
+			if ( ( iter.Info.GetFilename() == m_FilenameToSelect ) && ( -1 == selectedIndex ) ) {
+				selectedIndex = ListView_GetItemCount( m_hWnd );
+			}
 			InsertListViewItem( iter );
+		}
+		if ( -1 != selectedIndex ) {
+			ListView_SetItemState( m_hWnd, selectedIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+			ListView_EnsureVisible( m_hWnd, selectedIndex, FALSE /*partialOK*/ );	
+			m_FilenameToSelect.clear();
 		}
 	}
 	if ( initSelection ) {
@@ -896,7 +907,7 @@ void WndList::UpdateSortIndicator()
 
 void WndList::OnFileAdded( Playlist* playlist, const Playlist::Item& item, const int position )
 {
-	if ( nullptr != playlist ) {
+	if ( ( nullptr != playlist ) && ( m_Playlist.get() == playlist ) ) {
 		AddedItem* addedItem = new AddedItem( { playlist, item, position } );
 		PostMessage( m_hWnd, MSG_FILEADDED, reinterpret_cast<WPARAM>( addedItem ), 0 /*lParam*/ );
 	}
@@ -908,6 +919,19 @@ void WndList::AddFileHandler( WPARAM wParam )
 	if ( nullptr != addedItem ) {
 		if ( addedItem->Playlist == m_Playlist.get() ) {
 			InsertListViewItem( addedItem->Item, addedItem->Position );
+
+			if ( !m_FilenameToSelect.empty() ) {
+				int selectedIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
+				if ( -1 == selectedIndex ) {
+					if ( addedItem->Item.Info.GetFilename() == m_FilenameToSelect ) {
+						ListView_SetItemState( m_hWnd, addedItem->Position, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+						ListView_EnsureVisible( m_hWnd, addedItem->Position, FALSE /*partialOK*/ );
+						m_FilenameToSelect.clear();
+					}
+				} else {
+					m_FilenameToSelect.clear();
+				}
+			}
 		}
 		delete addedItem;
 	}

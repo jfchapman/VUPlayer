@@ -19,6 +19,10 @@ BOOL InitInstance( HINSTANCE, int );
 LRESULT CALLBACK WndProc( HWND, UINT, WPARAM, LPARAM );
 INT_PTR CALLBACK About( HWND, UINT, WPARAM, LPARAM );
 
+// ID with which to tag WM_COPYDATA messages when passing filenames to the application via the command line.
+// Copied data should be an array of null terminated WCHAR strings, ending with an additional null terminator.
+static const UINT VUPLAYER_COPYDATA = 0x1974;
+
 // Entry point
 int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow )
 {
@@ -28,6 +32,20 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 	// Initialize global strings
 	LoadStringW( hInstance, IDS_APP_TITLE, g_szTitle, MAX_LOADSTRING );
 	LoadStringW( hInstance, IDC_VUPLAYER, g_szWindowClass, MAX_LOADSTRING );
+
+	// Parse command line
+	std::list<std::wstring> cmdLineFiles;
+	int numArgs = 0;
+	LPWSTR* args = CommandLineToArgvW( GetCommandLine(), &numArgs );
+	if ( nullptr != args ) {
+		for ( int argc = 1; argc < numArgs; argc++ ) {
+			const DWORD attributes = GetFileAttributes( args[ argc ] );
+			if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
+				cmdLineFiles.push_back( args[ argc ] );
+			}
+		}
+		LocalFree( args );
+	}
 
 	// Limit application to a single instance
 	const HANDLE hMutex = CreateMutex( NULL /*attributes*/, FALSE /*initialOwner*/, g_szWindowClass );
@@ -39,6 +57,26 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 				ShowWindow( existingWnd, SW_RESTORE );
 			}
 			SetForegroundWindow( existingWnd );
+
+			if ( !cmdLineFiles.empty() ) {
+				// Send command line filenames to the application.
+				COPYDATASTRUCT copyData = {};
+				copyData.dwData = VUPLAYER_COPYDATA;
+				for ( const auto& filename : cmdLineFiles ) {
+					copyData.cbData += static_cast<DWORD>( 1 + filename.size() );
+				}
+				copyData.cbData += 1;
+				WCHAR* buffer = new WCHAR[ copyData.cbData ]();
+				copyData.cbData *= sizeof( WCHAR );
+				copyData.lpData = buffer;
+				WCHAR* destFilename = buffer;
+				for ( const auto& srcFilename : cmdLineFiles ) {
+					wcscpy_s( destFilename, 1 + srcFilename.size(), srcFilename.c_str() );
+					destFilename += ( 1 + srcFilename.size() );
+				}
+				SendMessage( existingWnd, WM_COPYDATA, 0 /*wParam*/, reinterpret_cast<LPARAM>( &copyData ) );
+				delete [] buffer;
+			}
 		}
 		return FALSE;
 	}
@@ -59,7 +97,8 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 	ULONG_PTR gdiplusToken;
 	GdiplusStartup( &gdiplusToken, &gdiplusStartupInput, NULL );
 
-	VUPlayer* vuplayer = VUPlayer::Get( g_hInst, g_hWnd );
+	VUPlayer* vuplayer = new VUPlayer( g_hInst, g_hWnd, cmdLineFiles );
+
 	SetWindowLongPtr( g_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( vuplayer ) );
 	const HACCEL hAccelTable = vuplayer ? vuplayer->GetAcceleratorTable() : nullptr;
 	MSG msg;
@@ -71,7 +110,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 		}
 	}
 
-	VUPlayer::Release();
+	delete vuplayer;
 
 	GdiplusShutdown( gdiplusToken );
 
@@ -205,7 +244,31 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 		}
 		case WM_DEVICECHANGE : {
 			if ( nullptr != vuplayer ) {
-				vuplayer->OnDeviceChange();
+				vuplayer->OnDeviceChange( wParam, lParam );
+			}
+			break;
+		}
+		case WM_COPYDATA : {
+			if ( nullptr != vuplayer ) {
+				COPYDATASTRUCT* copyData = reinterpret_cast<COPYDATASTRUCT*>( lParam );
+				if ( ( nullptr != copyData ) && ( VUPLAYER_COPYDATA == copyData->dwData ) && ( 0 != copyData->cbData ) && ( nullptr != copyData->lpData ) ) {
+					// Ensure that the string array ends with a double null-terminator.
+					const WCHAR* srcBuffer = reinterpret_cast<WCHAR*>( copyData->lpData );
+					const int srcBufferSize = copyData->cbData / sizeof( WCHAR );
+					WCHAR* destBuffer = new WCHAR[ 2 + srcBufferSize ]();
+					wmemcpy_s( destBuffer, srcBufferSize, srcBuffer, srcBufferSize );
+					std::list<std::wstring> filenames;
+					WCHAR* filename = destBuffer;
+					while ( 0 != *filename ) {
+						const DWORD attributes = GetFileAttributes( filename );
+						if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
+							filenames.push_back( filename );
+						}
+						filename += ( 1 + wcslen( filename ) );
+					}
+					delete [] destBuffer;
+					vuplayer->OnCommandLineFiles( filenames );
+				}
 			}
 			break;
 		}

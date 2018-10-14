@@ -4,6 +4,7 @@
 
 #include "Library.h"
 
+#include <atomic>
 #include <list>
 #include <mutex>
 #include <string>
@@ -21,6 +22,7 @@ public:
 		Year,
 		Favourites,
 		CDDA,
+		Folder,
 
 		_Undefined
 	};
@@ -225,6 +227,9 @@ private:
 
 	// Event handle for waking the pending file thread.
 	HANDLE m_PendingWakeEvent;
+
+	// Indicates whether the pending files thread should be restarted.
+	std::atomic<bool> m_RestartPendingThread;
 
 	// Media library.
 	Library& m_Library;

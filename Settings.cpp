@@ -1168,32 +1168,35 @@ void Settings::SetStartupPlaylist( const std::wstring& playlist )
 	}
 }
 
-int Settings::GetStartupPlaylistSelection()
+std::wstring Settings::GetStartupFilename()
 {
-	int selected = 0;
+	std::wstring filename;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='StartupPlaylistIndex';";
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='StartupFilename';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				selected = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+				const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) );
+				if ( nullptr != text ) {
+					filename = UTF8ToWideString( text );
+				}
 			}
 			sqlite3_finalize( stmt );
 		}
 	}
-	return selected;
+	return filename;
 }
 
-void Settings::SetStartupPlaylistSelection( const int selected )
+void Settings::SetStartupFilename( const std::wstring& filename )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "StartupPlaylistIndex", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, selected );
+			sqlite3_bind_text( stmt, 1, "StartupFilename", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_text( stmt, 2, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 			sqlite3_finalize( stmt );

@@ -9,6 +9,8 @@
 
 #include "Utility.h"
 
+#include <dbt.h>
+
 #include <fstream>
 
 // Main application instance.
@@ -41,21 +43,12 @@ static const UINT MSG_PLAYLISTMENUEND = MSG_PLAYLISTMENUSTART + 50;
 // Online documentation location.
 static const wchar_t s_OnlineDocs[] = L"https://github.com/jfchapman/vuplayer/wiki";
 
-VUPlayer* VUPlayer::Get( const HINSTANCE instance, const HWND hwnd )
+VUPlayer* VUPlayer::Get()
 {
-	if ( ( nullptr == s_VUPlayer ) && ( NULL != instance ) && ( NULL != hwnd ) ) {
-		s_VUPlayer = new VUPlayer( instance, hwnd );
-	}
 	return s_VUPlayer;
 }
 
-void VUPlayer::Release()
-{
-	delete s_VUPlayer;
-	s_VUPlayer = nullptr;
-}
-
-VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
+VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<std::wstring>& startupFilenames ) :
 	m_hInst( instance ),
 	m_hWnd( hwnd ),
 	m_hAccel( LoadAccelerators( m_hInst, MAKEINTRESOURCE( IDC_VUPLAYER ) ) ),
@@ -95,6 +88,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	m_LastSkipCount( {} ),
 	m_AddToPlaylistMenuMap()
 {
+	s_VUPlayer = this;
+
 	ReadWindowSettings();
 
 	m_Rebar.AddControl( m_SeekControl.GetWindowHandle(), false /*canHide*/ );
@@ -114,9 +109,16 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 		const UINT iconID = ( control.GetType() == WndTrackbar::Type::Pitch ) ? IDI_PITCH : ( output.GetMuted() ? IDI_VOLUME_MUTE : IDI_VOLUME );
 		return iconID;
 	} );
-	WndRebar::ClickCallback clickCallback( [ &output = m_Output, &control = m_VolumeControl ]() -> void {
-		if ( WndTrackbar::Type::Volume == control.GetType() ) {
-			output.ToggleMuted();
+	WndRebar::ClickCallback clickCallback( [ &output = m_Output, &control = m_VolumeControl ]( const bool rightClick ) -> void {
+		if ( rightClick ) {
+			POINT point = {};
+			if ( GetCursorPos( &point ) ) {
+				control.OnContextMenu( point );
+			}
+		} else {
+			if ( WndTrackbar::Type::Volume == control.GetType() ) {
+				output.ToggleMuted();
+			}
 		}
 	} );
 	m_Rebar.AddControl( m_VolumeControl.GetWindowHandle(), { IDI_VOLUME, IDI_VOLUME_MUTE, IDI_PITCH }, iconCallback, clickCallback, false /*canHide*/ );
@@ -135,23 +137,14 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd ) :
 	RedrawWindow( m_Rebar.GetWindowHandle(), NULL /*rect*/, NULL /*rgn*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW );
 
 	m_Tree.Initialise();
-	Playlist::Ptr initialPlaylist = m_Tree.GetSelectedPlaylist();
-	m_List.SetPlaylist( initialPlaylist, false /*initSelection*/ );
-	int initialSelectedIndex = m_Settings.GetStartupPlaylistSelection();
-	if ( initialSelectedIndex < 0 ) {
-		initialSelectedIndex = 0;
+
+	if ( OnCommandLineFiles( startupFilenames ) ) {
+		m_List.SetPlaylist( m_Tree.GetSelectedPlaylist() );
+	} else {
+		const std::wstring initialFilename = m_Settings.GetStartupFilename();
+		m_List.SetPlaylist( m_Tree.GetSelectedPlaylist(), false, initialFilename );
 	}
-	if ( initialPlaylist ) {
-		const Playlist::ItemList items = initialPlaylist->GetItems();
-		if ( initialSelectedIndex >= static_cast<int>( items.size() ) ) {
-			initialSelectedIndex = 0;
-		}
-		auto itemIter = items.begin();
-		if ( items.end() != itemIter ) {
-			std::advance( itemIter, initialSelectedIndex );
-			m_List.EnsureVisible( *itemIter );
-		}
-	}
+
 	m_Status.SetPlaylist( m_List.GetPlaylist() );
 
 	OnListSelectionChanged();
@@ -272,6 +265,13 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 					Playlist::Ptr playlist = m_Tree.GetPlaylist( nmTreeView->itemNew.hItem );
 					m_List.SetPlaylist( playlist );
 					m_Status.SetPlaylist( playlist );
+				}
+				break;
+			}
+			case TVN_ITEMEXPANDING : {
+				LPNMTREEVIEW nmTreeView = reinterpret_cast<LPNMTREEVIEW>( lParam );
+				if ( ( nullptr != nmTreeView ) && ( nullptr != nmTreeView->itemNew.hItem ) && ( TVE_EXPAND == nmTreeView->action ) ) {
+					m_Tree.OnItemExpanding( nmTreeView->itemNew.hItem );
 				}
 				break;
 			}
@@ -536,29 +536,18 @@ void VUPlayer::OnPlaylistItemRemoved( Playlist* playlist, const Playlist::Item& 
 
 void VUPlayer::OnDestroy()
 {
-	int playlistSelectedIndex = -1;
 	const Output::Item currentPlaying = m_Output.GetCurrentPlaying();
-	Playlist::Ptr playlist;
-	if ( currentPlaying.PlaylistItem.ID > 0 ) {
-		playlist = m_Output.GetPlaylist();
-		if ( playlist ) {
-			Playlist::ItemList items = playlist->GetItems();
-			int playlistIndex = 0;
-			for ( auto item = items.begin(); item != items.end(); item++, playlistIndex++ ) {
-				if ( item->ID == currentPlaying.PlaylistItem.ID ) {
-					playlistSelectedIndex = playlistIndex;
-					break;
-				}
-			}
-		}
-	} else {
+	Playlist::Ptr playlist = m_Output.GetPlaylist();
+	MediaInfo info = currentPlaying.PlaylistItem.Info;
+	if ( ( 0 == currentPlaying.PlaylistItem.ID ) || !playlist || ( Playlist::Type::_Undefined == playlist->GetType() ) ) {
 		playlist = m_List.GetPlaylist();
-		if ( playlist ) {
-			playlistSelectedIndex = m_List.GetCurrentSelectedIndex();
-		}
+		info = m_List.GetCurrentSelectedItem().Info;
 	}
+
 	m_Tree.SaveStartupPlaylist( playlist );
-	m_Settings.SetStartupPlaylistSelection( playlistSelectedIndex );
+
+	const std::wstring& filename = ( MediaInfo::Source::File == info.GetSource() ) ? info.GetFilename() : std::wstring(); 
+	m_Settings.SetStartupFilename( filename );
 
 	m_Output.Stop();
 	m_Settings.SetVolume( m_Output.GetVolume() );
@@ -1054,7 +1043,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_EXPORTPLAYLIST, MF_BYCOMMAND | exportPlaylistEnabled );
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDFOLDER, MF_BYCOMMAND | MF_ENABLED );
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | MF_ENABLED );
-		const UINT removeFilesEnabled = ( playlist && selectedItems ) ? MF_ENABLED : MF_DISABLED;
+		const UINT removeFilesEnabled = ( playlist && selectedItems && ( Playlist::Type::CDDA != playlist->GetType() ) && ( Playlist::Type::Folder != playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
 		const UINT addToFavouritesEnabled = ( playlist && ( Playlist::Type::Favourites != playlist->GetType() ) && ( Playlist::Type::CDDA != playlist->GetType() ) && selectedItems ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | addToFavouritesEnabled );
@@ -1474,9 +1463,30 @@ void VUPlayer::InsertAddToPlaylists( const HMENU menu, const bool addPrefix )
 	}
 }
 
-void VUPlayer::OnDeviceChange()
+void VUPlayer::OnDeviceChange( const WPARAM wParam, const LPARAM lParam )
 {
 	m_CDDAManager.OnDeviceChange();
+
+	PDEV_BROADCAST_HDR hdr = reinterpret_cast<PDEV_BROADCAST_HDR>( lParam );
+	if ( nullptr != hdr ) {
+		if ( DBT_DEVTYP_VOLUME == hdr->dbch_devicetype ) {
+			PDEV_BROADCAST_VOLUME volume = reinterpret_cast<PDEV_BROADCAST_VOLUME>( lParam );
+			DWORD unitMask = volume->dbcv_unitmask;
+			for ( wchar_t drive = 'A'; drive <= 'Z'; drive++ ) {
+				if ( unitMask & 1 ) {
+					if ( DBT_DEVICEARRIVAL == wParam ) {
+						m_Tree.OnDriveArrived( drive );
+					} else if ( ( DBT_DEVICEREMOVEPENDING == wParam ) || ( DBT_DEVICEREMOVECOMPLETE == wParam ) ) {
+						m_Tree.OnDriveRemoved( drive );
+					}
+				}
+				unitMask >>= 1;
+			}
+		} else if ( ( DBT_DEVTYP_HANDLE == hdr->dbch_devicetype ) && ( DBT_DEVICEQUERYREMOVE == wParam ) ) {
+			PDEV_BROADCAST_HANDLE handle = reinterpret_cast<PDEV_BROADCAST_HANDLE>( lParam );
+			m_Tree.OnDeviceHandleRemoved( handle->dbch_handle );
+		}
+	}
 }
 
 void VUPlayer::OnConvert()
@@ -1601,4 +1611,39 @@ void VUPlayer::OnRemoveFromLibrary( const MediaInfo::List& mediaList )
 		m_Library.RemoveFromLibrary( mediaInfo );
 	}
 	m_Tree.OnRemovedMedia( mediaList );
+}
+
+bool VUPlayer::OnCommandLineFiles( const std::list<std::wstring>& filenames )
+{
+	bool validCommandLine = false;
+	if ( !filenames.empty() ) {
+		const std::set<std::wstring> trackExtensions = m_Handlers.GetAllSupportedFileExtensions();
+		const std::set<std::wstring> playlistExtensions = { L"vpl", L"m3u", L"pls" };
+
+		const std::wstring& firstFilename = filenames.front();
+		std::wstring extension = GetFileExtension( firstFilename );
+		const bool importPlaylist = ( playlistExtensions.end() != playlistExtensions.find( extension ) );
+
+		if ( importPlaylist ) {
+			m_Tree.ImportPlaylist( firstFilename );
+			validCommandLine = true;
+		} else {
+			MediaInfo::List mediaList;
+			for ( const auto& filename : filenames ) {
+				extension = GetFileExtension( filename );
+				if ( trackExtensions.end() != trackExtensions.find( extension ) ) {
+					MediaInfo mediaInfo( filename );
+					m_Library.GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
+					mediaList.push_back( mediaInfo );
+				}
+			}
+			if ( !mediaList.empty() ) {
+				const Playlist::Ptr scratchList = m_Tree.SetScratchList( mediaList );
+				m_Output.SetPlaylist( scratchList );
+				m_Output.Play();
+				validCommandLine = true;
+			}
+		}
+	}
+	return validCommandLine;
 }

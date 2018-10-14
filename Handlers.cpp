@@ -38,17 +38,13 @@ Handlers::~Handlers()
 Handler::Ptr Handlers::FindDecoderHandler( const std::wstring& filename ) const
 {
 	Handler::Ptr handler;
-	const size_t extPos = filename.rfind( '.' );
-	if ( std::wstring::npos != extPos ) {
-		const std::wstring fileExt = WideStringToLower( filename.substr( extPos + 1 ) );
-		for ( auto handlerIter = m_Decoders.begin(); !handler && ( handlerIter != m_Decoders.end() ); handlerIter++ ) {
-			std::set<std::wstring> extensions = handlerIter->get()->GetSupportedFileExtensions();
-			for ( const auto& extIter : extensions ) {
-				if ( 0 == WideStringToLower( extIter ).compare( fileExt ) ) {
-					handler = *handlerIter; 
-					break;
-				}
-			}
+	const std::wstring extension = GetFileExtension( filename );
+	for ( auto decoder = m_Decoders.begin(); !handler && ( decoder != m_Decoders.end() ); decoder++ ) {
+		std::set<std::wstring> extensions = decoder->get()->GetSupportedFileExtensions();
+		const auto foundHandler = std::find( extensions.begin(), extensions.end(), extension );
+		if ( extensions.end() != foundHandler ) {
+			handler = *decoder;
+			break;
 		}
 	}
 	return handler;

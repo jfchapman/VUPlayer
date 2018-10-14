@@ -17,16 +17,38 @@ static const UINT_PTR s_WndTreeID = 1900;
 // Icon size.
 static const int s_IconSize = 16;
 
+// User folders for the computer node.
+static const std::list<KNOWNFOLDERID> s_UserFolders = { FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Music };
+
+// Playlist ID for the scratch list.
+static const std::string s_ScratchListID = "F641E764-3385-428A-9F39-88E928234E17";
+
+// Message ID for adding a folder to the computer node.
+// 'wParam' : HTREEITEM - the parent item under which to add the folder.
+// 'lParam' : std::wstring* - folder path, to be deleted by the message handler.
+static const UINT MSG_FOLDERADD = WM_APP + 110;
+
+// Message ID for deleting a folder from the computer node.
+// 'wParam' : HTREEITEM - the item to delete.
+// 'lParam' : unused.
+static const UINT MSG_FOLDERDELETE = WM_APP + 111;
+
+// Message ID for renaming a folder in the computer node.
+// 'wParam' : HTREEITEM - the item to rename.
+// 'lParam' : std::wstring* - new folder path, to be deleted by the message handler.
+static const UINT MSG_FOLDERRENAME = WM_APP + 112;
+
 // Root item ordering.
 WndTree::OrderMap WndTree::s_RootOrder = {
-	{ Playlist::Type::CDDA,				1 },
-	{ Playlist::Type::User,				2 },
-	{ Playlist::Type::Favourites,	3 },
-	{ Playlist::Type::All,				4 },
-	{ Playlist::Type::Artist,			5 },
-	{ Playlist::Type::Album,			6 },
-	{ Playlist::Type::Genre,			7 },
-	{ Playlist::Type::Year,				8 }
+	{ Playlist::Type::Folder,			1 },
+	{ Playlist::Type::CDDA,				2 },
+	{ Playlist::Type::User,				3 },
+	{ Playlist::Type::Favourites,	4 },
+	{ Playlist::Type::All,				5 },
+	{ Playlist::Type::Artist,			6 },
+	{ Playlist::Type::Album,			7 },
+	{ Playlist::Type::Genre,			8 },
+	{ Playlist::Type::Year,				9 }
 };
 
 LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -57,6 +79,27 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				if ( ( NULL != hittest.hItem ) && ( TreeView_GetSelection( hwnd ) != hittest.hItem ) ) {
 					TreeView_SelectItem( hwnd, hittest.hItem );
 				}
+				break;
+			}
+			case MSG_FOLDERADD : {
+				const std::wstring* folder = reinterpret_cast<std::wstring*>( lParam );
+				if ( nullptr != folder ) {
+					wndTree->OnFolderAdd( reinterpret_cast<HTREEITEM>( wParam ), *folder );
+					delete folder;
+				}
+				break;
+			}
+			case MSG_FOLDERDELETE : {
+				wndTree->OnFolderDelete( reinterpret_cast<HTREEITEM>( wParam ) );
+				break;
+			}
+			case MSG_FOLDERRENAME : {
+				const std::wstring* folder = reinterpret_cast<std::wstring*>( lParam );
+				if ( nullptr != folder ) {
+					wndTree->OnFolderRename( reinterpret_cast<HTREEITEM>( wParam ), *folder );
+					delete folder;
+				}
+				break;
 			}
 			default : {
 				break;
@@ -64,6 +107,24 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 		}
 	}
 	return CallWindowProc( wndTree->GetDefaultWndProc(), hwnd, message, wParam, lParam );
+}
+
+DWORD WINAPI WndTree::ScratchListUpdateProc( LPVOID lpParam )
+{
+	ScratchListUpdateInfo* info = reinterpret_cast<ScratchListUpdateInfo*>( lpParam );
+	if ( nullptr != info ) {
+		CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
+		for ( auto& mediaInfo : info->MediaList ) {
+			if ( WAIT_OBJECT_0 == WaitForSingleObject( info->StopEvent, 0 ) ) {
+				break;
+			} else {
+				info->MediaLibrary.GetMediaInfo( mediaInfo );
+			}
+		}
+		CoUninitialize();
+	}
+	delete info;
+	return 0;
 }
 
 WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings, CDDAManager& cddaManager ) :
@@ -86,12 +147,23 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_GenreMap(),
 	m_YearMap(),
 	m_CDDAMap(),
+	m_FolderPlaylistMap(),
 	m_PlaylistAll( nullptr ),
 	m_PlaylistFavourites( nullptr ),
 	m_ChosenFont( NULL ),
 	m_ColourHighlight( GetSysColor( COLOR_HIGHLIGHT ) ),
 	m_ImageList( nullptr ),
-	m_IconMap()
+	m_IconMap(),
+	m_IconIndexComputer( 0 ),
+	m_IconIndexFolder( 0 ),
+	m_IconIndexDrive( 0 ),
+	m_RootComputerFolders(),
+	m_FolderNodesMap(),
+	m_FolderNodesMapMutex(),
+	m_FolderPlaylistMapMutex(),
+	m_FolderMonitor( parent ),
+	m_ScratchListUpdateThread( nullptr ),
+	m_ScratchListUpdateStopEvent( CreateEvent( nullptr /*securityAttributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) )
 {
 	const DWORD exStyle = 0;
 	LPCTSTR className = WC_TREEVIEW;
@@ -117,6 +189,9 @@ WndTree::~WndTree()
 		DeleteObject( m_ChosenFont );
 	}
 	ImageList_Destroy( m_ImageList );
+	if ( nullptr != m_ScratchListUpdateStopEvent ) {
+		CloseHandle( m_ScratchListUpdateStopEvent );
+	}
 }
 
 WNDPROC WndTree::GetDefaultWndProc()
@@ -135,6 +210,9 @@ void WndTree::Initialise()
 	const HTREEITEM selectedItem = GetStartupItem();
 	if ( nullptr != selectedItem ) {
 		TreeView_SelectItem( m_hWnd, selectedItem );
+	} else if ( nullptr != m_NodeComputer ) {
+		TreeView_SelectItem( m_hWnd, m_NodeComputer );
+		TreeView_Expand( m_hWnd, m_NodeComputer, TVE_EXPAND );
 	}
 }
 
@@ -150,21 +228,24 @@ HTREEITEM WndTree::GetStartupItem()
 		}
 	}
 	if ( nullptr == selectedItem ) {
-		std::list<std::wstring> parts = WideStringSplit( startupPlaylist, '\t' );
-		auto currentPart = parts.begin();
-		HTREEITEM currentItem = TreeView_GetRoot( m_hWnd );
-		while ( ( nullptr != currentItem ) && ( parts.end() != currentPart ) ) {
-			const std::wstring itemLabel = GetItemLabel( currentItem );
-			if ( itemLabel == *currentPart ) {
-				++currentPart;
-				if ( parts.end() == currentPart ) {
-					selectedItem = currentItem;
-					break;
+		selectedItem = GetComputerFolderNode( startupPlaylist );
+		if ( nullptr == selectedItem ) {
+			const std::list<std::wstring> parts = WideStringSplit( startupPlaylist, '\t' );
+			auto currentPart = parts.begin();
+			HTREEITEM currentItem = TreeView_GetRoot( m_hWnd );
+			while ( ( nullptr != currentItem ) && ( parts.end() != currentPart ) ) {
+				const std::wstring itemLabel = GetItemLabel( currentItem );
+				if ( itemLabel == *currentPart ) {
+					++currentPart;
+					if ( parts.end() == currentPart ) {
+						selectedItem = currentItem;
+						break;
+					} else {
+						currentItem = TreeView_GetChild( m_hWnd, currentItem );
+					}
 				} else {
-					currentItem = TreeView_GetChild( m_hWnd, currentItem );
+					currentItem = TreeView_GetNextSibling( m_hWnd, currentItem );
 				}
-			} else {
-				currentItem = TreeView_GetNextSibling( m_hWnd, currentItem );
 			}
 		}
 	}
@@ -234,6 +315,13 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 						break;
 					}
 				}
+				break;
+			}
+			case Playlist::Type::Folder : {
+				startupPlaylist = playlist->GetName();
+				break;
+			}
+			default : {
 				break;
 			}
 		}
@@ -392,11 +480,10 @@ void WndTree::LoadPlaylists()
 	tvItem.iSelectedImage = tvItem.iImage;
 	TVINSERTSTRUCT tvInsert = {};
 	tvInsert.hParent = TVI_ROOT;
-	tvInsert.hInsertAfter = TVI_FIRST;
+	tvInsert.hInsertAfter = m_NodeComputer;
 	tvInsert.itemex = tvItem;
 	m_NodePlaylists = TreeView_InsertItem( m_hWnd, &tvInsert );
 
-	HTREEITEM selectedItem = NULL;
 	Playlists playlists = m_Settings.GetPlaylists();
 	for ( const auto& iter : playlists ) {
 		const Playlist::Ptr playlist = iter;
@@ -404,10 +491,6 @@ void WndTree::LoadPlaylists()
 			const HTREEITEM hItem = AddItem( m_NodePlaylists, playlist->GetName(), Playlist::Type::User );
 			m_PlaylistMap.insert( PlaylistMap::value_type( hItem, playlist ) );
 		}
-	}
-	TreeView_Expand( m_hWnd, m_NodePlaylists, TVM_EXPAND );
-	if ( NULL != selectedItem ) {
-		TreeView_SelectItem( m_hWnd, selectedItem );
 	}
 }
 
@@ -445,7 +528,6 @@ Playlist::Ptr WndTree::NewPlaylist()
 	m_PlaylistMap.insert( PlaylistMap::value_type( hItem, playlist ) );
 
 	SetFocus( m_hWnd );
-	TreeView_Expand( m_hWnd, m_NodePlaylists, TVE_EXPAND );
 	TreeView_SelectItem( m_hWnd, hItem );
 	TreeView_EditLabel( m_hWnd, hItem );
 
@@ -583,12 +665,30 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			}
 			break;
 		}
+		case Playlist::Type::Folder : {
+			std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
+			const auto folderItem = m_FolderPlaylistMap.find( node );
+			if ( m_FolderPlaylistMap.end() != folderItem ) {
+				playlist = folderItem->second;
+			} else {
+				playlist = std::make_shared<Playlist::Ptr::element_type>( m_Library, type );
+				m_FolderPlaylistMap.insert( PlaylistMap::value_type( node, playlist ) );
+				AddFolderTracks( node, playlist );
+			}
+			break;
+		}
 		default : {
 			break;
 		}
 	}
 	if ( playlist ) {
-		playlist->SetName( GetItemLabel( node ) );
+		if ( Playlist::Type::Folder == type ) {
+			std::wstring path;
+			GetFolderPath( node, path );
+			playlist->SetName( path );
+		} else {
+			playlist->SetName( GetItemLabel( node ) );
+		}
 	}
 	return playlist;
 }
@@ -605,6 +705,10 @@ Playlist::Ptr WndTree::GetSelectedPlaylist()
 
 void WndTree::OnDestroy()
 {
+	m_FolderMonitor.RemoveAllFolders();
+
+	StopScratchListUpdateThread();
+
 	for ( const auto& iter : m_PlaylistMap ) {
 		const Playlist::Ptr playlist = iter.second;
 		if ( playlist ) {
@@ -620,7 +724,48 @@ void WndTree::OnDestroy()
 	}
 
 	if ( m_PlaylistFavourites ) {
+		m_PlaylistFavourites->StopPendingThread();
 		m_Settings.SavePlaylist( *m_PlaylistFavourites );
+	}
+
+	if ( m_PlaylistAll ) {
+		m_PlaylistAll->StopPendingThread();
+	}
+
+	for ( const auto& iter : m_ArtistMap ) {
+		if ( iter.second ) {
+			iter.second->StopPendingThread();
+		}
+	}
+
+	for ( const auto& iter : m_AlbumMap ) {
+		if ( iter.second ) {
+			iter.second->StopPendingThread();
+		}
+	}
+
+	for ( const auto& iter : m_GenreMap ) {
+		if ( iter.second ) {
+			iter.second->StopPendingThread();
+		}
+	}
+
+	for ( const auto& iter : m_YearMap ) {
+		if ( iter.second ) {
+			iter.second->StopPendingThread();
+		}
+	}
+
+	for ( const auto& iter : m_CDDAMap ) {
+		if ( iter.second ) {
+			iter.second->StopPendingThread();
+		}
+	}
+
+	for ( const auto& iter : m_FolderPlaylistMap ) {
+		if ( iter.second ) {
+			iter.second->StopPendingThread();
+		}
 	}
 
 	SaveSettings();
@@ -659,7 +804,6 @@ void WndTree::AddPlaylist( const Playlist::Ptr playlist )
 		HTREEITEM hItem = TreeView_InsertItem( m_hWnd, &tvInsert );
 		if ( nullptr != hItem ) {
 			m_PlaylistMap.insert( PlaylistMap::value_type( hItem, playlist ) );
-			TreeView_Expand( m_hWnd, m_NodePlaylists, TVE_EXPAND );
 			TreeView_SelectItem( m_hWnd, hItem );
 			SetFocus( m_hWnd );
 			if ( playlist->GetPendingCount() > 0 ) {
@@ -669,60 +813,63 @@ void WndTree::AddPlaylist( const Playlist::Ptr playlist )
 	}
 }
 
-void WndTree::ImportPlaylist()
+void WndTree::ImportPlaylist( const std::wstring& filename )
 {
-	WCHAR title[ MAX_PATH ] = {};
-	LoadString( m_hInst, IDS_IMPORTPLAYLIST_TITLE, title, MAX_PATH );
+	std::wstring playlistFilename( filename );
+	if ( playlistFilename.empty() ) {
+		WCHAR title[ MAX_PATH ] = {};
+		LoadString( m_hInst, IDS_IMPORTPLAYLIST_TITLE, title, MAX_PATH );
 
-	WCHAR filter[ MAX_PATH ] = {};
-	LoadString( m_hInst, IDS_IMPORTPLAYLIST_FILTERPLAYLISTS, filter, MAX_PATH );
-	const std::wstring filter1( filter );
-	const std::wstring filter2( L"*.vpl;*.m3u;*.pls" );
-	LoadString( m_hInst, IDS_IMPORTPLAYLIST_FILTERALL, filter, MAX_PATH );
-	const std::wstring filter3( filter );
-	const std::wstring filter4( L"*.*" );
-	std::vector<WCHAR> filterStr;
-	filterStr.reserve( MAX_PATH );
-	filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter3.begin(), filter3.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter4.begin(), filter4.end() );
-	filterStr.push_back( 0 );
-	filterStr.push_back( 0 );
+		WCHAR filter[ MAX_PATH ] = {};
+		LoadString( m_hInst, IDS_IMPORTPLAYLIST_FILTERPLAYLISTS, filter, MAX_PATH );
+		const std::wstring filter1( filter );
+		const std::wstring filter2( L"*.vpl;*.m3u;*.pls" );
+		LoadString( m_hInst, IDS_IMPORTPLAYLIST_FILTERALL, filter, MAX_PATH );
+		const std::wstring filter3( filter );
+		const std::wstring filter4( L"*.*" );
+		std::vector<WCHAR> filterStr;
+		filterStr.reserve( MAX_PATH );
+		filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
+		filterStr.push_back( 0 );
+		filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
+		filterStr.push_back( 0 );
+		filterStr.insert( filterStr.end(), filter3.begin(), filter3.end() );
+		filterStr.push_back( 0 );
+		filterStr.insert( filterStr.end(), filter4.begin(), filter4.end() );
+		filterStr.push_back( 0 );
+		filterStr.push_back( 0 );
 
-	WCHAR buffer[ MAX_PATH ] = {};
-	OPENFILENAME ofn = {};
-	ofn.lStructSize = sizeof( OPENFILENAME );
-	ofn.hwndOwner = m_hWnd;
-	ofn.lpstrTitle = title;
-	ofn.lpstrFilter = &filterStr[ 0 ];
-	ofn.nFilterIndex = 1;
-	ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
-	ofn.lpstrFile = buffer;
-	ofn.nMaxFile = MAX_PATH;
-	if ( FALSE != GetOpenFileName( &ofn ) ) {
-		const std::wstring filename = ofn.lpstrFile;
-		const size_t extDelimiter = filename.find_last_of( '.' );
-		if ( std::wstring::npos != extDelimiter ) {
-			const std::wstring fileExt = WideStringToUpper( filename.substr( extDelimiter + 1 ) );
-			Playlist::Ptr playlist;
-			if ( L"VPL" == fileExt ) {
-				playlist = ImportPlaylistVPL( filename );
-			} else if ( L"M3U" == fileExt ) {
-				playlist = ImportPlaylistM3U( filename );
-			} else if ( L"PLS" == fileExt ) {
-				playlist = ImportPlaylistPLS( filename );
+		WCHAR buffer[ MAX_PATH ] = {};
+		OPENFILENAME ofn = {};
+		ofn.lStructSize = sizeof( OPENFILENAME );
+		ofn.hwndOwner = m_hWnd;
+		ofn.lpstrTitle = title;
+		ofn.lpstrFilter = &filterStr[ 0 ];
+		ofn.nFilterIndex = 1;
+		ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
+		ofn.lpstrFile = buffer;
+		ofn.nMaxFile = MAX_PATH;
+		if ( FALSE != GetOpenFileName( &ofn ) ) {
+			playlistFilename = ofn.lpstrFile;
+		}
+	}
+	if ( !playlistFilename.empty() ) {
+		const std::wstring fileExt = GetFileExtension( playlistFilename );
+		Playlist::Ptr playlist;
+		if ( L"vpl" == fileExt ) {
+			playlist = ImportPlaylistVPL( playlistFilename );
+		} else if ( L"m3u" == fileExt ) {
+			playlist = ImportPlaylistM3U( playlistFilename );
+		} else if ( L"pls" == fileExt ) {
+			playlist = ImportPlaylistPLS( playlistFilename );
+		}
+		if ( playlist ) {
+			const size_t nameDelimiter = playlistFilename.find_last_of( L"/\\" );
+			const size_t extDelimiter = playlistFilename.rfind( '.' );
+			if ( ( std::wstring::npos != nameDelimiter ) && ( extDelimiter > nameDelimiter ) ) {
+				playlist->SetName( playlistFilename.substr( nameDelimiter + 1, extDelimiter - nameDelimiter - 1 ) );
 			}
-			if ( playlist ) {
-				const size_t nameDelimiter = filename.find_last_of( L"/\\" );
-				if ( ( std::wstring::npos != nameDelimiter ) && ( extDelimiter > nameDelimiter ) ) {
-					playlist->SetName( filename.substr( nameDelimiter + 1, extDelimiter - nameDelimiter - 1 ) );
-				}
-				AddPlaylist( playlist );
-			}
+			AddPlaylist( playlist );
 		}
 	}
 }
@@ -855,8 +1002,16 @@ void WndTree::ExportSelectedPlaylist()
 		filterStr.push_back( 0 );
 		filterStr.push_back( 0 );
 
+		std::wstring playlistName = playlist->GetName();
+		if ( Playlist::Type::Folder == playlist->GetType() ) {
+			const size_t pos = playlistName.find_last_of( L"/\\" );
+			if ( std::wstring::npos != pos ) {
+				playlistName = playlistName.substr( 1 + pos );
+			}
+		}
+
 		WCHAR buffer[ MAX_PATH ] = {};
-		wcscpy_s( buffer, MAX_PATH, playlist->GetName().c_str() );
+		wcscpy_s( buffer, MAX_PATH, playlistName.c_str() );
 		std::set<WCHAR> invalidCharacters = { '\\', '/', ':', '*', '?', '"', '<', '>', '|' };
 		const size_t length = wcslen( buffer );
 		for ( size_t index = 0; index < length; index++ ) {
@@ -1242,8 +1397,8 @@ void WndTree::AddCDDA()
 {
 	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
 	const CDDAManager::CDDAMediaMap cddaDrives = m_CDDAManager.GetCDDADrives();
-	for ( const auto& drive : cddaDrives ) {
-		const CDDAMedia& cddaMedia = drive.second;
+	for ( auto drive = cddaDrives.rbegin(); drive != cddaDrives.rend(); drive++ ) {
+		const CDDAMedia& cddaMedia = drive->second;
 		Playlist::Ptr cddaPlaylist = cddaMedia.GetPlaylist();
 		if ( cddaPlaylist ) {
 			TVITEMEX tvItem = {};
@@ -1253,7 +1408,7 @@ void WndTree::AddCDDA()
 			tvItem.iSelectedImage = tvItem.iImage;
 			tvItem.lParam = static_cast<LPARAM>( Playlist::Type::CDDA );
 			TVINSERTSTRUCT tvInsert = {};
-			tvInsert.hParent = TVI_ROOT;
+			tvInsert.hParent = m_NodeComputer;
 			tvInsert.hInsertAfter = TVI_FIRST;
 			tvInsert.itemex = tvItem;
 			const HTREEITEM cddaItem = TreeView_InsertItem( m_hWnd, &tvInsert );
@@ -1281,8 +1436,11 @@ HTREEITEM WndTree::AddItem( const HTREEITEM parentItem, const std::wstring& labe
 		tvInsert.hInsertAfter = TVI_SORT;
 		tvInsert.itemex = tvItem;
 		addedItem = TreeView_InsertItem( m_hWnd, &tvInsert );
-		if ( ( nullptr != addedItem ) && isFirstChildItem && redraw ) {
-			RedrawWindow( m_hWnd, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW );
+		if ( nullptr != addedItem ) {
+			if ( isFirstChildItem && redraw ) {
+				RedrawWindow( m_hWnd, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW );
+			}
+			AddToFolderNodesMap( addedItem );
 		}
 	}
 	return addedItem;
@@ -1290,9 +1448,12 @@ HTREEITEM WndTree::AddItem( const HTREEITEM parentItem, const std::wstring& labe
 
 void WndTree::RemoveItem( const HTREEITEM item )
 {
+	std::set<HTREEITEM> itemsToRemove( { item } );
+	GetAllChildren( item, itemsToRemove );
+
 	HTREEITEM selectNewItem = nullptr; 
 	HTREEITEM selectedItem = TreeView_GetSelection( m_hWnd );
-	if ( selectedItem == item ) {
+	if ( itemsToRemove.end() != itemsToRemove.find( selectedItem ) ) {
 		selectNewItem = TreeView_GetNextSibling( m_hWnd, item );
 		if ( nullptr == selectNewItem ) {
 			selectNewItem = TreeView_GetPrevSibling( m_hWnd, item );
@@ -1302,36 +1463,47 @@ void WndTree::RemoveItem( const HTREEITEM item )
 		}
 	}
 
-	const Playlist::Type type = GetItemType( item );
-	switch ( type ) {
-		case Playlist::Type::User : {
-			m_PlaylistMap.erase( item );
-			break;
-		}
-		case Playlist::Type::Album : {
-			m_AlbumMap.erase( item );
-			break;
-		}
-		case Playlist::Type::Artist : {
-			m_ArtistMap.erase( item );
-			break;
-		}
-		case Playlist::Type::Genre : {
-			m_GenreMap.erase( item );
-			break;
-		}
-		case Playlist::Type::Year : {
-			m_YearMap.erase( item );
-			break;
-		}
-		case Playlist::Type::CDDA : {
-			m_CDDAMap.erase( item );
-			break;
-		}
-		default : {
-			break;
+	for ( const auto& itemToRemove : itemsToRemove ) {
+		const Playlist::Type type = GetItemType( itemToRemove );
+		switch ( type ) {
+			case Playlist::Type::User : {
+				m_PlaylistMap.erase( itemToRemove );
+				break;
+			}
+			case Playlist::Type::Album : {
+				m_AlbumMap.erase( itemToRemove );
+				break;
+			}
+			case Playlist::Type::Artist : {
+				m_ArtistMap.erase( itemToRemove );
+				break;
+			}
+			case Playlist::Type::Genre : {
+				m_GenreMap.erase( itemToRemove );
+				break;
+			}
+			case Playlist::Type::Year : {
+				m_YearMap.erase( itemToRemove );
+				break;
+			}
+			case Playlist::Type::CDDA : {
+				m_CDDAMap.erase( itemToRemove );
+				break;
+			}
+			case Playlist::Type::Folder : {
+				{
+					std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
+					m_FolderPlaylistMap.erase( itemToRemove );
+				}
+				RemoveFromFolderNodesMap( itemToRemove );
+				break;
+			}
+			default : {
+				break;
+			}
 		}
 	}
+
 	TreeView_DeleteItem( m_hWnd, item );
 
 	if ( nullptr != selectNewItem ) {
@@ -1472,6 +1644,7 @@ void WndTree::OnMediaLibraryRefreshed()
 					}
 					hGenreNode = TreeView_GetNextSibling( m_hWnd, hGenreNode );
 				}
+				break;
 			}
 			case Playlist::Type::Year : {
 				const std::wstring& year = previousSelectedPlaylist->GetName();
@@ -1483,6 +1656,7 @@ void WndTree::OnMediaLibraryRefreshed()
 					}
 					hYearNode = TreeView_GetNextSibling( m_hWnd, hYearNode );
 				}
+				break;
 			}
 			case Playlist::Type::Artist : {
 				const std::wstring& artist = previousSelectedPlaylist->GetName();
@@ -1494,6 +1668,7 @@ void WndTree::OnMediaLibraryRefreshed()
 					}
 					hArtistNode = TreeView_GetNextSibling( m_hWnd, hArtistNode );
 				}
+				break;
 			}
 			case Playlist::Type::Album : {
 				if ( previousArtist.empty() ) {
@@ -1522,6 +1697,11 @@ void WndTree::OnMediaLibraryRefreshed()
 						hArtistNode = TreeView_GetNextSibling( m_hWnd, hArtistNode );
 					}
 				}
+				break;
+			}
+			case Playlist::Type::Folder : {
+				hSelectedItem = GetComputerFolderNode( previousSelectedPlaylist->GetName() );
+				break;
 			}
 			default : {
 				break;
@@ -1565,6 +1745,16 @@ void WndTree::UpdatePlaylists( const MediaInfo& updatedMediaInfo, Playlist::Set&
 		const Playlist::Ptr playlist = playlistIter.second;
 		if ( playlist && playlist->OnUpdatedMedia( updatedMediaInfo ) ) {
 			updatedPlaylists.insert( playlist );
+		}
+	}
+
+	{
+		std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
+		for ( const auto& playlistIter : m_FolderPlaylistMap ) {
+			const Playlist::Ptr playlist = playlistIter.second;
+			if ( playlist && playlist->OnUpdatedMedia( updatedMediaInfo ) ) {
+				updatedPlaylists.insert( playlist );
+			}
 		}
 	}
 
@@ -2058,7 +2248,7 @@ void WndTree::RemoveCDDA()
 {
 	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
 	std::set<HTREEITEM> cddaNodes;
-	HTREEITEM currentItem = TreeView_GetRoot( m_hWnd );
+	HTREEITEM currentItem = TreeView_GetChild( m_hWnd, m_NodeComputer );
 	while ( nullptr != currentItem ) {
 		if ( Playlist::Type::CDDA == GetItemType( currentItem ) ) {
 			cddaNodes.insert( currentItem );
@@ -2076,7 +2266,29 @@ void WndTree::Populate()
 {
 	HCURSOR oldCursor = SetCursor( LoadCursor( NULL /*instance*/, IDC_WAIT ) );
 
-	TreeView_DeleteAllItems( m_hWnd );
+	RefreshComputerNode();
+
+	// Remove all tree items apart from folder items in the computer node.
+	std::list<HTREEITEM> itemsToDelete;
+	HTREEITEM rootItem = TreeView_GetRoot( m_hWnd );
+	while ( nullptr != rootItem ) {
+		if ( m_NodeComputer != rootItem ) {
+			itemsToDelete.push_back( rootItem );
+		} else {
+			HTREEITEM childItem = TreeView_GetChild( m_hWnd, rootItem );
+			while ( nullptr != childItem ) {
+				if ( Playlist::Type::Folder != GetItemType( childItem ) ) {
+					itemsToDelete.push_back( childItem );
+				}
+				childItem = TreeView_GetNextSibling( m_hWnd, childItem );
+			}
+		}
+		rootItem = TreeView_GetNextSibling( m_hWnd, rootItem );
+	}
+	for ( const auto& item : itemsToDelete ) {
+		TreeView_DeleteItem( m_hWnd, item );
+	}	
+
 	m_PlaylistMap.clear();
 	m_ArtistMap.clear();
 	m_AlbumMap.clear();
@@ -2167,6 +2379,22 @@ void WndTree::CreateImageList()
 	hIcon = static_cast<HICON>( LoadImage( m_hInst, MAKEINTRESOURCE( IDI_FAVOURITES ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
 	if ( NULL != hIcon ) {
 		m_IconMap.insert( IconMap::value_type( Playlist::Type::Favourites, ImageList_ReplaceIcon( m_ImageList, -1, hIcon ) ) );
+	}
+
+	hIcon = static_cast<HICON>( LoadImage( m_hInst, MAKEINTRESOURCE( IDI_FOLDER ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
+	if ( NULL != hIcon ) {
+		m_IconIndexFolder = ImageList_ReplaceIcon( m_ImageList, -1, hIcon );
+		m_IconMap.insert( IconMap::value_type( Playlist::Type::Folder, m_IconIndexFolder ) );
+	}
+
+	hIcon = static_cast<HICON>( LoadImage( m_hInst, MAKEINTRESOURCE( IDI_DISK ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
+	if ( NULL != hIcon ) {
+		m_IconIndexDrive = ImageList_ReplaceIcon( m_ImageList, -1, hIcon );
+	}
+
+	hIcon = static_cast<HICON>( LoadImage( m_hInst, MAKEINTRESOURCE( IDI_COMPUTER ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
+	if ( NULL != hIcon ) {
+		m_IconIndexComputer = ImageList_ReplaceIcon( m_ImageList, -1, hIcon );
 	}
 
 	TreeView_SetImageList( m_hWnd, m_ImageList, TVSIL_NORMAL );
@@ -2266,4 +2494,648 @@ void WndTree::OnCDDARefreshed()
 {
 	RemoveCDDA();
 	AddCDDA();
+}
+
+void WndTree::RefreshComputerNode()
+{
+	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
+
+	if ( nullptr == m_NodeComputer ) {
+		const int bufSize = 32;
+		WCHAR buffer[ bufSize ] = {};
+		LoadString( m_hInst, IDS_COMPUTER, buffer, bufSize );
+		TVITEMEX tvItem = {};
+		tvItem.mask = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+		tvItem.pszText = buffer;
+		tvItem.lParam = static_cast<LPARAM>( Playlist::Type::Folder );
+		tvItem.iImage = m_IconIndexComputer;
+		tvItem.iSelectedImage = tvItem.iImage;
+		TVINSERTSTRUCT tvInsert = {};
+		tvInsert.hParent = TVI_ROOT;
+		tvInsert.hInsertAfter = TVI_FIRST;
+		tvInsert.itemex = tvItem;
+		m_NodeComputer = TreeView_InsertItem( m_hWnd, &tvInsert );
+
+		tvInsert.hParent = m_NodeComputer;
+		tvInsert.hInsertAfter = TVI_LAST;
+		const RootFolderInfoList userFolders = GetUserFolders();
+		for ( const auto& userFolder : userFolders ) {
+			tvItem.pszText = const_cast<LPWSTR>( userFolder.Name.c_str() );
+			tvItem.iImage = userFolder.IconIndex;
+			tvItem.iSelectedImage = tvItem.iImage;
+			tvInsert.itemex = tvItem;
+			const HTREEITEM hItem = TreeView_InsertItem( m_hWnd, &tvInsert );
+			if ( nullptr != hItem ) {
+				m_RootComputerFolders.insert( RootFolderInfoMap::value_type( hItem, userFolder ) );
+				AddToFolderNodesMap( hItem );
+				AddSubFolders( hItem );
+			}
+		}
+	}
+
+	// Remove any drives from the tree control that are no longer present.
+	std::list<HTREEITEM> itemsToDelete;
+	const RootFolderInfoList currentDrives = GetComputerDrives();
+	auto rootFolderIter = m_RootComputerFolders.begin();
+	while ( m_RootComputerFolders.end() != rootFolderIter ) {
+		if ( RootFolderType::Drive == rootFolderIter->second.Type ) {
+			const auto foundDrive = std::find( currentDrives.begin(), currentDrives.end(), rootFolderIter->second );
+			if ( currentDrives.end() == foundDrive ) {
+				itemsToDelete.push_back( rootFolderIter->first );
+			}
+		}
+		++rootFolderIter;
+	}
+	for ( const auto& item : itemsToDelete ) {
+		RemoveFromFolderNodesMap( item );
+		const auto folderInfo = m_RootComputerFolders.find( item );
+		if ( m_RootComputerFolders.end() != folderInfo ) {
+			m_FolderMonitor.RemoveFolder( folderInfo->second.Path );
+		}
+		m_RootComputerFolders.erase( item );
+		TreeView_DeleteItem( m_hWnd, item );
+	}
+
+	// Add any new drives to the tree control.
+	for ( const auto& drive : currentDrives ) {
+		const auto foundDrive = std::find_if( m_RootComputerFolders.begin(), m_RootComputerFolders.end(), [ &drive ] ( const RootFolderInfoMap::value_type& folderInfo )
+		{
+			return ( drive == folderInfo.second );
+		} );
+
+		if ( m_RootComputerFolders.end() == foundDrive ) {
+			TVITEMEX tvItem = {};
+			tvItem.mask = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+			tvItem.pszText = const_cast<LPWSTR>( drive.Name.c_str() );
+			tvItem.lParam = static_cast<LPARAM>( Playlist::Type::Folder );
+			tvItem.iImage = drive.IconIndex;
+			tvItem.iSelectedImage = tvItem.iImage;
+			TVINSERTSTRUCT tvInsert = {};
+			tvInsert.hParent = m_NodeComputer;
+
+			// Maintain drive letter ordering.
+			tvInsert.hInsertAfter = TVI_LAST;
+			HTREEITEM childItem = TreeView_GetChild( m_hWnd, m_NodeComputer );
+			while ( nullptr != childItem ) {
+				const auto itemInfo = m_RootComputerFolders.find( childItem );
+				if ( ( m_RootComputerFolders.end() != itemInfo ) && ( RootFolderType::Drive == itemInfo->second.Type ) && ( drive.Path < itemInfo->second.Path ) ) {
+					const HTREEITEM previousItem = TreeView_GetPrevSibling( m_hWnd, childItem );
+					if ( nullptr != previousItem ) {
+						tvInsert.hInsertAfter = previousItem;
+						break;
+					}
+				}
+				childItem = TreeView_GetNextSibling( m_hWnd, childItem );
+			}
+
+			tvInsert.itemex = tvItem;
+			const HTREEITEM hItem = TreeView_InsertItem( m_hWnd, &tvInsert );
+			if ( nullptr != hItem ) {
+				m_RootComputerFolders.insert( RootFolderInfoMap::value_type( hItem, drive ) );
+				AddToFolderNodesMap( hItem );
+				AddSubFolders( hItem );
+			}
+
+			m_FolderMonitor.AddFolder( drive.Path, [ this ]( const FolderMonitor::Event monitorEvent, const std::wstring& oldFilename, const std::wstring& newFilename )
+			{
+				OnFolderMonitorCallback( monitorEvent, oldFilename, newFilename );
+			} );
+		}
+	}
+
+	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
+}
+
+WndTree::RootFolderInfoList WndTree::GetUserFolders() const
+{
+	RootFolderInfoList userFolders;
+	for ( const auto& knownFolderID : s_UserFolders ) {
+		LPWSTR path = nullptr;
+		if ( SUCCEEDED( SHGetKnownFolderPath( knownFolderID, KF_FLAG_DEFAULT, nullptr /*token*/, &path ) ) ) {
+			const std::wstring folderPath( path );
+			const size_t pos = folderPath.find_last_of( L"/\\" );
+			if ( std::wstring::npos != pos ) {
+				const std::wstring folderName = folderPath.substr( 1 + pos );
+				userFolders.push_back( { folderName, folderPath, m_IconIndexFolder, RootFolderType::UserFolder } );
+			}
+			CoTaskMemFree( path );
+		}
+	}
+	return userFolders;
+}
+
+WndTree::RootFolderInfoList WndTree::GetComputerDrives() const
+{
+	RootFolderInfoList computerDrives;
+	const DWORD bufferLength = GetLogicalDriveStrings( 0 /*bufferLength*/, nullptr /*buffer*/ );
+	if ( bufferLength > 0 ) {
+		std::vector<WCHAR> buffer( static_cast<size_t>( bufferLength ) );
+		if ( GetLogicalDriveStrings( bufferLength, &buffer[ 0 ] ) <= bufferLength ) {
+			LPWSTR driveString = &buffer[ 0 ];
+			size_t stringLength = wcslen( driveString );
+			const UINT previousErrorMode = GetErrorMode();
+			SetErrorMode( SEM_FAILCRITICALERRORS );
+			while ( stringLength > 0 ) {
+				const UINT driveType = GetDriveType( driveString );
+				if ( ( DRIVE_FIXED == driveType ) || ( DRIVE_REMOVABLE == driveType ) || ( DRIVE_REMOTE == driveType ) || ( DRIVE_CDROM == driveType ) ) {
+					bool includeDrive = true;
+
+					if ( DRIVE_CDROM == driveType ) {
+						const DWORD attributes = GetFileAttributes( driveString );
+						if ( INVALID_FILE_ATTRIBUTES == attributes ) {
+							includeDrive = false;
+						} else {
+							includeDrive = CDDAMedia::ContainsData( driveString[ 0 ] );
+						}
+					}
+
+					if ( includeDrive ) {
+						const int nameBufferSize = MAX_PATH;
+						WCHAR nameBuffer[ nameBufferSize ] = {};
+						LoadString( m_hInst, IDS_DISK, nameBuffer, nameBufferSize );
+						std::wstring driveName = nameBuffer;
+
+						if ( DRIVE_REMOTE == driveType ) {
+							DWORD remoteNameSize = 512;
+							std::vector<char> remoteNameBuffer( remoteNameSize );
+							DWORD gotRemoteName = WNetGetUniversalName( driveString, REMOTE_NAME_INFO_LEVEL, &remoteNameBuffer[ 0 ], &remoteNameSize );
+							if ( ( NO_ERROR != gotRemoteName ) && ( remoteNameSize > remoteNameBuffer.size() ) ) {
+								remoteNameBuffer.resize( remoteNameSize );
+								gotRemoteName = WNetGetUniversalName( driveString, REMOTE_NAME_INFO_LEVEL, &remoteNameBuffer[ 0 ], &remoteNameSize );
+							}
+							if ( NO_ERROR == gotRemoteName ) {
+								REMOTE_NAME_INFO* remoteInfo = reinterpret_cast<REMOTE_NAME_INFO*>( &remoteNameBuffer[ 0 ] );
+								driveName = remoteInfo->lpConnectionName;
+							}
+						} else {
+							if ( 0 != GetVolumeInformation( driveString, nameBuffer, nameBufferSize, nullptr /*serialNumber*/, nullptr /*componentLength*/, nullptr /*flags*/, nullptr /*fileSysBuffer*/, 0 /*fileSysBufferSize*/ ) ) {
+								if ( wcslen( nameBuffer ) > 0 ) {
+									driveName = nameBuffer;
+								}
+							}
+						}
+
+						driveName += L" (" + std::wstring( driveString, 1 ) + L":)";
+						std::wstring drivePath( driveString );
+						if ( !drivePath.empty() && ( ( drivePath.back() == '\\' ) || ( drivePath.back() == '/' ) ) ) {
+							drivePath.pop_back();
+						}
+						computerDrives.push_back( { driveName, drivePath, m_IconIndexDrive, RootFolderType::Drive } );
+					}
+				}
+				driveString += stringLength + 1;
+				stringLength = _tcslen( driveString );
+			}
+			SetErrorMode( previousErrorMode );
+		}
+	}
+
+	return computerDrives;
+}
+
+std::set<std::wstring> WndTree::GetSubFolders( const std::wstring& parent ) const
+{
+	std::set<std::wstring> subfolders;
+	
+	std::wstring filename = parent;
+	if ( !filename.empty() && ( filename.back() != '\\' ) && ( filename.back() != '/' ) ) {
+		filename += '\\';
+	}
+	filename += '*';
+
+	const FINDEX_INFO_LEVELS levels = FindExInfoBasic;
+	const FINDEX_SEARCH_OPS searchOp = FindExSearchLimitToDirectories;
+	const DWORD flags = FIND_FIRST_EX_LARGE_FETCH;
+	WIN32_FIND_DATA findData = {};
+	const HANDLE handle = FindFirstFileEx( filename.c_str(), levels, &findData, searchOp, nullptr /*filter*/, flags );
+	if ( INVALID_HANDLE_VALUE != handle ) {
+		BOOL found = TRUE;
+		while ( found ) {
+			if ( ( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && !( findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN ) && !( findData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM ) && ( findData.cFileName[ 0 ] != '.' ) ) {
+				subfolders.insert( findData.cFileName );
+			}
+			found = FindNextFile( handle, &findData );
+		}
+		FindClose( handle );
+	}
+	return subfolders;
+}
+
+void WndTree::GetFolderPath( const HTREEITEM item, std::wstring& path ) const
+{
+	const HTREEITEM parent = TreeView_GetParent( m_hWnd, item );
+	if ( nullptr != parent ) {
+		if ( m_NodeComputer == parent ) {
+			const auto rootFolder = m_RootComputerFolders.find( item );
+			if ( m_RootComputerFolders.end() != rootFolder ) {
+				path = path.empty() ? rootFolder->second.Path : ( rootFolder->second.Path + L"\\" + path );
+			}
+		} else {
+			const std::wstring folderName = GetItemLabel( item );
+			path = path.empty() ? folderName : ( folderName + L"\\" + path );
+			GetFolderPath( parent, path );
+		}
+	}
+}
+
+void WndTree::AddSubFolders( const HTREEITEM item )
+{
+	if ( nullptr == TreeView_GetChild( m_hWnd, item ) ) {
+		std::wstring folderPath;
+		GetFolderPath( item, folderPath );
+		if ( !folderPath.empty() ) {
+			const std::set<std::wstring> subFolders = GetSubFolders( folderPath );
+			for ( const auto& subFolder : subFolders ) {
+				AddItem( item, subFolder, Playlist::Type::Folder, false /*redraw*/ );
+			}
+		}
+	}
+}
+
+void WndTree::OnItemExpanding( const HTREEITEM item )
+{
+	if ( Playlist::Type::Folder == GetItemType( item ) ) {
+		HTREEITEM childItem = TreeView_GetChild( m_hWnd, item );
+		while ( nullptr != childItem ) {
+			AddSubFolders( childItem );
+			childItem = TreeView_GetNextSibling( m_hWnd, childItem );
+		}
+	}
+}
+
+void WndTree::AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist ) const
+{
+	if ( playlist && ( Playlist::Type::Folder == playlist->GetType() ) && ( nullptr != item ) ) {
+		std::set<std::wstring> fileNames;
+
+		std::wstring folderPath;
+		GetFolderPath( item, folderPath );
+		if ( !folderPath.empty() ) {
+			if ( !folderPath.empty() && ( folderPath.back() != '\\' ) && ( folderPath.back() != '/' ) ) {
+				folderPath += '\\';
+			}
+			const std::wstring findName = folderPath + L"*";
+			const FINDEX_INFO_LEVELS levels = FindExInfoBasic;
+			const FINDEX_SEARCH_OPS searchOp = FindExSearchNameMatch;
+			const DWORD flags = FIND_FIRST_EX_LARGE_FETCH;
+			WIN32_FIND_DATA findData = {};
+			const HANDLE handle = FindFirstFileEx( findName.c_str(), levels, &findData, searchOp, nullptr /*filter*/, flags );
+			if ( INVALID_HANDLE_VALUE != handle ) {
+				BOOL found = TRUE;
+				while ( found ) {
+					if ( !( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && !( findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN ) && !( findData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM ) ) {
+						const std::wstring fileName = folderPath + findData.cFileName;
+						IShellItem* shellItem = nullptr;
+						if ( SUCCEEDED( SHCreateItemFromParsingName( fileName.c_str(), nullptr /*bindContext*/, IID_PPV_ARGS( &shellItem ) ) ) ) {
+							SFGAOF attributes = 0;
+							if ( SUCCEEDED( shellItem->GetAttributes( SFGAO_FOLDER, &attributes ) ) && !( attributes & SFGAO_FOLDER ) ) {
+								fileNames.insert( fileName );
+							}
+							shellItem->Release();
+						}
+					}
+					found = FindNextFile( handle, &findData );
+				}
+				FindClose( handle );
+			}
+		}
+
+		for ( const auto& fileName : fileNames ) {
+			playlist->AddPending( fileName );
+		}
+	}
+}
+
+void WndTree::OnDriveArrived( const wchar_t /*drive*/ )
+{
+	RefreshComputerNode();
+}
+
+void WndTree::OnDriveRemoved( const wchar_t drive )
+{
+	std::list<HTREEITEM> itemsToDelete;
+	const auto foundItem = std::find_if( m_RootComputerFolders.begin(), m_RootComputerFolders.end(), [ drive ] ( const RootFolderInfoMap::value_type& folderInfo )
+	{
+		const bool found = ( RootFolderType::Drive == folderInfo.second.Type ) && ( 0 == folderInfo.second.Path.find( drive ) );
+		return found;
+	} );
+
+	if ( m_RootComputerFolders.end() != foundItem ) {
+		RemoveItem( foundItem->first );
+		m_FolderMonitor.RemoveFolder( foundItem->second.Path );
+	}
+}
+
+void WndTree::OnDeviceHandleRemoved( const HANDLE handle )
+{
+	m_FolderMonitor.OnDeviceHandleRemoved( handle );
+}
+
+void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, const std::wstring& oldFilename, const std::wstring& newFilename )
+{
+	const std::wstring& folder = 
+		( ( FolderMonitor::Event::FolderRenamed == monitorEvent ) || ( FolderMonitor::Event::FolderCreated == monitorEvent ) || ( FolderMonitor::Event::FolderDeleted == monitorEvent ) ) ?
+		oldFilename :
+		oldFilename.substr( 0 /*offset*/, oldFilename.find_last_of( L"/\\" ) );
+
+	std::lock_guard<std::mutex> nodeLock( m_FolderNodesMapMutex );
+	std::lock_guard<std::mutex> playlistLock( m_FolderPlaylistMapMutex );
+
+	switch ( monitorEvent ) {
+		case FolderMonitor::Event::FolderRenamed : {
+			const size_t pos = newFilename.find_last_of( L"/\\" );
+			if ( std::wstring::npos != pos ) {
+				const auto folderIter = m_FolderNodesMap.find( folder );
+				if ( m_FolderNodesMap.end() != folderIter ) {
+					for ( const auto& node : folderIter->second ) {
+						std::wstring* folderName = new std::wstring( newFilename.substr( 1 + pos /*offset*/ ) );
+						PostMessage( m_hWnd, MSG_FOLDERRENAME, reinterpret_cast<WPARAM>( node ), reinterpret_cast<LPARAM>( folderName ) );					
+					}
+				}
+			}
+			break;
+		}
+		case FolderMonitor::Event::FolderCreated : {
+			const size_t pos = folder.find_last_of( L"/\\" );
+			if ( std::wstring::npos != pos ) {
+				const std::wstring parentFolder( folder.substr( 0 /*offset*/, pos ) );
+				const auto folderIter = m_FolderNodesMap.find( parentFolder );
+				if ( m_FolderNodesMap.end() != folderIter ) {
+					for ( const auto& node : folderIter->second ) {
+						std::wstring* folderName = new std::wstring( folder.substr( 1 + pos /*offset*/ ) );
+						PostMessage( m_hWnd, MSG_FOLDERADD, reinterpret_cast<WPARAM>( node ), reinterpret_cast<LPARAM>( folderName ) );
+					}
+				}
+			}
+			break;
+		}
+		case FolderMonitor::Event::FolderDeleted : {
+			const auto folderIter = m_FolderNodesMap.find( folder );
+			if ( m_FolderNodesMap.end() != folderIter ) {
+				for ( const auto& node : folderIter->second ) {
+					PostMessage( m_hWnd, MSG_FOLDERDELETE, reinterpret_cast<WPARAM>( node ), 0 /*lParam*/ );
+				}
+			}
+			break;
+		}
+		case FolderMonitor::Event::FileRenamed : {
+			const auto folderIter = m_FolderNodesMap.find( folder );
+			if ( m_FolderNodesMap.end() != folderIter ) {
+				const std::set<HTREEITEM>& nodes = folderIter->second;
+				for ( const auto& node : nodes ) {
+					const auto playlistIter = m_FolderPlaylistMap.find( node );
+					if ( m_FolderPlaylistMap.end() != playlistIter ) {
+						Playlist::Ptr playlist = playlistIter->second;
+						if ( playlist ) {
+							playlist->RemoveItem( MediaInfo( oldFilename ) );
+							playlist->AddPending( newFilename );
+						}
+					}
+				}
+			}
+			break;
+		}
+		case FolderMonitor::Event::FileCreated : {
+			const auto folderIter = m_FolderNodesMap.find( folder );
+			if ( m_FolderNodesMap.end() != folderIter ) {
+				const std::set<HTREEITEM>& nodes = folderIter->second;
+				for ( const auto& node : nodes ) {
+					const auto playlistIter = m_FolderPlaylistMap.find( node );
+					if ( m_FolderPlaylistMap.end() != playlistIter ) {
+						Playlist::Ptr playlist = playlistIter->second;
+						if ( playlist ) {
+							playlist->AddPending( newFilename );
+						}
+					}
+				}
+			}
+			break;
+		}
+		case FolderMonitor::Event::FileDeleted : {
+			const auto folderIter = m_FolderNodesMap.find( folder );
+			if ( m_FolderNodesMap.end() != folderIter ) {
+				const std::set<HTREEITEM>& nodes = folderIter->second;
+				for ( const auto& node : nodes ) {
+					const auto playlistIter = m_FolderPlaylistMap.find( node );
+					if ( m_FolderPlaylistMap.end() != playlistIter ) {
+						Playlist::Ptr playlist = playlistIter->second;
+						if ( playlist ) {
+							playlist->RemoveItem( MediaInfo( oldFilename ) );
+						}
+					}
+				}
+			}
+			break;
+		}
+		default : {
+			break;
+		}
+	}
+}
+
+void WndTree::GetAllChildren( const HTREEITEM item, std::set<HTREEITEM>& children ) const
+{
+	HTREEITEM childItem = TreeView_GetChild( m_hWnd, item );
+	while ( nullptr != childItem ) {
+		GetAllChildren( childItem, children );
+		children.insert( childItem );
+		childItem = TreeView_GetNextSibling( m_hWnd, childItem );
+	}
+}
+
+HTREEITEM WndTree::OnFolderAdd( const HTREEITEM parent, const std::wstring& folder )
+{
+	const HTREEITEM addedItem = AddItem( parent, folder, Playlist::Type::Folder );
+	if ( nullptr != addedItem ) {
+		AddSubFolders( addedItem );
+	}
+	return addedItem;
+}
+
+void WndTree::OnFolderDelete( const HTREEITEM item )
+{
+	RemoveItem( item );
+}
+
+void WndTree::OnFolderRename( const HTREEITEM item, const std::wstring& folder )
+{
+	// Just delete the old folder node, and add back the renamed folder.
+	const HTREEITEM parent = TreeView_GetParent( m_hWnd, item );
+	if ( nullptr != parent ) {
+		std::wstring oldFolderPath;
+		GetFolderPath( item, oldFolderPath );
+
+		const HTREEITEM hSelectedItem = TreeView_GetSelection( m_hWnd );
+		std::wstring selectedFolderPath;
+		GetFolderPath( hSelectedItem, selectedFolderPath );
+
+		const bool selectedRenamedFolder = ( !oldFolderPath.empty() && !selectedFolderPath.empty() && ( 0 == selectedFolderPath.find( oldFolderPath ) ) );
+
+		OnFolderDelete( item );
+		const HTREEITEM addedItem = OnFolderAdd( parent, folder );
+
+		if ( selectedRenamedFolder ) {
+			TreeView_SelectItem( m_hWnd, addedItem );
+		}
+	}
+}
+
+void WndTree::AddToFolderNodesMap( const HTREEITEM item )
+{
+	if ( Playlist::Type::Folder == GetItemType( item ) ) {
+		std::wstring path;
+		GetFolderPath( item, path );
+		if ( !path.empty() ) {
+			std::lock_guard<std::mutex> lock( m_FolderNodesMapMutex );
+			auto iter = m_FolderNodesMap.insert( StringToNodesMap::value_type( path, std::set<HTREEITEM>() ) ).first;
+			if ( m_FolderNodesMap.end() != iter ) {
+				iter->second.insert( item );
+			}
+		}
+	}
+}
+
+void WndTree::RemoveFromFolderNodesMap( const HTREEITEM item )
+{
+	if ( Playlist::Type::Folder == GetItemType( item ) ) {
+		std::wstring path;
+		GetFolderPath( item, path );
+		std::lock_guard<std::mutex> lock( m_FolderNodesMapMutex );
+		auto iter = m_FolderNodesMap.find( path );
+		if ( m_FolderNodesMap.end() != iter ) {
+			std::set<HTREEITEM>& nodes = iter->second;
+			nodes.erase( item );
+			if ( nodes.empty() ) {
+				m_FolderNodesMap.erase( path );
+			}
+		}
+	}
+}
+
+HTREEITEM WndTree::GetComputerFolderNode( const std::wstring& folder )
+{
+	HTREEITEM foundItem = nullptr;
+	const DWORD attributes = GetFileAttributes( folder.c_str() );
+	if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && ( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
+
+		auto foundRoot = m_RootComputerFolders.end();
+		HTREEITEM folderItem = TreeView_GetChild( m_hWnd, m_NodeComputer );
+		while ( nullptr != folderItem ) {
+			const auto folderInfo = m_RootComputerFolders.find( folderItem );
+			if ( ( m_RootComputerFolders.end() != folderInfo ) && ( 0 == folder.find( folderInfo->second.Path ) ) ) {
+				foundRoot = folderInfo;
+				break;
+			}
+			folderItem = TreeView_GetNextSibling( m_hWnd, folderItem );
+		}
+
+		if ( m_RootComputerFolders.end() != foundRoot ) {
+			HTREEITEM item = foundRoot->first;
+			if ( foundRoot->second.Path == folder ) {
+				TreeView_SelectItem( m_hWnd, item );
+			} else {
+				AddSubFolders( item );
+
+				std::wstring path( folder );
+				size_t pos = 1 + foundRoot->second.Path.size();
+				if ( pos < path.size() ) {
+					path = path.substr( pos );
+				}
+
+				while ( !path.empty() ) {
+					pos = path.find( '\\' );
+					const std::wstring& folderName = ( std::wstring::npos == pos ) ? path : path.substr( 0 /*offset*/, pos );
+
+					HTREEITEM childItem = TreeView_GetChild( m_hWnd, item );
+					HTREEITEM foundChild = nullptr;
+					while ( nullptr != childItem ) {
+						AddSubFolders( childItem );
+						const std::wstring itemLabel = GetItemLabel( childItem );
+						if ( itemLabel == folderName ) {
+							foundChild = childItem;
+						}
+						childItem = TreeView_GetNextSibling( m_hWnd, childItem );
+					}
+
+					if ( nullptr != foundChild ) {
+						item = foundChild;
+						if ( std::wstring::npos == pos ) {
+							TreeView_SelectItem( m_hWnd, foundChild );
+							path.clear();
+							foundItem = foundChild;
+						} else {
+							path = path.substr( 1 + pos );
+						}
+					} else {
+						path.clear();
+					}
+				}
+			}
+		}
+	}
+	return foundItem;
+}
+
+Playlist::Ptr WndTree::SetScratchList( const MediaInfo::List& mediaList )
+{
+	StopScratchListUpdateThread();
+
+	Playlist::Ptr scratchList( new Playlist( m_Library, s_ScratchListID, Playlist::Type::User ) );
+	const int bufSize = 32;
+	WCHAR buffer[ bufSize ] = {};
+	LoadString( m_hInst, IDS_SCRATCHLIST, buffer, bufSize );
+	scratchList->SetName( buffer );
+	for ( const auto& mediaInfo : mediaList ) {
+		scratchList->AddItem( mediaInfo );
+	}
+
+	bool foundScratchList = false;
+	for ( auto& playlistIter : m_PlaylistMap ) {
+		if ( playlistIter.second && ( s_ScratchListID == playlistIter.second->GetID() ) ) {
+			foundScratchList = true;
+			scratchList->SetName( playlistIter.second->GetName() );
+			playlistIter.second = scratchList;
+
+			const HTREEITEM currentSelection = TreeView_GetSelection( m_hWnd );
+			if ( currentSelection == playlistIter.first ) {
+				// Reselect the tree item to ensure a tree selection change notification gets sent.
+				TreeView_SelectItem( m_hWnd, m_NodePlaylists );
+			}
+			TreeView_SelectItem( m_hWnd, playlistIter.first );
+			break;
+		}
+	}
+
+	if ( !foundScratchList ) {
+		AddPlaylist( scratchList );
+	}
+
+	StartScratchListUpdateThread( scratchList );
+
+	return scratchList;
+}
+
+void WndTree::StartScratchListUpdateThread( Playlist::Ptr scratchList )
+{
+	StopScratchListUpdateThread();
+	if ( nullptr != m_ScratchListUpdateStopEvent ) {
+		MediaInfo::List mediaList;
+		const Playlist::ItemList items = scratchList->GetItems();
+		for ( const auto& item : items ) {
+			mediaList.push_back( item.Info );
+		}
+		ScratchListUpdateInfo* info = new ScratchListUpdateInfo( m_Library, m_ScratchListUpdateStopEvent, mediaList );
+		ResetEvent( info->StopEvent );
+		m_ScratchListUpdateThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, ScratchListUpdateProc, info /*param*/, 0 /*flags*/, NULL /*threadId*/ );
+	}
+}
+
+void WndTree::StopScratchListUpdateThread()
+{
+	if ( ( nullptr != m_ScratchListUpdateStopEvent ) && ( nullptr != m_ScratchListUpdateThread ) ) {
+		SetEvent( m_ScratchListUpdateStopEvent );
+		WaitForSingleObject( m_ScratchListUpdateThread, INFINITE );
+		CloseHandle( m_ScratchListUpdateThread );
+		m_ScratchListUpdateThread = nullptr;
+	}
 }

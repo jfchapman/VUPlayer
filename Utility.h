@@ -111,3 +111,6 @@ short FloatTo16( const float value );
 
 // Converts a floating point sample 'value' to 8-bit (clamping any value outside the range -1.0 to +1.0).
 char FloatTo8( const float value );
+
+// Returns the 'filename' extension in lowercase.
+std::wstring GetFileExtension( const std::wstring filename );

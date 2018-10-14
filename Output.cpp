@@ -127,7 +127,15 @@ Output::~Output()
 bool Output::Play( const long playlistID, const float seek )
 {
 	Stop();
+
 	Playlist::Item item( { playlistID, MediaInfo() } );
+	if ( ( 0 == item.ID ) && m_Playlist ) {
+		const Playlist::ItemList items = m_Playlist->GetItems();
+		if ( !items.empty() ) {
+			item.ID = items.front().ID;
+		}
+	}
+
 	if ( m_Playlist && m_Playlist->GetItem( item ) ) {
 		const std::wstring& filename = item.Info.GetFilename();
 		m_DecoderStream = m_Handlers.OpenDecoder( filename );
@@ -140,6 +148,11 @@ bool Output::Play( const long playlistID, const float seek )
 			}
 
 			EstimateReplayGain( item );
+			item.Info.SetChannels( m_DecoderStream->GetChannels() );
+			item.Info.SetBitsPerSample( m_DecoderStream->GetBPS() );
+			item.Info.SetDuration( m_DecoderStream->GetDuration() );
+			item.Info.SetSampleRate( m_DecoderStream->GetSampleRate() );
+
 			m_DecoderSampleRate = m_DecoderStream->GetSampleRate();
 			const DWORD freq = static_cast<DWORD>( m_DecoderSampleRate );
 			const DWORD channels = static_cast<DWORD>( m_DecoderStream->GetChannels() );
@@ -977,7 +990,6 @@ void Output::ApplyReplayGain( float* buffer, const long bufferSize, const Playli
 		float preamp = eqEnabled ? m_EQPreamp : 0;
 
 		if ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) {
-			preamp += m_ReplaygainPreamp;
 			float gain = item.Info.GetGainAlbum();
 			if ( ( REPLAYGAIN_NOVALUE == gain ) || ( Settings::ReplaygainMode::Track == m_ReplaygainMode ) ) {
 				gain = item.Info.GetGainTrack();
@@ -988,6 +1000,7 @@ void Output::ApplyReplayGain( float* buffer, const long bufferSize, const Playli
 				} else if ( gain > s_ReplayGainMax ) {
 					gain = s_ReplayGainMax;
 				}
+				preamp += m_ReplaygainPreamp;
 				preamp += gain;
 			}
 		}

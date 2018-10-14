@@ -31,7 +31,7 @@ WndToolbarPlaylist::~WndToolbarPlaylist()
 void WndToolbarPlaylist::Update( Output& /*output*/, const Playlist::Ptr playlist, const Playlist::Item& selectedItem )
 {
 	const bool addFiles = true;
-	const bool removeFiles = ( playlist && ( selectedItem.ID > 0 ) );
+	const bool removeFiles = ( playlist && ( selectedItem.ID > 0 ) && ( Playlist::Type::CDDA != playlist->GetType() ) && ( Playlist::Type::Folder != playlist->GetType() ) );
 	SetButtonEnabled( ID_FILE_PLAYLISTADDFOLDER, addFiles );
 	SetButtonEnabled( ID_FILE_PLAYLISTADDFILES, addFiles );
 	SetButtonEnabled( ID_FILE_PLAYLISTREMOVEFILES, removeFiles );

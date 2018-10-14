@@ -109,6 +109,7 @@ WndTrackbar::WndTrackbar( HINSTANCE instance, HWND parent, Output& output, const
 	GetClientRect( m_hWnd, &toolInfo.rect );
 	SendMessage( hwndToolTip, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>( &toolInfo ) );
 	SendMessage( m_hWnd, TBM_SETTOOLTIPS, reinterpret_cast<LPARAM>( hwndToolTip ), 0 );
+	SendMessage( m_hWnd, WM_UPDATEUISTATE, MAKEWPARAM( UIS_SET, UISF_HIDEFOCUS ), 0 /*lParam*/ );
 }
 
 WndTrackbar::~WndTrackbar()
