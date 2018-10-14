@@ -409,8 +409,8 @@ private:
 	// Called when a folder 'item' needs to be deleted from the tree.
 	void OnFolderDelete( const HTREEITEM item );
 
-	// Called when an 'item' needs to be renamed to the new 'folder'.
-	void OnFolderRename( const HTREEITEM item, const std::wstring& folder );
+	// Called when an 'oldFolderPath' has been renamed to 'newFolderPath'.
+	void OnFolderRename( const std::wstring& oldFolderPath, const std::wstring& newFolderPath );
 
 	// Adds the tree 'item' to the folder nodes map.
 	void AddToFolderNodesMap( const HTREEITEM item );

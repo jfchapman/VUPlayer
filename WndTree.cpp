@@ -25,7 +25,7 @@ static const std::string s_ScratchListID = "F641E764-3385-428A-9F39-88E928234E17
 
 // Message ID for adding a folder to the computer node.
 // 'wParam' : HTREEITEM - the parent item under which to add the folder.
-// 'lParam' : std::wstring* - folder path, to be deleted by the message handler.
+// 'lParam' : std::wstring* - folder name, to be deleted by the message handler.
 static const UINT MSG_FOLDERADD = WM_APP + 110;
 
 // Message ID for deleting a folder from the computer node.
@@ -34,7 +34,7 @@ static const UINT MSG_FOLDERADD = WM_APP + 110;
 static const UINT MSG_FOLDERDELETE = WM_APP + 111;
 
 // Message ID for renaming a folder in the computer node.
-// 'wParam' : HTREEITEM - the item to rename.
+// 'wParam' : std::wstring* - old folder path, to be deleted by the message handler.
 // 'lParam' : std::wstring* - new folder path, to be deleted by the message handler.
 static const UINT MSG_FOLDERRENAME = WM_APP + 112;
 
@@ -94,11 +94,13 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				break;
 			}
 			case MSG_FOLDERRENAME : {
-				const std::wstring* folder = reinterpret_cast<std::wstring*>( lParam );
-				if ( nullptr != folder ) {
-					wndTree->OnFolderRename( reinterpret_cast<HTREEITEM>( wParam ), *folder );
-					delete folder;
+				const std::wstring* oldFolderPath = reinterpret_cast<std::wstring*>( wParam );
+				const std::wstring* newFolderPath = reinterpret_cast<std::wstring*>( lParam );
+				if ( ( nullptr != oldFolderPath ) && ( nullptr != newFolderPath ) ) {
+					wndTree->OnFolderRename( *oldFolderPath, *newFolderPath );
 				}
+				delete oldFolderPath;
+				delete newFolderPath;
 				break;
 			}
 			default : {
@@ -2847,10 +2849,9 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			if ( std::wstring::npos != pos ) {
 				const auto folderIter = m_FolderNodesMap.find( folder );
 				if ( m_FolderNodesMap.end() != folderIter ) {
-					for ( const auto& node : folderIter->second ) {
-						std::wstring* folderName = new std::wstring( newFilename.substr( 1 + pos /*offset*/ ) );
-						PostMessage( m_hWnd, MSG_FOLDERRENAME, reinterpret_cast<WPARAM>( node ), reinterpret_cast<LPARAM>( folderName ) );					
-					}
+					std::wstring* oldFolderPath = new std::wstring( oldFilename );
+					std::wstring* newFolderPath = new std::wstring( newFilename );
+					PostMessage( m_hWnd, MSG_FOLDERRENAME, reinterpret_cast<WPARAM>( oldFolderPath ), reinterpret_cast<LPARAM>( newFolderPath ) );					
 				}
 			}
 			break;
@@ -2957,25 +2958,50 @@ void WndTree::OnFolderDelete( const HTREEITEM item )
 	RemoveItem( item );
 }
 
-void WndTree::OnFolderRename( const HTREEITEM item, const std::wstring& folder )
+void WndTree::OnFolderRename( const std::wstring& oldFolderPath, const std::wstring& newFolderPath )
 {
-	// Just delete the old folder node, and add back the renamed folder.
-	const HTREEITEM parent = TreeView_GetParent( m_hWnd, item );
-	if ( nullptr != parent ) {
-		std::wstring oldFolderPath;
-		GetFolderPath( item, oldFolderPath );
+	// Determine whether to select the renamed folder.
+	const HTREEITEM hSelectedItem = TreeView_GetSelection( m_hWnd );
+	std::wstring selectedFolderPath;
+	GetFolderPath( hSelectedItem, selectedFolderPath );
+	bool selectRenamedFolder = ( !oldFolderPath.empty() && !selectedFolderPath.empty() && ( 0 == selectedFolderPath.find( oldFolderPath ) ) );
 
-		const HTREEITEM hSelectedItem = TreeView_GetSelection( m_hWnd );
-		std::wstring selectedFolderPath;
-		GetFolderPath( hSelectedItem, selectedFolderPath );
+	// Delete the old folder nodes (if present).
+	std::set<HTREEITEM> nodesToDelete;
+	{
+		std::lock_guard<std::mutex> lock( m_FolderNodesMapMutex );
+		const auto oldFolderIter = m_FolderNodesMap.find( oldFolderPath );
+		if ( m_FolderNodesMap.end() != oldFolderIter ) {
+			nodesToDelete = oldFolderIter->second;
+		}
+	}
+	for ( const auto& item : nodesToDelete ) {
+		RemoveItem( item );
+	}
 
-		const bool selectedRenamedFolder = ( !oldFolderPath.empty() && !selectedFolderPath.empty() && ( 0 == selectedFolderPath.find( oldFolderPath ) ) );
-
-		OnFolderDelete( item );
-		const HTREEITEM addedItem = OnFolderAdd( parent, folder );
-
-		if ( selectedRenamedFolder ) {
-			TreeView_SelectItem( m_hWnd, addedItem );
+	// Get the parent nodes of the new folder path.
+	const size_t pos = newFolderPath.find_last_of( L"/\\" );
+	if ( std::wstring::npos != pos ) {
+		const std::wstring parentFolderPath = newFolderPath.substr( 0 /*offset*/, pos );
+		const std::wstring newFolderName = newFolderPath.substr( 1 + pos );
+		std::set<HTREEITEM> parentNodes;
+		{
+			std::lock_guard<std::mutex> lock( m_FolderNodesMapMutex );
+			const auto parentFolderIter = m_FolderNodesMap.find( parentFolderPath );
+			if ( m_FolderNodesMap.end() != parentFolderIter ) {
+				parentNodes = parentFolderIter->second;
+			}
+		}
+		for ( const auto& item : parentNodes ) {
+			const HTREEITEM addedItem = AddItem( item, newFolderName, Playlist::Type::Folder );
+			if ( nullptr != addedItem ) {
+				AddSubFolders( addedItem );
+			}
+			if ( selectRenamedFolder ) {
+				TreeView_SelectItem( m_hWnd, addedItem );
+				TreeView_Expand( m_hWnd, addedItem, TVE_EXPAND );
+				selectRenamedFolder = false;
+			}
 		}
 	}
 }
