@@ -485,25 +485,7 @@ void VUPlayer::OnOutputChanged( const Output::Item& item )
 		m_Visual.DoRender();
 	}
 	RedrawWindow( m_List.GetWindowHandle(), NULL /*rect*/, NULL /*region*/, RDW_INVALIDATE | RDW_NOERASE );
-
-	std::wstring titlebarText;
-	if ( item.PlaylistItem.ID > 0 ) {
-		const std::wstring title = item.PlaylistItem.Info.GetTitle( true /*filenameAsTitle*/ );
-		if ( !title.empty() ) {
-			titlebarText = item.PlaylistItem.Info.GetArtist();
-			if ( !titlebarText.empty() ) {
-				titlebarText += L" - ";
-			}
-			titlebarText += title;
-		} 
-	}
-	if ( titlebarText.empty() ) {
-		const int buffersize = 16;
-		WCHAR buffer[ buffersize ] = {};
-		LoadString( m_hInst, IDS_APP_TITLE, buffer, buffersize );
-		titlebarText = buffer;
-	}
-	SetWindowText( m_hWnd, titlebarText.c_str() );
+	SetTitlebarText( item );
 }
 
 void VUPlayer::OnMinMaxInfo( LPMINMAXINFO minMaxInfo )
@@ -1206,6 +1188,9 @@ void VUPlayer::OnHandleMediaUpdate( const MediaInfo* previousMediaInfo, const Me
 				m_Splitter.Resize();
 				m_Visual.DoRender();
 			}
+			if ( Output::State::Stopped != m_Output.GetState() ) {
+				SetTitlebarText( m_Output.GetCurrentPlaying() );
+			}
 		}
 	}
 }
@@ -1646,4 +1631,26 @@ bool VUPlayer::OnCommandLineFiles( const std::list<std::wstring>& filenames )
 		}
 	}
 	return validCommandLine;
+}
+
+void VUPlayer::SetTitlebarText( const Output::Item& item )
+{
+	std::wstring titlebarText;
+	if ( item.PlaylistItem.ID > 0 ) {
+		const std::wstring title = item.PlaylistItem.Info.GetTitle( true /*filenameAsTitle*/ );
+		if ( !title.empty() ) {
+			titlebarText = item.PlaylistItem.Info.GetArtist();
+			if ( !titlebarText.empty() ) {
+				titlebarText += L" - ";
+			}
+			titlebarText += title;
+		} 
+	}
+	if ( titlebarText.empty() ) {
+		const int buffersize = 32;
+		WCHAR buffer[ buffersize ] = {};
+		LoadString( m_hInst, IDS_APP_TITLE, buffer, buffersize );
+		titlebarText = buffer;
+	}
+	SetWindowText( m_hWnd, titlebarText.c_str() );
 }

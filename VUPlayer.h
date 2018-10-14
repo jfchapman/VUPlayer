@@ -226,6 +226,9 @@ private:
 	// Returns null if the resource was not loaded.
 	std::shared_ptr<Gdiplus::Bitmap> LoadResourcePNG( const WORD resourceID );
 
+	// Sets the application title bar text according to the 'item'.
+	void SetTitlebarText( const Output::Item& item );
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
