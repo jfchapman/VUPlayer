@@ -285,6 +285,9 @@
     <ClInclude Include="FolderMonitor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="WndToolbarTrackEnd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -527,6 +530,9 @@
     <ClCompile Include="FolderMonitor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="WndToolbarTrackEnd.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="VUPlayer.rc">
@@ -640,6 +646,15 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\disk.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\stop_at_end.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fade_out.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\fade_to_next.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

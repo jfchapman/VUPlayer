@@ -9,13 +9,13 @@ UINT_PTR WndSplit::s_WndSplitID = 1800;
 static const wchar_t s_SplitClass[] = L"VUSplitClass";
 
 // Minimum split width
-static const int s_MinSplit = 200;
+static const int s_MinSplit = static_cast<int>( 200 * GetDPIScaling() );
 
 // Maximum split width
-static const int s_MaxSplit = 500;
+static const int s_MaxSplit = static_cast<int>( 500 * GetDPIScaling() );
 
 // Default split width
-static const int s_DefaultSplit = 303;
+static const int s_DefaultSplit = static_cast<int>( 303 * GetDPIScaling() );
 
 LRESULT CALLBACK WndSplit::SplitProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -88,8 +88,6 @@ WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStat
 	m_hVisual( wndVisual ),
 	m_hList( wndList ),
 	m_SplitPosition( 0 ),
-	m_MinSplit( static_cast<int>( s_MinSplit * GetDPIScaling() ) ),
-	m_MaxSplit( static_cast<int>( s_MaxSplit * GetDPIScaling() ) ),
 	m_IsDragging( false ),
 	m_IsTracking( false ),
 	m_IsSizing( false ),
@@ -115,7 +113,7 @@ WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStat
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 
 	m_SplitPosition = m_Settings.GetSplitWidth();
-	if ( ( m_SplitPosition < m_MinSplit ) || ( m_SplitPosition > m_MaxSplit ) ) {
+	if ( ( m_SplitPosition < s_MinSplit ) || ( m_SplitPosition > s_MaxSplit ) ) {
 		m_SplitPosition = s_DefaultSplit;
 	}
 	Resize();
@@ -159,10 +157,10 @@ void WndSplit::OnDrag( const POINT& position )
 
 	int splitPosition = static_cast<int>( pt.x );
 
-	if ( splitPosition < m_MinSplit ) {
-		splitPosition = m_MinSplit;
-	} else if ( splitPosition > m_MaxSplit ) {
-		splitPosition = m_MaxSplit;
+	if ( splitPosition < s_MinSplit ) {
+		splitPosition = s_MinSplit;
+	} else if ( splitPosition > s_MaxSplit ) {
+		splitPosition = s_MaxSplit;
 	}
 
 	if ( splitPosition != m_SplitPosition ) {

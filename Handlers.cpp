@@ -138,3 +138,17 @@ Encoder::Ptr Handlers::OpenEncoder( const std::wstring& /*description*/ ) const
 	Encoder::Ptr encoder;
 	return encoder;
 }
+
+void Handlers::SettingsChanged( Settings& settings ) const
+{
+	for ( const auto& handler : m_Handlers ) {
+		if ( handler ) {
+			handler->SettingsChanged( settings );
+		}
+	}
+}
+
+void Handlers::Init( Settings& settings )
+{
+	SettingsChanged( settings );
+}

@@ -9,7 +9,8 @@ class WndToolbar
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndToolbar( HINSTANCE instance, HWND parent );
+	// 'id' - toolbar ID.
+	WndToolbar( HINSTANCE instance, HWND parent, const long long id );
 
 	virtual ~WndToolbar();
 
@@ -34,6 +35,9 @@ public:
 	// Returns the tooltip resource ID corresponding to a 'commandID'.
 	virtual UINT GetTooltip( const UINT commandID ) const = 0;
 
+	// Returns the toolbar ID.
+	int GetID() const;
+
 protected:
 	// Sets whether the button corresponding to 'commandID' is 'enabled'.
 	void SetButtonEnabled( const UINT commandID, const bool enabled );
@@ -44,9 +48,6 @@ protected:
 private:
 	// Window procedure
 	static LRESULT CALLBACK ToolbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
-
-	// Next available child window ID.
-	static UINT_PTR s_WndToolbarID;
 
 	// Module instance handle.
 	HINSTANCE m_hInst;

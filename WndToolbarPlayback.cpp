@@ -7,7 +7,7 @@
 static const int s_ButtonSize = 24;
 
 WndToolbarPlayback::WndToolbarPlayback( HINSTANCE instance, HWND parent ) :
-	WndToolbar( instance, parent ),
+	WndToolbar( instance, parent, ID_TOOLBAR_PLAYBACK ),
 	m_ImageList( nullptr ),
 	m_ImageMap( {
 		{ 0, IDI_PLAY },

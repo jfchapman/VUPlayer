@@ -75,12 +75,6 @@ private:
 	// Split position.
 	int m_SplitPosition;
 
-	// Minimum split position.
-	int m_MinSplit;
-
-	// Maximum split position.
-	int m_MaxSplit;
-	
 	// Indicates whether the splitter is currently being dragged.
 	bool m_IsDragging;
 

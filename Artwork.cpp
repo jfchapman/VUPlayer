@@ -1,12 +1,10 @@
 #include "Artwork.h"
 
 #include "VUPlayer.h"
+#include "Utility.h"
 
 // Minimum visual height.
-static const int s_MinHeight = 100;
-
-// Maximum visual height.
-static const int s_MaxHeight = 800;
+static const int s_MinHeight = static_cast<int>( 100 * GetDPIScaling() );
 
 Artwork::Artwork( WndVisual& wndVisual ) :
 	Visual( wndVisual ),
@@ -39,8 +37,6 @@ int Artwork::GetHeight( const int width )
 			height = static_cast<int>( width / aspect );
 			if ( height < s_MinHeight ) {
 				height = s_MinHeight;
-			} else if ( height > s_MaxHeight ) {
-				height = s_MaxHeight;
 			}
 		}
 	}

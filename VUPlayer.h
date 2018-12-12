@@ -31,6 +31,7 @@
 #include "WndToolbarOptions.h"
 #include "WndToolbarPlayback.h"
 #include "WndToolbarPlaylist.h"
+#include "WndToolbarTrackEnd.h"
 #include "WndTrackbarSeek.h"
 #include "WndTrackbarVolume.h"
 #include "WndTray.h"
@@ -144,6 +145,9 @@ public:
 
 	// Creates and returns a new playlist.
 	Playlist::Ptr NewPlaylist();
+
+	// Gets the currently displayed playlist.
+	Playlist::Ptr GetSelectedPlaylist();
 
 	// Returns the BASS library version.
 	std::wstring GetBassVersion() const;
@@ -315,6 +319,9 @@ private:
 
 	// Toolbar (convert).
 	WndToolbarConvert m_ToolbarConvert;
+
+	// Toolbar (track end).
+	WndToolbarTrackEnd m_ToolbarTrackEnd;
 
 	// Counter control.
 	WndCounter m_Counter;

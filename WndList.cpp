@@ -15,24 +15,24 @@
 
 // Column information
 WndList::ColumnFormats WndList::s_ColumnFormats = {
-	{ Playlist::Column::Filename, ColumnFormat( {				ID_SHOWCOLUMNS_FILENAME,			ID_SORTPLAYLIST_FILENAME,				IDS_COLUMN_FILENAME,			LVCFMT_LEFT,		150 /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::Filetime, ColumnFormat( {				ID_SHOWCOLUMNS_FILETIME,			ID_SORTPLAYLIST_FILETIME,				IDS_COLUMN_FILETIME,			LVCFMT_LEFT,		100 /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::Filesize, ColumnFormat( {				ID_SHOWCOLUMNS_FILESIZE,			ID_SORTPLAYLIST_FILESIZE,				IDS_COLUMN_FILESIZE,			LVCFMT_RIGHT,		100 /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::Duration, ColumnFormat( {				ID_SHOWCOLUMNS_DURATION,			ID_SORTPLAYLIST_DURATION,				IDS_COLUMN_DURATION,			LVCFMT_RIGHT,		100 /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::SampleRate, ColumnFormat( {			ID_SHOWCOLUMNS_SAMPLERATE,		ID_SORTPLAYLIST_SAMPLERATE,			IDS_COLUMN_SAMPLERATE,		LVCFMT_RIGHT,		100 /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::BitsPerSample, ColumnFormat( {	ID_SHOWCOLUMNS_BITSPERSAMPLE,	ID_SORTPLAYLIST_BITSPERSAMPLE,	IDS_COLUMN_BITSPERSAMPLE,	LVCFMT_RIGHT,		50 /*width*/,		false /*canEdit*/ } ) },
-	{ Playlist::Column::Channels, ColumnFormat( {				ID_SHOWCOLUMNS_CHANNELS,			ID_SORTPLAYLIST_CHANNELS,				IDS_COLUMN_CHANNELS,			LVCFMT_CENTER,	50 /*width*/,		false /*canEdit*/ } ) },
-	{ Playlist::Column::Artist, ColumnFormat( {					ID_SHOWCOLUMNS_ARTIST,				ID_SORTPLAYLIST_ARTIST,					IDS_COLUMN_ARTIST,				LVCFMT_LEFT,		150 /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Title, ColumnFormat( {					ID_SHOWCOLUMNS_TITLE,					ID_SORTPLAYLIST_TITLE,					IDS_COLUMN_TITLE,					LVCFMT_LEFT,		150 /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Album, ColumnFormat( {					ID_SHOWCOLUMNS_ALBUM,					ID_SORTPLAYLIST_ALBUM,					IDS_COLUMN_ALBUM,					LVCFMT_LEFT,		100 /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Genre, ColumnFormat( {					ID_SHOWCOLUMNS_GENRE,					ID_SORTPLAYLIST_GENRE,					IDS_COLUMN_GENRE,					LVCFMT_LEFT,		100 /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Year, ColumnFormat( {						ID_SHOWCOLUMNS_YEAR,					ID_SORTPLAYLIST_YEAR,						IDS_COLUMN_YEAR,					LVCFMT_CENTER,	50 /*width*/,		true /*canEdit*/ } ) },
-	{ Playlist::Column::Track, ColumnFormat( {					ID_SHOWCOLUMNS_TRACK,					ID_SORTPLAYLIST_TRACK,					IDS_COLUMN_TRACK,					LVCFMT_CENTER,	50 /*width*/,		true /*canEdit*/ } ) },
-	{ Playlist::Column::Type, ColumnFormat( {						ID_SHOWCOLUMNS_TYPE,					ID_SORTPLAYLIST_TYPE,						IDS_COLUMN_TYPE,					LVCFMT_LEFT,		50 /*width*/,		false /*canEdit*/ } ) },
-	{ Playlist::Column::Version, ColumnFormat( {				ID_SHOWCOLUMNS_VERSION,				ID_SORTPLAYLIST_VERSION,				IDS_COLUMN_VERSION,				LVCFMT_LEFT,		100 /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::GainTrack, ColumnFormat( {			ID_SHOWCOLUMNS_TRACKGAIN,			ID_SORTPLAYLIST_TRACKGAIN,			IDS_COLUMN_GAINTRACK,			LVCFMT_RIGHT,		100 /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::GainAlbum, ColumnFormat( {			ID_SHOWCOLUMNS_ALBUMGAIN,			ID_SORTPLAYLIST_ALBUMGAIN,			IDS_COLUMN_GAINALBUM,			LVCFMT_RIGHT,		100 /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::Bitrate, ColumnFormat( {				ID_SHOWCOLUMNS_BITRATE,				ID_SORTPLAYLIST_BITRATE,				IDS_COLUMN_BITRATE,				LVCFMT_RIGHT,		100 /*width*/,	false /*canEdit*/ } ) }
+	{ Playlist::Column::Filename, ColumnFormat( {				ID_SHOWCOLUMNS_FILENAME,			ID_SORTPLAYLIST_FILENAME,				IDS_COLUMN_FILENAME,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
+	{ Playlist::Column::Filetime, ColumnFormat( {				ID_SHOWCOLUMNS_FILETIME,			ID_SORTPLAYLIST_FILETIME,				IDS_COLUMN_FILETIME,			LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
+	{ Playlist::Column::Filesize, ColumnFormat( {				ID_SHOWCOLUMNS_FILESIZE,			ID_SORTPLAYLIST_FILESIZE,				IDS_COLUMN_FILESIZE,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
+	{ Playlist::Column::Duration, ColumnFormat( {				ID_SHOWCOLUMNS_DURATION,			ID_SORTPLAYLIST_DURATION,				IDS_COLUMN_DURATION,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
+	{ Playlist::Column::SampleRate, ColumnFormat( {			ID_SHOWCOLUMNS_SAMPLERATE,		ID_SORTPLAYLIST_SAMPLERATE,			IDS_COLUMN_SAMPLERATE,		LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
+	{ Playlist::Column::BitsPerSample, ColumnFormat( {	ID_SHOWCOLUMNS_BITSPERSAMPLE,	ID_SORTPLAYLIST_BITSPERSAMPLE,	IDS_COLUMN_BITSPERSAMPLE,	LVCFMT_RIGHT,		static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
+	{ Playlist::Column::Channels, ColumnFormat( {				ID_SHOWCOLUMNS_CHANNELS,			ID_SORTPLAYLIST_CHANNELS,				IDS_COLUMN_CHANNELS,			LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
+	{ Playlist::Column::Artist, ColumnFormat( {					ID_SHOWCOLUMNS_ARTIST,				ID_SORTPLAYLIST_ARTIST,					IDS_COLUMN_ARTIST,				LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
+	{ Playlist::Column::Title, ColumnFormat( {					ID_SHOWCOLUMNS_TITLE,					ID_SORTPLAYLIST_TITLE,					IDS_COLUMN_TITLE,					LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
+	{ Playlist::Column::Album, ColumnFormat( {					ID_SHOWCOLUMNS_ALBUM,					ID_SORTPLAYLIST_ALBUM,					IDS_COLUMN_ALBUM,					LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
+	{ Playlist::Column::Genre, ColumnFormat( {					ID_SHOWCOLUMNS_GENRE,					ID_SORTPLAYLIST_GENRE,					IDS_COLUMN_GENRE,					LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
+	{ Playlist::Column::Year, ColumnFormat( {						ID_SHOWCOLUMNS_YEAR,					ID_SORTPLAYLIST_YEAR,						IDS_COLUMN_YEAR,					LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		true /*canEdit*/ } ) },
+	{ Playlist::Column::Track, ColumnFormat( {					ID_SHOWCOLUMNS_TRACK,					ID_SORTPLAYLIST_TRACK,					IDS_COLUMN_TRACK,					LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		true /*canEdit*/ } ) },
+	{ Playlist::Column::Type, ColumnFormat( {						ID_SHOWCOLUMNS_TYPE,					ID_SORTPLAYLIST_TYPE,						IDS_COLUMN_TYPE,					LVCFMT_LEFT,		static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
+	{ Playlist::Column::Version, ColumnFormat( {				ID_SHOWCOLUMNS_VERSION,				ID_SORTPLAYLIST_VERSION,				IDS_COLUMN_VERSION,				LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
+	{ Playlist::Column::GainTrack, ColumnFormat( {			ID_SHOWCOLUMNS_TRACKGAIN,			ID_SORTPLAYLIST_TRACKGAIN,			IDS_COLUMN_GAINTRACK,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
+	{ Playlist::Column::GainAlbum, ColumnFormat( {			ID_SHOWCOLUMNS_ALBUMGAIN,			ID_SORTPLAYLIST_ALBUMGAIN,			IDS_COLUMN_GAINALBUM,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
+	{ Playlist::Column::Bitrate, ColumnFormat( {				ID_SHOWCOLUMNS_BITRATE,				ID_SORTPLAYLIST_BITRATE,				IDS_COLUMN_BITRATE,				LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) }
 };
 
 // List control ID
@@ -242,10 +242,10 @@ void WndList::ApplySettings()
 
 	if ( columns.empty() ) {
 		columns = {
-			{ static_cast<int>( Playlist::Column::Artist ), 150 /*width*/ },
-			{ static_cast<int>( Playlist::Column::Title ), 150 /*width*/ },
-			{ static_cast<int>( Playlist::Column::Album ), 150 /*width*/ },
-			{ static_cast<int>( Playlist::Column::Duration ), 100 /*width*/ }
+			{ static_cast<int>( Playlist::Column::Artist ), static_cast<int>( 150 * GetDPIScaling() ) /*width*/ },
+			{ static_cast<int>( Playlist::Column::Title ), static_cast<int>( 150 * GetDPIScaling() ) /*width*/ },
+			{ static_cast<int>( Playlist::Column::Album ), static_cast<int>( 150 * GetDPIScaling() ) /*width*/ },
+			{ static_cast<int>( Playlist::Column::Duration ), static_cast<int>( 100 * GetDPIScaling() ) /*width*/ }
 		};
 	}
 	bool titleShown = false;
@@ -253,7 +253,7 @@ void WndList::ApplySettings()
 		titleShown = ( Playlist::Column::Title == static_cast<Playlist::Column>( iter->ID ) );
 	}
 	if ( !titleShown ) {
-		columns.push_front( { static_cast<int>( Playlist::Column::Title ), 150 /*width*/ } );
+		columns.push_front( { static_cast<int>( Playlist::Column::Title ), static_cast<int>( 150 * GetDPIScaling() ) /*width*/ } );
 	}
 	for ( const auto& iter : columns ) {
 		ShowColumn( static_cast<Playlist::Column>( iter.ID ), iter.Width, true /*visible*/ );
@@ -1536,7 +1536,7 @@ void WndList::OnCommandAddFiles()
 	if ( !filter2.empty() ) {
 		filter2.pop_back();
 	}
-	LoadString( m_hInst, IDS_ADDFILES_FILTERALL, filter, MAX_PATH );
+	LoadString( m_hInst, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
 	const std::wstring filter3( filter );
 	const std::wstring filter4( L"*.*" );
 	std::vector<WCHAR> filterStr;

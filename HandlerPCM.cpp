@@ -62,3 +62,7 @@ bool HandlerPCM::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*pa
 {
 	return false;
 }
+
+void HandlerPCM::SettingsChanged( Settings& /*settings*/ )
+{
+}

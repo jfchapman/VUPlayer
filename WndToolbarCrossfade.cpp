@@ -7,7 +7,7 @@
 static const int s_ButtonSize = 24;
 
 WndToolbarCrossfade::WndToolbarCrossfade( HINSTANCE instance, HWND parent ) :
-	WndToolbar( instance, parent ),
+	WndToolbar( instance, parent, ID_TOOLBAR_CROSSFADE ),
 	m_ImageList( nullptr )
 {
 	CreateButtons();

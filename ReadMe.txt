@@ -1,4 +1,4 @@
-VUPlayer 4.4
+VUPlayer 4.5
 Copyright (c) 2018 James Chapman
 ------------------------------------------------------------------------------
 website:	http://www.vuplayer.com

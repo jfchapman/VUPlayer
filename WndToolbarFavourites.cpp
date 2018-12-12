@@ -7,7 +7,7 @@
 static const int s_ButtonSize = 24;
 
 WndToolbarFavourites::WndToolbarFavourites( HINSTANCE instance, HWND parent ) :
-	WndToolbar( instance, parent ),
+	WndToolbar( instance, parent, ID_TOOLBAR_FAVOURITES ),
 	m_ImageList( nullptr )
 {
 	CreateButtons();

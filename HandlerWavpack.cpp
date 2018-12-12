@@ -174,3 +174,7 @@ bool HandlerWavpack::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND 
 {
 	return false;
 }
+
+void HandlerWavpack::SettingsChanged( Settings& /*settings*/ )
+{
+}

@@ -84,3 +84,7 @@ bool HandlerCDDA::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*p
 {
 	return false;
 }
+
+void HandlerCDDA::SettingsChanged( Settings& /*settings*/ )
+{
+}

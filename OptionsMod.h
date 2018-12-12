@@ -31,6 +31,12 @@ private:
 	// 'hwnd' - dialog window handle.
 	void UpdateControls( const HWND hwnd );
 
+	// Displays a soundfont file chooser dialog.
+	void ChooseSoundFont();
+
+	// Dialog window handle.
+	HWND m_hWnd;
+
 	// MOD settings.
 	long long m_MODSettings;
 

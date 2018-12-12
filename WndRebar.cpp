@@ -2,7 +2,9 @@
 #include <commctrl.h>
 #include <windowsx.h>
 
+#include "resource.h"
 #include "Utility.h"
+#include "VUPlayer.h"
 
 // Rebar control ID.
 static const UINT_PTR s_WndRebarID = 1200;
@@ -40,6 +42,15 @@ LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LP
 					bandInfo.fMask = RBBIM_ID;
 					SendMessage( hwnd, RB_GETBANDINFO, bandIndex, reinterpret_cast<LPARAM>( &bandInfo ) );
 					wndRebar->OnClickCaption( bandInfo.wID, ( WM_CONTEXTMENU == message ) );
+				} else if ( WM_CONTEXTMENU == message ) {
+					REBARBANDINFO bandInfo = {};
+					bandInfo.cbSize = sizeof( REBARBANDINFO );
+					bandInfo.fMask = RBBIM_ID;
+					SendMessage( hwnd, RB_GETBANDINFO, bandIndex, reinterpret_cast<LPARAM>( &bandInfo ) );
+					if ( wndRebar->CanBeHidden( bandInfo.wID ) ) {
+						ClientToScreen( hwnd, &pt );
+						wndRebar->OnContextMenu( pt );
+					}
 				}
 				break;
 			}
@@ -52,16 +63,17 @@ LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LP
 	return CallWindowProc( wndRebar->GetDefaultWndProc(), hwnd, message, wParam, lParam );
 }
 
-WndRebar::WndRebar( HINSTANCE instance, HWND parent ) :
+WndRebar::WndRebar( HINSTANCE instance, HWND parent, Settings& settings ) :
 	m_hInst( instance ),
 	m_hWnd( NULL ),
+	m_Settings( settings ),
 	m_DefaultWndProc( NULL ),
 	m_ImageList( NULL ),
 	m_IconBands(),
 	m_ImageListMap(),
 	m_IconCallbackMap(),
 	m_ClickCallbackMap(),
-	m_BandCanBeHidden(),
+	m_CanBeHidden(),
 	m_HiddenBands(),
 	m_BandChildWindows(),
 	m_PreventBandRearrangement( false ),
@@ -98,25 +110,13 @@ HWND WndRebar::GetWindowHandle()
 
 void WndRebar::AddControl( HWND hwnd, const bool canHide )
 {
-	REBARBANDINFO info = {};
-	info.cbSize = sizeof( REBARBANDINFO );
-	info.fStyle = RBBS_CHILDEDGE | RBBS_FIXEDSIZE;
-	info.fMask = RBBIM_CHILD | RBBIM_CHILDSIZE | RBBIM_SIZE | RBBIM_STYLE | RBBIM_ID | RBBIM_HEADERSIZE;
-	info.wID = s_BandID++;
-	info.cxHeader = 1;
-	RECT rect = {};
-	GetWindowRect( hwnd, &rect );
-	info.hwndChild = hwnd;
-	info.cx = rect.right - rect.left;
-	info.cxMinChild = info.cx;
-	info.cyMinChild = rect.bottom - rect.top;
-
+	const UINT bandID = s_BandID++;
 	if ( canHide ) {
-		m_BandCanBeHidden.insert( info.wID );
+		m_CanBeHidden.insert( bandID );
 	}
-	m_BandChildWindows.insert( BandChildMap::value_type( info.wID, hwnd ) );
+	m_BandChildWindows.insert( BandChildMap::value_type( bandID, hwnd ) );
 
-	SendMessage( m_hWnd, RB_INSERTBAND, static_cast<WPARAM>( -1 ), reinterpret_cast<LPARAM>( &info ) );
+	InsertBand( bandID, hwnd );
 }
 
 void WndRebar::AddControl( HWND hwnd, const std::set<UINT>& icons, IconCallback iconCallback, ClickCallback clickCallback, const bool canHide )
@@ -128,7 +128,7 @@ void WndRebar::AddControl( HWND hwnd, const std::set<UINT>& icons, IconCallback 
 	info.wID = s_BandID++;
 
 	if ( canHide ) {
-		m_BandCanBeHidden.insert( info.wID );
+		m_CanBeHidden.insert( info.wID );
 	}
 	m_BandChildWindows.insert( BandChildMap::value_type( info.wID, hwnd ) );
 
@@ -210,6 +210,22 @@ int WndRebar::GetImageListIndex( const UINT bandID ) const
 	return imageListIndex;
 }
 
+void WndRebar::Init()
+{
+	// Hide any disabled toolbars.
+	for ( const auto& bandIter : m_BandChildWindows ) {
+		const bool enabled = m_Settings.GetToolbarEnabled( GetDlgCtrlID( bandIter.second ) );
+		if ( !enabled && ( m_HiddenBands.end() == m_HiddenBands.find( bandIter.first ) ) ) {
+			m_HiddenBands.insert( bandIter.first );
+			DeleteBand( bandIter.first );
+			RearrangeBands( true /*force*/ );
+		}
+	}
+
+	// Force an update.
+	PostMessage( m_hWnd, WM_SIZE, 0, 0 );
+}
+
 void WndRebar::Update()
 {
 	// Update any icons.
@@ -240,7 +256,7 @@ void WndRebar::OnClickCaption( const UINT bandID, const bool rightClick )
 	}
 }
 
-void WndRebar::RearrangeBands()
+void WndRebar::RearrangeBands( const bool force )
 {
 	RECT rect = {};
 	GetWindowRect( m_hWnd, &rect );
@@ -258,18 +274,15 @@ void WndRebar::RearrangeBands()
 				info.cbSize = sizeof( REBARBANDINFO );
 				info.fMask = RBBIM_ID;
 				SendMessage( m_hWnd, RB_GETBANDINFO, bandIndex, reinterpret_cast<LPARAM>( &info ) );
-				if ( ( info.wID < lowestBandID ) && ( m_BandCanBeHidden.end() != m_BandCanBeHidden.find( info.wID ) ) ) {
+				if ( ( info.wID < lowestBandID ) && ( m_CanBeHidden.end() != m_CanBeHidden.find( info.wID ) ) ) {
 					lowestBandID = info.wID;
 				}
 			}
 
-			const int bandIndex = static_cast<int>( SendMessage( m_hWnd, RB_IDTOINDEX, lowestBandID, 0 ) );
-			if ( -1 != bandIndex ) {
-				m_PreventBandRearrangement = true;
-				SendMessage( m_hWnd, RB_DELETEBAND, bandIndex, 0 );
-				m_PreventBandRearrangement = false;
-				m_HiddenBands.insert( lowestBandID );
-			}
+			m_PreventBandRearrangement = true;
+			DeleteBand( lowestBandID );
+			m_PreventBandRearrangement = false;
+			m_HiddenBands.insert( lowestBandID );
 
 			rowCount = static_cast<int>( SendMessage( m_hWnd, RB_GETROWCOUNT, 0, 0 ) );
 			if ( rowCount > 1 ) {
@@ -277,43 +290,35 @@ void WndRebar::RearrangeBands()
 			} else {
 				ReorderBandsByID();
 			}
-		} else if ( !m_HiddenBands.empty() && ( rebarWidth > m_PreviousRebarWidth ) ) {
-			// Reshow any hidden bands if space permits.
-			const auto bandID = m_HiddenBands.rbegin();
-			if ( m_HiddenBands.rend() != bandID ) {
-				const auto bandIter = m_BandChildWindows.find( *bandID );
+		} else if ( !m_HiddenBands.empty() && ( force || ( rebarWidth > m_PreviousRebarWidth ) ) ) {
+			// Reshow any hidden bands, if space permits.
+			HWND controlWnd = nullptr;
+			UINT bandID = 0;
+			for ( auto hiddenID = m_HiddenBands.rbegin(); ( nullptr == controlWnd ) && ( hiddenID != m_HiddenBands.rend() ); hiddenID++ ) {
+				const auto bandIter = m_BandChildWindows.find( *hiddenID );
 				if ( m_BandChildWindows.end() != bandIter ) {
 					const HWND hwnd = bandIter->second;
-
-					REBARBANDINFO info = {};
-					info.cbSize = sizeof( REBARBANDINFO );
-					info.fStyle = RBBS_CHILDEDGE | RBBS_FIXEDSIZE;
-					info.fMask = RBBIM_CHILD | RBBIM_CHILDSIZE | RBBIM_SIZE | RBBIM_STYLE | RBBIM_ID | RBBIM_HEADERSIZE;
-					info.wID = *bandID;
-					info.cxHeader = 1;
-					GetWindowRect( hwnd, &rect );
-					info.hwndChild = hwnd;
-					info.cx = rect.right - rect.left;
-					info.cxMinChild = info.cx;
-					info.cyMinChild = rect.bottom - rect.top;
-
-					// Try adding the band.
-					m_PreventBandRearrangement = true;
-					SendMessage( m_hWnd, RB_INSERTBAND, static_cast<WPARAM>( -1 ), reinterpret_cast<LPARAM>( &info ) );
-					rowCount = static_cast<int>( SendMessage( m_hWnd, RB_GETROWCOUNT, 0, 0 ) );
-					if ( rowCount > 1 ) {
-						// Not enough room for the band, so remove it again.
-						const int bandIndex = static_cast<int>( SendMessage( m_hWnd, RB_IDTOINDEX, *bandID, 0 ) );
-						if ( -1 != bandIndex ) {
-							SendMessage( m_hWnd, RB_DELETEBAND, bandIndex, 0 );
-						}
-					} else {
-						// Keep the band and reorder as necessary.
-						m_HiddenBands.erase( *bandID );
-						ReorderBandsByID();
+					if ( m_Settings.GetToolbarEnabled( GetDlgCtrlID( hwnd ) ) ) {
+						bandID = *hiddenID;
+						controlWnd = hwnd;
 					}
-					m_PreventBandRearrangement = false;
 				}
+			}
+
+			if ( nullptr != controlWnd ) {
+				// Try adding the band.
+				m_PreventBandRearrangement = true;
+				InsertBand( bandID, controlWnd );
+				rowCount = static_cast<int>( SendMessage( m_hWnd, RB_GETROWCOUNT, 0, 0 ) );
+				if ( rowCount > 1 ) {
+					// Not enough room for the band, so remove it again.
+					DeleteBand( bandID );
+				} else {
+					// Keep the band and reorder as necessary.
+					m_HiddenBands.erase( bandID );
+					ReorderBandsByID();
+				}
+				m_PreventBandRearrangement = false;
 			}
 		}
 	}
@@ -339,5 +344,98 @@ void WndRebar::ReorderBandsByID()
 			SendMessage( m_hWnd, RB_MOVEBAND, bandIndex, targetIndex );
 		}
 		++targetIndex;
+	}
+}
+
+void WndRebar::InsertBand( const UINT bandID, const HWND controlWnd )
+{
+	REBARBANDINFO info = {};
+	info.cbSize = sizeof( REBARBANDINFO );
+	info.fStyle = RBBS_CHILDEDGE | RBBS_FIXEDSIZE;
+	info.fMask = RBBIM_CHILD | RBBIM_CHILDSIZE | RBBIM_SIZE | RBBIM_STYLE | RBBIM_ID | RBBIM_HEADERSIZE;
+	info.wID = bandID;
+	info.cxHeader = 1;
+
+	RECT rect = {};
+	GetWindowRect( controlWnd, &rect );
+	info.hwndChild = controlWnd;
+	info.cx = rect.right - rect.left;
+	info.cxMinChild = info.cx;
+	info.cyMinChild = rect.bottom - rect.top;
+
+	SendMessage( m_hWnd, RB_INSERTBAND, static_cast<WPARAM>( -1 ), reinterpret_cast<LPARAM>( &info ) );
+}
+
+void WndRebar::DeleteBand( const UINT bandID )
+{
+	const int bandIndex = static_cast<int>( SendMessage( m_hWnd, RB_IDTOINDEX, bandID, 0 ) );
+	if ( -1 != bandIndex ) {
+		SendMessage( m_hWnd, RB_DELETEBAND, bandIndex, 0 );
+	}
+}
+
+void WndRebar::ToggleToolbar( const int toolbarID )
+{
+	const bool enabled = !m_Settings.GetToolbarEnabled( toolbarID );
+	m_Settings.SetToolbarEnabled( toolbarID, enabled );
+
+	const auto bandIter = std::find_if( m_BandChildWindows.begin(), m_BandChildWindows.end(), [ toolbarID ] ( const BandChildMap::value_type& bandInfo )
+	{
+		return ( toolbarID == GetDlgCtrlID( bandInfo.second ) );			
+	} );
+
+	if ( m_BandChildWindows.end() != bandIter ) {
+		if ( enabled ) {
+			m_HiddenBands.erase( bandIter->first );
+			InsertBand( bandIter->first, bandIter->second );
+			ReorderBandsByID();
+		} else if ( m_HiddenBands.end() == m_HiddenBands.find( bandIter->first ) ) {
+			m_HiddenBands.insert( bandIter->first );
+			DeleteBand( bandIter->first );
+		}
+	}
+
+	RearrangeBands( true /*force*/ );
+
+	// Force an update.
+	PostMessage( m_hWnd, WM_SIZE, 0, 0 );
+}
+
+bool WndRebar::CanBeHidden( const UINT bandID ) const
+{
+	const bool canHide = ( m_CanBeHidden.end() != m_CanBeHidden.find( bandID ) );
+	return canHide;
+}
+
+void WndRebar::OnContextMenu( const POINT& position )
+{
+	HMENU menu = LoadMenu( m_hInst, MAKEINTRESOURCE( IDR_MENU_TOOLBAR ) );
+	if ( NULL != menu ) {
+		HMENU toolbarmenu = GetSubMenu( menu, 0 /*pos*/ );
+		if ( NULL != toolbarmenu ) {
+			for ( const auto& bandIter : m_BandChildWindows ) {
+				const int toolbarID = GetDlgCtrlID( bandIter.second );
+				const UINT state = m_Settings.GetToolbarEnabled( toolbarID ) ? MF_CHECKED : MF_UNCHECKED;
+				if ( ID_TOOLBAR_CONVERT == toolbarID ) {
+					VUPlayer* vuplayer = VUPlayer::Get();
+					if ( nullptr != vuplayer ) {
+						const Playlist::Ptr playlist = vuplayer->GetSelectedPlaylist();
+						const int bufferSize = 64;
+						WCHAR buffer[ bufferSize ] = {};
+						const bool isCDDAPlaylist = playlist && ( Playlist::Type::CDDA == playlist->GetType() );
+						LoadString( m_hInst, isCDDAPlaylist ? IDS_TOOLBAR_EXTRACT : IDS_TOOLBAR_CONVERT, buffer, bufferSize );
+						std::wstring menuTitle = buffer;
+						const size_t altDelimiter = menuTitle.find( '&' );
+						if ( std::wstring::npos != altDelimiter ) {
+							menuTitle.erase( altDelimiter /*offset*/, 1 /*count*/ );
+						}
+						ModifyMenu( menu, ID_TOOLBAR_CONVERT, MF_BYCOMMAND | MF_STRING, ID_TOOLBAR_CONVERT, menuTitle.c_str() );
+					}
+				}
+				CheckMenuItem( toolbarmenu, toolbarID, state );
+			}
+			TrackPopupMenu( toolbarmenu, TPM_RIGHTBUTTON, position.x, position.y, 0 /*reserved*/, m_hWnd, NULL /*rect*/ );
+		}
+		DestroyMenu( menu );
 	}
 }

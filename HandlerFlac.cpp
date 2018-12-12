@@ -360,3 +360,7 @@ bool HandlerFlac::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*p
 {
 	return false;
 }
+
+void HandlerFlac::SettingsChanged( Settings& /*settings*/ )
+{
+}

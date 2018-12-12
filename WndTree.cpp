@@ -826,7 +826,7 @@ void WndTree::ImportPlaylist( const std::wstring& filename )
 		LoadString( m_hInst, IDS_IMPORTPLAYLIST_FILTERPLAYLISTS, filter, MAX_PATH );
 		const std::wstring filter1( filter );
 		const std::wstring filter2( L"*.vpl;*.m3u;*.pls" );
-		LoadString( m_hInst, IDS_IMPORTPLAYLIST_FILTERALL, filter, MAX_PATH );
+		LoadString( m_hInst, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
 		const std::wstring filter3( filter );
 		const std::wstring filter4( L"*.*" );
 		std::vector<WCHAR> filterStr;

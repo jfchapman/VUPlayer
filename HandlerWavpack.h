@@ -42,5 +42,7 @@ public:
 	// 'settings' - in/out, encoder settings.
 	// Returns whether the encoder has been configured.
 	bool ConfigureEncoder( const HINSTANCE instance, const HWND parent, std::string& settings ) const override;
-};
 
+	// Called when the application 'settings' have changed.
+	void SettingsChanged( Settings& settings ) override;
+};

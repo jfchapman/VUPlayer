@@ -10,6 +10,8 @@
 #include <set>
 #include <string>
 
+class Settings;
+
 // Audio format handler interface.
 class Handler
 {
@@ -81,4 +83,7 @@ public:
 	// 'settings' - in/out, encoder settings.
 	// Returns whether the encoder has been configured.
 	virtual bool ConfigureEncoder( const HINSTANCE instance, const HWND parent, std::string& settings ) const = 0;
+
+	// Called when the application 'settings' have changed.
+	virtual void SettingsChanged( Settings& settings ) = 0;
 };

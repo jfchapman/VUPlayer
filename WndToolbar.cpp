@@ -1,8 +1,5 @@
 #include "WndToolbar.h"
 
-// Toolbar control ID
-UINT_PTR WndToolbar::s_WndToolbarID = 1700;
-
 LRESULT CALLBACK WndToolbar::ToolbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndToolbar* wndToolbar = reinterpret_cast<WndToolbar*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
@@ -28,7 +25,7 @@ LRESULT CALLBACK WndToolbar::ToolbarProc( HWND hwnd, UINT message, WPARAM wParam
 	return CallWindowProc( wndToolbar->GetDefaultWndProc(), hwnd, message, wParam, lParam );
 }
 
-WndToolbar::WndToolbar( HINSTANCE instance, HWND parent ) :
+WndToolbar::WndToolbar( HINSTANCE instance, HWND parent, const long long id ) :
 	m_hInst( instance ),
 	m_hWnd( NULL ),
 	m_DefaultWndProc( NULL )
@@ -40,7 +37,7 @@ WndToolbar::WndToolbar( HINSTANCE instance, HWND parent ) :
 	const int height = 0;
 	LPVOID param = NULL;
 
-	m_hWnd = CreateWindowEx( 0, TOOLBARCLASSNAME, 0, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndToolbarID++ ), instance, param );
+	m_hWnd = CreateWindowEx( 0, TOOLBARCLASSNAME, 0, style, x, y, width, height, parent, reinterpret_cast<HMENU>( id ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( ToolbarProc ) ) );
 }
@@ -105,4 +102,9 @@ void WndToolbar::SetButtonChecked( const UINT commandID, const bool checked )
 	if ( IsButtonChecked( commandID ) != checked ) {
 		SendMessage( m_hWnd, TB_CHECKBUTTON, commandID, checked ? TRUE : FALSE );
 	}
+}
+
+int WndToolbar::GetID() const
+{
+	return static_cast<int>( GetDlgCtrlID( m_hWnd ) );
 }

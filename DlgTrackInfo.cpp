@@ -416,7 +416,7 @@ void DlgTrackInfo::OnChooseArtwork( HWND hwnd )
 	LoadString( m_hInst, IDS_CHOOSEARTWORK_FILTERIMAGES, filter, MAX_PATH );
 	const std::wstring filter1( filter );
 	const std::wstring filter2( L"*.bmp;*.jpg;*.jpeg;*.png;*.gif;*.tiff;*.tif" );
-	LoadString( m_hInst, IDS_CHOOSEARTWORK_FILTERALL, filter, MAX_PATH );
+	LoadString( m_hInst, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
 	const std::wstring filter3( filter );
 	const std::wstring filter4( L"*.*" );
 	std::vector<WCHAR> filterStr;

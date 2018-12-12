@@ -121,3 +121,7 @@ bool HandlerOpus::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*p
 {
 	return false;
 }
+
+void HandlerOpus::SettingsChanged( Settings& /*settings*/ )
+{
+}

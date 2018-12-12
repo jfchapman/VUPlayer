@@ -2,6 +2,9 @@
 
 #include "Handler.h"
 
+#include "bass.h"
+#include "bassmidi.h"
+
 // Bass handler
 class HandlerBass : public Handler
 {
@@ -44,6 +47,12 @@ public:
 	// Returns whether the encoder has been configured.
 	bool ConfigureEncoder( const HINSTANCE instance, const HWND parent, std::string& settings ) const override;
 
+	// Called when the application 'settings' have changed.
+	void SettingsChanged( Settings& settings ) override;
+
+	// Loads the soundfont specified by the application 'settings'.
+	void LoadSoundFont( Settings& settings );
+
 private:
 	// Reads Ogg tags.
 	// 'oggTags' - series of null-terminated UTF-8 strings, ending with a double null.
@@ -59,4 +68,13 @@ private:
 
 	// Returns a temporary file name.
 	std::wstring GetTemporaryFilename() const;
+
+	// BASS midi plugin.
+	HPLUGIN m_BassMidi;
+
+	// BASS midi soundfont.
+	HSOUNDFONT m_BassMidiSoundFont;
+
+	// Currently loaded soundfont file name.
+	std::wstring m_SoundFontFilename;
 };

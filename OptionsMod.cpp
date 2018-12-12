@@ -5,6 +5,7 @@
 
 OptionsMod::OptionsMod( HINSTANCE instance, Settings& settings, Output& output ) :
 	Options( instance, settings, output ),
+	m_hWnd( nullptr ),
 	m_MODSettings( 0 ),
 	m_MTMSettings( 0 ),
 	m_S3MSettings( 0 ),
@@ -21,6 +22,8 @@ OptionsMod::~OptionsMod()
 
 void OptionsMod::OnInit( const HWND hwnd )
 {
+	m_hWnd = hwnd;
+
 	const int bufferSize = MAX_PATH;
 	WCHAR buffer[ bufferSize ];
 
@@ -82,7 +85,7 @@ void OptionsMod::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /
 	const WORD notificationCode = HIWORD( wParam );
 	const WORD controlID = LOWORD( wParam );
 	if ( BN_CLICKED == notificationCode ) {
-		if ( nullptr != m_CurrentSettings ) {
+		if ( ( nullptr != m_CurrentSettings ) && ( IDC_OPTIONS_SOUNDFONT_BROWSE != controlID ) ) {
 			long long panning = SendMessage( GetDlgItem( hwnd, IDC_OPTIONS_MOD_PAN ), TBM_GETPOS, 0, 0 );
 			panning <<= 32;
 			*m_CurrentSettings &= 0xffffffff;
@@ -111,6 +114,13 @@ void OptionsMod::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /
 			}
 			case IDC_OPTIONS_MOD_RESET : {
 				GetSettings().GetDefaultMODSettings( m_MODSettings, m_MTMSettings, m_S3MSettings, m_XMSettings, m_ITSettings );
+				break;
+			}
+			case IDC_OPTIONS_SOUNDFONT_BROWSE : {
+				ChooseSoundFont();
+				break;
+			}
+			default : {
 				break;
 			}
 		}
@@ -223,5 +233,49 @@ void OptionsMod::UpdateControls( const HWND hwnd )
 			panning = 100;
 		}
 		SendMessage( GetDlgItem( hwnd, IDC_OPTIONS_MOD_PAN ), TBM_SETPOS, TRUE /*redraw*/, panning );
+	}
+
+	const std::wstring soundFont = GetSettings().GetSoundFont();
+	SetWindowText( GetDlgItem( hwnd, IDC_OPTIONS_SOUNDFONT ), soundFont.c_str() );
+}
+
+void OptionsMod::ChooseSoundFont()
+{
+	WCHAR title[ MAX_PATH ] = {};
+	const HINSTANCE hInst = GetInstanceHandle();
+	LoadString( hInst, IDS_CHOOSESOUNDFONT_TITLE, title, MAX_PATH );
+	WCHAR filter[ MAX_PATH ] = {};
+	LoadString( hInst, IDS_CHOOSESOUNDFONT_FILTER, filter, MAX_PATH );
+	const std::wstring filter1( filter );
+	const std::wstring filter2( L"*.sf2;*.sfz" );
+	LoadString( hInst, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
+	const std::wstring filter3( filter );
+	const std::wstring filter4( L"*.*" );
+	std::vector<WCHAR> filterStr;
+	filterStr.reserve( MAX_PATH );
+	filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
+	filterStr.push_back( 0 );
+	filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
+	filterStr.push_back( 0 );
+	filterStr.insert( filterStr.end(), filter3.begin(), filter3.end() );
+	filterStr.push_back( 0 );
+	filterStr.insert( filterStr.end(), filter4.begin(), filter4.end() );
+	filterStr.push_back( 0 );
+	filterStr.push_back( 0 );
+
+	WCHAR buffer[ MAX_PATH ] = {};
+	OPENFILENAME ofn = {};
+	ofn.lStructSize = sizeof( OPENFILENAME );
+	ofn.hwndOwner = m_hWnd;
+	ofn.lpstrTitle = title;
+	ofn.lpstrFilter = &filterStr[ 0 ];
+	ofn.nFilterIndex = 1;
+	ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
+	ofn.lpstrFile = buffer;
+	ofn.nMaxFile = MAX_PATH;
+	if ( FALSE != GetOpenFileName( &ofn ) ) {
+		const std::wstring filename = ofn.lpstrFile;
+		GetSettings().SetSoundFont( filename );
+		UpdateControls( m_hWnd );
 	}
 }

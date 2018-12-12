@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<VisualStudioProject
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="sf2pack"
+	ProjectGUID="{4A1E4ACD-4674-4538-B970-0EAC42AD97A6}"
+	>
+	<Platforms>
+		<Platform
+			Name="Win32"
+		/>
+		<Platform
+			Name="x64"
+		/>
+	</Platforms>
+	<ToolFiles>
+	</ToolFiles>
+	<Configurations>
+		<Configuration
+			Name="Release|Win32"
+			OutputDirectory="..\bin"
+			ConfigurationType="1"
+			CharacterSet="0"
+			>
+			<Tool
+				Name="VCCLCompilerTool"
+				AdditionalIncludeDirectories=".."
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
+				RuntimeLibrary="2"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="bass.lib bassmidi.lib"
+				AdditionalLibraryDirectories=".."
+				SubSystem="1"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|x64"
+			OutputDirectory="..\bin\x64"
+			ConfigurationType="1"
+			CharacterSet="0"
+			>
+			<Tool
+				Name="VCCLCompilerTool"
+				AdditionalIncludeDirectories=".."
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
+				RuntimeLibrary="2"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="bass.lib bassmidi.lib"
+				AdditionalLibraryDirectories="..\x64"
+				SubSystem="1"
+				TargetMachine="17"
+			/>
+		</Configuration>
+	</Configurations>
+	<References>
+	</References>
+	<Files>
+		<File
+			RelativePath="sf2pack.c"
+			>
+		</File>
+	</Files>
+	<Globals>
+	</Globals>
+</VisualStudioProject>

@@ -61,7 +61,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_ReplayGain( m_Library, m_Handlers ),
 	m_Gracenote( m_hInst, m_hWnd, m_Settings ),
 	m_CDDAManager( m_hInst, m_hWnd, m_Library, m_Handlers, m_Gracenote ),
-	m_Rebar( m_hInst, m_hWnd ),
+	m_Rebar( m_hInst, m_hWnd, m_Settings ),
 	m_Status( m_hInst, m_hWnd ),
 	m_Tree( m_hInst, m_hWnd, m_Library, m_Settings, m_CDDAManager ),
 	m_Visual( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Settings, m_Output, m_Library ),
@@ -78,6 +78,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_ToolbarFavourites( m_hInst, m_Rebar.GetWindowHandle() ),
 	m_ToolbarEQ( m_hInst, m_Rebar.GetWindowHandle() ),
 	m_ToolbarConvert( m_hInst, m_Rebar.GetWindowHandle() ),
+	m_ToolbarTrackEnd( m_hInst, m_Rebar.GetWindowHandle() ),
 	m_Counter( m_hInst, m_Rebar.GetWindowHandle(), m_Settings, m_Output, m_ToolbarPlayback.GetHeight() - 1 ),
 	m_Splitter( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Tree.GetWindowHandle(), m_Visual.GetWindowHandle(), m_List.GetWindowHandle(), m_Settings ),
 	m_Tray( m_hInst, m_hWnd, m_Library, m_Settings, m_Output, m_Tree, m_List ),
@@ -102,6 +103,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_Rebar.AddControl( m_ToolbarInfo.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarEQ.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarCrossfade.GetWindowHandle() );
+	m_Rebar.AddControl( m_ToolbarTrackEnd.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarFlow.GetWindowHandle() );
 	m_Rebar.AddControl( m_ToolbarPlayback.GetWindowHandle() );
 
@@ -128,6 +130,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 		m_Rebar.MoveToStart( seekPosition );
 	}
 
+	m_Rebar.Init();
+
 	m_Splitter.Resize();
 
 	for ( auto& iter : m_CustomColours ) {
@@ -150,6 +154,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	OnListSelectionChanged();
 
 	m_EQ.Init( m_hWnd );
+
+	m_Handlers.Init( m_Settings );
 
 	SetTimer( m_hWnd, s_TimerID, s_TimerInterval, NULL /*timerProc*/ );
 }
@@ -461,6 +467,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_ToolbarCrossfade.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarFlow.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarPlayback.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
+		m_ToolbarTrackEnd.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarEQ.Update( m_EQ.IsVisible() );
 		m_ToolbarConvert.Update( currentPlaylist );
 		m_Rebar.Update();
@@ -814,8 +821,8 @@ void VUPlayer::OnCommand( const int commandID )
 		}
 		case ID_FILE_PLAYLISTADDFOLDER : {
 			const Playlist::Ptr playlist = m_List.GetPlaylist();
-			if ( !playlist || ( ( playlist->GetType() != Playlist::Type::User ) && ( playlist->GetType() != Playlist::Type::Favourites ) ) ) {
-				m_Tree.SelectAllTracks();
+			if ( !playlist || ( playlist->GetType() != Playlist::Type::User ) ) {
+				m_Tree.NewPlaylist();
 			}
 			m_List.OnCommandAddFolder();
 			SetFocus( m_List.GetWindowHandle() );
@@ -823,8 +830,8 @@ void VUPlayer::OnCommand( const int commandID )
 		}
 		case ID_FILE_PLAYLISTADDFILES : {
 			const Playlist::Ptr playlist = m_List.GetPlaylist();
-			if ( !playlist || ( ( playlist->GetType() != Playlist::Type::User ) && ( playlist->GetType() != Playlist::Type::Favourites ) ) ) {
-				m_Tree.SelectAllTracks();
+			if ( !playlist || ( playlist->GetType() != Playlist::Type::User ) ) {
+				m_Tree.NewPlaylist();
 			}
 			m_List.OnCommandAddFiles();
 			SetFocus( m_List.GetWindowHandle() );
@@ -1000,6 +1007,20 @@ void VUPlayer::OnCommand( const int commandID )
 			m_Output.Bling( bling );
 			break;
 		}
+		case ID_TOOLBAR_FILE :
+		case ID_TOOLBAR_PLAYLIST :
+		case ID_TOOLBAR_FAVOURITES :
+		case ID_TOOLBAR_CONVERT :
+		case ID_TOOLBAR_OPTIONS :
+		case ID_TOOLBAR_INFO :
+		case ID_TOOLBAR_EQ :
+		case ID_TOOLBAR_CROSSFADE :
+		case ID_TOOLBAR_TRACKEND :
+		case ID_TOOLBAR_FLOW :
+		case ID_TOOLBAR_PLAYBACK : {
+			m_Rebar.ToggleToolbar( commandID );
+			break;
+		}
 		default : {
 			if ( ( commandID >= MSG_TRAYMENUSTART ) && ( commandID <= MSG_TRAYMENUEND ) ) {
 				m_Tray.OnContextMenuCommand( commandID );
@@ -1038,9 +1059,10 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 
 		const int bufferSize = 64;
 		WCHAR buffer[ bufferSize ] = {};
+		const bool isCDDAPlaylist = playlist && ( Playlist::Type::CDDA == playlist->GetType() );
 		if ( 0 != GetMenuString( menu, ID_FILE_CONVERT, buffer, bufferSize, MF_BYCOMMAND ) ) {
+			LoadString( m_hInst, isCDDAPlaylist ? IDS_EXTRACT_TRACKS_MENU : IDS_CONVERT_TRACKS_MENU, buffer, bufferSize );
 			std::wstring convertMenuTitle = buffer;
-			LoadString( m_hInst, ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) ? IDS_EXTRACT_TRACKS_MENU : IDS_CONVERT_TRACKS_MENU, buffer, bufferSize );
 			const size_t accelDelimiter = convertMenuTitle.find( '\t' );
 			if ( std::wstring::npos == accelDelimiter ) {
 				convertMenuTitle = buffer;
@@ -1065,6 +1087,20 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const bool trackRemaining = m_Counter.GetTrackRemaining();
 		CheckMenuItem( menu, ID_VIEW_COUNTER_TRACKREMAINING, trackRemaining ? ( MF_BYCOMMAND | MF_CHECKED ) : ( MF_BYCOMMAND | MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_VIEW_COUNTER_TRACKELAPSED, !trackRemaining ? ( MF_BYCOMMAND | MF_CHECKED ) : ( MF_BYCOMMAND | MF_UNCHECKED ) );
+	
+		LoadString( m_hInst, isCDDAPlaylist ? IDS_TOOLBAR_EXTRACT : IDS_TOOLBAR_CONVERT, buffer, bufferSize );
+		ModifyMenu( menu, ID_TOOLBAR_CONVERT, MF_BYCOMMAND | MF_STRING, ID_TOOLBAR_CONVERT, buffer );
+		CheckMenuItem( menu, ID_TOOLBAR_FILE, m_Settings.GetToolbarEnabled( m_ToolbarFile.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_PLAYLIST, m_Settings.GetToolbarEnabled( m_ToolbarPlaylist.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_FAVOURITES, m_Settings.GetToolbarEnabled( m_ToolbarFavourites.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_CONVERT, m_Settings.GetToolbarEnabled( m_ToolbarConvert.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_OPTIONS, m_Settings.GetToolbarEnabled( m_ToolbarOptions.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_INFO, m_Settings.GetToolbarEnabled( m_ToolbarInfo.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_EQ, m_Settings.GetToolbarEnabled( m_ToolbarEQ.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_CROSSFADE, m_Settings.GetToolbarEnabled( m_ToolbarCrossfade.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_TRACKEND, m_Settings.GetToolbarEnabled( m_ToolbarTrackEnd.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_FLOW, m_Settings.GetToolbarEnabled( m_ToolbarFlow.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_PLAYBACK, m_Settings.GetToolbarEnabled( m_ToolbarPlayback.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
 
 		std::set<UINT> shownColumns;
 		std::set<UINT> hiddenColumns;
@@ -1358,6 +1394,12 @@ void VUPlayer::OnCalculateReplayGain()
 Playlist::Ptr VUPlayer::NewPlaylist()
 {
 	Playlist::Ptr playlist = m_Tree.NewPlaylist();
+	return playlist;
+}
+
+Playlist::Ptr VUPlayer::GetSelectedPlaylist()
+{
+	Playlist::Ptr playlist = m_List.GetPlaylist();
 	return playlist;
 }
 

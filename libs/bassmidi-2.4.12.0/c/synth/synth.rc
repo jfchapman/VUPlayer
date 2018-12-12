@@ -1,0 +1,35 @@
+#include "windows.h"
+
+1000 DIALOG 100, 100, 190, 215
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "BASSMIDI synth"
+FONT 8, "MS Sans Serif"
+BEGIN
+    GROUPBOX        "MIDI input device",-1,5,3,180,49
+    COMBOBOX        10,11,16,130,60,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CTEXT           "activity",11,149,16,30,12,SS_CENTERIMAGE | WS_BORDER
+    CONTROL         "1 channel",12,"Button",BS_AUTORADIOBUTTON,11,35,47,10
+    CONTROL         "16 channels",13,"Button",BS_AUTORADIOBUTTON,63,35,55,10
+    PUSHBUTTON      "Reset",15,135,32,45,14
+    GROUPBOX        "Keyboard input",-1,5,54,180,39
+    CTEXT           " 2 3  5 6 7  9 0  = \nQ W ER T Y UI O P[ ]",20,10,64,169,23
+    GROUPBOX        "Soundfont",-1,5,95,180,47
+    PUSHBUTTON      "no soundfont",40,11,105,168,14
+    LTEXT           "Preset:",-1,11,126,23,8
+    COMBOBOX        42,36,123,102,70,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Drums",44,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,146,125,36,10
+    GROUPBOX        "Output",-1,5,144,180,67
+    LTEXT           "Buffer:",-1,11,157,22,8
+    CONTROL         "Slider1",30,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,36,155,110,12
+    LTEXT           "",31,149,157,30,8
+    LTEXT           "Interpolation points:",-1,11,171,62,8
+    CONTROL         "2",50,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,77,171,20,10
+    CONTROL         "8",51,"Button",BS_AUTORADIOBUTTON,102,171,20,10
+    CONTROL         "16",52,"Button",BS_AUTORADIOBUTTON,127,171,24,10
+    LTEXT           "Effects:",-1,11,185,25,8
+    CONTROL         "reverb",35,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,40,185,39,10
+    CONTROL         "echo",36,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,90,185,33,10
+    CONTROL         "chorus",37,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,140,185,38,10
+    CONTROL         "flanger",38,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,40,196,39,10
+    CONTROL         "distortion",39,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,90,196,45,10
+END

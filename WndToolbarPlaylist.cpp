@@ -7,7 +7,7 @@
 static const int s_ButtonSize = 24;
 
 WndToolbarPlaylist::WndToolbarPlaylist( HINSTANCE instance, HWND parent ) :
-	WndToolbar( instance, parent ),
+	WndToolbar( instance, parent, ID_TOOLBAR_PLAYLIST ),
 	m_ImageList( nullptr ),
 	m_ImageMap( {
 		{ 0, IDI_ADD_FOLDER },

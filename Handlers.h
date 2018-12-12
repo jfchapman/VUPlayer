@@ -39,6 +39,12 @@ public:
 	// Returns the encoder, or nullptr if an encoder could not be opened.
 	Encoder::Ptr OpenEncoder( const std::wstring& description ) const;
 
+	// Called when the application 'settings' have changed.
+	void SettingsChanged( Settings& settings ) const;
+
+	// Initialises the handlers with the application 'settings'.
+	void Init( Settings& settings );
+
 private:
 	// Returns a decoder handler supported by the 'filename' extension, or nullptr of there was no match.
 	Handler::Ptr FindDecoderHandler( const std::wstring& filename ) const;

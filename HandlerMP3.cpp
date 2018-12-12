@@ -179,3 +179,7 @@ std::wstring HandlerMP3::GetTooltip( const HINSTANCE instance, const HWND slider
 	const std::wstring tooltip = std::wstring( buffer ) + L": " + std::to_wstring( quality );
 	return tooltip;
 }
+
+void HandlerMP3::SettingsChanged( Settings& /*settings*/ )
+{
+}

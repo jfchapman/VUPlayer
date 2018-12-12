@@ -1,0 +1,26 @@
+#include "windows.h"
+
+1000 DIALOG 100, 100, 271, 164
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "BASSMIDI test"
+FONT 8, "MS Sans Serif"
+BEGIN
+    PUSHBUTTON      "click here to open a file...",10,5,7,260,14
+    CTEXT           "",11,5,24,260,8
+    RTEXT           "-",24,5,40,28,8
+    CONTROL         "",21,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,33,36,122,15
+    CONTROL         "Reverb && Chorus",20,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,160,35,67,18
+    GROUPBOX        "Tempo",-1,231,33,34,96
+    CTEXT           "",23,235,43,24,8
+    CONTROL         "",22,"msctls_trackbar32",TBS_VERT | WS_TABSTOP,238,51,22,76
+    GROUPBOX        "Lyrics",-1,5,56,221,39
+    CTEXT           "",30,7,65,217,28
+    GROUPBOX        "Soundfont",-1,5,97,221,32
+    CONTROL         "",41,"Static",SS_LEFTNOWORDWRAP | WS_GROUP,10,107,160,20
+    PUSHBUTTON      "Replace",40,175,108,45,14
+    GROUPBOX        "Performance",-1,5,131,260,29
+    LTEXT           "Voices:",-1,10,144,24,8
+    CONTROL         "",50,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,35,140,140,15
+    LTEXT           "",51,175,144,40,8
+    LTEXT           "CPU:",52,220,144,40,8
+END

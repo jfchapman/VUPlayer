@@ -30,6 +30,9 @@ static const float s_FadeToNextDuration = 3.0f;
 // Indicates when fading to the next track.
 static const long s_ItemIsFadingToNext = -1;
 
+// The fade out duration when stopping a track, in milliseconds.
+static const DWORD s_StopFadeDuration = 20;
+
 DWORD CALLBACK Output::StreamProc( HSTREAM handle, void *buf, DWORD len, void *user )
 {
 	DWORD bytesRead = 0;
@@ -44,11 +47,19 @@ DWORD CALLBACK Output::StreamProc( HSTREAM handle, void *buf, DWORD len, void *u
 	return bytesRead;
 }
 
-void CALLBACK Output::SyncProc( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data*/, void *user )
+void CALLBACK Output::SyncEnd( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data*/, void *user )
 {
 	Output* output = reinterpret_cast<Output*>( user );
 	if ( nullptr != output ) {
 		output->RestartPlayback();
+	}
+}
+
+void CALLBACK Output::SyncSlideStop( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data*/, void *user )
+{
+	HANDLE stoppedEvent = reinterpret_cast<HANDLE>( user );
+	if ( nullptr != stoppedEvent ) {
+		SetEvent( stoppedEvent );
 	}
 }
 
@@ -196,9 +207,26 @@ bool Output::Play( const long playlistID, const float seek )
 
 void Output::Stop()
 {
-	BASS_ChannelStop( m_OutputStream );
-	BASS_StreamFree( m_OutputStream );
-	m_OutputStream = 0;
+	if ( 0 != m_OutputStream ) {
+		if ( BASS_ACTIVE_PLAYING == BASS_ChannelIsActive( m_OutputStream ) ) {
+			const HANDLE slideFinishedEvent = CreateEvent( nullptr /*attributes*/, FALSE /*manualReset*/, FALSE /*initial*/, L"" /*name*/ );
+			if ( nullptr != slideFinishedEvent ) {
+				const HSYNC syncSlide =	BASS_ChannelSetSync( m_OutputStream, BASS_SYNC_SLIDE | BASS_SYNC_ONETIME, 0 /*param*/, SyncSlideStop, slideFinishedEvent );
+				if ( 0 != syncSlide ) {
+					if ( BASS_ChannelSlideAttribute( m_OutputStream, BASS_ATTRIB_VOL, -1 /*fadeOutAndStop*/, s_StopFadeDuration ) ) {
+						WaitForSingleObject( slideFinishedEvent, 2 * s_StopFadeDuration );
+					}
+				}
+				CloseHandle( slideFinishedEvent );
+			}
+		}
+		if ( BASS_ACTIVE_STOPPED != BASS_ChannelIsActive( m_OutputStream ) ) {
+			BASS_ChannelStop( m_OutputStream );
+		}
+		BASS_StreamFree( m_OutputStream );
+		m_OutputStream = 0;
+	}
+
 	m_FX.clear();
 	m_DecoderSampleRate = 0;
 	m_DecoderStream.reset();
@@ -384,8 +412,10 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 		SetCrossfadePosition( 0 );
 		m_LastTransitionPosition = 0;
 
-		if ( GetStopAtTrackEnd() ) {
-			ToggleStopAtTrackEnd();
+		if ( GetStopAtTrackEnd() || GetFadeOut() ) {
+			// Set a sync on the output stream, so that the states can be toggled when playback actually finishes.
+			m_RestartItemID = {};
+			BASS_ChannelSetSync( handle, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
 		} else {
 			// Create a stream from the next playlist item.
 			std::lock_guard<std::mutex> lock( m_PlaylistMutex );
@@ -426,10 +456,10 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 				}
 			}
 
-			if ( ( 0 == bytesRead ) && ( nextItem.ID > 0 ) && !GetFadeOut() ) {
+			if ( ( 0 == bytesRead ) && ( nextItem.ID > 0 ) ) {
 				// Signal that playback should be restarted from the next playlist item.
 				m_RestartItemID = nextItem.ID;
-				BASS_ChannelSetSync( handle, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncProc, this );
+				BASS_ChannelSetSync( handle, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
 
 				std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 				if ( m_CrossfadingStream ) {
@@ -519,6 +549,9 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 		if ( ( currentPos > m_FadeOutStartPosition ) && ( channels > 0 ) && ( samplerate > 0 ) ) {
 			if ( ( currentPos - m_FadeOutStartPosition ) > s_FadeOutDuration ) {
 				bytesRead = 0;
+				// Set a sync on the output stream, so that the 'fade out' state can be toggled when playback actually finishes.
+				m_RestartItemID = {};
+				BASS_ChannelSetSync( handle, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
 			} else {
 				const long sampleCount = static_cast<long>( bytesRead ) / ( channels * 4 );
 				const float fadeOutEndPosition = m_FadeOutStartPosition + s_FadeOutDuration;
@@ -621,13 +654,16 @@ void Output::GetFFTData( std::vector<float>& fft )
 
 void Output::RestartPlayback()
 {
-	if ( m_RestartItemID > 0 ) {
+	if ( GetStopAtTrackEnd() || GetFadeOut() ) {
 		if ( GetStopAtTrackEnd() ) {
 			ToggleStopAtTrackEnd();
-			m_RestartItemID = 0;
-		} else {
-			PostMessage( m_Parent, MSG_RESTARTPLAYBACK, m_RestartItemID, NULL /*lParam*/ );
 		}
+		if ( GetFadeOut() ) {
+			ToggleFadeOut();
+		}
+		m_RestartItemID = 0;
+	} else if ( m_RestartItemID > 0 ) {
+		PostMessage( m_Parent, MSG_RESTARTPLAYBACK, m_RestartItemID, NULL /*lParam*/ );
 	}
 }
 
@@ -787,6 +823,8 @@ void Output::SettingsChanged()
 		m_ReplaygainHardlimit = replaygainHardlimit;
 		EstimateReplayGain( m_CurrentItemDecoding );
 	}
+
+	m_Handlers.SettingsChanged( m_Settings );
 }
 
 void Output::InitialiseBass()

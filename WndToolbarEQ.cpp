@@ -7,7 +7,7 @@
 static const int s_ButtonSize = 24;
 
 WndToolbarEQ::WndToolbarEQ( HINSTANCE instance, HWND parent ) :
-	WndToolbar( instance, parent ),
+	WndToolbar( instance, parent, ID_TOOLBAR_EQ ),
 	m_ImageList( nullptr )
 {
 	CreateButtons();

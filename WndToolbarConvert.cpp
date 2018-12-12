@@ -7,7 +7,7 @@
 static const int s_ButtonSize = 24;
 
 WndToolbarConvert::WndToolbarConvert( HINSTANCE instance, HWND parent ) :
-	WndToolbar( instance, parent ),
+	WndToolbar( instance, parent, ID_TOOLBAR_CONVERT ),
 	m_ImageList( nullptr ),
 	m_TooltipID( 0 )
 {

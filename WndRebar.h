@@ -2,6 +2,8 @@
 
 #include "stdafx.h"
 
+#include "Settings.h"
+
 #include <functional>
 #include <list>
 #include <map>
@@ -13,7 +15,8 @@ class WndRebar
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndRebar( HINSTANCE instance, HWND parent );
+	// 'settings' - application settings.
+	WndRebar( HINSTANCE instance, HWND parent, Settings& settings );
 
 	virtual ~WndRebar();
 
@@ -53,6 +56,12 @@ public:
 	// Updates the rebar state.
 	void Update();
 
+	// Toggles the visibility of the 'toolbarID'.
+	void ToggleToolbar( const int toolbarID );
+
+	// Initialises the rebar.
+	void Init();
+
 private:
 	// Window procedure.
 	static LRESULT CALLBACK RebarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
@@ -81,11 +90,24 @@ private:
 	// Creates the image list.
 	void CreateImageList();
 
-	// Rearranges the rebar bands on initialisation or resizing, to ensure there is only a single row of buttons.
-	void RearrangeBands();
+	// Rearranges the rebar bands, to ensure there is only a single row of buttons.
+	// 'force' - whether to force a rearrangement, even if the rebar size has not changed.
+	void RearrangeBands( const bool force = false );
 
 	// Reorders rebar bands by ID.
 	void ReorderBandsByID();
+
+	// Inserts the 'bandID' containing the 'controlWnd'.
+	void InsertBand( const UINT bandID, const HWND controlWnd );
+
+	// Deletes the 'bandID'.
+	void DeleteBand( const UINT bandID );
+
+	// Displays the context menu at the specified 'position', in screen coordinates.
+	void OnContextMenu( const POINT& position );
+
+	// Returns whether the 'bandID' can be hidden.
+	bool CanBeHidden( const UINT bandID ) const;
 
 	// Next available rebar band ID.
 	static UINT s_BandID;
@@ -95,6 +117,9 @@ private:
 
 	// Window handle.
 	HWND m_hWnd;
+
+	// Application settings.
+	Settings& m_Settings;
 
 	// Default window procedure.
 	WNDPROC m_DefaultWndProc;
@@ -115,7 +140,7 @@ private:
 	ClickCallbackMap m_ClickCallbackMap;
 
 	// The set of rebar bands that can be hidden.
-	BandIDSet m_BandCanBeHidden;
+	BandIDSet m_CanBeHidden;
 
 	// The set of rebar bands that are hidden.
 	BandIDSet m_HiddenBands;

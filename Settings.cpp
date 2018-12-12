@@ -2050,7 +2050,7 @@ std::wstring Settings::GetEncoder()
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='Encoder';";
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='Encoder';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
@@ -2088,7 +2088,7 @@ std::string Settings::GetEncoderSettings( const std::wstring& encoder )
 	if ( nullptr != database ) {
 		const std::string settingName = WideStringToUTF8( L"Encoder_" + encoder );
 		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting=?1;";
+		const std::string query = "SELECT Value FROM Settings WHERE Setting=?1;";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) &&
 				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, settingName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
@@ -2113,6 +2113,79 @@ void Settings::SetEncoderSettings( const std::wstring& encoder, const std::strin
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			sqlite3_bind_text( stmt, 1, settingName.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_text( stmt, 2, settings.c_str(), -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+}
+
+std::wstring Settings::GetSoundFont()
+{
+	std::wstring soundFont;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='SoundFont';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
+				if ( nullptr != text ) {
+					soundFont = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
+				}
+				sqlite3_finalize( stmt );
+			}
+		}
+	}
+	return soundFont;
+}
+
+void Settings::SetSoundFont( const std::wstring& filename )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "SoundFont", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_text( stmt, 2, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+}
+
+bool Settings::GetToolbarEnabled( const int toolbarID )
+{
+	bool enabled = true;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string idString = "Toolbar" + std::to_string( toolbarID );
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='" + idString + "';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				sqlite3_finalize( stmt );
+			}
+		}
+	}
+	return enabled;
+}
+
+void Settings::SetToolbarEnabled( const int toolbarID, const bool enabled )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string idString = "Toolbar" + std::to_string( toolbarID );
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, idString.c_str(), -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, enabled );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 			sqlite3_finalize( stmt );

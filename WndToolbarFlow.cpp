@@ -7,7 +7,7 @@
 static const int s_ButtonSize = 24;
 
 WndToolbarFlow::WndToolbarFlow( HINSTANCE instance, HWND parent ) :
-	WndToolbar( instance, parent ),
+	WndToolbar( instance, parent, ID_TOOLBAR_FLOW ),
 	m_ImageList( nullptr ),
 	m_ImageMap( {
 		{ 0, IDI_RANDOM },

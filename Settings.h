@@ -402,6 +402,18 @@ public:
 	// Sets the 'settings' for the 'encoder' name.
 	void SetEncoderSettings( const std::wstring& encoder, const std::string& settings );
 
+	// Gets the soundfont file name to use for MIDI playback.
+	std::wstring GetSoundFont();
+
+	// Sets the soundfont file name to use for MIDI playback.
+	void SetSoundFont( const std::wstring& filename );
+
+	// Returns whether the 'toolbarID' is enabled.
+	bool GetToolbarEnabled( const int toolbarID );
+
+	// Sets whether the 'toolbarID' is 'enabled'.
+	void SetToolbarEnabled( const int toolbarID, const bool enabled );
+
 private:
 	// Updates the database to the current version if necessary.
 	void UpdateDatabase();

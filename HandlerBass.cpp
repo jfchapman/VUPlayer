@@ -1,6 +1,7 @@
 #include "HandlerBass.h"
 
 #include "DecoderBass.h"
+#include "Settings.h"
 #include "Utility.h"
 
 #include "vcedit.h"
@@ -8,15 +9,26 @@
 #include <list>
 #include <sstream>
 
-std::set<std::wstring> HandlerBass::s_SupportedFileExtensions( { L"mod", L"s3m", L"xm", L"it", L"mtm", L"mo3", L"umx", L"mp3", L"ogg", L"wav", L"mp4", L"m4a" } );
+std::set<std::wstring> HandlerBass::s_SupportedFileExtensions( { L"mod", L"s3m", L"xm", L"it", L"mtm", L"mo3", L"umx", L"mp3", L"ogg", L"wav", L"mp4", L"m4a", L"mid", L"midi" } );
 
 HandlerBass::HandlerBass() :
-	Handler()
+	Handler(),
+	m_BassMidi( BASS_PluginLoad( L"bassmidi.dll", BASS_UNICODE ) ),
+	m_BassMidiSoundFont( 0 ),
+	m_SoundFontFilename()
 {
 }
 
 HandlerBass::~HandlerBass()
 {
+	if ( 0 != m_BassMidiSoundFont ) {
+		BASS_MIDI_FontFree( m_BassMidiSoundFont );
+		m_BassMidiSoundFont = 0;
+	}
+	if ( 0 != m_BassMidi ) {
+		BASS_PluginFree( m_BassMidi );
+		m_BassMidi = 0;
+	}
 }
 
 std::wstring HandlerBass::GetDescription() const
@@ -61,10 +73,20 @@ bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
 		flags = BASS_UNICODE;
 		const HSTREAM stream = BASS_StreamCreateFile( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, flags );
 		if ( stream != 0 ) {
-			const char* oggTags = BASS_ChannelGetTags( stream, BASS_TAG_OGG );
-			if ( nullptr != oggTags ) {
-				ReadOggTags( oggTags, tags );
-				success = true;
+			BASS_CHANNELINFO info = {};
+			BASS_ChannelGetInfo( stream, &info );
+			if ( BASS_CTYPE_STREAM_OGG == info.ctype ) {
+				const char* oggTags = BASS_ChannelGetTags( stream, BASS_TAG_OGG );
+				if ( nullptr != oggTags ) {
+					ReadOggTags( oggTags, tags );
+					success = true;
+				}
+			} else if ( BASS_CTYPE_STREAM_MIDI == info.ctype ) {
+				const char* midiTags = BASS_ChannelGetTags( stream, BASS_TAG_MIDI_TRACK );
+				if ( ( nullptr != midiTags ) && ( strlen( midiTags ) > 0 ) ) {
+					tags.insert( Tags::value_type( Tag::Title, UTF8ToWideString( midiTags ) ) );
+					success = true;
+				}
 			}
 			BASS_StreamFree( stream );
 		}
@@ -340,4 +362,28 @@ std::wstring HandlerBass::GetTemporaryFilename() const
 		filename = pathName + UTF8ToWideString( GenerateGUIDString() );
 	}
 	return filename;
+}
+
+void HandlerBass::SettingsChanged( Settings& settings )
+{
+	LoadSoundFont( settings );
+}
+
+void HandlerBass::LoadSoundFont( Settings& settings )
+{
+	if ( 0 != m_BassMidi ) {
+		const std::wstring filename = settings.GetSoundFont();
+		if ( filename != m_SoundFontFilename ) {
+			m_SoundFontFilename = filename;
+			if ( 0 != m_BassMidiSoundFont ) {
+				BASS_MIDI_FontFree( m_BassMidiSoundFont );
+				m_BassMidiSoundFont = 0;
+			}
+			m_BassMidiSoundFont = BASS_MIDI_FontInit( filename.c_str(), BASS_UNICODE );
+			if ( 0 != m_BassMidiSoundFont ) {
+				const BASS_MIDI_FONT font = { m_BassMidiSoundFont, -1 /*preset*/, 0 /*bank*/ };
+				BASS_MIDI_StreamSetFonts( 0 /*default*/, &font, 1 /*count*/ );
+			}
+		}
+	}
 }

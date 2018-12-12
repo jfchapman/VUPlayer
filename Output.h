@@ -193,8 +193,11 @@ private:
 	// BASS stream callback.
 	static DWORD CALLBACK StreamProc( HSTREAM handle, void *buf, DWORD len, void *user );
 
-	// BASS sync callback.
-	static void CALLBACK SyncProc( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data*/, void *user );
+	// BASS sync, called when playback has ended.
+	static void CALLBACK SyncEnd( HSYNC handle, DWORD channel, DWORD data, void *user );
+
+	// BASS sync, called when manually stopping playback.
+	static void CALLBACK SyncSlideStop( HSYNC handle, DWORD channel, DWORD data, void *user );
 
 	// Crossfade calculation thread procedure.
 	static DWORD WINAPI CrossfadeThreadProc( LPVOID lpParam );
