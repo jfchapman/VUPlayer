@@ -25,6 +25,9 @@ public:
 	// CD audio data.
 	typedef std::vector<short> Data;
 
+	// A map of CD Audio data, keyed by sector index.
+	typedef std::map<long,Data> DataMap;
+
 	// Returns the formatted media 'filepath' corresponding to 'drive' & 'track'.
 	static std::wstring ToMediaFilepath( const wchar_t drive, const long track );
 
@@ -54,6 +57,14 @@ public:
 	// 'data' - out, the CD audio data.
 	// Returns whether the sector was read successfully.
 	bool Read( const HANDLE handle, const long sector, const bool useCache, Data& data ) const;
+
+	// Reads CD audio sectors.
+	// 'handle' - CD handle.
+	// 'sectorStart' - start sector index.
+	// 'sectorCount' - the number of sectors to read.
+	// 'dataMap' - out, the CD audio data.
+	// Returns whether any sectors were read successfully.
+	bool Read( const HANDLE handle, const long sectorStart, const long sectorCount, DataMap& data ) const;
 
 	// Returns the start sector of the CD audio 'track'.
 	long GetStartSector( const long track ) const;

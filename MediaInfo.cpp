@@ -2,6 +2,7 @@
 
 #include "Utility.h"
 
+#include <set>
 #include <tuple>
 
 MediaInfo::MediaInfo( const std::wstring& filename ) :
@@ -294,4 +295,80 @@ MediaInfo::Source MediaInfo::GetSource() const
 long MediaInfo::GetCDDB() const
 {
 	return m_CDDB;
+}
+
+bool MediaInfo::IsDuplicate( const MediaInfo& o ) const
+{
+	const bool isDuplicate = 
+		std::tie( m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Artist, m_Title, m_Album, m_Genre, m_Year,
+			m_Comment, m_Track, m_Version, m_GainTrack, m_GainAlbum, m_PeakTrack, m_PeakAlbum, m_ArtworkID ) ==
+		std::tie( o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_BitsPerSample, o.m_Channels, o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year,
+			o.m_Comment, o.m_Track, o.m_Version, o.m_GainTrack, o.m_GainAlbum, o.m_PeakTrack, o.m_PeakAlbum, o.m_ArtworkID );
+	return isDuplicate;
+}
+
+bool MediaInfo::GetCommonInfo( const List& mediaList, MediaInfo& commonInfo )
+{
+	commonInfo = MediaInfo();
+
+	std::set<std::wstring> artists;
+	std::set<std::wstring> titles;
+	std::set<std::wstring> albums;
+	std::set<std::wstring> genres;
+	std::set<std::wstring> comments;
+	std::set<std::wstring> artworks;
+	std::set<long> years;
+	std::set<long> tracks;
+
+	for ( const auto& mediaInfo : mediaList ) {
+		artists.insert( mediaInfo.GetArtist() );
+		titles.insert( mediaInfo.GetTitle() );
+		albums.insert( mediaInfo.GetAlbum() );
+		genres.insert( mediaInfo.GetGenre() );
+		comments.insert( mediaInfo.GetComment() );
+		artworks.insert( mediaInfo.GetArtworkID() );
+		years.insert( mediaInfo.GetYear() );
+		tracks.insert( mediaInfo.GetTrack() );
+
+		if ( ( artists.size() > 1 ) && ( titles.size() > 1 ) && ( albums.size() > 1 ) && ( genres.size() > 1 ) && ( comments.size() > 1 ) && ( artworks.size() > 1 ) && ( years.size() > 1 ) && ( tracks.size() > 1 ) ) {
+			break;
+		}
+	}
+
+	bool hasCommonInfo = false;
+
+	if ( ( 1 == artists.size() ) && !artists.begin()->empty() ) {
+		commonInfo.SetArtist( *artists.begin() );
+		hasCommonInfo = true;
+	}
+	if ( ( 1 == titles.size() ) && !titles.begin()->empty() ) {
+		commonInfo.SetTitle( *titles.begin() );
+		hasCommonInfo = true;
+	}
+	if ( ( 1 == albums.size() ) && !albums.begin()->empty() ) {
+		commonInfo.SetAlbum( *albums.begin() );
+		hasCommonInfo = true;
+	}
+	if ( ( 1 == genres.size() ) && !genres.begin()->empty() ) {
+		commonInfo.SetGenre( *genres.begin() );
+		hasCommonInfo = true;
+	}
+	if ( ( 1 == comments.size() ) && !comments.begin()->empty() ) {
+		commonInfo.SetComment( *comments.begin() );
+		hasCommonInfo = true;
+	}
+	if ( ( 1 == artworks.size() ) && !artworks.begin()->empty() ) {
+		commonInfo.SetArtworkID( *artworks.begin() );
+		hasCommonInfo = true;
+	}
+	if ( 1 == years.size() ) {
+		commonInfo.SetYear( *years.begin() );
+		hasCommonInfo = true;
+	}
+	if ( 1 == tracks.size() ) {
+		commonInfo.SetTrack( *tracks.begin() );
+		hasCommonInfo = true;
+	}
+
+	return hasCommonInfo;
 }

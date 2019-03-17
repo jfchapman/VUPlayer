@@ -1778,11 +1778,12 @@ void Settings::SetOutputControlType( const int type )
 	}
 }
 
-void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename, bool& addToLibrary )
+void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename, bool& addToLibrary, bool& joinTracks )
 {
 	folder.clear();
 	filename.clear();
 	addToLibrary = true;
+	joinTracks = false;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		sqlite3_stmt* stmt = nullptr;
@@ -1815,6 +1816,14 @@ void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename,
 				sqlite3_finalize( stmt );
 			}
 		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='ExtractJoin';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				joinTracks = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				sqlite3_finalize( stmt );
+			}
+		}
 	}
 	if ( folder.empty() || !FolderExists( folder ) ) {
 		PWSTR path = nullptr;
@@ -1829,7 +1838,7 @@ void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename,
 	}
 }
 
-void Settings::SetExtractSettings( const std::wstring& folder, const std::wstring& filename, const bool addToLibrary )
+void Settings::SetExtractSettings( const std::wstring& folder, const std::wstring& filename, const bool addToLibrary, const bool joinTracks )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -1848,6 +1857,11 @@ void Settings::SetExtractSettings( const std::wstring& folder, const std::wstrin
 
 			sqlite3_bind_text( stmt, 1, "ExtractToLibrary", -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_int( stmt, 2, addToLibrary );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "ExtractJoin", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, joinTracks );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
@@ -2186,6 +2200,91 @@ void Settings::SetToolbarEnabled( const int toolbarID, const bool enabled )
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			sqlite3_bind_text( stmt, 1, idString.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_int( stmt, 2, enabled );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+}
+
+bool Settings::GetMergeDuplicates()
+{
+	bool mergeDuplicates = false;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='HideDuplicates';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				mergeDuplicates = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return mergeDuplicates;
+}
+
+void Settings::SetMergeDuplicates( const bool mergeDuplicates )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "HideDuplicates", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, mergeDuplicates );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+std::wstring Settings::GetLastFolder( const std::string& folderType )
+{
+	std::wstring lastFolder;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='Folder" + folderType + "';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
+				if ( nullptr != text ) {
+					lastFolder = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
+				}
+				sqlite3_finalize( stmt );
+			}
+		}
+	}
+	if ( !lastFolder.empty() ) {
+		if ( ( lastFolder.back() == '\\'  ) || ( lastFolder.back() == '/' ) ) {
+			lastFolder.pop_back();
+		}
+		if ( !FolderExists( lastFolder ) ) {
+			lastFolder.clear();
+		}
+	}
+	return lastFolder;
+}
+
+void Settings::SetLastFolder( const std::string& folderType, const std::wstring& folder )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			const std::string folderSetting = "Folder" + folderType;
+			sqlite3_bind_text( stmt, 1, folderSetting.c_str(), -1 /*strLen*/, SQLITE_STATIC );
+			std::string folderValue = WideStringToUTF8( folder );
+			if ( !folderValue.empty() ) {
+				if ( ( folderValue.back() == '\\'  ) || ( folderValue.back() == '/' ) ) {
+					folderValue.pop_back();
+				}
+			}
+			sqlite3_bind_text( stmt, 2, folderValue.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 			sqlite3_finalize( stmt );

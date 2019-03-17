@@ -306,6 +306,41 @@ bool CDDAMedia::Read( const HANDLE handle, const long sector, const bool useCach
 	return success;
 }
 
+bool CDDAMedia::Read( const HANDLE handle, const long sectorStart, const long sectorCount, DataMap& data ) const
+{
+	bool success = false;
+	data.clear();
+	if ( nullptr != handle ) {
+		DWORD bufferSize = sectorCount * SECTORSIZE;
+		Data buffer( bufferSize / 2 );
+
+		RAW_READ_INFO info = {};
+		info.SectorCount = static_cast<ULONG>( sectorCount );
+		info.TrackMode = CDDA;
+		info.DiskOffset.QuadPart = ( sectorStart - PREGAP ) * m_DiskGeometry.BytesPerSector;
+
+		DWORD bytesRead = 0;
+		success = ( FALSE != DeviceIoControl( handle, IOCTL_CDROM_RAW_READ, &info, sizeof( RAW_READ_INFO ), &buffer[ 0 ], bufferSize, &bytesRead, 0 ) ) && ( bufferSize == bytesRead );
+		while ( !success && ( info.SectorCount >= 2 ) ) {
+			info.SectorCount /= 2;
+			bufferSize = info.SectorCount * SECTORSIZE;
+			success = ( FALSE != DeviceIoControl( handle, IOCTL_CDROM_RAW_READ, &info, sizeof( RAW_READ_INFO ), &buffer[ 0 ], bufferSize, &bytesRead, 0 ) ) && ( bufferSize == bytesRead );
+		}
+
+		if ( success ) {
+			long sectorIndex = sectorStart;
+			auto sourceIter = buffer.begin();
+			for ( DWORD offset = 0; offset < bytesRead; sectorIndex++, offset += SECTORSIZE, sourceIter += ( SECTORSIZE / 2 ) ) {
+				auto sectorIter = data.insert( DataMap::value_type( sectorIndex, Data() ) ).first;
+				Data& targetData = sectorIter->second;
+				targetData.resize( SECTORSIZE / 2 );
+				std::copy_n( sourceIter, SECTORSIZE / 2, targetData.begin() );
+			}
+		}
+	}
+	return success;
+}
+
 bool CDDAMedia::ReadCDText( BlockMap& blocks ) const
 {
 	bool success = false;

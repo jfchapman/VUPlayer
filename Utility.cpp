@@ -556,11 +556,19 @@ short FloatTo16( const float value )
 	return result;
 }
 
-char FloatTo8( const float value )
+char FloatToSigned8( const float value )
 {
 	const float scaledValue = value * 128;
 	const char result = ( scaledValue > static_cast<float>( 127 ) ) ? 127 :
 		( ( scaledValue < static_cast<float>( -128 ) ) ? -128 : static_cast<char>( scaledValue ) );
+	return result;
+}
+
+unsigned char FloatToUnsigned8( const float value )
+{
+	const float scaledValue = ( value + 1.0f ) * 128;
+	const unsigned char result = ( scaledValue > static_cast<float>( 255 ) ) ? 255 :
+		( ( scaledValue < static_cast<float>( 0 ) ) ? 0 : static_cast<unsigned char>( scaledValue ) );
 	return result;
 }
 

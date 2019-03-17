@@ -9,8 +9,9 @@ public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
 	// 'library' - media library.
+	// 'settings' - application settings.
 	// 'items' - item(s) for which to show track information.
-	DlgTrackInfo( HINSTANCE instance, HWND parent, Library& library, const Playlist::ItemList& items );
+	DlgTrackInfo( HINSTANCE instance, HWND parent, Library& library, Settings& settings, const Playlist::ItemList& items );
 
 	virtual ~DlgTrackInfo();
 
@@ -85,6 +86,9 @@ private:
 	// Media library.
 	Library& m_Library;
 
+	// Application settings.
+	Settings& m_Settings;
+
 	// Items for which to show track information.
 	Playlist::ItemList m_Items;
 
@@ -100,8 +104,8 @@ private:
 	// Chosen artwork image.
 	std::vector<BYTE> m_ChosenArtworkImage;
 
-	// List of media (pairs of previous/updated information) to update before the dialog closes.
-	std::list<std::pair<MediaInfo,MediaInfo>> m_UpdateInfo;
+	// List of playlist items (pairs of previous/updated information) to update before the dialog closes.
+	std::list<std::pair<Playlist::Item,Playlist::Item>> m_UpdateInfo;
 
 	// Save thread handle.
 	HANDLE m_SaveThread;

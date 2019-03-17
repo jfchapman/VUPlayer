@@ -26,11 +26,11 @@ INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 				case IDCANCEL : 
 				case IDOK : {
 					DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
-					if ( nullptr != dialog ) {
-						dialog->OnClose( ( IDOK == LOWORD( wParam ) ) );
+					if ( ( nullptr != dialog ) && dialog->OnClose( ( IDOK == LOWORD( wParam ) ) ) ) {
+						EndDialog( hwnd, 0 );
+						return TRUE;
 					}
-					EndDialog( hwnd, 0 );
-					return TRUE;
+					break;
 				}
 				case IDC_CONVERT_BROWSE : {
 					DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
@@ -63,6 +63,16 @@ INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 					break;
 				}
 				default : {
+					const WORD notificationCode = HIWORD( wParam );
+					if ( BN_CLICKED == notificationCode ) {
+						const WORD controlID = LOWORD( wParam );
+						if ( ( IDC_CONVERT_JOIN == controlID ) || ( IDC_CONVERT_INDIVIDUAL == controlID ) ) {
+							DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
+							if ( nullptr != dialog ) {
+								dialog->UpdateDestinationControls();
+							}					
+						}
+					}
 					break;
 				}
 			}
@@ -75,6 +85,7 @@ INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 				DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 				if ( nullptr != dialog ) {
 					dialog->UpdateCheckedItems( nmListView->iItem );
+					dialog->UpdateDestinationControls();
 				}
 			}
 			break;
@@ -104,7 +115,8 @@ DlgConvert::DlgConvert( const HINSTANCE instance, const HWND parent, Settings& s
 	m_CheckedItems(),
 	m_Initialised( false ),
 	m_SelectedEncoder(),
-	m_Encoders()
+	m_Encoders(),
+	m_JoinFilename()
 {
 	DialogBoxParam( instance, MAKEINTRESOURCE( IDD_CONVERT ), parent, DialogProc, reinterpret_cast<LPARAM>( this ) );
 }
@@ -183,6 +195,15 @@ void DlgConvert::OnInitDialog( const HWND hwnd )
 				ListView_SetCheckState( listWnd, item.iItem, state );
 			}
 		}
+
+		const int itemCount = ListView_GetItemCount( listWnd );
+		for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+			const bool isChecked = ( FALSE != ListView_GetCheckState( listWnd, itemIndex ) );
+			if ( isChecked ) {
+				ListView_EnsureVisible( listWnd, itemIndex, FALSE /*partialOK*/ );
+				break;
+			}
+		}
 	}
 
 	// Initialise output format list.
@@ -204,7 +225,6 @@ void DlgConvert::OnInitDialog( const HWND hwnd )
 
 	UpdateFolderControl();
 
-
 	if ( !m_Tracks.empty() && ( MediaInfo::Source::CDDA == m_Tracks.begin()->Info.GetSource() ) ) {
 		const HWND addToLibraryWnd = GetDlgItem( m_hWnd, IDC_CONVERT_ADDTOLIBRARY );
 		if ( nullptr != addToLibraryWnd ) {
@@ -218,11 +238,17 @@ void DlgConvert::OnInitDialog( const HWND hwnd )
 	std::wstring extractFolder;
 	std::wstring extractFilename;
 	bool extractToLibrary = false;
-	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+	bool extractJoin = false;
+	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 	CheckDlgButton( m_hWnd, IDC_CONVERT_ADDTOLIBRARY, extractToLibrary ? BST_CHECKED : BST_UNCHECKED );
 
 	const HWND okWnd = GetDlgItem( m_hWnd, IDOK );
 	EnableWindow( okWnd, m_SelectedTracks.empty() ? FALSE : TRUE );
+
+	CheckDlgButton( m_hWnd, IDC_CONVERT_JOIN, extractJoin ? BST_CHECKED : BST_UNCHECKED );
+	CheckDlgButton( m_hWnd, IDC_CONVERT_INDIVIDUAL, !extractJoin ? BST_CHECKED : BST_UNCHECKED );
+
+	UpdateDestinationControls();
 
 	m_Initialised = true;
 }
@@ -236,7 +262,8 @@ void DlgConvert::ChooseFolder()
 	std::wstring extractFolder;
 	std::wstring extractFilename;
 	bool extractToLibrary = false;
-	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+	bool extractJoin = false;
+	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 	wcscpy_s( buffer, MAX_PATH, extractFolder.c_str() );
 
 	BROWSEINFO bi = {};
@@ -252,7 +279,7 @@ void DlgConvert::ChooseFolder()
 		WCHAR path[ pathSize ] = {};
 		if ( TRUE == SHGetPathFromIDListEx( idlist, path, pathSize, GPFIDL_DEFAULT ) ) {
 			extractFolder = path;
-			m_Settings.SetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+			m_Settings.SetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 			UpdateFolderControl();
 		}
 		CoTaskMemFree( idlist );
@@ -264,7 +291,8 @@ void DlgConvert::UpdateFolderControl()
 	std::wstring extractFolder;
 	std::wstring extractFilename;
 	bool extractToLibrary = false;
-	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+	bool extractJoin = false;
+	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 	SetDlgItemText( m_hWnd, IDC_CONVERT_FOLDER, extractFolder.c_str() );
 }
 
@@ -345,33 +373,98 @@ void DlgConvert::UpdateCheckedItems( const int itemIndex )
 	}
 }
 
+void DlgConvert::UpdateDestinationControls()
+{
+	const Playlist::ItemList selectedTracks = GetSelectedTracks();
+	const bool enableIndividualTracks = !selectedTracks.empty();
+	bool enableJoinTracks = !selectedTracks.empty();
+	long commonChannels = 0;
+	long commonSampleRate = 0;
+	auto track = selectedTracks.begin();
+	if ( selectedTracks.end() != track ) {
+		commonChannels = track->Info.GetChannels();
+		commonSampleRate = track->Info.GetSampleRate();
+		++track;
+	}
+	while ( enableJoinTracks && ( selectedTracks.end() != track ) ) {
+		const long channels = track->Info.GetChannels();
+		const long sampleRate = track->Info.GetSampleRate();
+		enableJoinTracks = ( channels == commonChannels ) && ( sampleRate == commonSampleRate );
+		++track;
+	}
+
+	if ( enableJoinTracks != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_JOIN ) ) ? true : false ) ) {
+		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_JOIN ), enableJoinTracks );
+	}
+	if ( enableIndividualTracks != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_INDIVIDUAL ) ) ? true : false ) ) {
+		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_INDIVIDUAL ), enableIndividualTracks );
+	}
+
+	if ( !enableJoinTracks && enableIndividualTracks && ( BST_CHECKED == IsDlgButtonChecked( m_hWnd, IDC_CONVERT_JOIN ) ) ) {
+		CheckDlgButton( m_hWnd, IDC_CONVERT_INDIVIDUAL, BST_CHECKED );
+		CheckDlgButton( m_hWnd, IDC_CONVERT_JOIN, BST_UNCHECKED );		
+	}
+
+	const bool enableConvertFolder = enableIndividualTracks && ( BST_CHECKED == IsDlgButtonChecked( m_hWnd, IDC_CONVERT_INDIVIDUAL ) );
+	const bool enableConvertFilename = enableConvertFolder;
+	const bool enableConvertBrowse = enableConvertFolder;
+
+	if ( enableConvertFolder != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_FOLDER ) ) ? true : false ) ) {
+		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_FOLDER ), enableConvertFolder );
+	}
+	if ( enableConvertFilename != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_FILENAME ) ) ? true : false ) ) {
+		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_FILENAME ), enableConvertFilename );
+	}
+	if ( enableConvertBrowse != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_BROWSE ) ) ? true : false ) ) {
+		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_BROWSE ), enableConvertBrowse );
+	}
+}
+
 void DlgConvert::OnFilenameFormat()
 {
 	const DlgConvertFilename dlgFilename( m_hInst, m_hWnd, m_Settings );
 }
 
-void DlgConvert::OnClose( const bool ok )
+bool DlgConvert::OnClose( const bool ok )
 {
+	bool canClose = true;
 	m_SelectedTracks.clear();
 	if ( ok ) {
-		const HWND listWnd = GetDlgItem( m_hWnd, IDC_CONVERT_TRACKLIST );
-		if ( nullptr != listWnd ) {
-			int index = 0;
-			auto iter = m_Tracks.begin();
-			for ( const auto& track : m_Tracks ) {
-				if ( FALSE != ListView_GetCheckState( listWnd, ++index ) ) {
-					m_SelectedTracks.push_back( track );
-				}
-			}
-		}
+		m_SelectedTracks = GetSelectedTracks();
 		std::wstring extractFolder;
 		std::wstring extractFilename;
 		bool extractToLibrary = false;
-		m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary );
-		const UINT checkState = IsDlgButtonChecked( m_hWnd, IDC_CONVERT_ADDTOLIBRARY );
+		bool extractJoin = false;
+		m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
+		UINT checkState = IsDlgButtonChecked( m_hWnd, IDC_CONVERT_ADDTOLIBRARY );
 		extractToLibrary = ( BST_CHECKED == checkState ) ? true : false;
-		m_Settings.SetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+		checkState = IsDlgButtonChecked( m_hWnd, IDC_CONVERT_JOIN );
+		extractJoin = ( BST_CHECKED == checkState ) ? true : false;
+
+		if ( extractJoin ) {
+			m_JoinFilename = ChooseJoinFilename();
+
+			if ( m_SelectedEncoder ) {
+				const size_t pos = m_JoinFilename.find_last_of( '.' );
+				if ( std::wstring::npos != pos ) {
+					const std::wstring ext = WideStringToLower( m_JoinFilename.substr( 1 + pos ) );
+					const std::set<std::wstring> fileExtensions = m_SelectedEncoder->GetSupportedFileExtensions();
+					const auto foundExt = std::find_if( fileExtensions.begin(), fileExtensions.end(), [ &ext ] ( const std::wstring& entry )
+					{
+						return ( ext == WideStringToLower( entry ) );
+					} );
+					if ( fileExtensions.end() != foundExt ) {
+						m_JoinFilename = m_JoinFilename.substr( 0 /*offset*/, pos );
+					}
+				}
+			}
+
+			canClose = !m_JoinFilename.empty();
+		}
+
+		m_Settings.SetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 	}
+	return canClose;
 }
 
 const Handler::Ptr DlgConvert::GetSelectedHandler() const
@@ -387,4 +480,66 @@ void DlgConvert::OnConfigure()
 			m_Settings.SetEncoderSettings( m_SelectedEncoder->GetDescription(), settings );
 		}
 	}
+}
+
+Playlist::ItemList DlgConvert::GetSelectedTracks() const
+{
+	Playlist::ItemList selectedTracks;
+	const HWND listWnd = GetDlgItem( m_hWnd, IDC_CONVERT_TRACKLIST );
+	if ( nullptr != listWnd ) {
+		int index = 0;
+		auto iter = m_Tracks.begin();
+		for ( const auto& track : m_Tracks ) {
+			if ( FALSE != ListView_GetCheckState( listWnd, ++index ) ) {
+				selectedTracks.push_back( track );
+			}
+		}
+	}
+	return selectedTracks;
+}
+
+std::wstring DlgConvert::ChooseJoinFilename() const
+{
+	std::wstring joinFilename;
+
+	WCHAR title[ MAX_PATH ] = {};
+	if ( !m_Tracks.empty() && ( MediaInfo::Source::CDDA == m_Tracks.begin()->Info.GetSource() ) ) {
+		LoadString( m_hInst, IDS_EXTRACT_TRACKS, title, MAX_PATH );
+	} else {
+		LoadString( m_hInst, IDS_CONVERT_TRACKS, title, MAX_PATH );
+	}
+
+	WCHAR buffer[ MAX_PATH ] = {};
+
+	std::wstring defExt;
+	if ( m_SelectedEncoder ) {
+		const std::set<std::wstring> extensions = m_SelectedEncoder->GetSupportedFileExtensions();
+		if ( !extensions.empty() ) {
+			defExt = *extensions.begin();
+		}
+	}
+
+	const std::string initialFolderSetting = "Join";
+	const std::wstring initialFolder = m_Settings.GetLastFolder( initialFolderSetting );
+
+	OPENFILENAME ofn = {};
+	ofn.lStructSize = sizeof( OPENFILENAME );
+	ofn.hwndOwner = m_hWnd;
+	ofn.lpstrTitle = title;
+	ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+	ofn.lpstrDefExt = defExt.empty() ? nullptr : defExt.c_str();
+	ofn.lpstrFile = buffer;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
+	if ( FALSE != GetSaveFileName( &ofn ) ) {
+		joinFilename = ofn.lpstrFile;
+		m_Settings.SetLastFolder( initialFolderSetting, joinFilename.substr( 0, ofn.nFileOffset ) );
+	}
+
+	return joinFilename;
+}
+
+const std::wstring& DlgConvert::GetJoinFilename() const
+{
+	return m_JoinFilename;
 }

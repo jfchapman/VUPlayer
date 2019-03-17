@@ -105,6 +105,9 @@ public:
 	// Called when an 'item' is removed from the 'playlist'.
 	void OnPlaylistItemRemoved( Playlist* playlist, const Playlist::Item& item );
 
+	// Called when an 'item' is updated in the 'playlist'.
+	void OnPlaylistItemUpdated( Playlist* playlist, const Playlist::Item& item );
+
 	// Called when information in the media database is updated.
 	// 'previousMediaInfo' - the previous media information.
 	// 'updatedMediaInfo' - the updated media information.

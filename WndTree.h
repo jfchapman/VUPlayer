@@ -159,6 +159,9 @@ public:
 	// Returns the scratch list.
 	Playlist::Ptr SetScratchList( const MediaInfo::List& mediaList );
 
+	// Sets whether duplicate tracks are merged into a single entry (for Artist/Album/Genre/Year playlists).
+	void SetMergeDuplicates( const bool mergeDuplicates );
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
@@ -537,6 +540,9 @@ private:
 
 	// Scratch list stop event handle.
 	HANDLE m_ScratchListUpdateStopEvent;
+
+	// Whether duplicate tracks are merged into a single entry (for Artist/Album/Genre/Year playlists).
+	bool m_MergeDuplicates;
 
 	// Root item ordering.
 	static OrderMap s_RootOrder;

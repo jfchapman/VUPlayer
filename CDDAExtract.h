@@ -4,6 +4,7 @@
 
 #include "CDDAManager.h"
 #include "Handlers.h"
+#include "Playlist.h"
 #include "Settings.h"
 
 #include <atomic>
@@ -20,7 +21,8 @@ public:
 	// 'cddaManager' - CD audio manager.
 	// 'tracks' - tracks to extract.
 	// 'encoderHandler' - encoder handler to use.
-	CDDAExtract( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, CDDAManager& cddaManager, const MediaInfo::List& tracks, const Handler::Ptr encoderHandler );
+	// 'joinFilename' - output filename, when joining tracks into a single file.
+	CDDAExtract( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, CDDAManager& cddaManager, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename );
 
 	virtual ~CDDAExtract();
 
@@ -91,7 +93,7 @@ private:
 	CDDAManager& m_CDDAManager;
 
 	// Tracks to extract.
-	const MediaInfo::List m_Tracks;
+	const Playlist::ItemList m_Tracks;
 
 	// Cancel event handle.
 	HANDLE m_CancelEvent;
@@ -140,4 +142,7 @@ private:
 
 	// The encoder settings to use.
 	std::string m_EncoderSettings;
+
+	// The output filename, when joining tracks into a single file.
+	std::wstring m_JoinFilename;
 };

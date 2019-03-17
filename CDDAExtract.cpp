@@ -107,7 +107,7 @@ DWORD WINAPI CDDAExtract::EncodeThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, CDDAManager& cddaManager, const MediaInfo::List& tracks, const Handler::Ptr encoderHandler ) :
+CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, CDDAManager& cddaManager, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_Library( library ),
@@ -129,7 +129,8 @@ CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& 
 	m_DisplayedTrack( 0 ),
 	m_DisplayedPass( 0 ),
 	m_Encoder( encoderHandler ? encoderHandler->OpenEncoder() : nullptr ),
-	m_EncoderSettings( m_Encoder ? m_Settings.GetEncoderSettings( encoderHandler->GetDescription() ) : std::string() )
+	m_EncoderSettings( m_Encoder ? m_Settings.GetEncoderSettings( encoderHandler->GetDescription() ) : std::string() ),
+	m_JoinFilename( joinFilename )
 {
 	DialogBoxParam( instance, MAKEINTRESOURCE( IDD_CONVERT_PROGRESS ), parent, DialogProc, reinterpret_cast<LPARAM>( this ) );
 }
@@ -229,6 +230,10 @@ void CDDAExtract::ReadHandler()
 	typedef std::map<long,SectorSet> SectorMap;
 	SectorMap sectorMap;
 
+	// A cache of CDDA sectors.
+	CDDAMedia::DataMap sectorCache;
+	const long maxCachedSectors = 32;
+
 	bool readError = false;
 	const CDDAManager::CDDAMediaMap drives = m_CDDAManager.GetCDDADrives();
 	auto trackIter = m_Tracks.begin();
@@ -237,7 +242,7 @@ void CDDAExtract::ReadHandler()
 		const CDDAMedia* media = nullptr;
 		wchar_t drive = 0;
 		long track = 0;
-		if ( CDDAMedia::FromMediaFilepath( trackIter->GetFilename(), drive, track ) ) {
+		if ( CDDAMedia::FromMediaFilepath( trackIter->Info.GetFilename(), drive, track ) ) {
 			const auto driveIter = drives.find( drive );
 			if ( drives.end() != driveIter ) {
 				media = &driveIter->second;
@@ -260,7 +265,7 @@ void CDDAExtract::ReadHandler()
 					}
 
 					sectorMap.clear();
-					CDDAMedia::Data data;
+					sectorCache.clear();
 
 					long pass = 1;
 
@@ -272,7 +277,17 @@ void CDDAExtract::ReadHandler()
 						// Re-read all sectors on each pass, not just the remaining sectors, in an attempt to flush any cache on the device.
 						long sectorIndex = sectorStart;
 						while ( !Cancelled() && ( sectorIndex < sectorEnd ) && !sectorsRemaining.empty() ) {
-							if ( media->Read( mediaHandle, sectorIndex, false /*useCache*/, data ) ) {
+					
+							auto cacheIter = sectorCache.find( sectorIndex );
+							if ( sectorCache.end() == cacheIter ) {
+								sectorCache.clear();
+								if ( media->Read( mediaHandle, sectorIndex, (std::min)( maxCachedSectors, sectorEnd - sectorIndex ), sectorCache ) ) {
+									cacheIter = sectorCache.find( sectorIndex );
+								}
+							}
+
+							if ( sectorCache.end() != cacheIter ) {
+								const CDDAMedia::Data& data = cacheIter->second;
 								const auto sectorIter = sectorsRemaining.find( sectorIndex );
 								if ( sectorsRemaining.end() != sectorIter ) {
 									SectorSet& sectorSet = sectorMap[ sectorIndex ];
@@ -357,7 +372,7 @@ void CDDAExtract::ReadHandler()
 									trackData->insert( trackData->end(), sectorData.begin(), sectorData.end() );
 								}
 								std::lock_guard<std::mutex> lock( m_PendingEncodeMutex );
-								m_PendingEncode.insert( MediaData::value_type( *trackIter, trackData ) );
+								m_PendingEncode.insert( MediaData::value_type( trackIter->Info, trackData ) );
 								SetEvent( m_PendingEncodeEvent );
 							}
 						} else {
@@ -378,10 +393,10 @@ void CDDAExtract::ReadHandler()
 
 void CDDAExtract::EncodeHandler()
 {
-	if ( m_Encoder ) {
+	if ( m_Encoder && !m_Tracks.empty() ) {
 		long long totalSamples = 0;
 		for ( const auto& media : m_Tracks ) {
-			totalSamples += ( media.GetFilesize() / 4 );
+			totalSamples += ( media.Info.GetFilesize() / 4 );
 		}
 		long long totalSamplesEncoded = 0;
 
@@ -393,115 +408,170 @@ void CDDAExtract::EncodeHandler()
 		analysis.InitGainAnalysis( 44100 );
 		const long replayGainScale = 1 << 15;
 		float albumPeak = 0;
+		float trackPeak = 0;
 
-		const HANDLE eventHandles[ 2 ] = { m_CancelEvent, m_PendingEncodeEvent };
-		while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
-			MediaInfo mediaInfo;
-			DataPtr data;
-			m_PendingEncodeMutex.lock();
-			auto dataIter = m_PendingEncode.begin();
-			if ( m_PendingEncode.end() != dataIter ) {
-				mediaInfo = dataIter->first;
-				data = dataIter->second;
-				m_PendingEncode.erase( dataIter );
-				if ( m_PendingEncode.empty() ) {
-					ResetEvent( m_PendingEncodeEvent );
-				}
-			}
-			m_PendingEncodeMutex.unlock();
+		std::wstring extractFolder;
+		std::wstring extractFilename;
+		bool extractToLibrary = false;
+		bool extractJoin = false;
+		m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 
-			if ( data ) {
-				float trackPeak = 0;
-				long long samplesEncoded = 0;
-				std::wstring filename = GetOutputFilename( mediaInfo );
-				if ( !filename.empty() ) {
-					const long sampleRate = mediaInfo.GetSampleRate();
-					const long channels = mediaInfo.GetChannels();
-					const long bps = mediaInfo.GetBitsPerSample();
-					if ( m_Encoder->Open( filename, sampleRate, channels, bps, m_EncoderSettings ) ) {
-						const long sampleBufferSize = 65536;
-						std::vector<float> sampleBuffer( sampleBufferSize * channels );
+		bool encoderOK = true;
+		if ( extractJoin ) {
+			const long sampleRate = m_Tracks.front().Info.GetSampleRate();
+			const long channels = m_Tracks.front().Info.GetChannels();
+			const long bps = m_Tracks.front().Info.GetBitsPerSample();
+			encoderOK = m_Encoder->Open( m_JoinFilename, sampleRate, channels, bps, m_EncoderSettings );
+		}
 
-						std::vector<float> analysisLeft( sampleBufferSize );
-						std::vector<float> analysisRight( sampleBufferSize );
-
-						auto sourceIter = data->begin();
-						while ( !Cancelled() && ( data->end() != sourceIter ) ) {
-							auto destIter = sampleBuffer.begin();
-							while ( ( data->end() != sourceIter ) && ( sampleBuffer.end() != destIter ) ) {
-								*destIter++ = *sourceIter++ / 32768.0f;
-							}
-							const long sampleCount = static_cast<long>( destIter - sampleBuffer.begin() ) / channels;
-							if ( m_Encoder->Write( &sampleBuffer[ 0 ], sampleCount ) ) {
-
-								for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
-									analysisLeft[ sampleIndex ] = sampleBuffer[ sampleIndex * channels ] * replayGainScale;
-									if ( sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] ) > trackPeak ) {
-										trackPeak = sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] );
-									}
-									analysisRight[ sampleIndex ] = sampleBuffer[ sampleIndex * channels + 1 ] * replayGainScale;
-									if ( sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] ) > trackPeak ) {
-										trackPeak = sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] );
-									}
-								}
-								analysis.AnalyzeSamples( &analysisLeft[ 0 ], &analysisRight[ 0 ], sampleCount, channels );
-
-								samplesEncoded += sampleCount;
-								totalSamplesEncoded += sampleCount;
-								m_ProgressEncode.store( static_cast<float>( totalSamplesEncoded ) / totalSamples );
-							} else {
-								break;
-							}
-						}
-						m_Encoder->Close();
+		if ( encoderOK ) {
+			const HANDLE eventHandles[ 2 ] = { m_CancelEvent, m_PendingEncodeEvent };
+			while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
+				MediaInfo mediaInfo;
+				DataPtr data;
+				m_PendingEncodeMutex.lock();
+				auto dataIter = m_PendingEncode.begin();
+				if ( m_PendingEncode.end() != dataIter ) {
+					mediaInfo = dataIter->first;
+					data = dataIter->second;
+					m_PendingEncode.erase( dataIter );
+					if ( m_PendingEncode.empty() ) {
+						ResetEvent( m_PendingEncodeEvent );
 					}
 				}
-				if ( !Cancelled() ) {
-					const bool encodeSuccess = ( ( mediaInfo.GetFilesize() / 4 ) == samplesEncoded );
-					if ( encodeSuccess ) {
+				m_PendingEncodeMutex.unlock();
 
-						if ( trackPeak > albumPeak ) {
-							albumPeak = trackPeak;
-						}
-						float trackGain = analysis.GetTitleGain();
-						if ( GAIN_NOT_ENOUGH_SAMPLES == trackGain ) {
-							trackGain = REPLAYGAIN_NOVALUE;
-						}
-						mediaInfo.SetPeakTrack( trackPeak );
-						mediaInfo.SetGainTrack( trackGain );
-						WriteTrackTags( filename, mediaInfo );
+				if ( data ) {
+					if ( !extractJoin ) {
+						trackPeak = 0;
+					}
+					long long samplesEncoded = 0;
+					std::wstring filename = extractJoin ? m_JoinFilename : GetOutputFilename( mediaInfo );
+					if ( !filename.empty() ) {
+						const long sampleRate = mediaInfo.GetSampleRate();
+						const long channels = mediaInfo.GetChannels();
+						const long bps = mediaInfo.GetBitsPerSample();
+						if ( extractJoin || m_Encoder->Open( filename, sampleRate, channels, bps, m_EncoderSettings ) ) {
+							const long sampleBufferSize = 65536;
+							std::vector<float> sampleBuffer( sampleBufferSize * channels );
 
-						encodedMediaList.push_back( MediaInfo( filename ) );
+							std::vector<float> analysisLeft( sampleBufferSize );
+							std::vector<float> analysisRight( sampleBufferSize );
 
-						if ( ++tracksEncoded == trackCount ) {
-						
-							std::wstring extractFolder;
-							std::wstring extractFilename;
-							bool extractToLibrary = false;
-							m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+							auto sourceIter = data->begin();
+							while ( !Cancelled() && ( data->end() != sourceIter ) ) {
+								auto destIter = sampleBuffer.begin();
+								while ( ( data->end() != sourceIter ) && ( sampleBuffer.end() != destIter ) ) {
+									*destIter++ = *sourceIter++ / 32768.0f;
+								}
+								const long sampleCount = static_cast<long>( destIter - sampleBuffer.begin() ) / channels;
+								if ( m_Encoder->Write( &sampleBuffer[ 0 ], sampleCount ) ) {
 
-							float albumGain = analysis.GetAlbumGain();
-							if ( GAIN_NOT_ENOUGH_SAMPLES == albumGain ) {
-								albumGain = REPLAYGAIN_NOVALUE;
-							}
-							mediaInfo.SetPeakAlbum( albumPeak );
-							mediaInfo.SetGainAlbum( albumGain );
-							for ( auto& encodedMedia : encodedMediaList ) {
-								WriteAlbumTags( encodedMedia.GetFilename(), mediaInfo );					
-								if ( extractToLibrary ) {
-									m_Library.GetMediaInfo( encodedMedia );
+									for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
+										analysisLeft[ sampleIndex ] = sampleBuffer[ sampleIndex * channels ] * replayGainScale;
+										if ( sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] ) > trackPeak ) {
+											trackPeak = sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] );
+										}
+										analysisRight[ sampleIndex ] = sampleBuffer[ sampleIndex * channels + 1 ] * replayGainScale;
+										if ( sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] ) > trackPeak ) {
+											trackPeak = sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] );
+										}
+									}
+									analysis.AnalyzeSamples( &analysisLeft[ 0 ], &analysisRight[ 0 ], sampleCount, channels );
+
+									samplesEncoded += sampleCount;
+									totalSamplesEncoded += sampleCount;
+									m_ProgressEncode.store( static_cast<float>( totalSamplesEncoded ) / totalSamples );
+								} else {
+									break;
 								}
 							}
+							if ( !extractJoin ) {
+								m_Encoder->Close();
+							}
+						}
+					}
 
-							PostMessage( m_hWnd, MSG_EXTRACTFINISHED, 0, 0 );
+					if ( !Cancelled() ) {
+						const bool encodeSuccess = ( ( mediaInfo.GetFilesize() / 4 ) == samplesEncoded );
+						if ( encodeSuccess ) {
+
+							if ( extractJoin ) {
+								if ( ++tracksEncoded == trackCount ) {
+									break;
+								}
+							} else {
+								if ( trackPeak > albumPeak ) {
+									albumPeak = trackPeak;
+								}
+								float trackGain = analysis.GetTitleGain();
+								if ( GAIN_NOT_ENOUGH_SAMPLES == trackGain ) {
+									trackGain = REPLAYGAIN_NOVALUE;
+								}
+								mediaInfo.SetPeakTrack( trackPeak );
+								mediaInfo.SetGainTrack( trackGain );
+								WriteTrackTags( filename, mediaInfo );
+
+								encodedMediaList.push_back( MediaInfo( filename ) );
+
+								if ( ++tracksEncoded == trackCount ) {
+									float albumGain = analysis.GetAlbumGain();
+									if ( GAIN_NOT_ENOUGH_SAMPLES == albumGain ) {
+										albumGain = REPLAYGAIN_NOVALUE;
+									}
+									mediaInfo.SetPeakAlbum( albumPeak );
+									mediaInfo.SetGainAlbum( albumGain );
+									for ( auto& encodedMedia : encodedMediaList ) {
+										WriteAlbumTags( encodedMedia.GetFilename(), mediaInfo );					
+										if ( extractToLibrary ) {
+											m_Library.GetMediaInfo( encodedMedia );
+										}
+									}
+
+									PostMessage( m_hWnd, MSG_EXTRACTFINISHED, 0, 0 );
+									break;
+								}
+							}
+						} else {
+							encoderOK = false;
 							break;
 						}
-					} else {
-						PostMessage( m_hWnd, MSG_EXTRACTERROR, IDS_EXTRACT_ERROR_ENCODER, 0 );
-						break;
 					}
 				}
 			}
+
+			if ( extractJoin ) {
+				m_Encoder->Close();
+
+				MediaInfo joinedMediaInfo;
+
+				MediaInfo::List mediaList;
+				for ( const auto& item : m_Tracks ) {
+					mediaList.push_back( item.Info );
+				}
+
+				MediaInfo::GetCommonInfo( mediaList, joinedMediaInfo );
+				joinedMediaInfo.SetFilename( m_JoinFilename );
+
+				float trackGain = analysis.GetTitleGain();
+				if ( GAIN_NOT_ENOUGH_SAMPLES != trackGain ) {
+					joinedMediaInfo.SetPeakTrack( trackPeak );
+					joinedMediaInfo.SetGainTrack( trackGain );
+				}
+
+				WriteTrackTags( joinedMediaInfo.GetFilename(), joinedMediaInfo );
+				if ( extractToLibrary ) {
+					m_Library.GetMediaInfo( joinedMediaInfo );
+				}
+
+				if ( encoderOK && !Cancelled() ) {
+					PostMessage( m_hWnd, MSG_EXTRACTFINISHED, 0, 0 );
+				}
+			}
+		}
+
+		if ( !encoderOK && !Cancelled() ) {
+			PostMessage( m_hWnd, MSG_EXTRACTERROR, IDS_EXTRACT_ERROR_ENCODER, 0 );
 		}
 	}
 }
@@ -513,7 +583,8 @@ std::wstring CDDAExtract::GetOutputFilename( const MediaInfo& mediaInfo ) const
 	std::wstring extractFolder;
 	std::wstring extractFilename;
 	bool extractToLibrary = false;
-	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+	bool extractJoin = false;
+	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 
 	WCHAR buffer[ 2 + MAX_PATH ] = {};
 	const std::wstring emptyArtist = LoadString( m_hInst, IDS_EMPTYARTIST, buffer, 32 ) ? buffer : std::wstring();

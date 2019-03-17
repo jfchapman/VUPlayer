@@ -169,6 +169,15 @@ public:
 	// Returns the CDDB ID.
 	long GetCDDB() const;
 
+	// Returns whether the 'other' media information is a duplicate of this one.
+	bool IsDuplicate( const MediaInfo& other ) const;
+
+	// Gets common media information (restricted to artist, title, album, genre, year, comment, track, artwork).
+	// 'mediaList' - the list of media to query.
+	// 'commonInfo' - out, common media information.
+	// Returns whether any common information was retrieved.
+	static bool GetCommonInfo( const List& mediaList, MediaInfo& commonInfo );
+
 private:
 	std::wstring m_Filename;
 	long long m_Filetime;

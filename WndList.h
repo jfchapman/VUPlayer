@@ -55,16 +55,11 @@ public:
 	// Called when an 'item' is added to the 'playlist' at a (0-based) 'position'.
 	void OnFileAdded( Playlist* playlist, const Playlist::Item& item, const int position );
 
-	// Adds a playlist item to the list control.
-	// 'wParam' - added item information.
-	void AddFileHandler( WPARAM wParam );
-
 	// Called when an 'item' is removed from the 'playlist'.
 	void OnFileRemoved( Playlist* playlist, const Playlist::Item& item );
 
-	// Removes a playlist item from the list control.
-	// 'wParam' - removed item information.
-	void RemoveFileHandler( WPARAM wParam );
+	// Called when an 'item' is updated in the 'playlist'.
+	void OnItemUpdated( Playlist* playlist, const Playlist::Item& item );
 
 	// Returns the highlight colour.
 	COLORREF GetHighlightColour() const;
@@ -212,8 +207,8 @@ private:
 
 	// Sets the text of a list view item.
 	// 'itemIndex' - list view item index.
-	// 'mediaInfo' - media information.
-	void SetListViewItemText( int itemIndex, const MediaInfo& mediaInfo );
+	// 'playlistItem' - playlist item.
+	void SetListViewItemText( int itemIndex, const Playlist::Item& playlistItem );
 
 	// Returns whether the 'column' is shown.
 	bool IsColumnShown( const Playlist::Column& column ) const;
@@ -238,6 +233,18 @@ private:
 	// 'width' - column width.
 	// 'show' - true to show, false to hide.
 	void ShowColumn( const Playlist::Column column, const int width, const bool show );
+
+	// Adds a playlist item to the list control.
+	// 'addedItem' - added item information.
+	void AddFileHandler( const AddedItem* addedItem );
+
+	// Removes a playlist item from the list control.
+	// 'removedItemID' - removed item ID.
+	void RemoveFileHandler( const long removedItemID );
+
+	// Updates a playlist item in the list control.
+	// 'item' - updated playlist item.
+	void ItemUpdatedHandler( const Playlist::Item* item );
 
 	// Column format information.
 	static ColumnFormats s_ColumnFormats;

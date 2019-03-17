@@ -263,6 +263,9 @@ void OptionsMod::ChooseSoundFont()
 	filterStr.push_back( 0 );
 	filterStr.push_back( 0 );
 
+	const std::string initialFolderSetting = "SoundFont";
+	const std::wstring initialFolder = GetSettings().GetLastFolder( initialFolderSetting );
+
 	WCHAR buffer[ MAX_PATH ] = {};
 	OPENFILENAME ofn = {};
 	ofn.lStructSize = sizeof( OPENFILENAME );
@@ -273,9 +276,11 @@ void OptionsMod::ChooseSoundFont()
 	ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
 	ofn.lpstrFile = buffer;
 	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
 	if ( FALSE != GetOpenFileName( &ofn ) ) {
 		const std::wstring filename = ofn.lpstrFile;
 		GetSettings().SetSoundFont( filename );
+		GetSettings().SetLastFolder( initialFolderSetting, filename.substr( 0, ofn.nFileOffset ) );
 		UpdateControls( m_hWnd );
 	}
 }

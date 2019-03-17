@@ -457,6 +457,17 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 
 		const Playlist::Ptr currentPlaylist = m_List.GetPlaylist();
 		const Playlist::Item currentSelectedPlaylistItem = m_List.GetCurrentSelectedItem();
+		
+		if ( 0 == currentPlaying.PlaylistItem.ID ) {
+			const Playlist::Item currentSelectedOutputItem = m_Output.GetCurrentSelectedPlaylistItem();
+			if ( currentSelectedPlaylistItem.ID != currentSelectedOutputItem.ID ) {
+				m_Output.SetCurrentSelectedPlaylistItem( currentSelectedPlaylistItem );
+				if ( ID_VISUAL_ARTWORK == m_Visual.GetCurrentVisualID() ) {
+					m_Splitter.Resize();
+					m_Visual.DoRender();
+				}
+			}
+		}
 
 		m_SeekControl.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarFile.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
@@ -505,12 +516,14 @@ void VUPlayer::OnMinMaxInfo( LPMINMAXINFO minMaxInfo )
 
 void VUPlayer::OnPlaylistItemAdded( Playlist* playlist, const Playlist::Item& item, const int position )
 {
-	if ( nullptr != playlist ) {
+	if ( ( nullptr != playlist ) && ( item.ID > 0 ) ) {
 		m_List.OnFileAdded( playlist, item, position );
 
-		const Playlist::Ptr playlistAll = m_Tree.GetPlaylistAll();
-		if ( playlistAll.get() != playlist ) {
-			playlistAll->AddPending( item.Info.GetFilename() );
+		if ( Playlist::Type::All != playlist->GetType() ) {
+			const Playlist::Ptr playlistAll = m_Tree.GetPlaylistAll();
+			if ( playlistAll ) {
+				playlistAll->AddPending( item.Info.GetFilename() );
+			}
 		}
 
 		m_Status.Update( playlist );
@@ -521,6 +534,11 @@ void VUPlayer::OnPlaylistItemRemoved( Playlist* playlist, const Playlist::Item& 
 {
 	m_List.OnFileRemoved( playlist, item );
 	m_Status.Update( playlist );
+}
+
+void VUPlayer::OnPlaylistItemUpdated( Playlist* playlist, const Playlist::Item& item )
+{
+	m_List.OnItemUpdated( playlist, item );
 }
 
 void VUPlayer::OnDestroy()
@@ -1255,7 +1273,7 @@ void VUPlayer::OnTrackInformation()
 {
 	Playlist::ItemList selectedItems = m_List.GetSelectedPlaylistItems();
 	if ( !selectedItems.empty() ) {
-		DlgTrackInfo trackInfo( m_hInst, m_hWnd, m_Library, selectedItems );
+		DlgTrackInfo trackInfo( m_hInst, m_hWnd, m_Library, m_Settings, selectedItems );
 		SetFocus( m_List.GetWindowHandle() );
 	}
 }
@@ -1364,6 +1382,8 @@ void VUPlayer::OnOptions()
 	} else if ( systrayEnable && !m_Tray.IsShown() ) {
 		m_Tray.Show();
 	}
+
+	m_Tree.SetMergeDuplicates( m_Settings.GetMergeDuplicates() );
 }
 
 Settings& VUPlayer::GetApplicationSettings()
@@ -1385,10 +1405,7 @@ void VUPlayer::OnCalculateReplayGain()
 {
 	MediaInfo::List mediaList;
 	const Playlist::ItemList selectedItems = m_List.GetSelectedPlaylistItems();
-	for ( const auto& item : selectedItems ) {
-		mediaList.push_back( item.Info );
-	}
-	m_ReplayGain.Calculate( mediaList );
+	m_ReplayGain.Calculate( selectedItems );
 }
 
 Playlist::Ptr VUPlayer::NewPlaylist()
@@ -1521,25 +1538,25 @@ void VUPlayer::OnConvert()
 	Playlist::Ptr playlist = m_List.GetPlaylist();
 	const Playlist::ItemList itemList = playlist ? playlist->GetItems() : Playlist::ItemList();
 	if ( !itemList.empty() ) {
-		Playlist::ItemList selectedItemList = m_List.GetSelectedPlaylistItems();
-		DlgConvert dlgConvert( m_hInst, m_hWnd, m_Settings, m_Handlers, itemList, selectedItemList );
-		if ( !selectedItemList.empty() ) {
+		Playlist::ItemList selectedItems = m_List.GetSelectedPlaylistItems();
+		if ( selectedItems.empty() ) {
+			selectedItems = itemList;
+		}
+		DlgConvert dlgConvert( m_hInst, m_hWnd, m_Settings, m_Handlers, itemList, selectedItems );
+		if ( !selectedItems.empty() ) {
 			const Handler::Ptr handler = dlgConvert.GetSelectedHandler();
 			if ( handler ) {
-				MediaInfo::List tracks;
-				for ( const auto& item : selectedItemList ) {
-					tracks.push_back( item.Info );
-				}
-
 				m_Settings.SetEncoder( handler->GetDescription() );
 				Playlist::Ptr outputPlaylist = m_Output.GetPlaylist();
 				if ( ( Playlist::Type::CDDA == playlist->GetType() ) && outputPlaylist && ( Playlist::Type::CDDA == outputPlaylist->GetType() ) ) {
 					m_Output.Stop();
 				}
+
+				const std::wstring& joinFilename = dlgConvert.GetJoinFilename();
 				if ( Playlist::Type::CDDA == playlist->GetType() ) {
-					CDDAExtract extract( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, m_CDDAManager, tracks, handler );
+					CDDAExtract extract( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, m_CDDAManager, selectedItems, handler, joinFilename );
 				} else {
-					Converter converter( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, tracks, handler );
+					Converter converter( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, selectedItems, handler, joinFilename );
 				}
 			}
 		}

@@ -19,24 +19,6 @@ DWORD WINAPI Playlist::PendingThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-Playlist::Playlist( Library& library, const Type& type ) :
-	m_ID( GenerateGUIDString() ),
-	m_Name(),
-	m_Playlist(),
-	m_Pending(),
-	m_MutexPlaylist(),
-	m_MutexPending(),
-	m_PendingThread( NULL ),
-	m_PendingStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
-	m_PendingWakeEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
-	m_RestartPendingThread( false ),
-	m_Library( library ),
-	m_SortColumn( Column::_Undefined ),
-	m_SortAscending( false ),
-	m_Type( type )
-{
-}
-
 Playlist::Playlist( Library& library, const std::string& id, const Type& type ) :
 	m_ID( id ),
 	m_Name(),
@@ -45,20 +27,32 @@ Playlist::Playlist( Library& library, const std::string& id, const Type& type ) 
 	m_MutexPlaylist(),
 	m_MutexPending(),
 	m_PendingThread( NULL ),
-	m_PendingStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
-	m_PendingWakeEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
+	m_PendingStopEvent( NULL ),
+	m_PendingWakeEvent( NULL ),
 	m_RestartPendingThread( false ),
 	m_Library( library ),
-	m_Type( type )
+	m_SortColumn( Column::_Undefined ),
+	m_SortAscending( false ),
+	m_Type( type ),
+	m_MergeDuplicates( false )
 {
+}
+
+Playlist::Playlist( Library& library, const Type& type ) :
+	Playlist( library, GenerateGUIDString(), type )
+{
+}
+
+Playlist::Playlist( Library& library, const Type& type, const bool mergeDuplicates ) :
+	Playlist( library, type )
+{
+	m_MergeDuplicates = mergeDuplicates;
 }
 
 Playlist::~Playlist()
 {
 	StopPendingThread();
-	CloseHandle( m_PendingStopEvent );
-	CloseHandle( m_PendingWakeEvent );
-	CloseHandle( m_PendingThread );
+	CloseHandles();
 }
 
 const std::string& Playlist::GetID() const
@@ -188,29 +182,52 @@ Playlist::Item Playlist::GetRandomItem()
 Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo )
 {
 	int position = 0;
-	const Playlist::Item item = AddItem( mediaInfo, position );
+	bool addedAsDuplicate = false;
+	const Playlist::Item item = AddItem( mediaInfo, position, addedAsDuplicate );
 	return item;
 }
 
-Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position )
+Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position, bool& addedAsDuplicate )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+
+	Item item = {};
 	position = 0;
-	const Item item = { ++s_NextItemID, mediaInfo };
-	if ( Column::_Undefined == m_SortColumn ) {
-		position = static_cast<int>( m_Playlist.size() );
-		m_Playlist.push_back( item );
-	} else {
-		auto insertIter = m_Playlist.begin();
-		while ( insertIter != m_Playlist.end() ) {
-			if ( m_SortAscending ? LessThan( item, *insertIter, m_SortColumn ) : GreaterThan( item, *insertIter, m_SortColumn ) ) {
+	addedAsDuplicate = false;
+
+	if ( m_MergeDuplicates ) {	
+		for ( auto& itemIter : m_Playlist ) {
+			if ( itemIter.Info.IsDuplicate( mediaInfo ) ) {
+				if ( itemIter.Info.GetFilename() != mediaInfo.GetFilename() ) {
+					const auto foundDuplicate = std::find( itemIter.Duplicates.begin(), itemIter.Duplicates.end(), mediaInfo.GetFilename() );
+					if ( itemIter.Duplicates.end() == foundDuplicate ) {
+						itemIter.Duplicates.push_back( mediaInfo.GetFilename() );
+					}
+				}
+				item = itemIter;
+				addedAsDuplicate = true;
 				break;
-			} else {
-				++insertIter;
-				++position;
 			}
 		}
-		m_Playlist.insert( insertIter, item );
+	}
+
+	if ( !addedAsDuplicate ) {
+		item = { ++s_NextItemID, mediaInfo };
+		if ( Column::_Undefined == m_SortColumn ) {
+			position = static_cast<int>( m_Playlist.size() );
+			m_Playlist.push_back( item );
+		} else {
+			auto insertIter = m_Playlist.begin();
+			while ( insertIter != m_Playlist.end() ) {
+				if ( m_SortAscending ? LessThan( item, *insertIter, m_SortColumn ) : GreaterThan( item, *insertIter, m_SortColumn ) ) {
+					break;
+				} else {
+					++insertIter;
+					++position;
+				}
+			}
+			m_Playlist.insert( insertIter, item );
+		}
 	}
 	return item;
 }
@@ -253,17 +270,23 @@ void Playlist::OnPendingThreadHandler()
 
 		if ( !filename.empty() ) {
 			bool addItem = true;
-			if ( ( Type::All == GetType() ) || ( Type::Favourites == GetType() ) ) {
+			const Type type = GetType();
+			if ( ( Type::All == type ) || ( Type::Favourites == type ) || ( Type::Folder == type ) ) {
 				addItem = !ContainsFilename( filename );
 			}
 			if ( addItem ) {
 				MediaInfo mediaInfo( filename );
 				if ( m_Library.GetMediaInfo( mediaInfo ) ) {
 					int position = 0;
-					const Item item = AddItem( mediaInfo, position );
+					bool addedAsDuplicate = false;
+					const Item item = AddItem( mediaInfo, position, addedAsDuplicate );
 					VUPlayer* vuplayer = VUPlayer::Get();
 					if ( nullptr != vuplayer ) {
-						vuplayer->OnPlaylistItemAdded( this, item, position );
+						if ( addedAsDuplicate ) {
+							vuplayer->OnPlaylistItemUpdated( this, item );
+						} else {
+							vuplayer->OnPlaylistItemAdded( this, item, position );
+						}
 					}
 				}
 			}
@@ -277,13 +300,14 @@ void Playlist::StartPendingThread()
 	if ( nullptr != m_PendingThread ) {
 		if ( m_RestartPendingThread ) {
 			WaitForSingleObject( m_PendingThread, INFINITE );
-			CloseHandle( m_PendingThread );
-			m_PendingThread = nullptr;		
+			CloseHandles();
 			m_RestartPendingThread = false;
 		}
 	}
 
 	if ( nullptr == m_PendingThread ) {
+		m_PendingStopEvent = CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ );
+		m_PendingWakeEvent = CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ );
 		m_PendingThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, PendingThreadProc, reinterpret_cast<LPVOID>( this ), 0 /*flags*/, NULL /*threadId*/ );
 	}
 
@@ -295,8 +319,7 @@ void Playlist::StopPendingThread()
 	if ( nullptr != m_PendingThread ) {
 		SetEvent( m_PendingStopEvent );
 		WaitForSingleObject( m_PendingThread, INFINITE );
-		CloseHandle( m_PendingThread );
-		m_PendingThread = nullptr;
+		CloseHandles();
 	}
 }
 
@@ -346,13 +369,23 @@ void Playlist::RemoveItem( const MediaInfo& mediaInfo )
 	
 	for ( auto iter = m_Playlist.begin(); iter != m_Playlist.end(); iter++ ) {
 		if ( iter->Info.GetFilename() == mediaInfo.GetFilename() ) {
-			const Item item = *iter;
-			m_Playlist.erase( iter );
-			VUPlayer* vuplayer = VUPlayer::Get();
-			if ( nullptr != vuplayer ) {
-				vuplayer->OnPlaylistItemRemoved( this, item );
+			if ( iter->Duplicates.empty() ) {
+				const Item item = *iter;
+				m_Playlist.erase( iter );
+				VUPlayer* vuplayer = VUPlayer::Get();
+				if ( nullptr != vuplayer ) {
+					vuplayer->OnPlaylistItemRemoved( this, item );
+				}
+			} else {
+				iter->Info.SetFilename( iter->Duplicates.front() );
+				iter->Duplicates.pop_front();
 			}
 			break;
+		} else if ( !iter->Duplicates.empty() ) {
+			auto duplicate = std::find( iter->Duplicates.begin(), iter->Duplicates.end(), mediaInfo.GetFilename() );
+			if ( iter->Duplicates.end() != duplicate ) {
+				iter->Duplicates.erase( duplicate );
+			}
 		}
 	}
 }
@@ -496,13 +529,71 @@ bool Playlist::GreaterThan( const Item& item1, const Item& item2, const Column c
 bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 {
 	bool updated = false;
-	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	for ( auto& iter : m_Playlist ) {
-		if ( iter.Info.GetFilename() == mediaInfo.GetFilename() ) {
-			iter.Info = mediaInfo;
-			updated = true;
+	VUPlayer* vuplayer = VUPlayer::Get();
+	ItemList itemsToRemove;
+	std::set<MediaInfo> itemsToAdd;
+	{
+		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+		for ( auto& item : m_Playlist ) {
+			if ( item.Info.GetFilename() == mediaInfo.GetFilename() ) {
+				item.Info = mediaInfo;
+				updated = true;
+
+				if ( m_MergeDuplicates ) {
+					// Split out any duplicates from the top level item, and add them back later as new items.
+					for ( const auto& duplicate : item.Duplicates ) {
+						MediaInfo itemToAdd( duplicate );
+						m_Library.GetMediaInfo( itemToAdd, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
+						itemsToAdd.insert( itemToAdd );
+					}
+					item.Duplicates.clear();
+
+					// If the updated item now matches any other existing item, signal the item to be removed and added back later (as a duplicate).
+					for ( auto& duplicateItem : m_Playlist ) {
+						if ( ( item.Info.GetFilename() != duplicateItem.Info.GetFilename() ) && item.Info.IsDuplicate( duplicateItem.Info ) ) {
+							itemsToRemove.push_back( item );
+							itemsToAdd.insert( item.Info );
+							break;
+						}
+					}
+				}
+			} else if ( m_MergeDuplicates ) {
+				// If a duplicate of a top level item has been updated, split it out and add it back later as a new item.
+				for ( auto duplicate = item.Duplicates.begin(); item.Duplicates.end() != duplicate; duplicate++ ) {
+					if ( *duplicate == mediaInfo.GetFilename() ) {
+						MediaInfo itemToAdd( *duplicate );
+						m_Library.GetMediaInfo( itemToAdd, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
+						itemsToAdd.insert( itemToAdd );
+						item.Duplicates.erase( duplicate );
+						if ( nullptr != vuplayer ) {
+							vuplayer->OnPlaylistItemUpdated( this, item );
+						}
+						break;
+					}
+				}
+			}
 		}
 	}
+
+	if ( m_MergeDuplicates ) {
+		for ( const auto& itemToRemove : itemsToRemove ) {
+			RemoveItem( itemToRemove );
+			vuplayer->OnPlaylistItemRemoved( this, itemToRemove );
+		}
+		for ( const auto& itemToAdd : itemsToAdd ) {
+			int position = 0;
+			bool addedAsDuplicate = false;
+			const Item item = AddItem( itemToAdd, position, addedAsDuplicate );
+			if ( nullptr != vuplayer ) {
+				if ( addedAsDuplicate ) {
+					vuplayer->OnPlaylistItemUpdated( this, item );
+				} else {
+					vuplayer->OnPlaylistItemAdded( this, item, position );
+				}
+			}
+		}
+	}
+
 	if ( updated && ( Type::CDDA == GetType() ) ) {
 		for ( const auto& item : m_Playlist ) {
 			if ( !item.Info.GetAlbum().empty() ) {
@@ -569,4 +660,101 @@ bool Playlist::ContainsFilename( const std::wstring& filename )
 		++iter;
 	}
 	return containsFilename;
+}
+
+void Playlist::SetMergeDuplicates( const bool merge )
+{
+	if ( merge != m_MergeDuplicates ) {
+		m_MergeDuplicates = merge;
+		if ( m_MergeDuplicates ) {
+			MergeDuplicates();
+		} else {
+			SplitDuplicates();
+		}
+	}
+}
+
+void Playlist::MergeDuplicates()
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	VUPlayer* vuplayer = VUPlayer::Get();
+	ItemList itemsRemoved;
+	auto firstItem = m_Playlist.begin();
+	while ( m_Playlist.end() != firstItem ) {
+		auto secondItem = firstItem;
+		++secondItem;
+		bool itemModified = false;
+		while ( m_Playlist.end() != secondItem ) {
+			if ( firstItem->Info.IsDuplicate( secondItem->Info ) ) {
+				itemsRemoved.push_back( *secondItem );
+				const auto foundDuplicate = std::find( firstItem->Duplicates.begin(), firstItem->Duplicates.end(), secondItem->Info.GetFilename() );
+				if ( firstItem->Duplicates.end() == foundDuplicate ) {
+					firstItem->Duplicates.push_back( secondItem->Info.GetFilename() );
+				}
+				secondItem = m_Playlist.erase( secondItem );
+				itemModified = true;
+			} else {
+				++secondItem;
+			}
+		}
+		if ( itemModified && ( nullptr != vuplayer ) ) {
+			vuplayer->OnPlaylistItemUpdated( this, *firstItem );
+		}
+		++firstItem;
+	}
+	if ( nullptr != vuplayer ) {
+		for ( const auto& item : itemsRemoved ) {
+			vuplayer->OnPlaylistItemRemoved( this, item );
+		}
+	}
+}
+
+void Playlist::SplitDuplicates()
+{
+	VUPlayer* vuplayer = VUPlayer::Get();
+	std::set<MediaInfo> itemsToAdd;
+	{
+		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+		for ( auto& item : m_Playlist ) {
+			bool itemModified = false;
+			for ( const auto& duplicate : item.Duplicates ) {
+				MediaInfo mediaInfo( item.Info );
+				mediaInfo.SetFilename( duplicate );
+				itemsToAdd.insert( mediaInfo );
+				itemModified = true;
+			}
+			item.Duplicates.clear();
+			if ( itemModified && ( nullptr != vuplayer ) ) {
+				vuplayer->OnPlaylistItemUpdated( this, item );
+			}
+		}
+	}
+	for ( const auto& mediaInfo : itemsToAdd ) {
+		int position = 0;
+		bool addedAsDuplicate = false;
+		const Item item = AddItem( mediaInfo, position, addedAsDuplicate );
+		if ( nullptr != vuplayer ) {
+			if ( addedAsDuplicate ) {
+				vuplayer->OnPlaylistItemUpdated( this, item );
+			} else {
+				vuplayer->OnPlaylistItemAdded( this, item, position );
+			}
+		}
+	}
+}
+
+void Playlist::CloseHandles()
+{
+	if ( nullptr != m_PendingStopEvent ) {
+		CloseHandle( m_PendingStopEvent );
+		m_PendingStopEvent = nullptr;
+	}
+	if ( nullptr != m_PendingWakeEvent ) {
+		CloseHandle( m_PendingWakeEvent );
+		m_PendingWakeEvent = nullptr;
+	}
+	if ( nullptr != m_PendingThread ) {
+		CloseHandle( m_PendingThread );
+		m_PendingThread = nullptr;
+	}
 }

@@ -18,7 +18,8 @@ public:
 	// 'handlers' - audio format handlers.
 	// 'tracks' - tracks to convert.
 	// 'encoderHandler' - encoder handler to use.
-	Converter( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, const MediaInfo::List& tracks, const Handler::Ptr encoderHandler );
+	// 'joinFilename' - output filename, when joining tracks into a single file.
+	Converter( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename );
 
 	virtual ~Converter();
 
@@ -36,6 +37,9 @@ private:
 	// Closes the dialog.
 	void Close();
 
+	// Called when a conversion error has occurred.
+	void Error();
+
 	// Encode thread handler.
 	void EncodeHandler();
 
@@ -50,6 +54,9 @@ private:
 
 	// Writes tags to 'filename' based on the 'mediaInfo'.
 	void WriteTags( const std::wstring& filename, const MediaInfo& mediaInfo );
+
+	// Returns a decoder for the 'item', or nullptr if a decoder could not be opened.
+	Decoder::Ptr OpenDecoder( const Playlist::Item& item ) const;
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
@@ -67,7 +74,7 @@ private:
 	Handlers& m_Handlers;
 
 	// Tracks to convert.
-	const MediaInfo::List m_Tracks;
+	const Playlist::ItemList m_Tracks;
 
 	// Cancel event handle.
 	HANDLE m_CancelEvent;
@@ -98,4 +105,7 @@ private:
 
 	// The encoder settings to use.
 	std::string m_EncoderSettings;
+
+	// The output filename, when joining tracks into a single file.
+	std::wstring m_JoinFilename;
 };

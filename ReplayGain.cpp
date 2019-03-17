@@ -30,12 +30,12 @@ ReplayGain::~ReplayGain()
 	Stop();
 }
 
-void ReplayGain::Calculate( const MediaInfo::List& mediaList )
+void ReplayGain::Calculate( const Playlist::ItemList& items )
 {
-	if ( !mediaList.empty() ) {
+	if ( !items.empty() ) {
 		std::lock_guard<std::mutex> lock( m_Mutex );
-		for ( const auto& mediaInfo : mediaList ) {
-			AddPending( mediaInfo );
+		for ( const auto& item : items ) {
+			AddPending( item );
 		}
 		SetEvent( m_WakeEvent );
 	}
@@ -55,26 +55,28 @@ void ReplayGain::Stop()
 	}
 }
 
-void ReplayGain::AddPending( const MediaInfo& mediaInfo )
+void ReplayGain::AddPending( const Playlist::Item& item )
 {
-	const long channels = mediaInfo.GetChannels();
-	const long samplerate = mediaInfo.GetSampleRate();
-	const std::wstring& album = mediaInfo.GetAlbum();
+	const long channels = item.Info.GetChannels();
+	const long samplerate = item.Info.GetSampleRate();
+	const std::wstring& album = item.Info.GetAlbum();
 	const AlbumKey albumKey = { channels, samplerate, album };
 	auto albumIter = m_AlbumQueue.find( albumKey );
 	if ( m_AlbumQueue.end() == albumIter ) {
 		if ( ( 1 == channels ) || ( 2 == channels ) ) {
-			albumIter = m_AlbumQueue.insert( AlbumMap::value_type( albumKey, MediaInfo::List() ) ).first;
+			albumIter = m_AlbumQueue.insert( AlbumMap::value_type( albumKey, Playlist::ItemList() ) ).first;
 		}
 	}
 	if ( m_AlbumQueue.end() != albumIter ) {
 		bool addTrack = true;
-		MediaInfo::List& trackList = albumIter->second;
-		for ( auto trackIter = trackList.begin(); addTrack && ( trackList.end() != trackIter ); trackIter++ ) {
-			addTrack = ( mediaInfo.GetFilename() != trackIter->GetFilename() );
+		Playlist::ItemList& itemList = albumIter->second;
+		for ( auto itemIter = itemList.begin(); addTrack && ( itemList.end() != itemIter ); itemIter++ ) {
+			addTrack = ( item.Info.GetFilename() != itemIter->Info.GetFilename() );
 		}
-		trackList.push_back( mediaInfo );
-		++m_PendingCount;
+		if ( addTrack ) {
+			itemList.push_back( item );
+			++m_PendingCount;
+		}
 	}
 }
 
@@ -83,7 +85,7 @@ void ReplayGain::Handler()
 	HANDLE eventHandles[ 2 ] = { m_StopEvent, m_WakeEvent };
 	while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
 		AlbumKey albumKey = {};
-		MediaInfo::List mediaList;
+		Playlist::ItemList itemList;
 		{
 			std::lock_guard<std::mutex> lock( m_Mutex );
 			const auto iter = m_AlbumQueue.begin();
@@ -91,12 +93,12 @@ void ReplayGain::Handler()
 				ResetEvent( m_WakeEvent );
 			} else {
 				albumKey = iter->first;
-				mediaList = iter->second;
+				itemList = iter->second;
 				m_AlbumQueue.erase( iter );
 			}
 		}
 
-		if ( !mediaList.empty() ) {
+		if ( !itemList.empty() ) {
 			const long channels = std::get< 0 >( albumKey );
 			const long samplerate = std::get< 1 >( albumKey );
 			const std::wstring& album = std::get< 2 >( albumKey );
@@ -109,8 +111,8 @@ void ReplayGain::Handler()
 				float* rightSamples = ( 1 == channels ) ? nullptr : new float[ sampleSize ];
 				float albumPeak = 0;
 
-				for ( auto mediaInfo = mediaList.begin(); ( mediaList.end() != mediaInfo ) && CanContinue(); mediaInfo++ ) {
-					Decoder::Ptr decoder = m_Handlers.OpenDecoder( mediaInfo->GetFilename() );
+				for ( auto item = itemList.begin(); ( itemList.end() != item ) && CanContinue(); item++ ) {
+					Decoder::Ptr decoder = OpenDecoder( *item );
 					if ( decoder ) {
 						float trackPeak = 0;
 						long samplesRead = decoder->Read( buffer, sampleSize );
@@ -141,11 +143,18 @@ void ReplayGain::Handler()
 								if ( trackPeak > albumPeak ) {
 									albumPeak = trackPeak;
 								}
-								if ( ( trackGain != mediaInfo->GetGainTrack() ) || ( trackPeak != mediaInfo->GetPeakTrack() ) ) {
-									MediaInfo previousMediaInfo( *mediaInfo );
-									mediaInfo->SetGainTrack( trackGain );
-									mediaInfo->SetPeakTrack( trackPeak );
-									m_Library.UpdateMediaTags( previousMediaInfo, *mediaInfo );
+								if ( ( trackGain != item->Info.GetGainTrack() ) || ( trackPeak != item->Info.GetPeakTrack() ) ) {
+									MediaInfo previousMediaInfo( item->Info );
+									item->Info.SetGainTrack( trackGain );
+									item->Info.SetPeakTrack( trackPeak );
+									m_Library.UpdateMediaTags( previousMediaInfo, item->Info );
+
+									for ( const auto& duplicate : item->Duplicates ) {
+										previousMediaInfo.SetFilename( duplicate );
+										MediaInfo updatedMediaInfo( item->Info );
+										updatedMediaInfo.SetFilename( duplicate );
+										m_Library.UpdateMediaTags( previousMediaInfo, updatedMediaInfo );
+									}
 								}
 							}
 							--m_PendingCount;
@@ -156,12 +165,19 @@ void ReplayGain::Handler()
 				if ( CanContinue() && !album.empty() ) {
 					const float albumGain = m_GainAnalysis.GetAlbumGain();
 					if ( ( GAIN_NOT_ENOUGH_SAMPLES != albumGain ) ) {
-						for ( auto mediaInfo = mediaList.begin(); ( mediaList.end() != mediaInfo ) && CanContinue(); mediaInfo++ ) {
-							if ( ( albumGain != mediaInfo->GetGainAlbum() ) || ( albumPeak != mediaInfo->GetPeakAlbum() ) ) {
-								MediaInfo previousMediaInfo( *mediaInfo );
-								mediaInfo->SetGainAlbum( albumGain );
-								mediaInfo->SetPeakAlbum( albumPeak );
-								m_Library.UpdateMediaTags( previousMediaInfo, *mediaInfo );
+						for ( auto item = itemList.begin(); ( itemList.end() != item ) && CanContinue(); item++ ) {
+							if ( ( albumGain != item->Info.GetGainAlbum() ) || ( albumPeak != item->Info.GetPeakAlbum() ) ) {
+								MediaInfo previousMediaInfo( item->Info );
+								item->Info.SetGainAlbum( albumGain );
+								item->Info.SetPeakAlbum( albumPeak );
+								m_Library.UpdateMediaTags( previousMediaInfo, item->Info );
+
+								for ( const auto& duplicate : item->Duplicates ) {
+									previousMediaInfo.SetFilename( duplicate );
+									MediaInfo updatedMediaInfo( item->Info );
+									updatedMediaInfo.SetFilename( duplicate );
+									m_Library.UpdateMediaTags( previousMediaInfo, updatedMediaInfo );
+								}
 							}
 						}
 					}
@@ -184,4 +200,17 @@ bool ReplayGain::CanContinue() const
 int ReplayGain::GetPendingCount() const
 {
 	return m_PendingCount.load();
+}
+
+Decoder::Ptr ReplayGain::OpenDecoder( const Playlist::Item& item ) const
+{
+	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
+	if ( !decoder ) {
+		auto duplicate = item.Duplicates.begin();
+		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
+			decoder = m_Handlers.OpenDecoder( *duplicate );
+			++duplicate;
+		}
+	}
+	return decoder;
 }

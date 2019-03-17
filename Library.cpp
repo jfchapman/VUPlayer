@@ -240,8 +240,9 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 						long long filesize = 0;
 						GetFileInfo( info.GetFilename(), filetime, filesize );
 						success = ( info.GetFiletime() == filetime ) && ( info.GetFilesize() == filesize );
-					} else {
-						success = true;
+						if ( !success ) {
+							info = mediaInfo;
+						}
 					}
 				}
 

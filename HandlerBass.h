@@ -3,6 +3,7 @@
 #include "Handler.h"
 
 #include "bass.h"
+#include "bassdsd.h"
 #include "bassmidi.h"
 
 // Bass handler
@@ -71,6 +72,9 @@ private:
 
 	// BASS midi plugin.
 	HPLUGIN m_BassMidi;
+
+	// BASS DSD plugin.
+	HPLUGIN m_BassDSD;
 
 	// BASS midi soundfont.
 	HSOUNDFONT m_BassMidiSoundFont;

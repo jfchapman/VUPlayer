@@ -33,7 +33,10 @@ L"Contemporary Christian",L"Christian Rock",L"Merengue",L"Salsa",L"Thrash Metal"
 };
 
 // Maximum size when creating a PNG from pasted images.
-static const int sMaxPastedImageBytes = 0x1000000;
+static const int s_MaxPastedImageBytes = 0x1000000;
+
+// Initial folder setting for choosing artwork.
+static const std::string s_ArtworkFolderSetting = "Artwork";
 
 // Message ID for updating the progress bar when saving information.
 // 'wParam' - percent progress.
@@ -194,9 +197,10 @@ DWORD WINAPI DlgTrackInfo::SaveThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-DlgTrackInfo::DlgTrackInfo( HINSTANCE instance, HWND parent, Library& library, const Playlist::ItemList& items ) :
+DlgTrackInfo::DlgTrackInfo( HINSTANCE instance, HWND parent, Library& library, Settings& settings, const Playlist::ItemList& items ) :
 	m_hInst( instance ),
 	m_Library( library ),
+	m_Settings( settings ),
 	m_Items( items ),
 	m_Bitmap(),
 	m_InitialInfo(),
@@ -228,7 +232,7 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		}
 	}
 
-	if ( m_Items.size() > 1 ) {
+	if ( ( m_Items.size() > 1 ) || ( !m_Items.empty() && !m_Items.front().Duplicates.empty() ) ) {
 		const int bufSize = 64;
 		WCHAR buffer[ bufSize ] = {};
 		LoadString( m_hInst, IDS_MULTIPLE_TRACKS, buffer, bufSize );
@@ -291,6 +295,7 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		m_InitialInfo.SetGenre( genre );
 		m_InitialInfo.SetYear( year );
 		m_InitialInfo.SetTrack( track );
+		m_InitialInfo.SetComment( comment );
 		m_InitialInfo.SetArtworkID( artworkID );
 	} else if ( !m_Items.empty() ) {
 		m_InitialInfo = m_Items.begin()->Info;
@@ -431,6 +436,8 @@ void DlgTrackInfo::OnChooseArtwork( HWND hwnd )
 	filterStr.push_back( 0 );
 	filterStr.push_back( 0 );
 
+	const std::wstring initialFolder = m_Settings.GetLastFolder( s_ArtworkFolderSetting );
+
 	WCHAR buffer[ MAX_PATH ] = {};
 	OPENFILENAME ofn = {};
 	ofn.lStructSize = sizeof( OPENFILENAME );
@@ -441,6 +448,7 @@ void DlgTrackInfo::OnChooseArtwork( HWND hwnd )
 	ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
 	ofn.lpstrFile = buffer;
 	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
 	if ( FALSE != GetOpenFileName( &ofn ) ) {
 		const std::wstring filename = ofn.lpstrFile;
 		try {
@@ -466,6 +474,7 @@ void DlgTrackInfo::OnChooseArtwork( HWND hwnd )
 		} catch ( ... ) {
 		}
 
+		m_Settings.SetLastFolder( s_ArtworkFolderSetting, filename.substr( 0, ofn.nFileOffset ) );
 		m_Bitmap = GetArtwork( m_ChosenArtworkImage );
 		InvalidateRect( GetDlgItem( hwnd, IDC_TRACKINFO_ARTWORK ), NULL /*rect*/, TRUE /*erase*/ );
 		EnableControls( hwnd );
@@ -521,6 +530,8 @@ void DlgTrackInfo::OnExportArtwork( HWND hwnd )
 				}
 			}
 
+			const std::wstring initialFolder = m_Settings.GetLastFolder( s_ArtworkFolderSetting );
+
 			OPENFILENAME ofn = {};
 			ofn.lStructSize = sizeof( OPENFILENAME );
 			ofn.hwndOwner = hwnd;
@@ -529,6 +540,7 @@ void DlgTrackInfo::OnExportArtwork( HWND hwnd )
 			ofn.lpstrDefExt = fileExt.c_str();
 			ofn.lpstrFile = buffer;
 			ofn.nMaxFile = MAX_PATH;
+			ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
 			if ( FALSE != GetSaveFileName( &ofn ) ) {
 				const std::wstring filename = ofn.lpstrFile;
 				try {
@@ -541,6 +553,7 @@ void DlgTrackInfo::OnExportArtwork( HWND hwnd )
 					}
 				} catch ( ... ) {
 				}
+				m_Settings.SetLastFolder( s_ArtworkFolderSetting, filename.substr( 0, ofn.nFileOffset ) );
 			}
 		}
 	}
@@ -652,7 +665,7 @@ void DlgTrackInfo::OnPasteArtwork( HWND hwnd )
 					if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
 						if ( Gdiplus::Ok == bitmap.Save( stream, &encoderClsid ) ) {
 							STATSTG stats = {};
-							if ( SUCCEEDED( stream->Stat( &stats, STATFLAG_NONAME ) ) && ( stats.cbSize.QuadPart > 0 ) && ( stats.cbSize.QuadPart < sMaxPastedImageBytes ) ) {
+							if ( SUCCEEDED( stream->Stat( &stats, STATFLAG_NONAME ) ) && ( stats.cbSize.QuadPart > 0 ) && ( stats.cbSize.QuadPart < s_MaxPastedImageBytes ) ) {
 								if ( SUCCEEDED( stream->Seek( { 0 }, STREAM_SEEK_SET, NULL /*newPosition*/ ) ) ) {
 									const ULONG pngBufferSize = static_cast<ULONG>( stats.cbSize.QuadPart );
 									std::vector<BYTE> pngBuffer( pngBufferSize );
@@ -705,8 +718,9 @@ void DlgTrackInfo::OnSave( HWND hwnd )
 
 	// Determine which items need their information updating.
 	for ( const auto& iter : m_Items ) {
-		MediaInfo info = iter.Info;
-		MediaInfo previousInfo( info );
+		Playlist::Item item( iter );
+		Playlist::Item previousItem( item );
+		MediaInfo& info = item.Info;
 		bool updateItem = false;
 		if ( ( m_ClosingInfo.GetArtist() != m_InitialInfo.GetArtist() ) && ( info.GetArtist() != m_ClosingInfo.GetArtist() ) ) {
 			info.SetArtist( m_ClosingInfo.GetArtist() );
@@ -741,7 +755,7 @@ void DlgTrackInfo::OnSave( HWND hwnd )
 			updateItem = true;
 		}
 		if ( updateItem ) {
-			m_UpdateInfo.push_back( std::make_pair( previousInfo, info ) );
+			m_UpdateInfo.push_back( std::make_pair( previousItem, item ) );
 		}
 	}
 
@@ -818,7 +832,14 @@ void DlgTrackInfo::SaveThreadHandler( HWND hwnd )
 	const int totalItems = static_cast<int>( m_UpdateInfo.size() );
 	int savedItems = 0;
 	for ( const auto& iter : m_UpdateInfo ) {
-		m_Library.UpdateMediaTags( iter.first, iter.second );
+		MediaInfo previousMediaInfo = iter.first.Info;
+		MediaInfo updatedMediaInfo = iter.second.Info;
+		m_Library.UpdateMediaTags( previousMediaInfo, updatedMediaInfo );
+		for ( const auto& duplicate : iter.first.Duplicates ) {
+			previousMediaInfo.SetFilename( duplicate );
+			updatedMediaInfo.SetFilename( duplicate );
+			m_Library.UpdateMediaTags( previousMediaInfo, updatedMediaInfo );
+		}
 		const int percentDone = ++savedItems * 100 / totalItems;
 		PostMessage( hwnd, MSG_UPDATEPROGRESS, percentDone, 0 /*lParam*/ );
 		if ( WAIT_OBJECT_0 == WaitForSingleObject( m_CancelSaveEvent, 0 ) ) {

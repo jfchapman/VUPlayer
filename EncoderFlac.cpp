@@ -58,7 +58,7 @@ bool EncoderFlac::Write( float* samples, const long sampleCount )
 	std::vector<FLAC__int32> buffer( bufferSize );
 	for ( long sampleIndex = 0; sampleIndex < bufferSize; sampleIndex++ ) {
 		buffer[ sampleIndex ] = static_cast<FLAC__int32>( 
-			( 16 == bps ) ? FloatTo16( samples[ sampleIndex ] ) : ( ( 24 == bps ) ? FloatTo24( samples[ sampleIndex ] ) : FloatTo8( samples[ sampleIndex ] ) ) );
+			( 16 == bps ) ? FloatTo16( samples[ sampleIndex ] ) : ( ( 24 == bps ) ? FloatTo24( samples[ sampleIndex ] ) : FloatToSigned8( samples[ sampleIndex ] ) ) );
 	}
 	const bool success = process_interleaved( &buffer[ 0 ], sampleCount );
 	return success;

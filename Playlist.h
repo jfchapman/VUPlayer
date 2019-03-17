@@ -36,6 +36,11 @@ public:
 	// 'type' - playlist type
 	Playlist( Library& library, const std::string& id, const Type& type );
 
+	// 'library' - media library
+	// 'type' - playlist type
+	// 'mergeDuplicates' - whether to merge duplicate items into a single playlist entry
+	Playlist( Library& library, const Type& type, const bool mergeDuplicates );
+
 	virtual ~Playlist();
 
 	// Column type.
@@ -66,6 +71,7 @@ public:
 	struct Item {
 		long ID;
 		MediaInfo Info;
+		std::list<std::wstring> Duplicates;
 	};
 
 	// List of playlist items.
@@ -128,7 +134,8 @@ public:
 
 	// Adds 'mediaInfo' to the playlist, returning the added item.
 	// 'position' - out, 0-based index of the added item position.
-	Item AddItem( const MediaInfo& mediaInfo, int& position );
+	// 'addedAsDuplicate' - out, whether the item was added as a duplicate of an existing item (which is returned).
+	Item AddItem( const MediaInfo& mediaInfo, int& position, bool& addedAsDuplicate );
 
 	// Adds 'filename' to the list of pending files to be added to the playlist.
 	// 'startPendingThread' - whether to start the background thread to process pending files.
@@ -182,6 +189,9 @@ public:
 	// Returns the playlist type.
 	Type GetType() const;
 
+	// Sets whether duplicate playlist items should be merged.
+	void SetMergeDuplicates( const bool merge );
+
 private:
 	// Pending file thread proc.
 	static DWORD WINAPI PendingThreadProc( LPVOID lpParam );
@@ -200,6 +210,15 @@ private:
 
 	// Returns whether the playlist contains 'filename'.
 	bool ContainsFilename( const std::wstring& filename );
+
+	// Merges any duplicate items.
+	void MergeDuplicates();
+
+	// Splits out any duplicates into separate items.
+	void SplitDuplicates();
+
+	// Closes the thread and event handles.
+	void CloseHandles();
 
 	// Playlist ID.
 	const std::string m_ID;
@@ -242,6 +261,9 @@ private:
 
 	// Playlist type.
 	Type m_Type;
+
+	// Whether duplicate items should be merged into a single playlist entry.
+	bool m_MergeDuplicates;
 };
 
 // A list of playlists.

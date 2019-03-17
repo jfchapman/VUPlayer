@@ -83,8 +83,8 @@ INT_PTR CALLBACK Gracenote::MatchDialogProc( HWND hwnd, UINT message, WPARAM wPa
 				case IDCANCEL : {
 					int selection = -1;
 					if ( IDOK == LOWORD( wParam ) ) {
-						Gracenote* gracenote = reinterpret_cast<Gracenote*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
-						if ( nullptr != gracenote ) {
+						MatchInfo* matchInfo = reinterpret_cast<MatchInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
+						if ( nullptr != matchInfo ) {
 							const HWND hwndList = GetDlgItem( hwnd, IDC_GRACENOTE_MATCHES );
 							if ( nullptr != hwndList ) {
 								LVITEMINDEX itemIndex = {};
@@ -125,6 +125,30 @@ INT_PTR CALLBACK Gracenote::MatchDialogProc( HWND hwnd, UINT message, WPARAM wPa
 								if ( TRUE == okEnabled ) {
 									EnableWindow( hwndOK, FALSE );
 								}
+							}
+						}
+					} else if ( LVN_GETINFOTIP == nmhdr->code ) {
+						LPNMLVGETINFOTIP nmInfoTip = reinterpret_cast<LPNMLVGETINFOTIP>( lParam );
+						MatchInfo* matchInfo = reinterpret_cast<MatchInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
+						if ( ( nullptr != nmInfoTip ) && ( nullptr != matchInfo ) && ( static_cast<size_t>( nmInfoTip->iItem ) < matchInfo->m_Result.Albums.size() ) ) {
+							std::wstring tooltip;
+							const Album::TrackMap& tracks = matchInfo->m_Result.Albums.at( nmInfoTip->iItem ).Tracks;
+							for ( const auto& track : tracks ) {
+								if ( !track.second.Title.empty() ) {
+									if ( !tooltip.empty() ) {
+										tooltip += L"\r\n";
+									}
+									tooltip += std::to_wstring( track.first );
+									tooltip += '\t';
+									tooltip += track.second.Title;
+								}
+							}
+							if ( !tooltip.empty() ) {
+								if ( tooltip.size() >= static_cast<size_t>( nmInfoTip->cchTextMax ) ) {
+									tooltip = tooltip.substr( 0 /*offset*/, nmInfoTip->cchTextMax - 4 );
+									tooltip += L"...";
+								}
+								wcscpy_s( nmInfoTip->pszText, nmInfoTip->cchTextMax, tooltip.c_str() );
 							}
 						}
 					}
@@ -338,6 +362,8 @@ void Gracenote::OnInitMatchDialog( const HWND hwnd, const Result& result )
 
 	const HWND hwndList = GetDlgItem( hwnd, IDC_GRACENOTE_MATCHES );
 	if ( nullptr != hwndList ) {
+		ListView_SetExtendedListViewStyleEx( hwndList, LVS_EX_INFOTIP, LVS_EX_INFOTIP );
+
 		// Create the image list.
 		const int iconSize = static_cast<int>( s_MatchDialogIconSize * GetDPIScaling() );
 		HIMAGELIST imageList = ImageList_Create( iconSize, iconSize, ILC_COLOR32, 0 /*initial*/, 1 /*grow*/ );

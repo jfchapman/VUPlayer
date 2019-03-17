@@ -19,7 +19,8 @@ std::wstring HandlerPCM::GetDescription() const
 
 std::set<std::wstring> HandlerPCM::GetSupportedFileExtensions() const
 {
-	return std::set<std::wstring>();
+	const std::set<std::wstring> fileTypes = { L"wav" };
+	return fileTypes;
 }
 
 bool HandlerPCM::GetTags( const std::wstring& /*filename*/, Tags& /*tags*/ ) const

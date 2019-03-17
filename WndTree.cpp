@@ -23,6 +23,9 @@ static const std::list<KNOWNFOLDERID> s_UserFolders = { FOLDERID_Desktop, FOLDER
 // Playlist ID for the scratch list.
 static const std::string s_ScratchListID = "F641E764-3385-428A-9F39-88E928234E17";
 
+// Initial folder setting for choosing playlists.
+static const std::string s_PlaylistFolderSetting = "Playlist";
+
 // Message ID for adding a folder to the computer node.
 // 'wParam' : HTREEITEM - the parent item under which to add the folder.
 // 'lParam' : std::wstring* - folder name, to be deleted by the message handler.
@@ -165,7 +168,8 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_FolderPlaylistMapMutex(),
 	m_FolderMonitor( parent ),
 	m_ScratchListUpdateThread( nullptr ),
-	m_ScratchListUpdateStopEvent( CreateEvent( nullptr /*securityAttributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) )
+	m_ScratchListUpdateStopEvent( CreateEvent( nullptr /*securityAttributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
+	m_MergeDuplicates( settings.GetMergeDuplicates() )
 {
 	const DWORD exStyle = 0;
 	LPCTSTR className = WC_TREEVIEW;
@@ -588,7 +592,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			if ( m_ArtistMap.end() != artistItem ) {
 				playlist = artistItem->second;
 			} else {
-				playlist = std::make_shared<Playlist::Ptr::element_type>( m_Library, type );
+				playlist = std::make_shared<Playlist::Ptr::element_type>( m_Library, type, m_MergeDuplicates );
 				m_ArtistMap.insert( PlaylistMap::value_type( node, playlist ) );
 
 				const std::wstring artist = GetItemLabel( node );
@@ -604,7 +608,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			if ( m_AlbumMap.end() != albumItem ) {
 				playlist = albumItem->second;
 			} else {
-				playlist = std::make_shared<Playlist::Ptr::element_type>( m_Library, type );
+				playlist = std::make_shared<Playlist::Ptr::element_type>( m_Library, type, m_MergeDuplicates );
 				m_AlbumMap.insert( PlaylistMap::value_type( node, playlist ) );
 
 				MediaInfo::List mediaList;
@@ -630,7 +634,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			if ( m_GenreMap.end() != genreItem ) {
 				playlist = genreItem->second;
 			} else {
-				playlist = std::make_shared<Playlist::Ptr::element_type>( m_Library, type );
+				playlist = std::make_shared<Playlist::Ptr::element_type>( m_Library, type, m_MergeDuplicates );
 				m_GenreMap.insert( PlaylistMap::value_type( node, playlist ) );
 
 				const std::wstring genre = GetItemLabel( node );
@@ -646,7 +650,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			if ( m_YearMap.end() != yearItem ) {
 				playlist = yearItem->second;
 			} else {
-				playlist = std::make_shared<Playlist::Ptr::element_type>( m_Library, type );
+				playlist = std::make_shared<Playlist::Ptr::element_type>( m_Library, type, m_MergeDuplicates );
 				m_YearMap.insert( PlaylistMap::value_type( node, playlist ) );
 
 				try {
@@ -841,6 +845,8 @@ void WndTree::ImportPlaylist( const std::wstring& filename )
 		filterStr.push_back( 0 );
 		filterStr.push_back( 0 );
 
+		const std::wstring initialFolder = m_Settings.GetLastFolder( s_PlaylistFolderSetting );
+
 		WCHAR buffer[ MAX_PATH ] = {};
 		OPENFILENAME ofn = {};
 		ofn.lStructSize = sizeof( OPENFILENAME );
@@ -851,10 +857,13 @@ void WndTree::ImportPlaylist( const std::wstring& filename )
 		ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
 		ofn.lpstrFile = buffer;
 		ofn.nMaxFile = MAX_PATH;
+		ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
 		if ( FALSE != GetOpenFileName( &ofn ) ) {
 			playlistFilename = ofn.lpstrFile;
+			m_Settings.SetLastFolder( s_PlaylistFolderSetting, playlistFilename.substr( 0, ofn.nFileOffset ) );
 		}
 	}
+
 	if ( !playlistFilename.empty() ) {
 		const std::wstring fileExt = GetFileExtension( playlistFilename );
 		Playlist::Ptr playlist;
@@ -1022,6 +1031,8 @@ void WndTree::ExportSelectedPlaylist()
 			}
 		}
 
+		const std::wstring initialFolder = m_Settings.GetLastFolder( s_PlaylistFolderSetting );
+
 		OPENFILENAME ofn = {};
 		ofn.lStructSize = sizeof( OPENFILENAME );
 		ofn.hwndOwner = m_hWnd;
@@ -1031,9 +1042,11 @@ void WndTree::ExportSelectedPlaylist()
 		ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER;
 		ofn.lpstrFile = buffer;
 		ofn.nMaxFile = MAX_PATH;
+		ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
 		if ( FALSE != GetSaveFileName( &ofn ) ) {
 			const std::wstring fileExt = ( 2 == ofn.nFilterIndex ) ? L"pls" : L"m3u";
 			std::wstring filename = ofn.lpstrFile;
+			m_Settings.SetLastFolder( s_PlaylistFolderSetting, filename.substr( 0, ofn.nFileOffset ) );
 			if ( !filename.empty() ) {
 				const size_t delimiter = filename.find_last_of( '.' );
 				if ( std::wstring::npos == delimiter ) {
@@ -1863,10 +1876,15 @@ void WndTree::UpdateArtists( const MediaInfo& previousMediaInfo, const MediaInfo
 							Playlist::Ptr playlist = artistPlaylist->second;
 							if ( playlist ) {
 								int position = 0;
-								const Playlist::Item playlistItem = playlist->AddItem( updatedMediaInfo, position );
+								bool addedAsDuplicate = false;
+								const Playlist::Item playlistItem = playlist->AddItem( updatedMediaInfo, position, addedAsDuplicate );
 								VUPlayer* vuplayer = VUPlayer::Get();
 								if ( nullptr != vuplayer ) {
-									vuplayer->OnPlaylistItemAdded( playlist.get(), playlistItem, position );
+									if ( addedAsDuplicate ) {
+										vuplayer->OnPlaylistItemUpdated( playlist.get(), playlistItem );
+									} else {
+										vuplayer->OnPlaylistItemAdded( playlist.get(), playlistItem, position );
+									}
 								}
 								updatedPlaylists.insert( playlist );
 							}
@@ -1883,10 +1901,15 @@ void WndTree::UpdateArtists( const MediaInfo& previousMediaInfo, const MediaInfo
 										Playlist::Ptr playlist = albumPlaylist->second;
 										if ( playlist ) {
 											int position = 0;
-											const Playlist::Item playlistItem = playlist->AddItem( updatedMediaInfo, position );
+											bool addedAsDuplicate = false;
+											const Playlist::Item playlistItem = playlist->AddItem( updatedMediaInfo, position, addedAsDuplicate );
 											VUPlayer* vuplayer = VUPlayer::Get();
 											if ( nullptr != vuplayer ) {
-												vuplayer->OnPlaylistItemAdded( playlist.get(), playlistItem, position );
+												if ( addedAsDuplicate ) {
+													vuplayer->OnPlaylistItemUpdated( playlist.get(), playlistItem );
+												} else {
+													vuplayer->OnPlaylistItemAdded( playlist.get(), playlistItem, position );
+												}
 											}
 											updatedPlaylists.insert( playlist );
 										}
@@ -1952,10 +1975,15 @@ void WndTree::UpdateAlbums( const HTREEITEM parentItem, const MediaInfo& previou
 						Playlist::Ptr playlist = albumPlaylist->second;
 						if ( playlist ) {
 							int position = 0;
-							const Playlist::Item playlistItem = playlist->AddItem( updatedMediaInfo, position );
+							bool addedAsDuplicate = false;
+							const Playlist::Item playlistItem = playlist->AddItem( updatedMediaInfo, position, addedAsDuplicate );
 							VUPlayer* vuplayer = VUPlayer::Get();
 							if ( nullptr != vuplayer ) {
-								vuplayer->OnPlaylistItemAdded( playlist.get(), playlistItem, position );
+								if ( addedAsDuplicate ) {
+									vuplayer->OnPlaylistItemUpdated( playlist.get(), playlistItem );
+								} else {
+									vuplayer->OnPlaylistItemAdded( playlist.get(), playlistItem, position );
+								}
 							}
 							updatedPlaylists.insert( playlist );
 						}
@@ -2007,10 +2035,15 @@ void WndTree::UpdateGenres( const MediaInfo& previousMediaInfo, const MediaInfo&
 						Playlist::Ptr playlist = genrePlaylist->second;
 						if ( playlist ) {
 							int position = 0;
-							const Playlist::Item playlistItem = playlist->AddItem( updatedMediaInfo, position );
+							bool addedAsDuplicate = false;
+							const Playlist::Item playlistItem = playlist->AddItem( updatedMediaInfo, position, addedAsDuplicate );
 							VUPlayer* vuplayer = VUPlayer::Get();
 							if ( nullptr != vuplayer ) {
-								vuplayer->OnPlaylistItemAdded( playlist.get(), playlistItem, position );
+								if ( addedAsDuplicate ) {
+									vuplayer->OnPlaylistItemUpdated( playlist.get(), playlistItem );
+								} else {
+									vuplayer->OnPlaylistItemAdded( playlist.get(), playlistItem, position );
+								}
 							}
 							updatedPlaylists.insert( playlist );
 						}
@@ -2064,10 +2097,15 @@ void WndTree::UpdateYears( const MediaInfo& previousMediaInfo, const MediaInfo& 
 						Playlist::Ptr playlist = yearPlaylist->second;
 						if ( playlist ) {
 							int position = 0;
-							const Playlist::Item playlistItem = playlist->AddItem( updatedMediaInfo, position );
+							bool addedAsDuplicate = false;
+							const Playlist::Item playlistItem = playlist->AddItem( updatedMediaInfo, position, addedAsDuplicate );
 							VUPlayer* vuplayer = VUPlayer::Get();
 							if ( nullptr != vuplayer ) {
-								vuplayer->OnPlaylistItemAdded( playlist.get(), playlistItem, position );
+								if ( addedAsDuplicate ) {
+									vuplayer->OnPlaylistItemUpdated( playlist.get(), playlistItem );
+								} else {
+									vuplayer->OnPlaylistItemAdded( playlist.get(), playlistItem, position );
+								}
 							}
 							updatedPlaylists.insert( playlist );
 						}
@@ -2946,7 +2984,23 @@ void WndTree::GetAllChildren( const HTREEITEM item, std::set<HTREEITEM>& childre
 
 HTREEITEM WndTree::OnFolderAdd( const HTREEITEM parent, const std::wstring& folder )
 {
-	const HTREEITEM addedItem = AddItem( parent, folder, Playlist::Type::Folder );
+	AddSubFolders( parent );
+
+	std::set<HTREEITEM> childItems;
+	GetAllChildren( parent, childItems );
+	HTREEITEM addedItem = nullptr;
+	auto childItem = childItems.begin();
+	while ( ( nullptr == addedItem ) && ( childItems.end() != childItem ) ) {
+		if ( folder == GetItemLabel( *childItem ) ) {
+			addedItem = *childItem;
+		}
+		++childItem;
+	}
+
+	if ( nullptr == addedItem ) {
+		addedItem = AddItem( parent, folder, Playlist::Type::Folder );
+	}
+
 	if ( nullptr != addedItem ) {
 		AddSubFolders( addedItem );
 	}
@@ -3163,5 +3217,31 @@ void WndTree::StopScratchListUpdateThread()
 		WaitForSingleObject( m_ScratchListUpdateThread, INFINITE );
 		CloseHandle( m_ScratchListUpdateThread );
 		m_ScratchListUpdateThread = nullptr;
+	}
+}
+
+void WndTree::SetMergeDuplicates( const bool mergeDuplicates )
+{
+	if ( mergeDuplicates != m_MergeDuplicates ) {
+		m_MergeDuplicates = mergeDuplicates;
+		std::set<Playlist::Ptr> playlists;
+		for ( const auto& iter : m_ArtistMap ) {
+			playlists.insert( iter.second );
+		}
+		for ( const auto& iter : m_AlbumMap ) {
+			playlists.insert( iter.second );
+		}
+		for ( const auto& iter : m_GenreMap ) {
+			playlists.insert( iter.second );
+		}
+		for ( const auto& iter : m_YearMap ) {
+			playlists.insert( iter.second );
+		}
+		
+		for ( const auto& playlist : playlists ) {
+			if ( playlist ) {
+				playlist->SetMergeDuplicates( m_MergeDuplicates );
+			}
+		}
 	}
 }

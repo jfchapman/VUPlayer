@@ -64,7 +64,8 @@ void DlgConvertFilename::OnInitDialog( const HWND hwnd )
 	std::wstring folder;
 	std::wstring filename;
 	bool extractToLibrary = false;
-	m_Settings.GetExtractSettings( folder, filename, extractToLibrary );
+	bool extractJoin = false;
+	m_Settings.GetExtractSettings( folder, filename, extractToLibrary, extractJoin );
 	SetDlgItemText( m_hWnd, IDC_CONVERT_FILENAME_FORMAT, filename.c_str() );
 }
 
@@ -73,9 +74,10 @@ void DlgConvertFilename::OnDefault()
 	std::wstring folder;
 	std::wstring filename;
 	bool extractToLibrary = false;
-	m_Settings.GetExtractSettings( folder, filename, extractToLibrary );
-	m_Settings.SetExtractSettings( folder, std::wstring(), extractToLibrary );
-	m_Settings.GetExtractSettings( folder, filename, extractToLibrary );
+	bool extractJoin = false;
+	m_Settings.GetExtractSettings( folder, filename, extractToLibrary, extractJoin );
+	m_Settings.SetExtractSettings( folder, std::wstring(), extractToLibrary, extractJoin );
+	m_Settings.GetExtractSettings( folder, filename, extractToLibrary, extractJoin );
 	SetDlgItemText( m_hWnd, IDC_CONVERT_FILENAME_FORMAT, filename.c_str() );
 }
 
@@ -87,7 +89,8 @@ void DlgConvertFilename::OnClose( const bool ok )
 		std::wstring folder;
 		std::wstring filename;
 		bool extractToLibrary = false;
-		m_Settings.GetExtractSettings( folder, filename, extractToLibrary );
-		m_Settings.SetExtractSettings( folder, buffer, extractToLibrary );
+		bool extractJoin = false;
+		m_Settings.GetExtractSettings( folder, filename, extractToLibrary, extractJoin );
+		m_Settings.SetExtractSettings( folder, buffer, extractToLibrary, extractJoin );
 	}
 }

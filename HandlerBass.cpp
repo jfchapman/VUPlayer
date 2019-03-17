@@ -9,11 +9,12 @@
 #include <list>
 #include <sstream>
 
-std::set<std::wstring> HandlerBass::s_SupportedFileExtensions( { L"mod", L"s3m", L"xm", L"it", L"mtm", L"mo3", L"umx", L"mp3", L"ogg", L"wav", L"mp4", L"m4a", L"mid", L"midi" } );
+std::set<std::wstring> HandlerBass::s_SupportedFileExtensions( { L"mod", L"s3m", L"xm", L"it", L"mtm", L"mo3", L"umx", L"mp3", L"ogg", L"wav", L"mp4", L"m4a", L"mid", L"midi", L"dsd", L"dsf" } );
 
 HandlerBass::HandlerBass() :
 	Handler(),
 	m_BassMidi( BASS_PluginLoad( L"bassmidi.dll", BASS_UNICODE ) ),
+	m_BassDSD( BASS_PluginLoad( L"bassdsd.dll", BASS_UNICODE ) ),
 	m_BassMidiSoundFont( 0 ),
 	m_SoundFontFilename()
 {
@@ -28,6 +29,10 @@ HandlerBass::~HandlerBass()
 	if ( 0 != m_BassMidi ) {
 		BASS_PluginFree( m_BassMidi );
 		m_BassMidi = 0;
+	}
+	if ( 0 != m_BassDSD ) {
+		BASS_PluginFree( m_BassDSD );
+		m_BassDSD = 0;
 	}
 }
 
@@ -85,6 +90,17 @@ bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
 				const char* midiTags = BASS_ChannelGetTags( stream, BASS_TAG_MIDI_TRACK );
 				if ( ( nullptr != midiTags ) && ( strlen( midiTags ) > 0 ) ) {
 					tags.insert( Tags::value_type( Tag::Title, UTF8ToWideString( midiTags ) ) );
+					success = true;
+				}
+			} else if ( BASS_CTYPE_STREAM_DSD == info.ctype ) {
+				const char* dsdArtist = BASS_ChannelGetTags( stream, BASS_TAG_DSD_ARTIST );
+				if ( ( nullptr != dsdArtist ) && ( strlen( dsdArtist ) > 0 ) ) {
+					tags.insert( Tags::value_type( Tag::Artist, UTF8ToWideString( dsdArtist ) ) );
+					success = true;
+				}
+				const char* dsdTitle = BASS_ChannelGetTags( stream, BASS_TAG_DSD_TITLE );
+				if ( ( nullptr != dsdTitle ) && ( strlen( dsdTitle ) > 0 ) ) {
+					tags.insert( Tags::value_type( Tag::Title, UTF8ToWideString( dsdTitle ) ) );
 					success = true;
 				}
 			}

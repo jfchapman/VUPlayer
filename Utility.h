@@ -109,8 +109,11 @@ int FloatTo24( const float value );
 // Converts a floating point sample 'value' to 16-bit (clamping any value outside the range -1.0 to +1.0).
 short FloatTo16( const float value );
 
-// Converts a floating point sample 'value' to 8-bit (clamping any value outside the range -1.0 to +1.0).
-char FloatTo8( const float value );
+// Converts a floating point sample 'value' to signed 8-bit (clamping any value outside the range -1.0 to +1.0).
+char FloatToSigned8( const float value );
+
+// Converts a floating point sample 'value' to unsigned 8-bit (clamping any value outside the range -1.0 to +1.0).
+unsigned char FloatToUnsigned8( const float value );
 
 // Returns the 'filename' extension in lowercase.
 std::wstring GetFileExtension( const std::wstring filename );

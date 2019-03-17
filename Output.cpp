@@ -104,7 +104,7 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_FadeOutStartPosition( 0 ),
 	m_LastTransitionPosition( 0 ),
 	m_CrossfadePosition( 0 ),
-	m_CrossfadeFilename(),
+	m_CrossfadeItem( {} ),
 	m_CrossfadeThread( nullptr ),
 	m_CrossfadeStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
 	m_CrossfadingStream(),
@@ -148,8 +148,7 @@ bool Output::Play( const long playlistID, const float seek )
 	}
 
 	if ( m_Playlist && m_Playlist->GetItem( item ) ) {
-		const std::wstring& filename = item.Info.GetFilename();
-		m_DecoderStream = m_Handlers.OpenDecoder( filename );
+		m_DecoderStream = OpenDecoder( item );
 		if ( m_DecoderStream ) {
 
 			const DWORD outputBufferSize = static_cast<DWORD>( 1000 * ( ( ( MediaInfo::Source::CDDA ) == item.Info.GetSource() ) ? ( 2 * s_BufferLength ) : s_BufferLength ) );
@@ -195,7 +194,7 @@ bool Output::Play( const long playlistID, const float seek )
 					queue.push_back( { item, 0, seekPosition } );
 					SetOutputQueue( queue );
 					if ( GetCrossfade() ) {
-						CalculateCrossfadePoint( filename, seekPosition );
+						CalculateCrossfadePoint( item, seekPosition );
 					}
 				}
 			}
@@ -432,8 +431,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 					EstimateReplayGain( nextItem );
 					const long channels = m_DecoderStream->GetChannels();
 					const long sampleRate = m_DecoderStream->GetSampleRate();
-					const std::wstring& filename = nextItem.Info.GetFilename();
-					m_DecoderStream = m_Handlers.OpenDecoder( filename );
+					m_DecoderStream = OpenDecoder( nextItem );
 					if ( m_DecoderStream && ( m_DecoderStream->GetChannels() == channels ) && ( m_DecoderStream->GetSampleRate() == sampleRate ) ) {
 						if ( GetCrossfade() || GetFadeToNext() ) {
 							m_DecoderStream->SkipSilence();
@@ -450,7 +448,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 						SetOutputQueue( queue );
 
 						if ( GetCrossfade() && ( 0 != bytesRead ) ) {
-							CalculateCrossfadePoint( filename );
+							CalculateCrossfadePoint( nextItem );
 						}
 					}
 				}
@@ -720,7 +718,7 @@ void Output::SetCrossfade( const bool enabled )
 			auto iter = queue.rbegin();
 			if ( queue.rend() != iter ) {
 				const Item item = *iter;
-				CalculateCrossfadePoint( item.PlaylistItem.Info.GetFilename(), item.InitialSeek );
+				CalculateCrossfadePoint( item.PlaylistItem, item.InitialSeek );
 			}
 		}
 	} else {
@@ -862,7 +860,7 @@ void Output::EstimateReplayGain( Playlist::Item& item )
 			if ( m_ReplayGainEstimateMap.end() != estimateIter ) {
 				item.Info.SetGainTrack( estimateIter->second );
 			} else {
-				Decoder::Ptr tempDecoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
+				Decoder::Ptr tempDecoder = OpenDecoder( item );
 				if ( tempDecoder ) {
 					const float trackGain = tempDecoder->CalculateTrackGain( s_ReplayGainPrecalcTime );
 					item.Info.SetGainTrack( trackGain );
@@ -873,18 +871,18 @@ void Output::EstimateReplayGain( Playlist::Item& item )
 	}
 }
 
-void Output::CalculateCrossfadePoint( const std::wstring& filename, const float seekOffset )
+void Output::CalculateCrossfadePoint( const Playlist::Item& item, const float seekOffset )
 {
 	StopCrossfadeThread();
 	ResetEvent( m_CrossfadeStopEvent );
-	m_CrossfadeFilename = filename;
+	m_CrossfadeItem = item;
 	m_CrossfadeSeekOffset = seekOffset;
 	m_CrossfadeThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, CrossfadeThreadProc, reinterpret_cast<LPVOID>( this ), 0 /*flags*/, NULL /*threadId*/ );
 }
 
 void Output::OnCalculateCrossfadeHandler()
 {
-	Decoder::Ptr decoder = m_Handlers.OpenDecoder( m_CrossfadeFilename );
+	Decoder::Ptr decoder = OpenDecoder( m_CrossfadeItem );
 	if ( decoder ) {
 		const float duration = decoder->GetDuration();
 		const long channels = decoder->GetChannels();
@@ -948,7 +946,7 @@ void Output::StopCrossfadeThread()
 	}
 	SetCrossfadePosition( 0 );
 	m_CrossfadeSeekOffset = 0;
-	m_CrossfadeFilename = std::wstring();
+	m_CrossfadeItem = {};
 }
 
 float Output::GetCrossfadePosition() const
@@ -1176,4 +1174,17 @@ void Output::UpdateEQ( const Settings::EQ& eq )
 			m_FX.clear();
 		}
 	}
+}
+
+Decoder::Ptr Output::OpenDecoder( const Playlist::Item& item ) const
+{
+	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
+	if ( !decoder ) {
+		auto duplicate = item.Duplicates.begin();
+		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
+			decoder = m_Handlers.OpenDecoder( *duplicate );
+			++duplicate;
+		}
+	}
+	return decoder;
 }

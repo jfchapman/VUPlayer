@@ -47,6 +47,9 @@ static const UINT MSG_FILEREMOVED = WM_APP + 101;
 // Message ID for reordering the dummy column after a drag operation.
 static const UINT MSG_REORDERDUMMY = WM_APP + 102;
 
+// Item updated message ID.
+static const UINT MSG_ITEMUPDATED = WM_APP + 103;
+
 // Drag timer ID.
 static const UINT_PTR s_DragTimerID = 1010;
 
@@ -68,11 +71,20 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				break;
 			}
 			case MSG_FILEADDED : {
-				wndList->AddFileHandler( wParam );
+				AddedItem* addedItem = reinterpret_cast<AddedItem*>( wParam );
+				wndList->AddFileHandler( addedItem );
+				delete addedItem;
 				break;
 			}
 			case MSG_FILEREMOVED : {
-				wndList->RemoveFileHandler( wParam );
+				const long removedItemID = static_cast<long>( wParam );
+				wndList->RemoveFileHandler( removedItemID );
+				break;
+			}
+			case MSG_ITEMUPDATED : {
+				Playlist::Item* item = reinterpret_cast<Playlist::Item*>( wParam );
+				wndList->ItemUpdatedHandler( item );
+				delete item;
 				break;
 			}
 			case MSG_REORDERDUMMY : {
@@ -422,7 +434,7 @@ void WndList::InsertListViewItem( const Playlist::Item& playlistItem, const int 
 	item.iItem = ListView_InsertItem( m_hWnd, &item );
 	if ( item.iItem >= 0 ) {
 		m_ItemFilenames.insert( ItemFilenames::value_type( playlistItem.ID, playlistItem.Info.GetFilename() ) );
-		SetListViewItemText( item.iItem, playlistItem.Info );
+		SetListViewItemText( item.iItem, playlistItem );
 	}
 }
 
@@ -432,11 +444,12 @@ void WndList::DeleteListViewItem( const int itemIndex )
 	ListView_DeleteItem( m_hWnd, itemIndex );
 }
 
-void WndList::SetListViewItemText( int itemIndex, const MediaInfo& mediaInfo )
+void WndList::SetListViewItemText( int itemIndex, const Playlist::Item& playlistItem )
 {
 	LVCOLUMN column = {};
 	column.mask = LVCF_SUBITEM;
 	int columnIndex = 0;
+	const MediaInfo& mediaInfo = playlistItem.Info;
 	while ( FALSE != ListView_GetColumn( m_hWnd, columnIndex, &column ) ) {
 		const Playlist::Column columnID = static_cast<Playlist::Column>( column.iSubItem );
 		switch( columnID ) {
@@ -483,7 +496,13 @@ void WndList::SetListViewItemText( int itemIndex, const MediaInfo& mediaInfo )
 				break;
 			}
 			case Playlist::Column::Filename : {
-				const std::wstring str = mediaInfo.GetFilename();
+				std::wstring str = mediaInfo.GetFilename();
+				if ( !playlistItem.Duplicates.empty() ) {
+					const int bufSize = 32;
+					WCHAR buffer[ bufSize ] = {};
+					LoadString( m_hInst, IDS_MULTIPLE_SOURCES, buffer, bufSize );
+					str = L"(" + std::wstring( buffer ) + L")";
+				}
 				ListView_SetItemText( m_hWnd, itemIndex, columnIndex, const_cast<LPWSTR>( str.c_str() ) );
 				break;
 			}
@@ -782,7 +801,7 @@ void WndList::RefreshListViewItemText()
 		for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
 			Playlist::Item item( { GetPlaylistItemID( itemIndex ), MediaInfo() } );
 			if ( m_Playlist->GetItem( item ) ) {
-				SetListViewItemText( itemIndex, item.Info );
+				SetListViewItemText( itemIndex, item );
 			}
 		}
 	}
@@ -801,6 +820,11 @@ void WndList::DeleteSelectedItems()
 			playlistItem.ID = GetPlaylistItemID( itemIndex );
 			if ( m_Playlist->GetItem( playlistItem ) ) {
 				deletedMedia.push_back( playlistItem.Info );
+				for ( const auto& duplicate : playlistItem.Duplicates ) {
+					MediaInfo mediaInfo( playlistItem.Info );
+					mediaInfo.SetFilename( duplicate );
+					deletedMedia.push_back( mediaInfo );
+				}
 				m_Playlist->RemoveItem( playlistItem );
 			}
 			DeleteListViewItem( itemIndex );
@@ -913,15 +937,19 @@ void WndList::OnFileAdded( Playlist* playlist, const Playlist::Item& item, const
 	}
 }
 
-void WndList::AddFileHandler( WPARAM wParam )
+void WndList::AddFileHandler( const AddedItem* addedItem )
 {
-	AddedItem* addedItem = reinterpret_cast<AddedItem*>( wParam );
 	if ( nullptr != addedItem ) {
 		if ( addedItem->Playlist == m_Playlist.get() ) {
 			InsertListViewItem( addedItem->Item, addedItem->Position );
 
-			if ( !m_FilenameToSelect.empty() ) {
-				int selectedIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
+			int selectedIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
+
+			if ( m_FilenameToSelect.empty() ) {
+				if ( ( -1 == selectedIndex ) && ( 1 == ListView_GetItemCount( m_hWnd ) ) ) {
+					ListView_SetItemState( m_hWnd, 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+				}
+			} else {
 				if ( -1 == selectedIndex ) {
 					if ( addedItem->Item.Info.GetFilename() == m_FilenameToSelect ) {
 						ListView_SetItemState( m_hWnd, addedItem->Position, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
@@ -933,7 +961,6 @@ void WndList::AddFileHandler( WPARAM wParam )
 				}
 			}
 		}
-		delete addedItem;
 	}
 }
 
@@ -944,15 +971,36 @@ void WndList::OnFileRemoved( Playlist* playlist, const Playlist::Item& item )
 	}
 }
 
-void WndList::RemoveFileHandler( WPARAM wParam )
+void WndList::RemoveFileHandler( const long removedItemID )
 {
-	const long removedItemID = static_cast<long>( wParam );
 	const int itemCount = ListView_GetItemCount( m_hWnd );
 	for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
 		const long itemID = GetPlaylistItemID( itemIndex );
 		if ( itemID == removedItemID ) {
 			DeleteListViewItem( itemIndex );
 			break;
+		}
+	}
+}
+
+void WndList::OnItemUpdated( Playlist* playlist, const Playlist::Item& item )
+{
+	if ( playlist == m_Playlist.get() ) {
+		Playlist::Item* itemCopy = new Playlist::Item( item );
+		PostMessage( m_hWnd, MSG_ITEMUPDATED, reinterpret_cast<WPARAM>( itemCopy ), 0 /*lParam*/ );
+	}
+}
+
+void WndList::ItemUpdatedHandler( const Playlist::Item* item )
+{
+	if ( nullptr != item ) {
+		const int itemCount = ListView_GetItemCount( m_hWnd );
+		for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+			const long itemID = GetPlaylistItemID( itemIndex );
+			if ( itemID == item->ID ) {
+				SetListViewItemText( itemIndex, *item );
+				break;
+			}
 		}
 	}
 }
@@ -1110,7 +1158,7 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 				Playlist::Item playlistItem = {	static_cast<long>( item.lParam ), MediaInfo() };
 				if ( m_Playlist->GetItem( playlistItem ) ) {
 					m_Playlist->GetLibrary().GetMediaInfo( playlistItem.Info, false /*checkFileAttributes*/, false /*scanMedia*/ );
-					const MediaInfo previousMediaInfo( playlistItem.Info );
+					MediaInfo previousMediaInfo( playlistItem.Info );
 					LVCOLUMN lvc = {};
 					lvc.mask = LVCF_SUBITEM;
 					if ( FALSE != ListView_GetColumn( m_hWnd, m_EditSubItem, &lvc ) ) {
@@ -1163,7 +1211,13 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 						}
 						if ( Library::Column::_Undefined != libraryColumnID ) {
 							Library& library = m_Playlist->GetLibrary();
-							library.UpdateMediaTags( previousMediaInfo, playlistItem.Info );
+							MediaInfo updatedMediaInfo( playlistItem.Info );
+							library.UpdateMediaTags( previousMediaInfo, updatedMediaInfo );
+							for ( const auto& duplicate : playlistItem.Duplicates ) {
+								previousMediaInfo.SetFilename( duplicate );
+								updatedMediaInfo.SetFilename( duplicate );
+								library.UpdateMediaTags( previousMediaInfo, updatedMediaInfo );
+							}
 						}
 					}
 				}
@@ -1222,9 +1276,11 @@ void WndList::OnUpdatedMedia( const MediaInfo& mediaInfo )
 {
 	const int itemCount = ListView_GetItemCount( m_hWnd );
 	for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-		const auto itemFilename = m_ItemFilenames.find( GetPlaylistItemID( itemIndex ) );
+		const long playlistItemID = GetPlaylistItemID( itemIndex );
+		const auto itemFilename = m_ItemFilenames.find( playlistItemID );
 		if ( ( m_ItemFilenames.end() != itemFilename ) && ( itemFilename->second == mediaInfo.GetFilename() ) ) {
-			SetListViewItemText( itemIndex, mediaInfo );
+			const Playlist::Item playlistItem = { playlistItemID, mediaInfo };
+			SetListViewItemText( itemIndex, playlistItem );
 		}
 	}
 }
@@ -1260,7 +1316,10 @@ int WndList::GetCurrentSelectedIndex()
 {
 	int itemIndex = -1;
 	if ( ListView_GetSelectedCount( m_hWnd ) > 0 ) {
-		itemIndex = static_cast<int>( ListView_GetNextItem( m_hWnd, -1 /*start*/, LVNI_ALL | LVNI_FOCUSED ) );
+		itemIndex = static_cast<int>( ListView_GetNextItem( m_hWnd, -1 /*start*/, LVNI_ALL | LVNI_FOCUSED | LVNI_SELECTED ) );
+		if ( -1 == itemIndex ) {
+			itemIndex = static_cast<int>( ListView_GetNextItem( m_hWnd, -1 /*start*/, LVNI_ALL | LVNI_SELECTED ) );
+		}
 	}
 	return itemIndex;
 }
@@ -1551,6 +1610,9 @@ void WndList::OnCommandAddFiles()
 	filterStr.push_back( 0 );
 	filterStr.push_back( 0 );
 
+	const std::string initialFolderSetting = "AddFiles";
+	const std::wstring initialFolder = m_Settings.GetLastFolder( initialFolderSetting );
+
 	const DWORD bufferSize = 32768;
 	WCHAR buffer[ bufferSize ] = {};
 	OPENFILENAME ofn = {};
@@ -1562,6 +1624,7 @@ void WndList::OnCommandAddFiles()
 	ofn.Flags = OFN_FILEMUSTEXIST | OFN_ALLOWMULTISELECT | OFN_EXPLORER;
 	ofn.lpstrFile = buffer;
 	ofn.nMaxFile = bufferSize;
+	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
 	if ( ( FALSE != GetOpenFileName( &ofn ) ) && ( ofn.nFileOffset > 0 ) ) {
 		std::wstring foldername( ofn.lpstrFile, ofn.nFileOffset - 1 );
 		foldername += L"\\";
@@ -1577,6 +1640,7 @@ void WndList::OnCommandAddFiles()
 			AddFileToPlaylist( filename );
 			filenameOffset += wcslen( filenameOffset ) + 1;
 		}
+		m_Settings.SetLastFolder( initialFolderSetting, std::wstring( ofn.lpstrFile ).substr( 0, ofn.nFileOffset ) );
 	}
 }
 

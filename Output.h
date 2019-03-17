@@ -221,9 +221,9 @@ private:
 	// Estimates the ReplayGain for a playlist 'item' if necessary.
 	void EstimateReplayGain( Playlist::Item& item );
 
-	// Calculates the crossfade point for 'filename'.
-	// 'seekOffset' - indicates the initial seek position of 'filename', in seconds.
-	void CalculateCrossfadePoint( const std::wstring& filename, const float seekOffset = 0.0f );
+	// Calculates the crossfade point for the 'item'.
+	// 'seekOffset' - indicates the initial seek position of 'item', in seconds.
+	void CalculateCrossfadePoint( const Playlist::Item& item, const float seekOffset = 0.0f );
 
 	// Terminates the crossfade calculation thread.
 	void StopCrossfadeThread();
@@ -242,6 +242,9 @@ private:
 
 	// Sets the output 'queue'.
 	void SetOutputQueue( const Queue& queue );
+
+	// Returns a decoder for the 'item', or nullptr if a decoder could not be opened.
+	Decoder::Ptr OpenDecoder( const Playlist::Item& item ) const;
 
 	// Parent window handle.
 	HWND m_Parent;
@@ -336,8 +339,8 @@ private:
 	// Crossfade position for the current track, in seconds.
 	float m_CrossfadePosition;
 
-	// Filename of the track for which to calculate the crossfade position.
-	std::wstring m_CrossfadeFilename;
+	// Item for which to calculate the crossfade position.
+	Playlist::Item m_CrossfadeItem;
 
 	// The thread for calculating crossfade position.
 	HANDLE m_CrossfadeThread;

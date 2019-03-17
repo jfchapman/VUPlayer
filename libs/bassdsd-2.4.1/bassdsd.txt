@@ -1,0 +1,113 @@
+BASSDSD 2.4
+Copyright (c) 2014-2017 Un4seen Developments Ltd. All rights reserved.
+
+Files that you should have found in the BASSDSD package
+=======================================================
+Win32 version
+-------------
+BASSDSD.TXT     This file
+BASSDSD.DLL     BASSDSD module
+BASSDSD.CHM     BASSDSD documentation
+X64\
+  BASSDSD.DLL     64-bit BASSDSD module
+C\              C/C++ API...
+  BASSDSD.H       BASSDSD C/C++ header file
+  BASSDSD.LIB     BASSDSD import library
+  X64\
+    BASSDSD.LIB     64-bit BASSDSD import library
+VB\             Visual Basic API...
+  BASSDSD.BAS     BASSDSD Visual Basic module
+DELPHI\         Delphi API...
+  BASSDSD.PAS     BASSDSD Delphi unit
+
+MacOSX version
+--------------
+BASSDSD.TXT     This file
+LIBBASSDSD.DYLIB  BASSDSD module
+BASSDSD.CHM     BASSDSD documentation
+BASSDSD.H       BASSDSD C/C++ header file
+
+Linux version
+-------------
+BASSDSD.TXT     This file
+LIBBASSDSD.SO   BASSDSD module
+BASSDSD.CHM     BASSDSD documentation
+BASSDSD.H       BASSDSD C/C++ header file
+X64\
+  LIBBASSDSD.SO   64-bit BASSDSD module
+
+
+What's the point?
+=================
+BASSDSD is an extension to the BASS audio library, enabling the playing of
+DSD (Direct Stream Digital) data in DSDIFF and DSF containers.
+
+
+Requirements
+============
+BASS 2.4 is required. BASSASIO can also be used for playback of raw DSD
+data. The BASSWV add-on can be used to add support for WavPack DSD files.
+
+
+Using BASSDSD
+=============
+The plugin system (see BASS_PluginLoad) can be used to add DSD support to
+the standard BASS stream (and sample) creation functions. Dedicated DSD
+stream creation functions are also provided by BASSDSD.
+
+The usage information in the BASS.TXT file (from the BASS package) is also
+applicable to BASSDSD and other add-ons.
+
+TIP: The BASSDSD.CHM file should be put in the same directory as the BASS.CHM
+     file, so that the BASSDSD documentation can be accessed from within the
+     BASS documentation.
+
+
+Latest Version
+==============
+The latest versions of BASSDSD & BASS can be found at the BASS website:
+
+	www.un4seen.com
+
+
+Licence
+=======
+BASSDSD is free to use with BASS.
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, BASSDSD IS PROVIDED
+"AS IS", WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY
+AND/OR FITNESS FOR A PARTICULAR PURPOSE. THE AUTHORS SHALL NOT BE HELD
+LIABLE FOR ANY DAMAGE THAT MAY RESULT FROM THE USE OF BASSDSD. YOU USE
+BASSDSD ENTIRELY AT YOUR OWN RISK.
+
+Usage of BASSDSD indicates that you agree to the above conditions.
+
+All trademarks and other registered names contained in the BASSDSD
+package are the property of their respective owners.
+
+
+History
+=======
+These are the major (and not so major) changes at each version stage.
+There are of course bug fixes and other little improvements made along
+the way too! To make upgrading simpler, all functions affected by a
+change to the BASSDSD interface are listed.
+
+2.4.1 - 13/1/2017
+-----------------
+* Support for WavPack DSD files together with the BASSWV add-on
+	BASS_StreamCreateFile/User/URL
+* DSD-over-PCM with 0xAA markers
+	BASS_DSD_DOP_AA (BASS_DSD_StreamCreateFile/User/URL flag)
+
+2.4 - 17/12/2014
+----------------
+* First release
+
+
+Bug reports, Suggestions, Comments, Enquiries, etc...
+=====================================================
+If you have any of the aforementioned please visit the BASS forum at
+the website.
+

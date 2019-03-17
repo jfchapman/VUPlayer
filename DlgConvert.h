@@ -20,6 +20,9 @@ public:
 	// Returns the selected encoder handler.
 	const Handler::Ptr GetSelectedHandler() const;
 
+	// Returns the output filename, if joining tracks into a single file.
+	const std::wstring& GetJoinFilename() const;
+
 private:
 	// Maps an encoder description to its handle.
 	typedef std::map<std::wstring,Handler::Ptr> EncoderMap;
@@ -46,15 +49,25 @@ private:
 	// Updates the checked items in the track list.
 	void UpdateCheckedItems( const int itemIndex );
 
+	// Updates the output destination controls.
+	void UpdateDestinationControls();
+
 	// Displays the filename format dialog.
 	void OnFilenameFormat();
 
 	// Called when the dialog is closed.
 	// 'ok' - whether the dialog was okayed.
-	void OnClose( const bool ok );
+	// Returns whether the dialog can be closed.
+	bool OnClose( const bool ok );
 
 	// Launches the encoder configuration dialog.
 	void OnConfigure();
+
+	// Returns the selected tracks.
+	Playlist::ItemList GetSelectedTracks() const;
+
+	// Returns the filename to use when joining files into a single track, or an empty string if a filename was not chosen.
+	std::wstring ChooseJoinFilename() const;
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
@@ -85,4 +98,7 @@ private:
 
 	// The available encoders.
 	EncoderMap m_Encoders;
+
+	// The output filename, when joining tracks into a single file.
+	std::wstring m_JoinFilename;
 };

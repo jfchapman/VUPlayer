@@ -367,10 +367,10 @@ public:
 	void SetOutputControlType( const int type );
 
 	// Returns the track conversion/extraction settings.
-	void GetExtractSettings( std::wstring& folder, std::wstring& filename, bool& addToLibrary );
+	void GetExtractSettings( std::wstring& folder, std::wstring& filename, bool& addToLibrary, bool& joinTracks );
 
 	// Sets the track conversion/extraction settings.
-	void SetExtractSettings( const std::wstring& folder, const std::wstring& filename, const bool addToLibrary );
+	void SetExtractSettings( const std::wstring& folder, const std::wstring& filename, const bool addToLibrary, const bool joinTracks );
 
 	// Gets Gracenote settings.
 	// 'userID' - Gracenote user ID string.
@@ -413,6 +413,18 @@ public:
 
 	// Sets whether the 'toolbarID' is 'enabled'.
 	void SetToolbarEnabled( const int toolbarID, const bool enabled );
+
+	// Returns whether duplicate tracks are merged (for Artist/Album/Genre/Year playlists).
+	bool GetMergeDuplicates();
+
+	// Sets whether duplicate tracks are merged (for Artist/Album/Genre/Year playlists).
+	void SetMergeDuplicates( const bool mergeDuplicates );
+
+	// Returns the last user selected folder for the 'folderType'.
+	std::wstring GetLastFolder( const std::string& folderType );
+
+	// Sets the last user selected 'folder' for the 'folderType'.
+	void SetLastFolder( const std::string& folderType, const std::wstring& folder );
 
 private:
 	// Updates the database to the current version if necessary.

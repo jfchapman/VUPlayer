@@ -15,7 +15,7 @@ static const long s_TimerID = 1212;
 static const long s_TimerInterval = 250;
 
 // Message ID sent when the conversion has finished.
-// 'wParam' - unused.
+// 'wParam' - boolean to indicate whether conversion was successful.
 // 'lParam' - unused.
 static const UINT MSG_CONVERTERFINISHED = WM_APP + 90;
 
@@ -55,7 +55,12 @@ INT_PTR CALLBACK Converter::DialogProc( HWND hwnd, UINT message, WPARAM wParam, 
 		case MSG_CONVERTERFINISHED : {
 			Converter* converter = reinterpret_cast<Converter*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != converter ) {
-				converter->Close();
+				const bool success = wParam;
+				if ( success ) {
+					converter->Close();
+				} else {
+					converter->Error();
+				}
 			}
 			break;
 		}
@@ -77,7 +82,7 @@ DWORD WINAPI Converter::EncodeThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-Converter::Converter( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, const MediaInfo::List& tracks, const Handler::Ptr encoderHandler ) :
+Converter::Converter( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_Library( library ),
@@ -93,7 +98,8 @@ Converter::Converter( const HINSTANCE instance, const HWND parent, Library& libr
 	m_DisplayedTrack( 0 ),
 	m_TrackCount( static_cast<long>( tracks.size() ) ),
 	m_Encoder( encoderHandler->OpenEncoder() ),
-	m_EncoderSettings( m_Encoder ? m_Settings.GetEncoderSettings( encoderHandler->GetDescription() ) : std::string() )
+	m_EncoderSettings( m_Encoder ? m_Settings.GetEncoderSettings( encoderHandler->GetDescription() ) : std::string() ),
+	m_JoinFilename( joinFilename )
 {
 	DialogBoxParam( instance, MAKEINTRESOURCE( IDD_CONVERT_PROGRESS ), parent, DialogProc, reinterpret_cast<LPARAM>( this ) );
 }
@@ -106,6 +112,11 @@ void Converter::OnInitDialog( const HWND hwnd )
 {
 	m_hWnd = hwnd;
 	CentreDialog( m_hWnd );
+
+	const int bufferSize = 64;
+	WCHAR buffer[ bufferSize ] = {};
+	LoadString( m_hInst, IDS_CONVERT_TITLE, buffer, bufferSize );
+	SetWindowText( m_hWnd, buffer );
 
 	const HWND progressTrack = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TRACK );
 	if ( nullptr != progressTrack ) {
@@ -145,6 +156,29 @@ void Converter::Close()
 	EndDialog( m_hWnd, 0 );
 }
 
+void Converter::Error()
+{
+	KillTimer( m_hWnd, s_TimerID );
+	const int bufferSize = 64;
+	WCHAR buffer[ bufferSize ] = {};
+	LoadString( m_hInst, IDS_CONVERT_ERROR, buffer, bufferSize );
+	SetDlgItemText( m_hWnd, IDC_EXTRACT_STATE_READ, buffer );
+	SetDlgItemText( m_hWnd, IDC_EXTRACT_STATE_ENCODER, buffer );
+
+	const HWND progressTrack = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TRACK );
+	if ( nullptr != progressTrack ) {
+		SendMessage( progressTrack, PBM_SETPOS, m_ProgressRange, 0 );			
+	}
+
+	const HWND progressTotal = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TOTAL );
+	if ( nullptr != progressTotal ) {
+		SendMessage( progressTotal, PBM_SETPOS, m_ProgressRange, 0 );			
+	}
+
+	LoadString( m_hInst, IDS_CLOSE, buffer, bufferSize );
+	SetDlgItemText( m_hWnd, IDCANCEL, buffer );
+}
+
 bool Converter::Cancelled() const
 {
 	const bool cancelled = ( WAIT_OBJECT_0 == WaitForSingleObject( m_CancelEvent, 0 ) );
@@ -153,115 +187,177 @@ bool Converter::Cancelled() const
 
 void Converter::EncodeHandler()
 {
-	if ( m_Encoder ) {
+	bool conversionOK = m_Encoder && !m_Tracks.empty();
+	if ( conversionOK ) {
 		float totalDuration = 0;
 		for ( const auto& track : m_Tracks ) {
-			totalDuration += track.GetDuration();
+			totalDuration += track.Info.GetDuration();
 		}
 		float totalEncodedDuration = 0;
 
 		std::wstring extractFolder;
 		std::wstring extractFilename;
 		bool extractToLibrary = false;
-		m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+		bool extractJoin = false;
+		m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 
-		replaygain_analysis analysis;
-		const long replayGainScale = 1 << 15;
-		float trackPeak = 0;
+		long joinChannels = 0;
+		long joinSampleRate = 0;
+		if ( extractJoin ) {
+			const Decoder::Ptr decoder = OpenDecoder( m_Tracks.front() );
+			if ( decoder ) {
+				joinChannels = decoder->GetChannels();
+				joinSampleRate = decoder->GetSampleRate();
+				conversionOK = m_Encoder->Open( m_JoinFilename, joinSampleRate, joinChannels, decoder->GetBPS(), m_EncoderSettings );
+			} else {
+				conversionOK = false;
+			}
+		}
 
-		long currentTrack = 0;
-		auto track = m_Tracks.begin();
-		while ( !Cancelled() && ( m_Tracks.end() != track ) ) {
-			MediaInfo mediaInfo( *track );
-			bool calculateReplayGain = false;
-			m_ProgressTrack.store( 0 );
-			m_StatusTrack.store( ++currentTrack );
-			std::wstring filename = GetOutputFilename( *track );
-			if ( !filename.empty() ) {
-				const Decoder::Ptr decoder = m_Handlers.OpenDecoder( track->GetFilename() );
-				if ( decoder ) {
-					const long sampleRate = decoder->GetSampleRate();
-					const long channels = decoder->GetChannels();
-					const long bps = decoder->GetBPS();
-					if ( m_Encoder->Open( filename, sampleRate, channels, bps, m_EncoderSettings ) ) {
+		if ( conversionOK ) {
+			replaygain_analysis analysis;
+			const long replayGainScale = 1 << 15;
+			bool calculateReplayGain = extractJoin ? 
+				( ( ( 2 == joinChannels ) || ( 1 == joinChannels ) ) && analysis.InitGainAnalysis( joinSampleRate ) ) : false;
 
-						const long long trackSamplesTotal = static_cast<long long>( track->GetDuration() * sampleRate );
-						long long trackSamplesRead = 0;
+			float trackPeak = 0;
 
-						const long sampleCount = 65536;
-						std::vector<float> sampleBuffer( sampleCount * channels );
+			long currentTrack = 0;
+			auto track = m_Tracks.begin();
+			while ( conversionOK && !Cancelled() && ( m_Tracks.end() != track ) ) {
+				MediaInfo mediaInfo( track->Info );
+				m_ProgressTrack.store( 0 );
+				m_StatusTrack.store( ++currentTrack );
+				std::wstring filename = extractJoin ? m_JoinFilename : GetOutputFilename( track->Info );
+				conversionOK = !filename.empty();
+				if ( conversionOK ) {
+					const Decoder::Ptr decoder = OpenDecoder( *track );
+					if ( extractJoin ) {
+						conversionOK = static_cast<bool>( decoder );
+					}
+					if ( decoder ) {
+						const long sampleRate = decoder->GetSampleRate();
+						const long channels = decoder->GetChannels();
+						const long bps = decoder->GetBPS();
 
-						std::vector<float> analysisLeft;
-						std::vector<float> analysisRight;
-						calculateReplayGain = ( ( 2 == channels ) || ( 1 == channels ) ) && analysis.InitGainAnalysis( sampleRate );
-						if ( calculateReplayGain ) {
-							analysisLeft.resize( sampleCount );
-							if ( 2 == channels ) {
-								analysisRight.resize( sampleCount );
+						conversionOK = extractJoin ? ( ( sampleRate == joinSampleRate ) && ( channels == joinChannels ) ) :
+							m_Encoder->Open( filename, sampleRate, channels, bps, m_EncoderSettings );
+
+						if ( conversionOK ) {
+							const long long trackSamplesTotal = static_cast<long long>( track->Info.GetDuration() * sampleRate );
+							long long trackSamplesRead = 0;
+
+							const long sampleCount = 65536;
+							std::vector<float> sampleBuffer( sampleCount * channels );
+
+							std::vector<float> analysisLeft;
+							std::vector<float> analysisRight;
+							if ( !extractJoin ) {
+								calculateReplayGain = ( ( 2 == channels ) || ( 1 == channels ) ) && analysis.InitGainAnalysis( sampleRate );
 							}
-						}
+							if ( calculateReplayGain ) {
+								analysisLeft.resize( sampleCount );
+								if ( 2 == channels ) {
+									analysisRight.resize( sampleCount );
+								}
+							}
 
-						bool continueEncoding = true;
-						while ( !Cancelled() && continueEncoding ) {
-							const long samplesRead = decoder->Read( &sampleBuffer[ 0 ], sampleCount );
-							if ( samplesRead > 0 ) {
-								continueEncoding = m_Encoder->Write( &sampleBuffer[ 0 ], samplesRead );
+							if ( !extractJoin ) {
+								trackPeak = 0;
+							}
 
-								if ( calculateReplayGain ) {
-									for ( long sampleIndex = 0; sampleIndex < samplesRead; sampleIndex++ ) {
-										analysisLeft[ sampleIndex ] = sampleBuffer[ sampleIndex * channels ] * replayGainScale;
-										if ( sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] ) > trackPeak ) {
-											trackPeak = sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] );
-										}
-										if ( 2 == channels ) {
-											analysisRight[ sampleIndex ] = sampleBuffer[ sampleIndex * channels + 1 ] * replayGainScale;
-											if ( sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] ) > trackPeak ) {
-												trackPeak = sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] );
+							bool continueEncoding = true;
+							while ( !Cancelled() && continueEncoding ) {
+								const long samplesRead = decoder->Read( &sampleBuffer[ 0 ], sampleCount );
+								if ( samplesRead > 0 ) {
+									continueEncoding = m_Encoder->Write( &sampleBuffer[ 0 ], samplesRead );
+
+									if ( calculateReplayGain ) {
+										for ( long sampleIndex = 0; sampleIndex < samplesRead; sampleIndex++ ) {
+											analysisLeft[ sampleIndex ] = sampleBuffer[ sampleIndex * channels ] * replayGainScale;
+											if ( sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] ) > trackPeak ) {
+												trackPeak = sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] );
+											}
+											if ( 2 == channels ) {
+												analysisRight[ sampleIndex ] = sampleBuffer[ sampleIndex * channels + 1 ] * replayGainScale;
+												if ( sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] ) > trackPeak ) {
+													trackPeak = sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] );
+												}
 											}
 										}
+										analysis.AnalyzeSamples( &analysisLeft[ 0 ], analysisRight.empty() ? nullptr : &analysisRight[ 0 ], sampleCount, channels );
 									}
-									analysis.AnalyzeSamples( &analysisLeft[ 0 ], &analysisRight[ 0 ], sampleCount, channels );
+
+									trackSamplesRead += samplesRead;
+									if ( 0 != trackSamplesTotal ) {
+										m_ProgressTrack.store( static_cast<float>( trackSamplesRead ) / trackSamplesTotal );
+									}
+
+									totalEncodedDuration += static_cast<float>( samplesRead ) / sampleRate;
+									if ( 0 != totalDuration ) {
+										m_ProgressTotal.store( static_cast<float>( totalEncodedDuration ) / totalDuration );
+									}
+								} else {
+									continueEncoding = false;
+								}
+							}
+
+							if ( !extractJoin ) {
+								m_Encoder->Close();
+
+								if ( calculateReplayGain ) {
+									float trackGain = analysis.GetTitleGain();
+									if ( GAIN_NOT_ENOUGH_SAMPLES != trackGain ) {
+										mediaInfo.SetPeakTrack( trackPeak );
+										mediaInfo.SetGainTrack( trackGain );
+									}
 								}
 
-								trackSamplesRead += samplesRead;
-								if ( 0 != trackSamplesTotal ) {
-									m_ProgressTrack.store( static_cast<float>( trackSamplesRead ) / trackSamplesTotal );
+								WriteTags( filename, mediaInfo );
+								if ( extractToLibrary ) {
+									MediaInfo extractedMediaInfo( filename );
+									m_Library.GetMediaInfo( extractedMediaInfo );
 								}
-
-								totalEncodedDuration += static_cast<float>( samplesRead ) / sampleRate;
-								if ( 0 != totalDuration ) {
-									m_ProgressTotal.store( static_cast<float>( totalEncodedDuration ) / totalDuration );
-								}
-							} else {
-								continueEncoding = false;
 							}
 						}
+					}
+				}
+				++track;
+			}
 
-						m_Encoder->Close();
+			if ( extractJoin ) {
+				m_Encoder->Close();
+
+				if ( conversionOK ) {
+					MediaInfo joinedMediaInfo;
+
+					MediaInfo::List mediaList;
+					for ( const auto& item : m_Tracks ) {
+						mediaList.push_back( item.Info );
+					}
+
+					MediaInfo::GetCommonInfo( mediaList, joinedMediaInfo );
+					joinedMediaInfo.SetFilename( m_JoinFilename );
+
+					if ( calculateReplayGain ) {
+						float trackGain = analysis.GetTitleGain();
+						if ( GAIN_NOT_ENOUGH_SAMPLES != trackGain ) {
+							joinedMediaInfo.SetPeakTrack( trackPeak );
+							joinedMediaInfo.SetGainTrack( trackGain );
+						}
+					}
+
+					WriteTags( joinedMediaInfo.GetFilename(), joinedMediaInfo );
+					if ( extractToLibrary ) {
+						m_Library.GetMediaInfo( joinedMediaInfo );
 					}
 				}
 			}
-
-			if ( calculateReplayGain ) {
-				float trackGain = analysis.GetTitleGain();
-				if ( GAIN_NOT_ENOUGH_SAMPLES != trackGain ) {
-					mediaInfo.SetPeakTrack( trackPeak );
-					mediaInfo.SetGainTrack( trackGain );
-				}
-			}
-
-			WriteTags( filename, mediaInfo );
-			if ( extractToLibrary ) {
-				MediaInfo extractedMediaInfo( filename );
-				m_Library.GetMediaInfo( extractedMediaInfo );
-			}
-
-			++track;
 		}
+	}
 
-		if ( !Cancelled() ) {
-			PostMessage( m_hWnd, MSG_CONVERTERFINISHED, 0, 0 );
-		}
+	if ( !Cancelled() ) {
+		PostMessage( m_hWnd, MSG_CONVERTERFINISHED, conversionOK, 0 );
 	}
 }
 
@@ -272,7 +368,8 @@ std::wstring Converter::GetOutputFilename( const MediaInfo& mediaInfo ) const
 	std::wstring extractFolder;
 	std::wstring extractFilename;
 	bool extractToLibrary = false;
-	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary );
+	bool extractJoin = false;
+	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 
 	WCHAR buffer[ 2 + MAX_PATH ] = {};
 	const std::wstring emptyArtist = LoadString( m_hInst, IDS_EMPTYARTIST, buffer, 32 ) ? buffer : std::wstring();
@@ -451,4 +548,17 @@ void Converter::WriteTags( const std::wstring& filename, const MediaInfo& mediaI
 	if ( !tags.empty() ) {
 		m_Handlers.SetTags( filename, tags );
 	}
+}
+
+Decoder::Ptr Converter::OpenDecoder( const Playlist::Item& item ) const
+{
+	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
+	if ( !decoder ) {
+		auto duplicate = item.Duplicates.begin();
+		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
+			decoder = m_Handlers.OpenDecoder( *duplicate );
+			++duplicate;
+		}
+	}
+	return decoder;
 }

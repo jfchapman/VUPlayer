@@ -301,24 +301,18 @@ std::wstring ShellMetadata::GetAudioSubType( const std::wstring& guid )
 			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA 9 Pro" ) );
 			CoTaskMemFree( str );
 		}
-#ifdef MFAudioFormat_ALAC
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_ALAC, &str ) ) ) {
 			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Apple Lossless" ) );
 			CoTaskMemFree( str );
 		}
-#endif
-#ifdef MFAudioFormat_FLAC
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_FLAC, &str ) ) ) {
 			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"FLAC" ) );
 			CoTaskMemFree( str );
 		}
-#endif
-#ifdef MFAudioFormat_Opus
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Opus, &str ) ) ) {
 			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Opus" ) );
 			CoTaskMemFree( str );
 		}
-#endif
 	}
 
 	std::wstring description;

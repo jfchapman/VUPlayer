@@ -37,7 +37,7 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		}
 	}
 
-	// Gracenote settings
+	// Miscellaneous settings
 	VUPlayer* vuplayer = VUPlayer::Get();
 	const bool gracenoteAvailable = ( nullptr != vuplayer ) && vuplayer->IsGracenoteAvailable();
 	std::string userID;
@@ -48,6 +48,12 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 	if ( nullptr != hwndGracenote ) {
 		Button_SetCheck( hwndGracenote, ( gracenoteEnabled ? BST_CHECKED : BST_UNCHECKED ) );
 		EnableWindow( hwndGracenote, gracenoteAvailable ? TRUE : FALSE );
+	}
+
+	const bool mergeDuplicates = GetSettings().GetMergeDuplicates();
+	const HWND hwndMergeDuplicates = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_HIDEDUPLICATES );
+	if ( nullptr != hwndMergeDuplicates ) {
+		Button_SetCheck( hwndMergeDuplicates, ( mergeDuplicates ? BST_CHECKED : BST_UNCHECKED ) );
 	}
 
 	// Notification area settings
@@ -103,13 +109,16 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 	}
 	GetSettings().SetOutputDevice( deviceName );
 
-	// Gracenote settings
+	// Miscellaneous settings
 	std::string userID;
 	bool gracenoteEnabled = true;
 	bool gracenoteLog = true;
 	GetSettings().GetGracenoteSettings( userID, gracenoteEnabled, gracenoteLog );
 	gracenoteEnabled = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_GRACENOTE_ENABLE ) ) );
 	GetSettings().SetGracenoteSettings( userID, gracenoteEnabled, gracenoteLog );
+
+	const bool mergeDuplicates = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_HIDEDUPLICATES ) ) );
+	GetSettings().SetMergeDuplicates( mergeDuplicates );
 
 	// Notification area settings
 	const bool enable = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_ENABLE ) ) );
