@@ -225,9 +225,6 @@
     <ClInclude Include="Bling.h">
       <Filter>Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\sqlite-3.24.0\sqlite3.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
     <ClInclude Include="CDDAManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -290,6 +287,9 @@
     </ClInclude>
     <ClInclude Include="Scrobbler.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\sqlite-3.29.0\sqlite3.h">
+      <Filter>Third Party</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -476,9 +476,6 @@
     <ClCompile Include="WndToolbarFavourites.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.24.0\sqlite3.c">
-      <Filter>Third Party</Filter>
-    </ClCompile>
     <ClCompile Include="CDDAManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -538,6 +535,9 @@
     </ClCompile>
     <ClCompile Include="Scrobbler.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\sqlite-3.29.0\sqlite3.c">
+      <Filter>Third Party</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

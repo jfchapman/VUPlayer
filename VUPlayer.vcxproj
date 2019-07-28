@@ -266,7 +266,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="Library.h" />
     <ClInclude Include="LibraryMaintainer.h" />
     <ClInclude Include="libs\replaygain\replaygain_analysis.h" />
-    <ClInclude Include="libs\sqlite-3.24.0\sqlite3.h" />
+    <ClInclude Include="libs\sqlite-3.29.0\sqlite3.h" />
     <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\i18n.h" />
     <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.h" />
     <ClInclude Include="Lock.h" />
@@ -375,7 +375,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.24.0\sqlite3.c" />
+    <ClCompile Include="libs\sqlite-3.29.0\sqlite3.c" />
     <ClCompile Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.c">
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4267; 4996; 4701; 4706; 4703</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4267; 4996; 4701; 4706; 4703</DisableSpecificWarnings>
