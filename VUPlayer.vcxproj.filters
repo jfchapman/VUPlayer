@@ -288,6 +288,9 @@
     <ClInclude Include="WndToolbarTrackEnd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Scrobbler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -531,6 +534,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WndToolbarTrackEnd.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scrobbler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

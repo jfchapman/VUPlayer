@@ -312,7 +312,8 @@ Output::State Output::GetState() const
 	State state = State::Stopped;
 	const DWORD channelState = BASS_ChannelIsActive( m_OutputStream );
 	switch ( channelState ) {
-		case BASS_ACTIVE_PLAYING : {
+		case BASS_ACTIVE_PLAYING :
+		case BASS_ACTIVE_STALLED : {
 			state = State::Playing;
 			break;
 		}
@@ -842,7 +843,22 @@ void Output::InitialiseBass()
 		}
 	}
 	m_UsingDefaultDevice = ( -1 == deviceNum );
-	BASS_Init( deviceNum, 48000 /*freq*/, 0 /*flags*/, m_Parent /*hwnd*/, NULL /*dsGUID*/ );
+
+	BOOL success = BASS_Init( deviceNum, 48000 /*freq*/, 0 /*flags*/, m_Parent /*hwnd*/, NULL /*dsGUID*/ );
+	if ( !success ) {
+		if ( -1 != deviceNum ) {
+			// Use default device.
+			deviceNum = -1;
+			m_Settings.SetOutputDevice( std::wstring() );
+			m_UsingDefaultDevice = true;
+			success = BASS_Init( deviceNum, 48000 /*freq*/, 0 /*flags*/, m_Parent /*hwnd*/, NULL /*dsGUID*/ );
+		}
+		if ( !success ) {
+			// Use no sound.
+			deviceNum = 0;
+			success = BASS_Init( deviceNum, 48000 /*freq*/, 0 /*flags*/, m_Parent /*hwnd*/, NULL /*dsGUID*/ );
+		}
+	}
 }
 
 void Output::EstimateReplayGain( Playlist::Item& item )

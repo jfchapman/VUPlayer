@@ -51,7 +51,8 @@ public:
 	// 'instance' - module instance handle.
 	// 'hwnd' - application window handle.
 	// 'settings' - application settings.
-	Gracenote( const HINSTANCE instance, const HWND hwnd, Settings& settings );
+	// 'disable' - whether to disable Gracenote functionality entirely.
+	Gracenote( const HINSTANCE instance, const HWND hwnd, Settings& settings, const bool disable );
 
 	virtual ~Gracenote();
 

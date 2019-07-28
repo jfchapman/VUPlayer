@@ -12,6 +12,7 @@
 #include "LibraryMaintainer.h"
 #include "Output.h"
 #include "ReplayGain.h"
+#include "Scrobbler.h"
 #include "Settings.h"
 
 #include "DlgEQ.h"
@@ -71,7 +72,11 @@ public:
 	// 'instance' - module instance handle.
 	// 'hwnd' - main window handle.
 	// 'startupFilenames' - tracks to play (or the playlist to open) on startup.
-	VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<std::wstring>& startupFilenames );
+	// 'portable' - whether to run in 'portable' mode (i.e. no persistent database).
+	// 'portableSettings' - the application settings to use when running in 'portable' mode.
+	// 'databaseMode' - database access mode.
+	VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<std::wstring>& startupFilenames,
+		const bool portable, const std::string& portableSettings, const Database::Mode databaseMode );
 
 	virtual ~VUPlayer();
 
@@ -176,6 +181,12 @@ public:
 	// Returns whether Gracenote is enabled.
 	bool IsGracenoteEnabled();
 
+	// Returns whether Scrobbler library is loaded.
+	bool IsScrobblerAvailable();
+
+	// Launches a web browser to authorise VUPlayer for scrobbling.
+	void ScrobblerAuthorise();
+
 	// Returns the accelerator table.
 	HACCEL GetAcceleratorTable() const;
 
@@ -185,6 +196,9 @@ public:
 	// Handles any 'filenames' passed in via the command line.
 	// Returns whether any valid files were received.
 	bool OnCommandLineFiles( const std::list<std::wstring>& filenames );
+
+	// Exports application settings, for use when running in 'portable' mode.
+	void OnExportSettings();
 
 private:
 	// Main application instance.
@@ -199,8 +213,8 @@ private:
 	// Writes windows position to settings.
 	void WriteWindowSettings();
 
-	// Handles a change in the current output 'item'.
-	void OnOutputChanged( const Output::Item& item );
+	// Handles a change in the current output from the 'previousItem' to the 'currentItem'.
+	void OnOutputChanged( const Output::Item& previousItem, const Output::Item& currentItem );
 
 	// Called when the selection changes on the list control.
 	void OnListSelectionChanged();
@@ -236,6 +250,14 @@ private:
 	// Sets the application title bar text according to the 'item'.
 	void SetTitlebarText( const Output::Item& item );
 
+	// Updates the scrobbler when the output state changes.
+	// 'previousItem' - previous output item.
+	// 'currentItem' - current output item.
+	void UpdateScrobbler( const Output::Item& previousItem, const Output::Item& currentItem );
+
+	// Saves various applications settings.
+	void SaveSettings();
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -268,6 +290,9 @@ private:
 
 	// Gracenote manager.
 	Gracenote m_Gracenote;
+
+	// Scrobbler manager.
+	Scrobbler m_Scrobbler;
 
 	// CD audio manager.
 	CDDAManager m_CDDAManager;
@@ -349,6 +374,9 @@ private:
 
 	// Performance count at which the last skip backwards or forwards occured.
 	LARGE_INTEGER m_LastSkipCount;
+
+	// Timestamp of the last output state change.
+	time_t m_LastOutputStateChange;
 
 	// Maps a menu command ID to a playlist for the Add to Playlist sub menu.
 	PlaylistMenuMap m_AddToPlaylistMenuMap;

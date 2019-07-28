@@ -39,21 +39,34 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 
 	// Miscellaneous settings
 	VUPlayer* vuplayer = VUPlayer::Get();
-	const bool gracenoteAvailable = ( nullptr != vuplayer ) && vuplayer->IsGracenoteAvailable();
-	std::string userID;
-	bool gracenoteEnabled = true;
-	bool gracenoteLog = true;
-	GetSettings().GetGracenoteSettings( userID, gracenoteEnabled, gracenoteLog );
-	const HWND hwndGracenote = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_GRACENOTE_ENABLE );
-	if ( nullptr != hwndGracenote ) {
-		Button_SetCheck( hwndGracenote, ( gracenoteEnabled ? BST_CHECKED : BST_UNCHECKED ) );
-		EnableWindow( hwndGracenote, gracenoteAvailable ? TRUE : FALSE );
-	}
 
 	const bool mergeDuplicates = GetSettings().GetMergeDuplicates();
 	const HWND hwndMergeDuplicates = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_HIDEDUPLICATES );
 	if ( nullptr != hwndMergeDuplicates ) {
 		Button_SetCheck( hwndMergeDuplicates, ( mergeDuplicates ? BST_CHECKED : BST_UNCHECKED ) );
+	}
+
+	const HWND hwndGracenote = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_GRACENOTE_ENABLE );
+	if ( nullptr != hwndGracenote ) {
+		const bool gracenoteAvailable = ( nullptr != vuplayer ) && vuplayer->IsGracenoteAvailable();
+		std::string userID;
+		bool gracenoteEnabled = true;
+		bool gracenoteLog = true;
+		GetSettings().GetGracenoteSettings( userID, gracenoteEnabled, gracenoteLog );
+		Button_SetCheck( hwndGracenote, ( gracenoteEnabled ? BST_CHECKED : BST_UNCHECKED ) );
+		EnableWindow( hwndGracenote, gracenoteAvailable ? TRUE : FALSE );
+	}
+
+	const bool scrobblerAvailable = ( nullptr != vuplayer ) && vuplayer->IsScrobblerAvailable();
+	const HWND hwndScrobblerEnable = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SCROBBLER_ENABLE );
+	if ( nullptr != hwndScrobblerEnable ) {
+		const bool scrobblerEnabled = GetSettings().GetScrobblerEnabled();
+		Button_SetCheck( hwndScrobblerEnable, ( scrobblerEnabled ? BST_CHECKED : BST_UNCHECKED ) );
+		EnableWindow( hwndScrobblerEnable, scrobblerAvailable ? TRUE : FALSE );
+	}
+	const HWND hwndScrobblerAuthorise = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SCROBBLER_AUTHORISE );
+	if ( ( nullptr != hwndScrobblerAuthorise ) && !scrobblerAvailable ) {
+		ShowWindow( hwndScrobblerAuthorise, SW_HIDE );
 	}
 
 	// Notification area settings
@@ -120,6 +133,9 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 	const bool mergeDuplicates = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_HIDEDUPLICATES ) ) );
 	GetSettings().SetMergeDuplicates( mergeDuplicates );
 
+	const bool enableScrobbler = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SCROBBLER_ENABLE ) ) );
+	GetSettings().SetScrobblerEnabled( enableScrobbler );
+
 	// Notification area settings
 	const bool enable = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_ENABLE ) ) );
 	const Settings::SystrayCommand singleClick = static_cast<Settings::SystrayCommand>( ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_SINGLECLICK ) ) );
@@ -143,6 +159,21 @@ void OptionsGeneral::OnCommand( const HWND hwnd, const WPARAM wParam, const LPAR
 			}
 			default : {
 				break;
+			}
+		}
+	}
+}
+
+void OptionsGeneral::OnNotify( const HWND /*hwnd*/, const WPARAM /*wParam*/, const LPARAM lParam )
+{
+	PNMLINK nmlink = reinterpret_cast<PNMLINK>( lParam );
+	if ( nullptr != nmlink ) {
+		if ( NM_CLICK == nmlink->hdr.code ) {
+			if ( IDC_OPTIONS_GENERAL_SCROBBLER_AUTHORISE == nmlink->hdr.idFrom ) {
+				VUPlayer* vuplayer = VUPlayer::Get();
+				if ( nullptr != vuplayer ) {
+					vuplayer->ScrobblerAuthorise();
+				}
 			}
 		}
 	}

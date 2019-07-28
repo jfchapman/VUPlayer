@@ -165,6 +165,7 @@ void WndSplit::OnDrag( const POINT& position )
 
 	if ( splitPosition != m_SplitPosition ) {
 		m_SplitPosition = splitPosition;
+		m_Settings.SetSplitWidth( m_SplitPosition );
 		Resize();
 	}
 }

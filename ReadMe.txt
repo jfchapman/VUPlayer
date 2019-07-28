@@ -1,14 +1,27 @@
-VUPlayer 4.6
+VUPlayer 4.7
 Copyright (c) 2019 James Chapman
 ------------------------------------------------------------------------------
-website:	http://www.vuplayer.com
-email: 		james@vuplayer.com
+website: http://www.vuplayer.com
+email:   james@vuplayer.com
 ------------------------------------------------------------------------------
 
 Overview
 --------
 VUPlayer is a freeware multi-format audio player for Windows 7 SP1 or later.
 Gracenote functionality requires an internet connection.
+Audioscrobbler functionality requires an internet connection and a Last.fm account.
+
+
+Command-line
+------------
+Ordinarily, VUPlayer stores application settings and metadata in a SQLite database in the user documents folder.
+To run in 'portable' mode, leaving no database footprint, the application can be launched using the following command-line argument(s):
+
+	VUPlayer.exe -portable [settings file]
+
+The optional [settings file] parameter specifies the location of an application settings file to use.
+The 'Export Settings' function in the main application can be used to save the current settings in the correct format.
+Please note that Gracenote and Audioscrobbler functionality is disabled when running in 'portable' mode.
 
 
 Credits
@@ -32,7 +45,10 @@ WavPack is Copyright (c) 1998-2017 David Bryant
 http://www.wavpack.com
 
 Gracenote is Copyright (c) 2000-2019 Gracenote, Inc.
-http://www.gracenote.com/
+http://www.gracenote.com
+
+Audioscrobbler is Copyright (c) 2019 Last.fm Ltd.
+http://www.last.fm
 
 
 License

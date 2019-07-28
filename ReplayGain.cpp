@@ -136,6 +136,7 @@ void ReplayGain::Handler()
 							m_GainAnalysis.AnalyzeSamples( leftSamples, rightSamples, samplesRead, channels );
 							samplesRead = decoder->Read( buffer, sampleSize );
 						}
+						decoder.reset();
 
 						if ( CanContinue() ) {
 							const float trackGain = m_GainAnalysis.GetTitleGain();

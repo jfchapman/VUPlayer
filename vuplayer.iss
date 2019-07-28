@@ -2,8 +2,8 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "VUPlayer"
-#define MyAppVersion "4.6"
-#define MyAppFullVersion "4.6.0.0"
+#define MyAppVersion "4.7"
+#define MyAppFullVersion "4.7.0.0"
 #define MyAppMainVersion "4"
 #define MyAppDefaultDir "VUPlayer 4"
 #define MyAppPublisher "James Chapman"
@@ -46,6 +46,7 @@ Source: "x64\Release\gnsdk_manager.dll"; DestDir: "{app}"; Check: Is64BitInstall
 Source: "x64\Release\gnsdk_musicid.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\gnsdk_storage_sqlite.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\gnsdk_vuplayer.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\scrobbler.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\VUPlayer.exe"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: solidbreak ignoreversion
 Source: "Release\bass.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\bassmidi.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
@@ -54,6 +55,7 @@ Source: "Release\gnsdk_manager.dll"; DestDir: "{app}"; Check: not Is64BitInstall
 Source: "Release\gnsdk_musicid.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\gnsdk_storage_sqlite.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: solidbreak ignoreversion
 Source: "Release\gnsdk_vuplayer.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\scrobbler.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "readme.txt"; DestDir: "{app}"; Flags: solidbreak
 
 [Icons]

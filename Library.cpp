@@ -249,6 +249,11 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 				if ( !success && scanMedia && ( MediaInfo::Source::File == info.GetSource() ) ) {
 					success = GetDecoderInfo( info );
 					if ( success ) {
+						Handler::Tags pendingTags;
+						if ( GetPendingTags( info.GetFilename(), pendingTags ) ) {
+							UpdateMediaInfoFromTags( info, pendingTags );
+						}
+
 						success = UpdateMediaLibrary( info );
 						if ( success && sendNotification ) {
 							VUPlayer* vuplayer = VUPlayer::Get();
@@ -304,94 +309,7 @@ bool Library::GetDecoderInfo( MediaInfo& mediaInfo )
 
 		Handler::Tags tags;
 		if ( m_Handlers.GetTags( mediaInfo.GetFilename(), tags ) ) {
-			for ( const auto& iter : tags ) {
-				switch ( iter.first ) {
-					case Handler::Tag::Album : {
-						mediaInfo.SetAlbum( iter.second );
-						break;
-					}
-					case Handler::Tag::Artist : {
-						mediaInfo.SetArtist( iter.second );
-						break;
-					}
-					case Handler::Tag::Comment : {
-						mediaInfo.SetComment( iter.second );
-						break;
-					}
-					case Handler::Tag::Version : {
-						mediaInfo.SetVersion( iter.second );
-						break;
-					}
-					case Handler::Tag::Genre : {
-						mediaInfo.SetGenre( iter.second );
-						break;
-					}
-					case Handler::Tag::Title : {
-						mediaInfo.SetTitle( iter.second );
-						break;
-					}
-					case Handler::Tag::GainAlbum : {
-						try {
-							mediaInfo.SetGainAlbum( std::stof( iter.second ) );
-						} catch ( ... ) {
-						}
-						break;
-					}
-					case Handler::Tag::GainTrack : {
-						try {
-							mediaInfo.SetGainTrack( std::stof( iter.second ) );
-						} catch ( ... ) {
-						}
-						break;
-					}
-					case Handler::Tag::PeakAlbum : {
-						try {
-							mediaInfo.SetPeakAlbum( std::stof( iter.second ) );
-						} catch ( ... ) {
-						}
-						break;
-					}
-					case Handler::Tag::PeakTrack : {
-						try {
-							mediaInfo.SetPeakTrack( std::stof( iter.second ) );
-						} catch ( ... ) {
-						}
-						break;
-					}
-					case Handler::Tag::Track : {
-						try {
-							mediaInfo.SetTrack( std::stol( iter.second ) );
-						} catch ( ... ) {
-						}
-						break;
-					}
-					case Handler::Tag::Year : {
-						try {
-							mediaInfo.SetYear( std::stol( iter.second ) );
-						} catch ( ... ) {
-						}
-						break;
-					}
-					case Handler::Tag::Artwork : {
-						const std::vector<BYTE> image = Base64Decode( iter.second );
-						if ( !image.empty() ) {
-							std::wstring artworkID = FindArtwork( image );
-							if ( !artworkID.empty() ) {
-								mediaInfo.SetArtworkID( artworkID );
-							} else {
-								artworkID = UTF8ToWideString( GenerateGUIDString() );
-								if ( AddArtwork( artworkID, image ) ) {			
-									mediaInfo.SetArtworkID( artworkID );
-								}
-							}
-						}
-						break;
-					}
-					default : {
-						break;
-					}
-				}
-			}
+			UpdateMediaInfoFromTags( mediaInfo, tags );
 		}
 
 		long long filetime = 0;
@@ -764,10 +682,22 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 void Library::WriteFileTags( MediaInfo& mediaInfo, const Handler::Tags& tags )
 {
 	if ( MediaInfo::Source::File == mediaInfo.GetSource() ) {
-		if ( m_Handlers.SetTags( mediaInfo.GetFilename(), tags ) ) {
+		
+		Handler::Tags allTags;
+		const bool hasPendingTags = GetPendingTags( mediaInfo.GetFilename(), allTags );
+		if ( hasPendingTags ) {
+			for ( const auto& tag : tags ) {
+				allTags[ tag.first ] = tag.second;
+			}
+		} else {
+			allTags = tags;
+		}
+
+		if ( m_Handlers.SetTags( mediaInfo.GetFilename(), allTags ) ) {
+			m_PendingTags.erase( mediaInfo.GetFilename() );
 			GetDecoderInfo( mediaInfo );
 		} else {
-			m_PendingTags.push_back( FileTag( mediaInfo.GetFilename(), tags ) );
+			AddPendingTags( mediaInfo.GetFilename(), tags );
 		}
 	}
 	UpdateMediaLibrary( mediaInfo );
@@ -1219,4 +1149,120 @@ const Library::Columns& Library::GetColumns( const MediaInfo::Source source ) co
 {
 	const Columns& columns = ( MediaInfo::Source::CDDA == source ) ? m_CDDAColumns : m_MediaColumns;
 	return columns;
+}
+
+void Library::UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Handler::Tags& tags )
+{
+	for ( const auto& iter : tags ) {
+		switch ( iter.first ) {
+			case Handler::Tag::Album : {
+				mediaInfo.SetAlbum( iter.second );
+				break;
+			}
+			case Handler::Tag::Artist : {
+				mediaInfo.SetArtist( iter.second );
+				break;
+			}
+			case Handler::Tag::Comment : {
+				mediaInfo.SetComment( iter.second );
+				break;
+			}
+			case Handler::Tag::Version : {
+				mediaInfo.SetVersion( iter.second );
+				break;
+			}
+			case Handler::Tag::Genre : {
+				mediaInfo.SetGenre( iter.second );
+				break;
+			}
+			case Handler::Tag::Title : {
+				mediaInfo.SetTitle( iter.second );
+				break;
+			}
+			case Handler::Tag::GainAlbum : {
+				try {
+					mediaInfo.SetGainAlbum( std::stof( iter.second ) );
+				} catch ( ... ) {
+				}
+				break;
+			}
+			case Handler::Tag::GainTrack : {
+				try {
+					mediaInfo.SetGainTrack( std::stof( iter.second ) );
+				} catch ( ... ) {
+				}
+				break;
+			}
+			case Handler::Tag::PeakAlbum : {
+				try {
+					mediaInfo.SetPeakAlbum( std::stof( iter.second ) );
+				} catch ( ... ) {
+				}
+				break;
+			}
+			case Handler::Tag::PeakTrack : {
+				try {
+					mediaInfo.SetPeakTrack( std::stof( iter.second ) );
+				} catch ( ... ) {
+				}
+				break;
+			}
+			case Handler::Tag::Track : {
+				try {
+					mediaInfo.SetTrack( std::stol( iter.second ) );
+				} catch ( ... ) {
+				}
+				break;
+			}
+			case Handler::Tag::Year : {
+				try {
+					mediaInfo.SetYear( std::stol( iter.second ) );
+				} catch ( ... ) {
+				}
+				break;
+			}
+			case Handler::Tag::Artwork : {
+				const std::vector<BYTE> image = Base64Decode( iter.second );
+				if ( !image.empty() ) {
+					std::wstring artworkID = FindArtwork( image );
+					if ( !artworkID.empty() ) {
+						mediaInfo.SetArtworkID( artworkID );
+					} else {
+						artworkID = UTF8ToWideString( GenerateGUIDString() );
+						if ( AddArtwork( artworkID, image ) ) {			
+							mediaInfo.SetArtworkID( artworkID );
+						}
+					}
+				}
+				break;
+			}
+			default : {
+				break;
+			}
+		}
+	}
+}
+
+void Library::AddPendingTags( const std::wstring& filename, const Handler::Tags& tags )
+{
+	auto tagIter = m_PendingTags.find( filename );
+	if ( m_PendingTags.end() != tagIter ) {
+		Handler::Tags& pendingTags = tagIter->second;
+		for ( const auto& tag : tags ) {
+			pendingTags[ tag.first ] = tag.second;
+		}
+	} else {
+		m_PendingTags.insert( FileTags::value_type( filename, tags ) );
+	}
+}
+
+bool Library::GetPendingTags( const std::wstring& filename, Handler::Tags& tags ) const
+{
+	tags.clear();
+	const auto tagIter = m_PendingTags.find( filename );
+	if ( m_PendingTags.end() != tagIter ) {
+		tags = tagIter->second;
+	}
+	const bool anyPending = !tags.empty();
+	return anyPending;
 }

@@ -279,16 +279,18 @@ void WndRebar::RearrangeBands( const bool force )
 				}
 			}
 
-			m_PreventBandRearrangement = true;
-			DeleteBand( lowestBandID );
-			m_PreventBandRearrangement = false;
-			m_HiddenBands.insert( lowestBandID );
+			if ( UINT_MAX != lowestBandID ) {
+				m_PreventBandRearrangement = true;
+				DeleteBand( lowestBandID );
+				m_PreventBandRearrangement = false;
+				m_HiddenBands.insert( lowestBandID );
 
-			rowCount = static_cast<int>( SendMessage( m_hWnd, RB_GETROWCOUNT, 0, 0 ) );
-			if ( rowCount > 1 ) {
-				RearrangeBands();
-			} else {
-				ReorderBandsByID();
+				rowCount = static_cast<int>( SendMessage( m_hWnd, RB_GETROWCOUNT, 0, 0 ) );
+				if ( rowCount > 1 ) {
+					RearrangeBands();
+				} else {
+					ReorderBandsByID();
+				}
 			}
 		} else if ( !m_HiddenBands.empty() && ( force || ( rebarWidth > m_PreviousRebarWidth ) ) ) {
 			// Reshow any hidden bands, if space permits.

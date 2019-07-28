@@ -92,7 +92,7 @@ WndCounter::WndCounter( HINSTANCE instance, HWND parent, Settings& settings, Out
 WndCounter::~WndCounter()
 {
 	SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_DefaultWndProc ) );
-	m_Settings.SetCounterSettings( m_Font, m_Colour, m_ShowRemaining );
+	SaveSettings();
 }
 
 HWND WndCounter::GetWindowHandle()
@@ -149,6 +149,8 @@ void WndCounter::OnPaint( const PAINTSTRUCT& ps )
 	std::shared_ptr<Gdiplus::Bitmap> backgroundBitmap = GetBackgroundBitmap();
 	if ( backgroundBitmap ) {
 		bitmapGraphics.DrawImage( backgroundBitmap.get(), Gdiplus::Rect( 0 /*x*/, 0 /*y*/, bitmap.GetWidth(), bitmap.GetHeight() ) );
+	} else {
+		bitmapGraphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::White ) );
 	}
 
 	Gdiplus::Color textColour;
@@ -327,7 +329,7 @@ std::shared_ptr<Gdiplus::Bitmap> WndCounter::GetBackgroundBitmap()
 						fBackgroundBitmap.reset( new Gdiplus::Bitmap( width, height, PixelFormat32bppARGB ) );
 						Gdiplus::BitmapData bitmapData;
 						Gdiplus::Rect rect( 0 /*x*/, 0 /*y*/, width, height );
-						if ( Gdiplus::Ok == fBackgroundBitmap->LockBits( &rect, Gdiplus::ImageLockModeWrite, PixelFormat32bppARGB, &bitmapData ) ) {
+						if ( Gdiplus::Ok == fBackgroundBitmap->LockBits( &rect, Gdiplus::ImageLockModeWrite, PixelFormat32bppRGB, &bitmapData ) ) {
 							// Flip image.
 							unsigned char* srcBits = static_cast<unsigned char*>( bits );
 							unsigned char* destBits = static_cast<unsigned char*>( bitmapData.Scan0 );
@@ -348,4 +350,9 @@ std::shared_ptr<Gdiplus::Bitmap> WndCounter::GetBackgroundBitmap()
 		}
 	}
 	return fBackgroundBitmap;
+}
+
+void WndCounter::SaveSettings()
+{
+	m_Settings.SetCounterSettings( m_Font, m_Colour, m_ShowRemaining );
 }

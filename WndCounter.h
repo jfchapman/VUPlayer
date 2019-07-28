@@ -36,6 +36,9 @@ public:
 	// Displays the colour selection dialog for the counter.
 	void OnSelectColour();
 
+	// Saves counter settings to application settings.
+	void SaveSettings();
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK CounterProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );

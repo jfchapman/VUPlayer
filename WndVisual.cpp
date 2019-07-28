@@ -137,8 +137,6 @@ WndVisual::~WndVisual()
 		delete visual;
 	}
 	ReleaseD2D();
-
-	m_Settings.SetVisualID( static_cast<int>( m_CurrentVisual ) );
 }
 
 HWND WndVisual::GetWindowHandle()
@@ -399,6 +397,7 @@ void WndVisual::SelectVisual( const long id )
 				m_CurrentVisual = id;
 			}
 		}
+		m_Settings.SetVisualID( static_cast<int>( m_CurrentVisual ) );
 	}
 }
 

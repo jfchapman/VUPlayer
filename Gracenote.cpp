@@ -6,11 +6,11 @@
 // Match dialog icon size.
 const int s_MatchDialogIconSize = 100;
 
-Gracenote::Gracenote( const HINSTANCE instance, const HWND hwnd, Settings& settings ) :
+Gracenote::Gracenote( const HINSTANCE instance, const HWND hwnd, Settings& settings, const bool disable ) :
 	m_hInst( instance ),
 	m_hWnd( hwnd ),
 	m_Settings( settings ),
-	m_Handle( LoadLibrary( L"gnsdk_vuplayer.dll" ) ),
+	m_Handle( disable ? nullptr : LoadLibrary( L"gnsdk_vuplayer.dll" ) ),
 	m_Init( nullptr ),
 	m_Close( nullptr ),
 	m_Query( nullptr ),

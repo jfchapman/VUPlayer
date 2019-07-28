@@ -3,6 +3,9 @@
 #include "Utility.h"
 #include "VUPlayer.h"
 
+#include <fstream>
+#include <sstream>
+
 #define MAX_LOADSTRING 100
 
 using namespace Gdiplus;
@@ -23,6 +26,12 @@ INT_PTR CALLBACK About( HWND, UINT, WPARAM, LPARAM );
 // Copied data should be an array of null terminated WCHAR strings, ending with an additional null terminator.
 static const UINT VUPLAYER_COPYDATA = 0x1974;
 
+// Command line switch to run in 'portable' mode (i.e. no persistent database).
+static const TCHAR s_portableCmdLineSwitch[] = L"-portable";
+
+// Command line switch to set the database access mode.
+static const TCHAR s_databasemodeCmdLineSwitch[] = L"-mode";
+
 // Entry point
 int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow )
 {
@@ -35,13 +44,55 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 
 	// Parse command line
 	std::list<std::wstring> cmdLineFiles;
+	bool portable = false;
+	std::string portableSettings;
+	Database::Mode mode = Database::Mode::Temp;
 	int numArgs = 0;
 	LPWSTR* args = CommandLineToArgvW( GetCommandLine(), &numArgs );
 	if ( nullptr != args ) {
 		for ( int argc = 1; argc < numArgs; argc++ ) {
-			const DWORD attributes = GetFileAttributes( args[ argc ] );
-			if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
-				cmdLineFiles.push_back( args[ argc ] );
+			if ( 0 == _wcsicmp( args[ argc ], s_portableCmdLineSwitch ) ) {
+				// Handle the '-portable' command-line switch (and the following settings file argument).
+				portable = true;
+				if ( ( argc + 1 ) < numArgs ) {
+					const std::wstring settingsFileName = args[ argc + 1 ];
+					if ( settingsFileName.size() > 4 ) {
+						const std::wstring ext = WideStringToUpper( settingsFileName.substr( settingsFileName.size() - 4 ) );
+						if ( L".INI" == ext ) {
+							try {
+								std::ifstream filestream;
+								std::ostringstream stringstream;
+								filestream.open( settingsFileName );
+								if ( filestream.is_open() ) {
+									stringstream << filestream.rdbuf();
+									portableSettings = stringstream.str();
+									filestream.close();
+								}
+							} catch ( ... ) {
+							}
+						}
+					}
+				}
+				if ( !portableSettings.empty() ) {
+					++argc;
+				}
+			} else if ( 0 == _wcsicmp( args[ argc ], s_databasemodeCmdLineSwitch ) ) {
+				// Handle the '-mode' command-line switch (and the following database access mode argument).
+				if ( ( argc + 1 ) < numArgs ) {
+					try {
+						const int value = std::stoi( args[ argc + 1 ] );
+						if ( ( value >= static_cast<int>( Database::Mode::Disk ) ) && ( value <= static_cast<int>( Database::Mode::Memory ) ) ) {
+							mode = static_cast<Database::Mode>( value );
+							++argc;
+						}
+					} catch ( ... ) {
+					}
+				}
+			} else {
+				const DWORD attributes = GetFileAttributes( args[ argc ] );
+				if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
+					cmdLineFiles.push_back( args[ argc ] );
+				}
 			}
 		}
 		LocalFree( args );
@@ -97,7 +148,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 	ULONG_PTR gdiplusToken;
 	GdiplusStartup( &gdiplusToken, &gdiplusStartupInput, NULL );
 
-	VUPlayer* vuplayer = new VUPlayer( g_hInst, g_hWnd, cmdLineFiles );
+	VUPlayer* vuplayer = new VUPlayer( g_hInst, g_hWnd, cmdLineFiles, portable, portableSettings, mode );
 
 	SetWindowLongPtr( g_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( vuplayer ) );
 	const HACCEL hAccelTable = vuplayer ? vuplayer->GetAcceleratorTable() : nullptr;

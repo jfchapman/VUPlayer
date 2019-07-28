@@ -123,11 +123,8 @@ private:
 	// Media library columns.
 	typedef std::map<std::string,Column> Columns;
 
-	// Pairs a filename with tag information.
-	typedef std::pair<std::wstring,Handler::Tags> FileTag;
-
-	// Tag information list.
-	typedef std::list<FileTag> FileTags;
+	// Maps a filename to tag information.
+	typedef std::map<std::wstring,Handler::Tags> FileTags;
 
 	// Updates the database to the current version if necessary.
 	void UpdateDatabase();
@@ -176,6 +173,16 @@ private:
 
 	// Returns the library columns corresponding to 'source'.
 	const Columns& GetColumns( const MediaInfo::Source source ) const;
+
+	// Updates 'mediaInfo' with the 'tags'.
+	void UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Handler::Tags& tags );
+
+	// Adds any pending 'tags' for the 'filename', to be written out at the next opportunity.
+	void AddPendingTags( const std::wstring& filename, const Handler::Tags& tags );
+
+	// Gets any pending 'tags' for the 'filename'.
+	// Returns whether there are any pending tags.
+	bool GetPendingTags( const std::wstring& filename, Handler::Tags& tags ) const;
 
 	// Database.
 	Database& m_Database;

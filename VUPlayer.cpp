@@ -48,18 +48,20 @@ VUPlayer* VUPlayer::Get()
 	return s_VUPlayer;
 }
 
-VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<std::wstring>& startupFilenames ) :
+VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<std::wstring>& startupFilenames,
+		const bool portable, const std::string& portableSettings, const Database::Mode databaseMode ) :
 	m_hInst( instance ),
 	m_hWnd( hwnd ),
 	m_hAccel( LoadAccelerators( m_hInst, MAKEINTRESOURCE( IDC_VUPLAYER ) ) ),
 	m_Handlers(),
-	m_Database( DocumentsFolder() + L"VUPlayer.db" ),
+	m_Database( ( portable ? std::wstring() : ( DocumentsFolder() + L"VUPlayer.db" ) ), databaseMode ),
 	m_Library( m_Database, m_Handlers ),
 	m_Maintainer( m_Library ),
-	m_Settings( m_Database, m_Library ),
+	m_Settings( m_Database, m_Library, portableSettings ),
 	m_Output( m_hWnd, m_Handlers, m_Settings, m_Settings.GetVolume() ),
 	m_ReplayGain( m_Library, m_Handlers ),
-	m_Gracenote( m_hInst, m_hWnd, m_Settings ),
+	m_Gracenote( m_hInst, m_hWnd, m_Settings, portable /*disable*/ ),
+	m_Scrobbler( m_Database, m_Settings, portable /*disable*/ ),
 	m_CDDAManager( m_hInst, m_hWnd, m_Library, m_Handlers, m_Gracenote ),
 	m_Rebar( m_hInst, m_hWnd, m_Settings ),
 	m_Status( m_hInst, m_hWnd ),
@@ -87,6 +89,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_CustomColours(),
 	m_Hotkeys( m_hWnd, m_Settings ),
 	m_LastSkipCount( {} ),
+	m_LastOutputStateChange( 0 ),
 	m_AddToPlaylistMenuMap()
 {
 	s_VUPlayer = this;
@@ -173,10 +176,18 @@ void VUPlayer::ReadWindowSettings()
 	bool maximised = false;
 	bool minimised = false;
 	m_Settings.GetStartupPosition( x, y, width, height, maximised, minimised );
-	const int screenWidth = GetSystemMetrics( SM_CXSCREEN );
-	const int screenHeight = GetSystemMetrics( SM_CYSCREEN );
-	if ( ( x > 0 ) && ( y > 0 ) && ( width > 0 ) && ( height > 0 ) && ( ( x + width ) <= screenWidth ) && ( ( y + height ) <= screenHeight ) ) {
-		MoveWindow( m_hWnd, x, y, width, height, FALSE /*repaint*/ );
+	const float dpiScaling = GetDPIScaling();
+	if ( ( width >= static_cast<int>( s_MinAppWidth * dpiScaling ) ) && ( height >= static_cast<int>( s_MinAppHeight * dpiScaling ) ) ) {
+		// Check that some portion of the title bar is visible.
+		const int captionSize = GetSystemMetrics( SM_CYCAPTION ) / 2;
+		const std::list<POINT> bounds = { { x + captionSize, y + captionSize }, { x + width - captionSize, y + captionSize } };
+		for ( const auto& point : bounds ) {
+			const HMONITOR monitor = MonitorFromPoint( point, MONITOR_DEFAULTTONULL );
+			if ( nullptr != monitor ) {
+				MoveWindow( m_hWnd, x, y, width, height, FALSE /*repaint*/ );
+				break;
+			}
+		}
 	}
 
 	bool systrayEnabled = false;
@@ -451,7 +462,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 	if ( handled ) {
 		Output::Item currentPlaying = m_Output.GetCurrentPlaying();
 		if ( m_CurrentOutput.PlaylistItem.ID != currentPlaying.PlaylistItem.ID ) {
-			OnOutputChanged( currentPlaying );
+			OnOutputChanged( m_CurrentOutput, currentPlaying );
 		}
 		m_CurrentOutput = currentPlaying;
 
@@ -496,14 +507,15 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 	return handled;
 }
 
-void VUPlayer::OnOutputChanged( const Output::Item& item )
+void VUPlayer::OnOutputChanged( const Output::Item& previousItem, const Output::Item& currentItem )
 {
+	UpdateScrobbler( previousItem, currentItem );
 	if ( ID_VISUAL_ARTWORK == m_Visual.GetCurrentVisualID() ) {
 		m_Splitter.Resize();
 		m_Visual.DoRender();
 	}
 	RedrawWindow( m_List.GetWindowHandle(), NULL /*rect*/, NULL /*region*/, RDW_INVALIDATE | RDW_NOERASE );
-	SetTitlebarText( item );
+	SetTitlebarText( currentItem );
 }
 
 void VUPlayer::OnMinMaxInfo( LPMINMAXINFO minMaxInfo )
@@ -543,23 +555,13 @@ void VUPlayer::OnPlaylistItemUpdated( Playlist* playlist, const Playlist::Item& 
 
 void VUPlayer::OnDestroy()
 {
-	const Output::Item currentPlaying = m_Output.GetCurrentPlaying();
-	Playlist::Ptr playlist = m_Output.GetPlaylist();
-	MediaInfo info = currentPlaying.PlaylistItem.Info;
-	if ( ( 0 == currentPlaying.PlaylistItem.ID ) || !playlist || ( Playlist::Type::_Undefined == playlist->GetType() ) ) {
-		playlist = m_List.GetPlaylist();
-		info = m_List.GetCurrentSelectedItem().Info;
-	}
+	KillTimer( m_hWnd, s_TimerID );
 
-	m_Tree.SaveStartupPlaylist( playlist );
-
-	const std::wstring& filename = ( MediaInfo::Source::File == info.GetSource() ) ? info.GetFilename() : std::wstring(); 
-	m_Settings.SetStartupFilename( filename );
+	SaveSettings();
 
 	m_Output.Stop();
-	m_Settings.SetVolume( m_Output.GetVolume() );
-	m_Settings.SetPlaybackSettings( m_Output.GetRandomPlay(), m_Output.GetRepeatTrack(), m_Output.GetRepeatPlaylist(), m_Output.GetCrossfade() );
-	m_Settings.SetOutputControlType( static_cast<int>( m_VolumeControl.GetType() ) );
+
+	UpdateScrobbler( m_CurrentOutput, m_Output.GetCurrentPlaying() );
 
 	m_ReplayGain.Stop();
 	m_Maintainer.Stop();
@@ -894,6 +896,10 @@ void VUPlayer::OnCommand( const int commandID )
 		}
 		case ID_FILE_GRACENOTE_QUERY : {
 			OnGracenoteQuery();
+			break;
+		}
+		case ID_FILE_EXPORTSETTINGS : {
+			OnExportSettings();
 			break;
 		}
 		case ID_VIEW_COUNTER_FONTSTYLE : {
@@ -1369,9 +1375,17 @@ HBITMAP VUPlayer::GetGracenoteLogo( const RECT& rect )
 
 void VUPlayer::OnOptions()
 {
+	const std::string previousScrobblerToken = m_Scrobbler.GetToken();
+
 	m_Hotkeys.Unregister();
 	DlgOptions options( m_hInst, m_hWnd, m_Settings, m_Output );
 	m_Hotkeys.Update();
+
+	const std::string currentScrobblerToken = m_Scrobbler.GetToken();
+	if ( ( previousScrobblerToken != currentScrobblerToken ) && !currentScrobblerToken.empty() ) {
+		// Wake up the scrobbler, so that a session key can be requested.
+		m_Scrobbler.WakeUp();
+	}
 
 	bool systrayEnable = false;
 	Settings::SystrayCommand systraySingleClick = Settings::SystrayCommand::None;
@@ -1644,6 +1658,17 @@ bool VUPlayer::IsGracenoteEnabled()
 	return enabled;
 }
 
+bool VUPlayer::IsScrobblerAvailable()
+{
+	const bool available = m_Scrobbler.IsAvailable();
+	return available;
+}
+
+void VUPlayer::ScrobblerAuthorise()
+{
+	m_Scrobbler.Authorise();
+}
+
 HACCEL VUPlayer::GetAcceleratorTable() const
 {
 	return m_hAccel;
@@ -1712,4 +1737,89 @@ void VUPlayer::SetTitlebarText( const Output::Item& item )
 		titlebarText = buffer;
 	}
 	SetWindowText( m_hWnd, titlebarText.c_str() );
+}
+
+void VUPlayer::UpdateScrobbler( const Output::Item& previousItem, const Output::Item& currentItem )
+{
+	const time_t now = time( nullptr );
+	m_Scrobbler.NowPlaying( currentItem.PlaylistItem.Info );
+	if ( 0 != previousItem.PlaylistItem.ID ) {
+		m_Scrobbler.Scrobble( previousItem.PlaylistItem.Info, m_LastOutputStateChange );
+	}
+	m_LastOutputStateChange = now;
+}
+
+void VUPlayer::SaveSettings()
+{
+	const Output::Item currentPlaying = m_Output.GetCurrentPlaying();
+	Playlist::Ptr playlist = m_Output.GetPlaylist();
+	MediaInfo info = currentPlaying.PlaylistItem.Info;
+	if ( ( 0 == currentPlaying.PlaylistItem.ID ) || !playlist || ( Playlist::Type::_Undefined == playlist->GetType() ) ) {
+		playlist = m_List.GetPlaylist();
+		info = m_List.GetCurrentSelectedItem().Info;
+	}
+
+	m_Tree.SaveStartupPlaylist( playlist );
+
+	const std::wstring& filename = ( MediaInfo::Source::File == info.GetSource() ) ? info.GetFilename() : std::wstring(); 
+	m_Settings.SetStartupFilename( filename );
+
+	m_Settings.SetVolume( m_Output.GetVolume() );
+	m_Settings.SetPlaybackSettings( m_Output.GetRandomPlay(), m_Output.GetRepeatTrack(), m_Output.GetRepeatPlaylist(), m_Output.GetCrossfade() );
+	m_Settings.SetOutputControlType( static_cast<int>( m_VolumeControl.GetType() ) );
+}
+
+void VUPlayer::OnExportSettings()
+{
+	std::string settings;
+
+	// Ensure all database settings are up to date, before exporting.
+	m_List.SaveSettings();
+	m_Tree.SaveSettings();
+	m_EQ.SaveSettings();
+	WriteWindowSettings();
+	SaveSettings();
+	m_Counter.SaveSettings();
+
+	m_Settings.ExportSettings( settings );
+	if ( !settings.empty() ) {
+		WCHAR title[ MAX_PATH ] = {};
+		LoadString( m_hInst, IDS_EXPORTSETTINGS_TITLE, title, MAX_PATH );
+
+		WCHAR filter[ MAX_PATH ] = {};
+		LoadString( m_hInst, IDS_EXPORTSETTINGS_FILTER, filter, MAX_PATH );
+		const std::wstring filter1( filter );
+		const std::wstring filter2( L"*.ini" );
+		std::vector<WCHAR> filterStr;
+		filterStr.reserve( MAX_PATH );
+		filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
+		filterStr.push_back( 0 );
+		filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
+		filterStr.push_back( 0 );
+		filterStr.push_back( 0 );
+
+		WCHAR buffer[ MAX_PATH ] = {};
+		LoadString( m_hInst, IDS_EXPORTSETTINGS_DEFAULT, buffer, MAX_PATH );
+
+		OPENFILENAME ofn = {};
+		ofn.lStructSize = sizeof( OPENFILENAME );
+		ofn.hwndOwner = m_hWnd;
+		ofn.lpstrTitle = title;
+		ofn.lpstrFilter = &filterStr[ 0 ];
+		ofn.nFilterIndex = 1;
+		ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+		ofn.lpstrFile = buffer;
+		ofn.nMaxFile = MAX_PATH;
+		if ( FALSE != GetSaveFileName( &ofn ) ) {
+			try {
+				std::ofstream fileStream;
+				fileStream.open( ofn.lpstrFile, std::ios::out | std::ios::trunc );
+				if ( fileStream.is_open() ) {
+					fileStream << settings;
+					fileStream.close();
+				}
+			} catch ( ... ) {
+			}
+		}
+	}
 }

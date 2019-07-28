@@ -24,6 +24,9 @@ public:
 	// Initialises the dialog using the 'parent' window handle.
 	void Init( const HWND parent );
 
+	// Saves the current EQ settings to application settings.
+	void SaveSettings();
+
 private:
 	// Maps a slider control handle to a value.
 	typedef std::map<HWND,int> SliderValueMap;
@@ -34,9 +37,6 @@ private:
 	// Called when the dialog is initialised.
 	// 'hwnd' - dialog window handle.
 	void OnInitDialog( const HWND hwnd );
-
-	// Saves the current EQ settings.
-	void SaveSettings();
 
 	// Called when the position of the 'slider' control changes.
 	void OnSliderChange( const HWND slider );

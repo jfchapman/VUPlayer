@@ -162,6 +162,9 @@ public:
 	// Sets whether duplicate tracks are merged into a single entry (for Artist/Album/Genre/Year playlists).
 	void SetMergeDuplicates( const bool mergeDuplicates );
 
+	// Saves the tree control settings to application settings.
+	void SaveSettings();
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
@@ -243,9 +246,6 @@ private:
 
 	// Initialises the tree control from application settings.
 	void ApplySettings();
-
-	// Saves the tree control settings to application settings.
-	void SaveSettings();
 
 	// Adds 'Favourites' to the tree control.
 	void AddFavourites();

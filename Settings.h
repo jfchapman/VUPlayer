@@ -15,7 +15,8 @@ class Settings
 public:
 	// 'database' - application database.
 	// 'library' - media library.
-	Settings( Database& database, Library& library );
+	// 'settings' - initial settings, used when running in 'portable' mode. 
+	Settings( Database& database, Library& library, const std::string& settings = std::string() );
 
 	virtual ~Settings();
 
@@ -265,7 +266,7 @@ public:
 	// 'font' - counter font.
 	// 'fontColour' - counter colour.
 	// 'showRemaining' - true to display remaining time, false for elapsed time.
-	void SetCounterSettings( const LOGFONT& font,	const COLORREF colour, const bool showRemaining );
+	void SetCounterSettings( const LOGFONT& font, const COLORREF colour, const bool showRemaining );
 
 	// Returns the output device name (or an empty string for the default device).
 	std::wstring GetOutputDevice();
@@ -426,6 +427,21 @@ public:
 	// Sets the last user selected 'folder' for the 'folderType'.
 	void SetLastFolder( const std::string& folderType, const std::wstring& folder );
 
+	// Returns whether scrobbling is enabled.
+	bool GetScrobblerEnabled();
+
+	// Sets whether scrobbling is enabled.
+	void SetScrobblerEnabled( const bool enabled );
+
+	// Returns the scrobbler session key.
+	std::string GetScrobblerKey();
+
+	// Sets the scrobbler session 'key'.
+	void SetScrobblerKey( const std::string& key );
+
+	// Exports the settings in JSON format to 'output'.
+	void ExportSettings( std::string& output );
+
 private:
 	// Updates the database to the current version if necessary.
 	void UpdateDatabase();
@@ -447,6 +463,9 @@ private:
 
 	// Sets the playlist files from the database.
 	void ReadPlaylistFiles( Playlist& playlist );
+
+	// Imports the JSON format settings from 'input'.
+	void ImportSettings( const std::string& input );
 
 	// Returns whether a GUID string is valid.
 	static bool IsValidGUID( const std::string& guid );
