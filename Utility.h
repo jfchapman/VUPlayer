@@ -49,10 +49,10 @@ std::wstring DurationToString( const HINSTANCE instance, const float duration, c
 // Converts a byte array to a base64 encoded string.
 // 'bytes' - byte array.
 // 'byteCount' - number of bytes.
-std::wstring Base64Encode( const BYTE* bytes, const int byteCount );
+std::string Base64Encode( const BYTE* bytes, const int byteCount );
 
 // Converts a base64 encoded 'text' to a byte array.
-std::vector<BYTE> Base64Decode( const std::wstring& text );
+std::vector<BYTE> Base64Decode( const std::string& text );
 
 // Gets image information.
 // 'image' - base64 encoded image.
@@ -61,10 +61,10 @@ std::vector<BYTE> Base64Decode( const std::wstring& text );
 // 'height' - out, height in pixels.
 // 'depth' - out, bits per pixel.
 // 'colours' - out, number of colours (for palette indexed images).
-void GetImageInformation( const std::wstring& image, std::string& mimeType, int& width, int& height, int& depth, int& colours );
+void GetImageInformation( const std::string& image, std::string& mimeType, int& width, int& height, int& depth, int& colours );
 
 // Converts 'image' to a base64 encoded form, converting non-PNG/JPG/GIF images to PNG format.
-std::wstring ConvertImage( const std::vector<BYTE>& image );
+std::string ConvertImage( const std::vector<BYTE>& image );
 
 // Generates a GUID.
 GUID GenerateGUID();
@@ -94,11 +94,11 @@ bool FolderExists( const std::wstring& folder );
 // 'replaceFolderDelimiters' - whether folder delimiters should be replaced.
 void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const std::wstring& replacement, const bool replaceFolderDelimiters ); 
 
-// Converts a 'gain' value to a string.
+// Converts a 'gain' value to a string (returns an empty string if the gain is not valid).
 std::wstring GainToWideString( const float gain );
 
-// Converts a 'peak' value to a string.
-std::wstring PeakToWideString( const float peak );
+// Converts a 'gain' value to a string (returns an empty string if the gain is not valid).
+std::string GainToString( const float gain );
 
 // Centres a 'dialog' with respect to its parent window, or the desktop window if the parent is not visible.
 void CentreDialog( const HWND dialog );

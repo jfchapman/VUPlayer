@@ -26,7 +26,7 @@ public:
 	// Returns the new position in seconds.
 	virtual float Seek( const float position );
 
-	// Returns the ReplayGain track gain, in dB.
+	// Returns the track gain, in dB.
 	// 'secondslimit' - number of seconds to devote to calculating an estimate, or 0 to perform a complete calculation.
 	virtual float CalculateTrackGain( const float secondsLimit = 0 );
 

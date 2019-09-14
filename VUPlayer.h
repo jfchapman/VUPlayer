@@ -6,12 +6,12 @@
 
 #include "CDDAManager.h"
 #include "Database.h"
+#include "GainCalculator.h"
 #include "Gracenote.h"
 #include "Hotkeys.h"
 #include "Library.h"
 #include "LibraryMaintainer.h"
 #include "Output.h"
-#include "ReplayGain.h"
 #include "Scrobbler.h"
 #include "Settings.h"
 
@@ -231,8 +231,8 @@ private:
 	// Shows the track information dialog.
 	void OnTrackInformation();
 
-	// Called when the Calculate ReplayGain command is received.
-	void OnCalculateReplayGain();
+	// Called when the Calculate Gain command is received.
+	void OnCalculateGain();
 
 	// Called when the Add to Favourites command is received.
 	void OnAddToFavourites();
@@ -285,8 +285,8 @@ private:
 	// Output.
 	Output m_Output;
 
-	// ReplayGain calculator.
-	ReplayGain m_ReplayGain;
+	// Gain calculator.
+	GainCalculator m_GainCalculator;
 
 	// Gracenote manager.
 	Gracenote m_Gracenote;

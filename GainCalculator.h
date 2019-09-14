@@ -3,31 +3,29 @@
 #include "Playlist.h"
 #include "Settings.h"
 
-#include "replaygain_analysis.h"
-
 #include <atomic>
 #include <tuple>
 
-class ReplayGain
+class GainCalculator
 {
 public:
 	// 'library' - media library.
 	// 'handlers' - media handlers.
-	ReplayGain( Library& library, const Handlers& handlers );
+	GainCalculator( Library& library, const Handlers& handlers );
 
-	virtual ~ReplayGain();
+	virtual ~GainCalculator();
 
-	// Calculates ReplayGain values for the playlist 'items'.
+	// Calculates gain values for the playlist 'items'.
 	void Calculate( const Playlist::ItemList& items );
 
-	// Stops any pending ReplayGain calculations.
+	// Stops any pending gain calculations.
 	void Stop();
 
-	// Returns the number of ReplayGain calculations pending.
+	// Returns the number of gain calculations pending.
 	int GetPendingCount() const;
 
 private:
-	// ReplayGain album key.
+	// Gain album key.
 	typedef std::tuple<long,long,std::wstring> AlbumKey;
 
 	// Associates an album key with a list of items.
@@ -69,9 +67,6 @@ private:
 	// Calculation thread.
 	HANDLE m_Thread;
 
-	// Number of ReplayGain calculations pending.
+	// Number of gain calculations pending.
 	std::atomic<int> m_PendingCount;
-
-	// ReplayGain analysis object.
-	replaygain_analysis m_GainAnalysis;
 };

@@ -462,7 +462,7 @@ void DlgTrackInfo::OnChooseArtwork( HWND hwnd )
 					std::vector<BYTE> imageBytes( streamSize );
 					char* imageBuffer = reinterpret_cast<char*>( &imageBytes[ 0 ] );
 					fileStream.read( imageBuffer, streamSize );
-					const std::wstring encodedImage = ConvertImage( imageBytes );
+					const std::string encodedImage = ConvertImage( imageBytes );
 					const std::vector<BYTE> image = Base64Decode( encodedImage );
 					if ( !image.empty() ) {
 						m_ChosenArtworkImage = image;
@@ -486,7 +486,7 @@ void DlgTrackInfo::OnExportArtwork( HWND hwnd )
 	const std::vector<BYTE> imageBytes = m_Library.GetMediaArtwork( m_ClosingInfo );
 	const int imageSize = static_cast<int>( imageBytes.size() );
 	if ( imageSize > 0 ) {
-		const std::wstring encodedImage = Base64Encode( &imageBytes[ 0 ], imageSize );
+		const std::string encodedImage = Base64Encode( &imageBytes[ 0 ], imageSize );
 		std::string mimeType;
 		int width = 0;
 		int height = 0;

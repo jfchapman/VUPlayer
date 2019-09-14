@@ -430,6 +430,9 @@ private:
 	// Stops the thread which updates the media information for the scratch list.
 	void StopScratchListUpdateThread();
 
+	// Returns whether to ignore a file monitor event for the 'filename'.
+	bool IgnoreFileMonitorEvent( const std::wstring& filename ) const;
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -543,6 +546,9 @@ private:
 
 	// Whether duplicate tracks are merged into a single entry (for Artist/Album/Genre/Year playlists).
 	bool m_MergeDuplicates;
+
+	// All file extensions supported by the (decoder) handlers.
+	const std::set<std::wstring> m_SupportedFileExtensions;
 
 	// Root item ordering.
 	static OrderMap s_RootOrder;

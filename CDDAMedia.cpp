@@ -1,7 +1,5 @@
 #include "CDDAMedia.h"
 
-#include "replaygain_analysis.h"
-
 #include "resource.h"
 
 #include "Utility.h"

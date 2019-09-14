@@ -62,15 +62,15 @@ bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
 	if ( music != 0 ) {
 		const char* author = BASS_ChannelGetTags( music, BASS_TAG_MUSIC_AUTH );
 		if ( author != nullptr ) {
-			tags.insert( Tags::value_type( Tag::Artist, UTF8ToWideString( author ) ) );
+			tags.insert( Tags::value_type( Tag::Artist, author ) );
 		}
 		const char* title = BASS_ChannelGetTags( music, BASS_TAG_MUSIC_NAME );
 		if ( title != nullptr ) {
-			tags.insert( Tags::value_type( Tag::Title, UTF8ToWideString( title ) ) );
+			tags.insert( Tags::value_type( Tag::Title, title ) );
 		}
 		const char* comment = BASS_ChannelGetTags( music, BASS_TAG_MUSIC_MESSAGE );
 		if ( comment != nullptr ) {
-			tags.insert( Tags::value_type( Tag::Comment, UTF8ToWideString( comment ) ) );
+			tags.insert( Tags::value_type( Tag::Comment, comment ) );
 		}
 		BASS_MusicFree( music );
 		success = true;
@@ -89,18 +89,18 @@ bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
 			} else if ( BASS_CTYPE_STREAM_MIDI == info.ctype ) {
 				const char* midiTags = BASS_ChannelGetTags( stream, BASS_TAG_MIDI_TRACK );
 				if ( ( nullptr != midiTags ) && ( strlen( midiTags ) > 0 ) ) {
-					tags.insert( Tags::value_type( Tag::Title, UTF8ToWideString( midiTags ) ) );
+					tags.insert( Tags::value_type( Tag::Title, midiTags ) );
 					success = true;
 				}
 			} else if ( BASS_CTYPE_STREAM_DSD == info.ctype ) {
 				const char* dsdArtist = BASS_ChannelGetTags( stream, BASS_TAG_DSD_ARTIST );
 				if ( ( nullptr != dsdArtist ) && ( strlen( dsdArtist ) > 0 ) ) {
-					tags.insert( Tags::value_type( Tag::Artist, UTF8ToWideString( dsdArtist ) ) );
+					tags.insert( Tags::value_type( Tag::Artist, dsdArtist ) );
 					success = true;
 				}
 				const char* dsdTitle = BASS_ChannelGetTags( stream, BASS_TAG_DSD_TITLE );
 				if ( ( nullptr != dsdTitle ) && ( strlen( dsdTitle ) > 0 ) ) {
-					tags.insert( Tags::value_type( Tag::Title, UTF8ToWideString( dsdTitle ) ) );
+					tags.insert( Tags::value_type( Tag::Title, dsdTitle ) );
 					success = true;
 				}
 			}
@@ -110,7 +110,7 @@ bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
 	return success;
 }
 
-bool HandlerBass::SetTags( const std::wstring& filename, const Handler::Tags& tags ) const
+bool HandlerBass::SetTags( const std::wstring& filename, const Tags& tags ) const
 {
 	bool success = false;
 	const DWORD flags = BASS_UNICODE | BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE;
@@ -189,28 +189,24 @@ void HandlerBass::ReadOggTags( const char* oggTags, Tags& tags ) const
 				const std::string field = tag.substr( 0 /*offset*/, pos );
 				const std::string value = tag.substr( 1 + pos /*offset*/ );
 				if ( !field.empty() && !value.empty() ) {
-					if ( 0 == _stricmp( field.c_str(), "artist" ) ) {
-						tags.insert( Tags::value_type( Tag::Artist, UTF8ToWideString( value ) ) );
-					} else if ( 0 == _stricmp( field.c_str(), "title" ) ) {
-						tags.insert( Tags::value_type( Tag::Title, UTF8ToWideString( value ) ) );
-					} else if ( 0 == _stricmp( field.c_str(), "album" ) ) {
-						tags.insert( Tags::value_type( Tag::Album, UTF8ToWideString( value ) ) );
-					} else if ( 0 == _stricmp( field.c_str(), "genre" ) ) {
-						tags.insert( Tags::value_type( Tag::Genre, UTF8ToWideString( value ) ) );
-					} else if ( ( 0 == _stricmp( field.c_str(), "year" ) ) || ( 0 == _stricmp( field.c_str(), "date" ) ) ) {
-						tags.insert( Tags::value_type( Tag::Year, UTF8ToWideString( value ) ) );
-					} else if ( 0 == _stricmp( field.c_str(), "comment" ) ) {
-						tags.insert( Tags::value_type( Tag::Comment, UTF8ToWideString( value ) ) );
-					} else if ( ( 0 == _stricmp( field.c_str(), "track" ) ) || ( 0 == _stricmp( field.c_str(), "tracknumber" ) ) ) {
-						tags.insert( Tags::value_type( Tag::Track, UTF8ToWideString( value ) ) );
-					} else if ( 0 == _stricmp( field.c_str(), "replaygain_track_gain" ) ) {
-						tags.insert( Tags::value_type( Tag::GainTrack, UTF8ToWideString( value ) ) );
-					} else if ( 0 == _stricmp( field.c_str(), "replaygain_track_peak" ) ) {
-						tags.insert( Tags::value_type( Tag::PeakTrack, UTF8ToWideString( value ) ) );
-					} else if ( 0 == _stricmp( field.c_str(), "replaygain_album_gain" ) ) {
-						tags.insert( Tags::value_type( Tag::GainAlbum, UTF8ToWideString( value ) ) );
-					} else if ( 0 == _stricmp( field.c_str(), "replaygain_album_peak" ) ) {
-						tags.insert( Tags::value_type( Tag::PeakAlbum, UTF8ToWideString( value ) ) );
+					if ( 0 == _stricmp( field.c_str(), "ARTIST" ) ) {
+						tags.insert( Tags::value_type( Tag::Artist, value ) );
+					} else if ( 0 == _stricmp( field.c_str(), "TITLE" ) ) {
+						tags.insert( Tags::value_type( Tag::Title, value ) );
+					} else if ( 0 == _stricmp( field.c_str(), "ALBUM" ) ) {
+						tags.insert( Tags::value_type( Tag::Album, value ) );
+					} else if ( 0 == _stricmp( field.c_str(), "GENRE" ) ) {
+						tags.insert( Tags::value_type( Tag::Genre, value ) );
+					} else if ( ( 0 == _stricmp( field.c_str(), "YEAR" ) ) || ( 0 == _stricmp( field.c_str(), "DATE" ) ) ) {
+						tags.insert( Tags::value_type( Tag::Year, value ) );
+					} else if ( 0 == _stricmp( field.c_str(), "COMMENT" ) ) {
+						tags.insert( Tags::value_type( Tag::Comment, value ) );
+					} else if ( ( 0 == _stricmp( field.c_str(), "TRACK" ) ) || ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) ) {
+						tags.insert( Tags::value_type( Tag::Track, value ) );
+					} else if ( 0 == _stricmp( field.c_str(), "REPLAYGAIN_TRACK_GAIN" ) ) {
+						tags.insert( Tags::value_type( Tag::GainTrack, value ) );
+					} else if ( 0 == _stricmp( field.c_str(), "REPLAYGAIN_ALBUM_GAIN" ) ) {
+						tags.insert( Tags::value_type( Tag::GainAlbum, value ) );
 					}			
 				}
 			}
@@ -233,8 +229,6 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 			case Tag::GainAlbum : 
 			case Tag::GainTrack :
 			case Tag::Genre :
-			case Tag::PeakAlbum :
-			case Tag::PeakTrack :
 			case Tag::Title :
 			case Tag::Track :
 			case Tag::Year : {
@@ -265,7 +259,7 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 
 						for ( const auto& tagIter : tags ) {
 							const Tag tag = tagIter.first;
-							const std::string tagValue = WideStringToUTF8( tagIter.second );
+							const std::string& tagValue = tagIter.second;
 							std::list<std::string> tagFields;
 							switch ( tag ) {
 								case Tag::Album : {
@@ -300,16 +294,8 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 									tagFields = { "REPLAYGAIN_ALBUM_GAIN" };
 									break;
 								}
-								case Tag::PeakAlbum : {
-									tagFields = { "REPLAYGAIN_ALBUM_PEAK" };
-									break;
-								}
 								case Tag::GainTrack : {
 									tagFields = { "REPLAYGAIN_TRACK_GAIN" };
-									break;
-								}
-								case Tag::PeakTrack : {
-									tagFields = { "REPLAYGAIN_TRACK_PEAK" };
 									break;
 								}
 								default : {

@@ -3,14 +3,16 @@
 #include <list>
 #include <string>
 
-// Indicates no ReplayGain value.
-static const float REPLAYGAIN_NOVALUE = FLT_MIN;
+#include "Tag.h"
 
 // Minimum valid year.
 static const long MINYEAR = 1000;
 
 // Maximum valid year.
 static const long MAXYEAR = 9999;
+
+// Loudness reference level in LUFS.
+static const float LOUDNESS_REFERENCE = -18.0f;
 
 // Media information.
 class MediaInfo
@@ -35,6 +37,9 @@ public:
 
 	// Less than operator.
 	bool operator<( const MediaInfo& other ) const;
+
+	// Tags cast operator.
+	operator Tags() const;
 
 	// Returns the filename.
 	const std::wstring& GetFilename() const;
@@ -123,29 +128,17 @@ public:
 	// Sets the format version.
 	void SetVersion( const std::wstring& version );
 
-	// Returns the track gain, in dB (or REPLAYGAIN_NOVALUE).
+	// Returns the track gain, in dB (or NaN if there is no gain).
 	float GetGainTrack() const;
 
 	// Sets the track gain, in dB.
 	void SetGainTrack( const float gain );
 
-	// Returns the album gain, in dB (or REPLAYGAIN_NOVALUE).
+	// Returns the album gain, in dB (or NaN if there is no gain).
 	float GetGainAlbum() const;
 
 	// Sets the album gain, in dB.
 	void SetGainAlbum( const float gain );
-
-	// Returns the peak track level (or REPLAYGAIN_NOVALUE).
-	float GetPeakTrack() const;
-
-	// Sets the peak track level.
-	void SetPeakTrack( const float peak );
-
-	// Returns the peak album level (or REPLAYGAIN_NOVALUE).
-	float GetPeakAlbum() const;
-
-	// Sets the peak album level.
-	void SetPeakAlbum( const float peak );
 
 	// Returns the title
 	// 'filenameAsTitle' - whether to return the filename if there is no title.
@@ -196,8 +189,6 @@ private:
 	std::wstring m_Version;
 	float m_GainTrack;
 	float m_GainAlbum;
-	float m_PeakTrack;
-	float m_PeakAlbum;
 	std::wstring m_ArtworkID;
 	Source m_Source;
 	long m_CDDB;

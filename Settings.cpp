@@ -1412,33 +1412,31 @@ void Settings::SetMODSettings( const long long mod, const long long mtm, const l
 	}
 }
 
-void Settings::GetDefaultReplaygainSettings( ReplaygainMode& mode, float& preamp, bool& hardlimit )
+void Settings::GetDefaultGainSettings( GainMode& gainMode, LimitMode& limitMode, float& preamp )
 {
-	mode = ReplaygainMode::Disabled;
-	preamp = 6.0f;
-	hardlimit = false;
+	gainMode = GainMode::Disabled;
+	limitMode = LimitMode::Soft;
+	preamp = 4.0f;
 }
 
-void Settings::GetReplaygainSettings( ReplaygainMode& mode, float& preamp, bool& hardlimit )
+void Settings::GetGainSettings( GainMode& gainMode, LimitMode& limitMode, float& preamp )
 {
-	GetDefaultReplaygainSettings( mode, preamp, hardlimit );
+	GetDefaultGainSettings( gainMode, limitMode, preamp );
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='ReplayGainMode';";
+		std::string query = "SELECT Value FROM Settings WHERE Setting='GainMode';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				if ( ( value < static_cast<int>( ReplaygainMode::Disabled ) ) || ( value > static_cast<int>( ReplaygainMode::Album ) ) ) {
-					mode = ReplaygainMode::Disabled;
-				} else {
-					mode = static_cast<ReplaygainMode>( value );
+				if ( ( value >= static_cast<int>( GainMode::Disabled ) ) && ( value <= static_cast<int>( GainMode::Album ) ) ) {
+					gainMode = static_cast<GainMode>( value );
 				}
 				sqlite3_finalize( stmt );
 			}
 		}
 		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ReplayGainPreamp';";
+		query = "SELECT Value FROM Settings WHERE Setting='GainPreamp';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				preamp = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
@@ -1446,35 +1444,38 @@ void Settings::GetReplaygainSettings( ReplaygainMode& mode, float& preamp, bool&
 			}
 		}
 		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ReplayGainHardlimit';";
+		query = "SELECT Value FROM Settings WHERE Setting='GainLimit';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				hardlimit = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+				if ( ( value >= static_cast<int>( LimitMode::None ) ) && ( value <= static_cast<int>( LimitMode::Soft ) ) ) {
+					limitMode = static_cast<LimitMode>( value );
+				}
 				sqlite3_finalize( stmt );
 			}
 		}
 	}
 }
 
-void Settings::SetReplaygainSettings( const ReplaygainMode mode, const float preamp, const bool hardlimit )
+void Settings::SetGainSettings( const GainMode gainMode, const LimitMode limitMode, const float preamp )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		sqlite3_stmt* stmt = nullptr;
 		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "ReplayGainMode", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( mode ) );
+			sqlite3_bind_text( stmt, 1, "GainMode", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( gainMode ) );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
-			sqlite3_bind_text( stmt, 1, "ReplayGainPreamp", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_text( stmt, 1, "GainPreamp", -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_double( stmt, 2, preamp );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
-			sqlite3_bind_text( stmt, 1, "ReplayGainHardlimit", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, hardlimit );
+			sqlite3_bind_text( stmt, 1, "GainLimit", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( limitMode ) );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
@@ -2357,7 +2358,7 @@ std::string Settings::GetScrobblerKey()
 	std::string decryptedKey;
 	if ( !key.empty() ) {
 		// Decrypt key from storage.
-		std::vector<BYTE> bytes = Base64Decode( UTF8ToWideString( key ) );
+		std::vector<BYTE> bytes = Base64Decode( key );
 		DATA_BLOB dataIn = { static_cast<DWORD>( bytes.size() ), &bytes[ 0 ] };
 		DATA_BLOB dataOut = {};
 		if ( CryptUnprotectData( &dataIn, nullptr /*dataDesc*/, nullptr /*entropy*/, nullptr /*reserved*/, nullptr /*prompt*/, 0 /*flags*/, &dataOut ) ) {
@@ -2378,7 +2379,7 @@ void Settings::SetScrobblerKey( const std::string& key )
 			DATA_BLOB dataIn = { static_cast<DWORD>( key.size() ), const_cast<BYTE*>( reinterpret_cast<const BYTE*>( key.c_str() ) ) };
 			DATA_BLOB dataOut = {};
 			if ( CryptProtectData( &dataIn, nullptr /*dataDesc*/, nullptr /*entropy*/, nullptr /*reserved*/, nullptr /*prompt*/, 0 /*flags*/, &dataOut ) ) {
-				encryptedKey = WideStringToUTF8( Base64Encode( dataOut.pbData, dataOut.cbData ) );
+				encryptedKey = Base64Encode( dataOut.pbData, dataOut.cbData );
 				LocalFree( dataOut.pbData );
 			}
 		}

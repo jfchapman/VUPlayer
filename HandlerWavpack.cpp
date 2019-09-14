@@ -6,18 +6,16 @@
 #include "Utility.h"
 
 // Supported tags and their WavPack equivalents.
-static const std::map<Handler::Tag,std::string> s_SupportedTags = { 
-	{ Handler::Tag::Title, "title" },
-	{ Handler::Tag::Artist, "artist" },
-	{ Handler::Tag::Album, "album" },
-	{ Handler::Tag::Genre, "genre" },
-	{ Handler::Tag::Year, "year" },
-	{ Handler::Tag::Track, "track" },
-	{ Handler::Tag::Comment, "comment" },
-	{ Handler::Tag::GainAlbum, "replaygain_album_gain" },
-	{ Handler::Tag::PeakAlbum, "replaygain_album_peak" },
-	{ Handler::Tag::GainTrack, "replaygain_track_gain" },
-	{ Handler::Tag::PeakTrack, "replaygain_track_peak" }
+static const std::map<Tag,std::string> s_SupportedTags = {
+	{ Tag::Album,				"ALBUM" },
+	{ Tag::Artist,			"ARTIST" },
+	{ Tag::Comment,			"COMMENT" },
+	{ Tag::GainAlbum,		"REPLAYGAIN_ALBUM_GAIN" },
+	{ Tag::GainTrack,		"REPLAYGAIN_TRACK_GAIN" },
+	{ Tag::Genre,				"GENRE" },
+	{ Tag::Title,				"TITLE" },
+	{ Tag::Track,				"TRACKNUMBER" },
+	{ Tag::Year,				"DATE" }
 };
 
 HandlerWavpack::HandlerWavpack()
@@ -56,7 +54,7 @@ bool HandlerWavpack::GetTags( const std::wstring& filename, Tags& tags ) const
 				char* buffer = new char[ tagLength + 1 ];
 				memset( buffer, 0 /*value*/, tagLength + 1 );
 				if ( tagLength == WavpackGetTagItem( context, tagField.c_str(), buffer, tagLength + 1 ) ) {
-					tags.insert( Tags::value_type( tagIter.first, UTF8ToWideString( buffer ) ) );
+					tags.insert( Tags::value_type( tagIter.first, buffer ) );
 				}
 				delete [] buffer;
 			}
@@ -92,8 +90,8 @@ bool HandlerWavpack::GetTags( const std::wstring& filename, Tags& tags ) const
 		}
 		if ( 0 != stringID ) {
 			const int bufferSize = 32;
-			WCHAR buffer[ bufferSize ] = {};
-			if ( 0 != LoadString( GetModuleHandle( NULL ), stringID, buffer, bufferSize ) ) {
+			char buffer[ bufferSize ] = {};
+			if ( 0 != LoadStringA( GetModuleHandle( NULL ), stringID, buffer, bufferSize ) ) {
 				tags.insert( Tags::value_type( Tag::Version, buffer ) );
 			}
 		}
@@ -120,7 +118,7 @@ bool HandlerWavpack::SetTags( const std::wstring& filename, const Tags& tags ) c
 			if ( s_SupportedTags.end() != mapIter ) {
 				const Tag mapField = mapIter->first;
 				const std::string& fieldName = mapIter->second;
-				const std::string value = WideStringToUTF8( tagIter.second );
+				const std::string& value = tagIter.second;
 				if ( value.empty() ) {
 					WavpackDeleteTagItem( context, fieldName.c_str() );
 					writeTags = true;

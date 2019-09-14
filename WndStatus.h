@@ -3,7 +3,7 @@
 #include "Gracenote.h"
 #include "LibraryMaintainer.h"
 #include "Playlist.h"
-#include "ReplayGain.h"
+#include "GainCalculator.h"
 
 class WndStatus
 {
@@ -29,8 +29,8 @@ public:
 	// Called when an 'playlist' is updated.
 	void Update( Playlist* playlist );
 
-	// Updates the status text based on the 'replayGain', 'libraryMaintainer' & 'gracenote' state.
-	void Update( const ReplayGain& replayGain, const LibraryMaintainer& libraryMaintainer, const Gracenote& gracenote );
+	// Updates the status text based on the 'gainCalculator', 'libraryMaintainer' & 'gracenote' state.
+	void Update( const GainCalculator& gainCalculator, const LibraryMaintainer& libraryMaintainer, const Gracenote& gracenote );
 
 	// Refreshes the status bar contents.
 	void Refresh();
@@ -51,8 +51,8 @@ private:
 	// Playlist.
 	Playlist::Ptr m_Playlist;
 
-	// Indicates the number of pending ReplayGain calculations currently displayed.
-	int m_ReplayGainStatusCount;
+	// Indicates the number of pending gain calculations currently displayed.
+	int m_GainStatusCount;
 
 	// Indicates the number of pending library maintenance items currently displayed.
 	int m_LibraryStatusCount;

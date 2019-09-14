@@ -153,9 +153,6 @@
     <ClInclude Include="OptionsMod.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="OptionsReplaygain.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="WndTray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -194,12 +191,6 @@
     </ClInclude>
     <ClInclude Include="WndToolbarPlaylist.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ReplayGain.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="libs\replaygain\replaygain_analysis.h">
-      <Filter>Third Party</Filter>
     </ClInclude>
     <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.h">
       <Filter>Third Party</Filter>
@@ -290,6 +281,27 @@
     </ClInclude>
     <ClInclude Include="libs\sqlite-3.29.0\sqlite3.h">
       <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="EncoderOpus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tag.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OggPage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OpusComment.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\libebur128-1.2.4\ebur128.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="OptionsLoudness.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GainCalculator.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -410,9 +422,6 @@
     <ClCompile Include="OptionsMod.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="OptionsReplaygain.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="WndTray.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -451,12 +460,6 @@
     </ClCompile>
     <ClCompile Include="WndToolbarPlaylist.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ReplayGain.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="libs\replaygain\replaygain_analysis.cpp">
-      <Filter>Third Party</Filter>
     </ClCompile>
     <ClCompile Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.c">
       <Filter>Third Party</Filter>
@@ -538,6 +541,24 @@
     </ClCompile>
     <ClCompile Include="libs\sqlite-3.29.0\sqlite3.c">
       <Filter>Third Party</Filter>
+    </ClCompile>
+    <ClCompile Include="EncoderOpus.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OggPage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OpusComment.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\libebur128-1.2.4\ebur128.c">
+      <Filter>Third Party</Filter>
+    </ClCompile>
+    <ClCompile Include="OptionsLoudness.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GainCalculator.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -13,8 +13,8 @@
 Handlers::Handlers() :
 	m_Handlers( {
 		Handler::Ptr( new HandlerFlac() ),
-		Handler::Ptr( new HandlerWavpack() ),
 		Handler::Ptr( new HandlerOpus() ),
+		Handler::Ptr( new HandlerWavpack() ),
 		Handler::Ptr( new HandlerMP3() ),
 		Handler::Ptr( new HandlerPCM() ),
 		Handler::Ptr( new HandlerBass() ) } ),
@@ -66,7 +66,7 @@ Decoder::Ptr Handlers::OpenDecoder( const std::wstring& filename ) const
 	return decoder;
 }
 
-bool Handlers::GetTags( const std::wstring& filename, Handler::Tags& tags ) const
+bool Handlers::GetTags( const std::wstring& filename, Tags& tags ) const
 {
 	bool success = false;
 	tags.clear();
@@ -75,17 +75,29 @@ bool Handlers::GetTags( const std::wstring& filename, Handler::Tags& tags ) cons
 		success = handler->GetTags( filename, tags );
 	}
 	if ( !success ) {
+		// Try any handler.
+		for ( auto handlerIter = m_Decoders.begin(); !success && ( handlerIter != m_Decoders.end() ); handlerIter++ ) {
+			success = handlerIter->get()->GetTags( filename, tags );
+		}
+	}
+	if ( !success ) {
 		success = ShellMetadata::Get( filename, tags );
 	}
 	return success;
 }
 
-bool Handlers::SetTags( const std::wstring& filename, const Handler::Tags& tags ) const
+bool Handlers::SetTags( const std::wstring& filename, const Tags& tags ) const
 {
 	bool success = false;
 	Handler::Ptr handler = FindDecoderHandler( filename );
 	if ( handler ) {
 		success = handler->SetTags( filename, tags );
+	}
+	if ( !success ) {
+		// Try any handler.
+		for ( auto handlerIter = m_Decoders.begin(); !success && ( handlerIter != m_Decoders.end() ); handlerIter++ ) {
+			success = handlerIter->get()->SetTags( filename, tags );
+		}
 	}
 	if ( !success ) {
 		success = ShellMetadata::Set( filename, tags );

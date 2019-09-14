@@ -217,15 +217,15 @@ std::wstring DurationToString( const HINSTANCE instance, const float fDuration, 
 	return str;
 }
 
-std::wstring Base64Encode( const BYTE* bytes, const int byteCount )
+std::string Base64Encode( const BYTE* bytes, const int byteCount )
 {
-	std::wstring result;
+	std::string result;
 	if ( ( nullptr != bytes ) && ( byteCount > 0 ) ) {
 		DWORD bufferSize = 0;
-		if ( FALSE != CryptBinaryToString( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64, nullptr /*buffer*/, &bufferSize ) ) {
+		if ( FALSE != CryptBinaryToStringA( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, nullptr /*buffer*/, &bufferSize ) ) {
 			if ( bufferSize > 0 ) {
-				WCHAR* buffer = new WCHAR[ bufferSize ];
-				if ( FALSE != CryptBinaryToString( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64, buffer, &bufferSize ) ) {
+				char* buffer = new char[ bufferSize ];
+				if ( FALSE != CryptBinaryToStringA( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, buffer, &bufferSize ) ) {
 					result = buffer;
 				}
 				delete [] buffer;
@@ -235,15 +235,15 @@ std::wstring Base64Encode( const BYTE* bytes, const int byteCount )
 	return result;
 }
 
-std::vector<BYTE> Base64Decode( const std::wstring& text )
+std::vector<BYTE> Base64Decode( const std::string& text )
 {
 	std::vector<BYTE> result;
 	if ( !text.empty() ) {
 		DWORD bufferSize = 0;
-		if ( FALSE != CryptStringToBinary( text.c_str(), 0 /*strLen*/, CRYPT_STRING_BASE64, nullptr /*buffer*/, &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
+		if ( FALSE != CryptStringToBinaryA( text.c_str(), 0 /*strLen*/, CRYPT_STRING_BASE64, nullptr /*buffer*/, &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
 			if ( bufferSize > 0 ) {
 				result.resize( bufferSize );
-				if ( FALSE == CryptStringToBinary( text.c_str(), 0 /*strLen*/, CRYPT_STRING_BASE64, &result[ 0 ], &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
+				if ( FALSE == CryptStringToBinaryA( text.c_str(), 0 /*strLen*/, CRYPT_STRING_BASE64, &result[ 0 ], &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
 					result.clear();
 				}
 			}
@@ -252,7 +252,7 @@ std::vector<BYTE> Base64Decode( const std::wstring& text )
 	return result;
 }
 
-void GetImageInformation( const std::wstring& image, std::string& mimeType, int& width, int& height, int& depth, int& colours )
+void GetImageInformation( const std::string& image, std::string& mimeType, int& width, int& height, int& depth, int& colours )
 {
 	mimeType.clear();
 	width = 0;
@@ -368,9 +368,9 @@ std::string GenerateGUIDString()
 	return result;
 }
 
-std::wstring ConvertImage( const std::vector<BYTE>& imageBytes )
+std::string ConvertImage( const std::vector<BYTE>& imageBytes )
 {
-	std::wstring encodedImage;
+	std::string encodedImage;
 	const ULONG imageSize = static_cast<ULONG>( imageBytes.size() );
 	if ( imageSize > 0 ) {
 		IStream* stream = nullptr;
@@ -509,14 +509,18 @@ void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const s
 std::wstring GainToWideString( const float gain )
 {
 	std::wstringstream ss;
-	ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain << L" dB";
+	if ( !std::isnan( gain ) ) {
+		ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain << L" dB";
+	}
 	return ss.str();
 }
 
-std::wstring PeakToWideString( const float peak )
+std::string GainToString( const float gain )
 {
-	std::wstringstream ss;
-	ss << std::fixed << std::setprecision( 6 ) << peak;
+	std::stringstream ss;
+	if ( !std::isnan( gain ) ) {
+		ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain << " dB";
+	}
 	return ss.str();
 }
 

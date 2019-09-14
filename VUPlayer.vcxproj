@@ -22,32 +22,32 @@
     <ProjectGuid>{CEA20176-060E-4D43-99DE-DB035BE10FF0}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>VUPlayer</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -86,19 +86,21 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>FLAC__NO_DLL;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLAC__NO_DLL;_USE_MATH_DEFINES;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.14\c;libs\sqlite-3.29.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.14\c;libs\sqlite-3.29.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.3.1\include;libs\opusfile-0.11\include;libs\libopusenc-0.2.1\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>
       </LanguageStandard>
+      <EnableEnhancedInstructionSet>
+      </EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;libs\bass-2.4.14\c\bass.lib;libs\libvorbis-1.3.6\x86\libvorbis_static.lib;libs\libvorbis-1.3.6\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\opus-1.2.1\x86\opus.lib;libs\opusfile-0.10\x86\opusfile.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\flac-1.3.2\x86\debug\libFLAC_static.lib;libs\flac-1.3.2\x86\debug\libFLAC++_static.lib;libs\flac-1.3.2\x86\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;libs\bass-2.4.14\c\bass.lib;libs\libvorbis-1.3.6\x86\libvorbis_static.lib;libs\libvorbis-1.3.6\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\opus-1.3.1\x86\opus.lib;libs\opusfile-0.11\x86\opusfile.lib;libs\libopusenc-0.2.1\x86\opusenc.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\flac-1.3.2\x86\debug\libFLAC_static.lib;libs\flac-1.3.2\x86\debug\libFLAC++_static.lib;libs\flac-1.3.2\x86\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)libs\bass-2.4.14\bass.dll" "$(OutDir)bass.dll"
@@ -120,19 +122,21 @@ copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>FLAC__NO_DLL;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLAC__NO_DLL;_USE_MATH_DEFINES;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.14\c;libs\sqlite-3.29.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.14\c;libs\sqlite-3.29.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.3.1\include;libs\opusfile-0.11\include;libs\libopusenc-0.2.1\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>
       </LanguageStandard>
+      <EnableEnhancedInstructionSet>
+      </EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;libs\bass-2.4.14\c\x64\bass.lib;libs\libvorbis-1.3.6\x64\libvorbis_static.lib;libs\libvorbis-1.3.6\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\opus-1.2.1\x64\opus.lib;libs\opusfile-0.10\x64\opusfile.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\x64\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\flac-1.3.2\x64\debug\libFLAC_static.lib;libs\flac-1.3.2\x64\debug\libFLAC++_static.lib;libs\flac-1.3.2\x64\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;libs\bass-2.4.14\c\x64\bass.lib;libs\libvorbis-1.3.6\x64\libvorbis_static.lib;libs\libvorbis-1.3.6\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\opus-1.3.1\x64\opus.lib;libs\opusfile-0.11\x64\opusfile.lib;libs\libopusenc-0.2.1\x64\opusenc.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\x64\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\flac-1.3.2\x64\debug\libFLAC_static.lib;libs\flac-1.3.2\x64\debug\libFLAC++_static.lib;libs\flac-1.3.2\x64\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)libs\bass-2.4.14\x64\bass.dll" "$(OutDir)bass.dll"
@@ -156,21 +160,23 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>FLAC__NO_DLL;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLAC__NO_DLL;_USE_MATH_DEFINES;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.14\c;libs\sqlite-3.29.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.14\c;libs\sqlite-3.29.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.3.1\include;libs\opusfile-0.11\include;libs\libopusenc-0.2.1\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>
       </LanguageStandard>
+      <EnableEnhancedInstructionSet>
+      </EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;libs\bass-2.4.14\c\bass.lib;libs\libvorbis-1.3.6\x86\libvorbis_static.lib;libs\libvorbis-1.3.6\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\opus-1.2.1\x86\opus.lib;libs\opusfile-0.10\x86\opusfile.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\flac-1.3.2\x86\release\libFLAC_static.lib;libs\flac-1.3.2\x86\release\libFLAC++_static.lib;libs\flac-1.3.2\x86\release\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;libs\bass-2.4.14\c\bass.lib;libs\libvorbis-1.3.6\x86\libvorbis_static.lib;libs\libvorbis-1.3.6\x86\libvorbisfile_static.lib;libs\WavPack-5.1.0\x86\libwavpack.lib;libs\opus-1.3.1\x86\opus.lib;libs\opusfile-0.11\x86\opusfile.lib;libs\libopusenc-0.2.1\x86\opusenc.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\flac-1.3.2\x86\release\libFLAC_static.lib;libs\flac-1.3.2\x86\release\libFLAC++_static.lib;libs\flac-1.3.2\x86\release\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
@@ -195,21 +201,23 @@ copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>FLAC__NO_DLL;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLAC__NO_DLL;_USE_MATH_DEFINES;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.14\c;libs\sqlite-3.29.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.2.1\include;libs\opusfile-0.10\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.14\c;libs\sqlite-3.29.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.2\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.1.0\include;libs\opus-1.3.1\include;libs\opusfile-0.11\include;libs\libopusenc-0.2.1\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>
       </LanguageStandard>
+      <EnableEnhancedInstructionSet>
+      </EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;libs\bass-2.4.14\c\x64\bass.lib;libs\libvorbis-1.3.6\x64\libvorbis_static.lib;libs\libvorbis-1.3.6\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\opus-1.2.1\x64\opus.lib;libs\opusfile-0.10\x64\opusfile.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\x64\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\flac-1.3.2\x64\release\libFLAC_static.lib;libs\flac-1.3.2\x64\release\libFLAC++_static.lib;libs\flac-1.3.2\x64\release\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;libs\bass-2.4.14\c\x64\bass.lib;libs\libvorbis-1.3.6\x64\libvorbis_static.lib;libs\libvorbis-1.3.6\x64\libvorbisfile_static.lib;libs\WavPack-5.1.0\x64\libwavpack.lib;libs\opus-1.3.1\x64\opus.lib;libs\opusfile-0.11\x64\opusfile.lib;libs\libopusenc-0.2.1\x64\opusenc.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\x64\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\flac-1.3.2\x64\release\libFLAC_static.lib;libs\flac-1.3.2\x64\release\libFLAC++_static.lib;libs\flac-1.3.2\x64\release\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
@@ -250,6 +258,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="Encoder.h" />
     <ClInclude Include="EncoderFlac.h" />
     <ClInclude Include="EncoderMP3.h" />
+    <ClInclude Include="EncoderOpus.h" />
     <ClInclude Include="EncoderPCM.h" />
     <ClInclude Include="FolderMonitor.h" />
     <ClInclude Include="Gracenote.h" />
@@ -265,21 +274,23 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="Hotkeys.h" />
     <ClInclude Include="Library.h" />
     <ClInclude Include="LibraryMaintainer.h" />
-    <ClInclude Include="libs\replaygain\replaygain_analysis.h" />
+    <ClInclude Include="libs\libebur128-1.2.4\ebur128.h" />
     <ClInclude Include="libs\sqlite-3.29.0\sqlite3.h" />
     <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\i18n.h" />
     <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.h" />
     <ClInclude Include="Lock.h" />
     <ClInclude Include="MediaInfo.h" />
     <ClInclude Include="NullVisual.h" />
+    <ClInclude Include="OggPage.h" />
     <ClInclude Include="Options.h" />
     <ClInclude Include="OptionsGeneral.h" />
     <ClInclude Include="OptionsHotkeys.h" />
     <ClInclude Include="OptionsMod.h" />
-    <ClInclude Include="OptionsReplaygain.h" />
+    <ClInclude Include="OptionsLoudness.h" />
+    <ClInclude Include="OpusComment.h" />
     <ClInclude Include="Oscilloscope.h" />
     <ClInclude Include="PeakMeter.h" />
-    <ClInclude Include="ReplayGain.h" />
+    <ClInclude Include="GainCalculator.h" />
     <ClInclude Include="Scrobbler.h" />
     <ClInclude Include="ShellMetadata.h" />
     <ClInclude Include="Output.h" />
@@ -291,6 +302,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="Decoder.h" />
     <ClInclude Include="DecoderBass.h" />
     <ClInclude Include="DecoderFlac.h" />
+    <ClInclude Include="Tag.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Utility.h" />
     <ClInclude Include="Visual.h" />
@@ -345,6 +357,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClCompile Include="DlgTrackInfo.cpp" />
     <ClCompile Include="EncoderFlac.cpp" />
     <ClCompile Include="EncoderMP3.cpp" />
+    <ClCompile Include="EncoderOpus.cpp" />
     <ClCompile Include="EncoderPCM.cpp" />
     <ClCompile Include="FolderMonitor.cpp" />
     <ClCompile Include="Gracenote.cpp" />
@@ -369,11 +382,11 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClCompile Include="Hotkeys.cpp" />
     <ClCompile Include="Library.cpp" />
     <ClCompile Include="LibraryMaintainer.cpp" />
-    <ClCompile Include="libs\replaygain\replaygain_analysis.cpp">
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
-      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4838; 4305; 4267</DisableSpecificWarnings>
+    <ClCompile Include="libs\libebur128-1.2.4\ebur128.c">
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4267</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4267</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4267</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4267</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="libs\sqlite-3.29.0\sqlite3.c" />
     <ClCompile Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.c">
@@ -385,14 +398,16 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClCompile Include="Lock.cpp" />
     <ClCompile Include="MediaInfo.cpp" />
     <ClCompile Include="NullVisual.cpp" />
+    <ClCompile Include="OggPage.cpp" />
     <ClCompile Include="Options.cpp" />
     <ClCompile Include="OptionsGeneral.cpp" />
     <ClCompile Include="OptionsHotkeys.cpp" />
     <ClCompile Include="OptionsMod.cpp" />
-    <ClCompile Include="OptionsReplaygain.cpp" />
+    <ClCompile Include="OptionsLoudness.cpp" />
+    <ClCompile Include="OpusComment.cpp" />
     <ClCompile Include="Oscilloscope.cpp" />
     <ClCompile Include="PeakMeter.cpp" />
-    <ClCompile Include="ReplayGain.cpp" />
+    <ClCompile Include="GainCalculator.cpp" />
     <ClCompile Include="Scrobbler.cpp" />
     <ClCompile Include="ShellMetadata.cpp" />
     <ClCompile Include="Output.cpp" />
@@ -443,7 +458,12 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4995</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4995</DisableSpecificWarnings>
     </ClCompile>
-    <ClCompile Include="WndVisual.cpp" />
+    <ClCompile Include="WndVisual.cpp">
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4996</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4996</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4996</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4996</DisableSpecificWarnings>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="VUPlayer.rc" />

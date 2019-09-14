@@ -540,7 +540,7 @@ void WndList::SetListViewItemText( int itemIndex, const Playlist::Item& playlist
 			case Playlist::Column::GainTrack : {
 				std::wstringstream ss;
 				const float gain = ( Playlist::Column::GainAlbum == columnID ) ? mediaInfo.GetGainAlbum() : mediaInfo.GetGainTrack();
-				if ( REPLAYGAIN_NOVALUE != gain ) {
+				if ( !std::isnan( gain ) ) {
 					const int bufSize = 16;
 					WCHAR buf[ bufSize ] = {};
 					if ( 0 != LoadString( m_hInst, IDS_UNITS_DB, buf, bufSize ) ) {
@@ -667,8 +667,8 @@ void WndList::OnContextMenu( const POINT& position )
 			const UINT enableExtract = ( m_Playlist && ( m_Playlist->GetCount() > 0 ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
-			const UINT enableReplayGain = hasSelectedItems ? MF_ENABLED : MF_DISABLED;
-			EnableMenuItem( listmenu, ID_FILE_CALCULATEREPLAYGAIN, MF_BYCOMMAND | enableReplayGain );
+			const UINT enableGainCalculator = hasSelectedItems ? MF_ENABLED : MF_DISABLED;
+			EnableMenuItem( listmenu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | enableGainCalculator );
 
 			VUPlayer* vuplayer = VUPlayer::Get();
 
@@ -809,7 +809,7 @@ void WndList::RefreshListViewItemText()
 
 void WndList::DeleteSelectedItems()
 {
-	if ( m_Playlist ) {
+	if ( m_Playlist && ( Playlist::Type::Folder != m_Playlist->GetType() ) ) {
 		MediaInfo::List deletedMedia;
 
 		SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );

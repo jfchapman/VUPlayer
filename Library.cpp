@@ -30,8 +30,6 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "Version", Column::Version ),
 		Columns::value_type( "GainTrack", Column::GainTrack ),
 		Columns::value_type( "GainAlbum", Column::GainAlbum ),
-		Columns::value_type( "PeakTrack", Column::PeakTrack ),
-		Columns::value_type( "PeakAlbum", Column::PeakAlbum ),
 		Columns::value_type( "Artwork", Column::Artwork )
 	} ),
 	m_CDDAColumns( {
@@ -47,8 +45,6 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "Comment", Column::Comment ),
 		Columns::value_type( "GainTrack", Column::GainTrack ),
 		Columns::value_type( "GainAlbum", Column::GainAlbum ),
-		Columns::value_type( "PeakTrack", Column::PeakTrack ),
-		Columns::value_type( "PeakAlbum", Column::PeakAlbum ),
 		Columns::value_type( "Artwork", Column::Artwork )
 	} )
 {
@@ -249,7 +245,7 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 				if ( !success && scanMedia && ( MediaInfo::Source::File == info.GetSource() ) ) {
 					success = GetDecoderInfo( info );
 					if ( success ) {
-						Handler::Tags pendingTags;
+						Tags pendingTags;
 						if ( GetPendingTags( info.GetFilename(), pendingTags ) ) {
 							UpdateMediaInfoFromTags( info, pendingTags );
 						}
@@ -281,7 +277,8 @@ bool Library::GetFileInfo( const std::wstring& filename, long long& lastModified
 	bool success = false;
 	fileSize = 0;
 	lastModified = 0;
-	const HANDLE handle = CreateFile( filename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL /*security*/, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL /*template*/ );
+	const DWORD shareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+	const HANDLE handle = CreateFile( filename.c_str(), GENERIC_READ, shareMode, NULL /*security*/, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL /*template*/ );
 	if ( INVALID_HANDLE_VALUE != handle ) {
 		LARGE_INTEGER size = {};
 		if ( FALSE != GetFileSizeEx( handle, &size ) ) {
@@ -307,7 +304,7 @@ bool Library::GetDecoderInfo( MediaInfo& mediaInfo )
 		mediaInfo.SetDuration( stream->GetDuration() );
 		mediaInfo.SetSampleRate( stream->GetSampleRate() );
 
-		Handler::Tags tags;
+		Tags tags;
 		if ( m_Handlers.GetTags( mediaInfo.GetFilename(), tags ) ) {
 			UpdateMediaInfoFromTags( mediaInfo, tags );
 		}
@@ -425,14 +422,6 @@ void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 						}
 						break;
 					}
-					case Column::PeakTrack : {						
-						mediaInfo.SetPeakTrack( static_cast<float>( sqlite3_column_double( stmt, columnIndex ) ) );
-						break;
-					}
-					case Column::PeakAlbum : {						
-						mediaInfo.SetPeakAlbum( static_cast<float>( sqlite3_column_double( stmt, columnIndex ) ) );
-						break;
-					}
 					case Column::Artwork : {
 						const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) );
 						if ( nullptr != text ) {
@@ -509,7 +498,7 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 					}
 					case Column::GainAlbum : {
 						const float gain = mediaInfo.GetGainAlbum();
-						if ( REPLAYGAIN_NOVALUE == gain ) {
+						if ( std::isnan( gain ) ) {
 							sqlite3_bind_null( stmt, ++param );
 						} else {
 							sqlite3_bind_double( stmt, ++param, gain );
@@ -518,28 +507,10 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 					}
 					case Column::GainTrack : {
 						const float gain = mediaInfo.GetGainTrack();
-						if ( REPLAYGAIN_NOVALUE == gain ) {
+						if ( std::isnan( gain ) ) {
 							sqlite3_bind_null( stmt, ++param );
 						} else {
 							sqlite3_bind_double( stmt, ++param, gain );
-						}
-						break;
-					}
-					case Column::PeakAlbum : {
-						const float peak = mediaInfo.GetPeakAlbum();
-						if ( REPLAYGAIN_NOVALUE == peak ) {
-							sqlite3_bind_null( stmt, ++param );
-						} else {
-							sqlite3_bind_double( stmt, ++param, peak );
-						}
-						break;
-					}
-					case Column::PeakTrack : {
-						const float peak = mediaInfo.GetPeakTrack();
-						if ( REPLAYGAIN_NOVALUE == peak ) {
-							sqlite3_bind_null( stmt, ++param );
-						} else {
-							sqlite3_bind_double( stmt, ++param, peak );
 						}
 						break;
 					}
@@ -590,81 +561,59 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 
 void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo )
 {
-	Handler::Tags tags;
+	Tags tags;
 	if ( previousMediaInfo.GetAlbum() != updatedMediaInfo.GetAlbum() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Album, updatedMediaInfo.GetAlbum() ) );	
+		tags.insert( Tags::value_type( Tag::Album, WideStringToUTF8( updatedMediaInfo.GetAlbum() ) ) );	
 	}
 	if ( previousMediaInfo.GetArtist() != updatedMediaInfo.GetArtist() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Artist, updatedMediaInfo.GetArtist() ) );
+		tags.insert( Tags::value_type( Tag::Artist, WideStringToUTF8( updatedMediaInfo.GetArtist() ) ) );
 	}
 	if ( previousMediaInfo.GetComment() != updatedMediaInfo.GetComment() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Comment, updatedMediaInfo.GetComment() ) );
+		tags.insert( Tags::value_type( Tag::Comment, WideStringToUTF8( updatedMediaInfo.GetComment() ) ) );
 	}
 	if ( previousMediaInfo.GetGenre() != updatedMediaInfo.GetGenre() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Genre, updatedMediaInfo.GetGenre() ) );		
+		tags.insert( Tags::value_type( Tag::Genre, WideStringToUTF8( updatedMediaInfo.GetGenre() ) ) );		
 	}
 	if ( previousMediaInfo.GetTitle() != updatedMediaInfo.GetTitle() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Title, updatedMediaInfo.GetTitle() ) );
+		tags.insert( Tags::value_type( Tag::Title, WideStringToUTF8( updatedMediaInfo.GetTitle() ) ) );
 	}
 	if ( previousMediaInfo.GetTrack() != updatedMediaInfo.GetTrack() ) {
-		const std::wstring trackStr = ( updatedMediaInfo.GetTrack() > 0 ) ? std::to_wstring( updatedMediaInfo.GetTrack() ) : std::wstring();
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Track, trackStr ) );
+		const std::string trackStr = ( updatedMediaInfo.GetTrack() > 0 ) ? std::to_string( updatedMediaInfo.GetTrack() ) : std::string();
+		tags.insert( Tags::value_type( Tag::Track, trackStr ) );
 	}
 	if ( previousMediaInfo.GetYear() != updatedMediaInfo.GetYear() ) {
-		const std::wstring yearStr = ( updatedMediaInfo.GetYear() > 0 ) ? std::to_wstring( updatedMediaInfo.GetYear() ) : std::wstring();
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Year, yearStr ) );
+		const std::string yearStr = ( updatedMediaInfo.GetYear() > 0 ) ? std::to_string( updatedMediaInfo.GetYear() ) : std::string();
+		tags.insert( Tags::value_type( Tag::Year, yearStr ) );
 	}
 	if ( previousMediaInfo.GetGainAlbum() != updatedMediaInfo.GetGainAlbum() ) {
-		if ( REPLAYGAIN_NOVALUE == updatedMediaInfo.GetGainAlbum() ) {
-			tags.insert( Handler::Tags::value_type( Handler::Tag::GainAlbum, std::wstring() ) );
+		if ( std::isnan( updatedMediaInfo.GetGainAlbum() ) ) {
+			tags.insert( Tags::value_type( Tag::GainAlbum, std::string() ) );
 		} else {
-			const std::wstring previousGain = GainToWideString( previousMediaInfo.GetGainAlbum() );
-			const std::wstring updatedGain = GainToWideString( updatedMediaInfo.GetGainAlbum() );
+			const std::string previousGain = GainToString( previousMediaInfo.GetGainAlbum() );
+			const std::string updatedGain = GainToString( updatedMediaInfo.GetGainAlbum() );
 			if ( previousGain != updatedGain ) {
-				tags.insert( Handler::Tags::value_type( Handler::Tag::GainAlbum, updatedGain ) );
+				tags.insert( Tags::value_type( Tag::GainAlbum, updatedGain ) );
 			}
 		}
 	}
 	if ( previousMediaInfo.GetGainTrack() != updatedMediaInfo.GetGainTrack() ) {
-		if ( REPLAYGAIN_NOVALUE == updatedMediaInfo.GetGainTrack() ) {
-			tags.insert( Handler::Tags::value_type( Handler::Tag::GainTrack, std::wstring() ) );
+		if ( std::isnan( updatedMediaInfo.GetGainTrack() ) ) {
+			tags.insert( Tags::value_type( Tag::GainTrack, std::string() ) );
 		} else {
-			const std::wstring previousGain = GainToWideString( previousMediaInfo.GetGainTrack() );
-			const std::wstring updatedGain = GainToWideString( updatedMediaInfo.GetGainTrack() );
+			const std::string previousGain = GainToString( previousMediaInfo.GetGainTrack() );
+			const std::string updatedGain = GainToString( updatedMediaInfo.GetGainTrack() );
 			if ( previousGain != updatedGain ) {
-				tags.insert( Handler::Tags::value_type( Handler::Tag::GainTrack, updatedGain ) );
-			}
-		}
-	}
-	if ( previousMediaInfo.GetPeakAlbum() != updatedMediaInfo.GetPeakAlbum() ) {
-		if ( REPLAYGAIN_NOVALUE == updatedMediaInfo.GetPeakAlbum() ) {
-			tags.insert( Handler::Tags::value_type( Handler::Tag::PeakAlbum, std::wstring() ) );
-		} else {
-			const std::wstring previousPeak = PeakToWideString( previousMediaInfo.GetPeakAlbum() );
-			const std::wstring updatedPeak = PeakToWideString( updatedMediaInfo.GetPeakAlbum() );
-			if ( previousPeak != updatedPeak ) {
-				tags.insert( Handler::Tags::value_type( Handler::Tag::PeakAlbum, updatedPeak ) );		
-			}
-		}
-	}
-	if ( previousMediaInfo.GetPeakTrack() != updatedMediaInfo.GetPeakTrack() ) {
-		if ( REPLAYGAIN_NOVALUE == updatedMediaInfo.GetPeakTrack() ) {
-			tags.insert( Handler::Tags::value_type( Handler::Tag::PeakTrack, std::wstring() ) );
-		} else {
-			const std::wstring previousPeak = PeakToWideString( previousMediaInfo.GetPeakTrack() );
-			const std::wstring updatedPeak = PeakToWideString( updatedMediaInfo.GetPeakTrack() );
-			if ( previousPeak != updatedPeak ) {
-				tags.insert( Handler::Tags::value_type( Handler::Tag::PeakTrack, updatedPeak ) );		
+				tags.insert( Tags::value_type( Tag::GainTrack, updatedGain ) );
 			}
 		}
 	}
 	if ( previousMediaInfo.GetArtworkID() != updatedMediaInfo.GetArtworkID() ) {
 		std::vector<BYTE> imageBytes = GetMediaArtwork( updatedMediaInfo );
 		if ( imageBytes.empty() ) {
-			tags.insert( Handler::Tags::value_type( Handler::Tag::Artwork, std::wstring() ) );
+			tags.insert( Tags::value_type( Tag::Artwork, std::string() ) );
 		} else {
-			const std::wstring encodedArtwork = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageBytes.size() ) );
-			tags.insert( Handler::Tags::value_type( Handler::Tag::Artwork, encodedArtwork ) );
+			const std::string encodedArtwork = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageBytes.size() ) );
+			tags.insert( Tags::value_type( Tag::Artwork, encodedArtwork ) );
 		}	
 	}
 
@@ -679,11 +628,11 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 	}
 }
 
-void Library::WriteFileTags( MediaInfo& mediaInfo, const Handler::Tags& tags )
+void Library::WriteFileTags( MediaInfo& mediaInfo, const Tags& tags )
 {
 	if ( MediaInfo::Source::File == mediaInfo.GetSource() ) {
 		
-		Handler::Tags allTags;
+		Tags allTags;
 		const bool hasPendingTags = GetPendingTags( mediaInfo.GetFilename(), allTags );
 		if ( hasPendingTags ) {
 			for ( const auto& tag : tags ) {
@@ -788,7 +737,7 @@ std::wstring Library::AddArtwork( const std::vector<BYTE>& image )
 {
 	std::wstring artworkID;
 	if ( !image.empty() ) {
-		const std::wstring encodedImage = ConvertImage( image );
+		const std::string encodedImage = ConvertImage( image );
 		if ( !encodedImage.empty() ) {
 			std::vector<BYTE> convertedImage = Base64Decode( encodedImage );
 			artworkID = FindArtwork( convertedImage );
@@ -1151,77 +1100,64 @@ const Library::Columns& Library::GetColumns( const MediaInfo::Source source ) co
 	return columns;
 }
 
-void Library::UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Handler::Tags& tags )
+void Library::UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Tags& tags )
 {
 	for ( const auto& iter : tags ) {
+		const std::wstring value = UTF8ToWideString( iter.second );
 		switch ( iter.first ) {
-			case Handler::Tag::Album : {
-				mediaInfo.SetAlbum( iter.second );
+			case Tag::Album : {
+				mediaInfo.SetAlbum( value );
 				break;
 			}
-			case Handler::Tag::Artist : {
-				mediaInfo.SetArtist( iter.second );
+			case Tag::Artist : {
+				mediaInfo.SetArtist( value );
 				break;
 			}
-			case Handler::Tag::Comment : {
-				mediaInfo.SetComment( iter.second );
+			case Tag::Comment : {
+				mediaInfo.SetComment( value );
 				break;
 			}
-			case Handler::Tag::Version : {
-				mediaInfo.SetVersion( iter.second );
+			case Tag::Version : {
+				mediaInfo.SetVersion( value );
 				break;
 			}
-			case Handler::Tag::Genre : {
-				mediaInfo.SetGenre( iter.second );
+			case Tag::Genre : {
+				mediaInfo.SetGenre( value );
 				break;
 			}
-			case Handler::Tag::Title : {
-				mediaInfo.SetTitle( iter.second );
+			case Tag::Title : {
+				mediaInfo.SetTitle( value );
 				break;
 			}
-			case Handler::Tag::GainAlbum : {
+			case Tag::GainAlbum : {
 				try {
 					mediaInfo.SetGainAlbum( std::stof( iter.second ) );
 				} catch ( ... ) {
 				}
 				break;
 			}
-			case Handler::Tag::GainTrack : {
+			case Tag::GainTrack : {
 				try {
 					mediaInfo.SetGainTrack( std::stof( iter.second ) );
 				} catch ( ... ) {
 				}
 				break;
 			}
-			case Handler::Tag::PeakAlbum : {
+			case Tag::Track : {
 				try {
-					mediaInfo.SetPeakAlbum( std::stof( iter.second ) );
+					mediaInfo.SetTrack( std::stol( value ) );
 				} catch ( ... ) {
 				}
 				break;
 			}
-			case Handler::Tag::PeakTrack : {
+			case Tag::Year : {
 				try {
-					mediaInfo.SetPeakTrack( std::stof( iter.second ) );
+					mediaInfo.SetYear( std::stol( value ) );
 				} catch ( ... ) {
 				}
 				break;
 			}
-			case Handler::Tag::Track : {
-				try {
-					mediaInfo.SetTrack( std::stol( iter.second ) );
-				} catch ( ... ) {
-				}
-				break;
-			}
-			case Handler::Tag::Year : {
-				try {
-					mediaInfo.SetYear( std::stol( iter.second ) );
-				} catch ( ... ) {
-				}
-				break;
-			}
-			case Handler::Tag::Artwork : {
+			case Tag::Artwork : {
 				const std::vector<BYTE> image = Base64Decode( iter.second );
 				if ( !image.empty() ) {
 					std::wstring artworkID = FindArtwork( image );
@@ -1243,11 +1179,11 @@ void Library::UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Handler::Tags
 	}
 }
 
-void Library::AddPendingTags( const std::wstring& filename, const Handler::Tags& tags )
+void Library::AddPendingTags( const std::wstring& filename, const Tags& tags )
 {
 	auto tagIter = m_PendingTags.find( filename );
 	if ( m_PendingTags.end() != tagIter ) {
-		Handler::Tags& pendingTags = tagIter->second;
+		Tags& pendingTags = tagIter->second;
 		for ( const auto& tag : tags ) {
 			pendingTags[ tag.first ] = tag.second;
 		}
@@ -1256,7 +1192,7 @@ void Library::AddPendingTags( const std::wstring& filename, const Handler::Tags&
 	}
 }
 
-bool Library::GetPendingTags( const std::wstring& filename, Handler::Tags& tags ) const
+bool Library::GetPendingTags( const std::wstring& filename, Tags& tags ) const
 {
 	tags.clear();
 	const auto tagIter = m_PendingTags.find( filename );
@@ -1265,4 +1201,21 @@ bool Library::GetPendingTags( const std::wstring& filename, Handler::Tags& tags 
 	}
 	const bool anyPending = !tags.empty();
 	return anyPending;
+}
+
+std::set<std::wstring> Library::GetAllSupportedFileExtensions() const
+{
+	const std::set<std::wstring> fileExtensions = m_Handlers.GetAllSupportedFileExtensions();
+	return fileExtensions;
+}
+
+Tags Library::GetTags( const MediaInfo& mediaInfo )
+{
+	Tags tags = static_cast<Tags>( mediaInfo );
+	const std::vector<BYTE> imageBytes = GetMediaArtwork( mediaInfo );
+	if ( !imageBytes.empty() ) {
+		const std::string encodedArtwork = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageBytes.size() ) );
+		tags.insert( Tags::value_type( Tag::Artwork, encodedArtwork ) );
+	}
+	return tags;
 }

@@ -18,12 +18,12 @@ public:
 	Decoder::Ptr OpenDecoder( const std::wstring& filename ) const;
 
 	// Reads 'tags' from 'filename', returning true if the tags were read.
-	bool GetTags( const std::wstring& filename, Handler::Tags& tags ) const;
+	bool GetTags( const std::wstring& filename, Tags& tags ) const;
 
 	// Writes 'tags' to 'filename', returning true if the tags were written.
-	bool SetTags( const std::wstring& filename, const Handler::Tags& tags ) const;
+	bool SetTags( const std::wstring& filename, const Tags& tags ) const;
 
-	// Returns all the file extensions supported by the decoders.
+	// Returns all the file extensions supported by the decoders, as a set of lowercase strings.
 	std::set<std::wstring> GetAllSupportedFileExtensions() const;
 
 	// Returns the BASS library version.

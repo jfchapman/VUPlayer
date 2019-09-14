@@ -14,14 +14,14 @@ public:
 	// Returns a description of the handler.
 	std::wstring GetDescription() const override;
 
-	// Returns the supported file extensions.
+	// Returns the supported file extensions, as a set of lowercase strings.
 	std::set<std::wstring> GetSupportedFileExtensions() const override;
 
 	// Reads 'tags' from 'filename', returning true if the tags were read.
 	bool GetTags( const std::wstring& filename, Tags& tags ) const override;
 
 	// Writes 'tags' to 'filename', returning true if the tags were written.
-	bool SetTags( const std::wstring& filename, const Handler::Tags& tags ) const override;
+	bool SetTags( const std::wstring& filename, const Tags& tags ) const override;
 
 	// Returns a decoder for 'filename', or nullptr if a decoder cannot be created.
 	Decoder::Ptr OpenDecoder( const std::wstring& filename ) const override;

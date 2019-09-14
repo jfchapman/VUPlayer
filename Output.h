@@ -132,7 +132,7 @@ public:
 	// Sets the currently selected playlist item (this can be different from the currently playing item).
 	void SetCurrentSelectedPlaylistItem( const Playlist::Item& item );
 
-	// Returns all the file extensions supported by the handlers.
+	// Returns all the file extensions supported by the handlers, as a set of lowercase strings.
 	std::set<std::wstring> GetAllSupportedFileExtensions() const;
 
 	// Returns the available output devices.
@@ -181,8 +181,8 @@ private:
 	// Output queue.
 	typedef std::vector<Item> Queue;
 
-	// Maps a playlist item ID to a ReplayGain estimate.
-	typedef std::map<long,float> ReplayGainEstimateMap;
+	// Maps a playlist item ID to a gain estimate.
+	typedef std::map<long,float> GainEstimateMap;
 
 	// Maps an ID to a stream handle.
 	typedef std::map<int,HSTREAM> StreamMap;
@@ -218,8 +218,8 @@ private:
 	// Initialises the BASS system;
 	void InitialiseBass();
 
-	// Estimates the ReplayGain for a playlist 'item' if necessary.
-	void EstimateReplayGain( Playlist::Item& item );
+	// Estimates the gain for a playlist 'item' if necessary.
+	void EstimateGain( Playlist::Item& item );
 
 	// Calculates the crossfade point for the 'item'.
 	// 'seekOffset' - indicates the initial seek position of 'item', in seconds.
@@ -234,8 +234,8 @@ private:
 	// Sets the crossfade 'position' for the current track, in seconds.
 	void SetCrossfadePosition( const float position );
 
-	// Applies ReplayGain (and EQ preamp) to an to an output 'buffer' of 'bufferSize' in bytes, using 'item' information.
-	void ApplyReplayGain( float* buffer, const long bufferSize, const Playlist::Item& item );
+	// Applies gain (and EQ preamp) to an output 'buffer' containing 'sampleCount' samples, using 'item' information and 'softClipState'.
+	void ApplyGain( float* buffer, const long sampleCount, const Playlist::Item& item, std::vector<float>& softClipState );
 
 	// Gets the output queue.
 	Queue GetOutputQueue();
@@ -260,6 +260,9 @@ private:
 
 	// The currently decoding playlist item.
 	Playlist::Item m_CurrentItemDecoding;
+
+	// The soft-clip state for the currently decoding item.
+	std::vector<float> m_SoftClipStateDecoding;
 
 	// The currently decoding stream.
 	Decoder::Ptr m_DecoderStream;
@@ -306,14 +309,14 @@ private:
 	// Indicates whether the default output device is being used.
 	bool m_UsingDefaultDevice;
 
-	// ReplayGain mode.
-	Settings::ReplaygainMode m_ReplaygainMode;
+	// Gain mode.
+	Settings::GainMode m_GainMode;
 
-	// ReplayGain preamp in dB.
-	float m_ReplaygainPreamp;
+	// Limiter mode.
+	Settings::LimitMode m_LimitMode;
 
-	// ReplayGain hard limit flag.
-	bool m_ReplaygainHardlimit;
+	// Gain preamp in dB.
+	float m_GainPreamp;
 
 	// Indicates whether to stop playback at the end of the current track.
 	bool m_StopAtTrackEnd;
@@ -357,11 +360,14 @@ private:
 	// The item that is being faded out during a crossfade.
 	Playlist::Item m_CurrentItemCrossfading;
 
+	// The soft-clip state for the currently crossfading item.
+	std::vector<float> m_SoftClipStateCrossfading;
+
 	// Indicates an offset to subtract from the crossfade calculation, in seconds.
 	float m_CrossfadeSeekOffset;
 
-	// ReplayGain estimates.
-	ReplayGainEstimateMap m_ReplayGainEstimateMap;
+	// Gain estimates.
+	GainEstimateMap m_GainEstimateMap;
 
 	// Bling map.
 	StreamMap m_BlingMap;

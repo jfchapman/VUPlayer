@@ -59,7 +59,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_Maintainer( m_Library ),
 	m_Settings( m_Database, m_Library, portableSettings ),
 	m_Output( m_hWnd, m_Handlers, m_Settings, m_Settings.GetVolume() ),
-	m_ReplayGain( m_Library, m_Handlers ),
+	m_GainCalculator( m_Library, m_Handlers ),
 	m_Gracenote( m_hInst, m_hWnd, m_Settings, portable /*disable*/ ),
 	m_Scrobbler( m_Database, m_Settings, portable /*disable*/ ),
 	m_CDDAManager( m_hInst, m_hWnd, m_Library, m_Handlers, m_Gracenote ),
@@ -494,7 +494,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_ToolbarConvert.Update( currentPlaylist );
 		m_Rebar.Update();
 		m_Counter.Refresh();
-		m_Status.Update( m_ReplayGain, m_Maintainer, m_Gracenote );
+		m_Status.Update( m_GainCalculator, m_Maintainer, m_Gracenote );
 		m_Tray.Update( m_CurrentOutput );
 	}
 	if ( !handled ) {
@@ -563,7 +563,7 @@ void VUPlayer::OnDestroy()
 
 	UpdateScrobbler( m_CurrentOutput, m_Output.GetCurrentPlaying() );
 
-	m_ReplayGain.Stop();
+	m_GainCalculator.Stop();
 	m_Maintainer.Stop();
 
 	WriteWindowSettings();
@@ -808,8 +808,8 @@ void VUPlayer::OnCommand( const int commandID )
 			m_Output.SetRepeatPlaylist( !m_Output.GetRepeatPlaylist() );
 			break;
 		}
-		case ID_FILE_CALCULATEREPLAYGAIN : {
-			OnCalculateReplayGain();
+		case ID_FILE_CALCULATEGAIN : {
+			OnCalculateGain();
 			break;
 		}
 		case ID_VIEW_TRACKINFORMATION : {
@@ -1074,8 +1074,8 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
 		const UINT addToFavouritesEnabled = ( playlist && ( Playlist::Type::Favourites != playlist->GetType() ) && ( Playlist::Type::CDDA != playlist->GetType() ) && selectedItems ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | addToFavouritesEnabled );
-		const UINT replaygainEnabled = selectedItems ? MF_ENABLED : MF_DISABLED;
-		EnableMenuItem( menu, ID_FILE_CALCULATEREPLAYGAIN, MF_BYCOMMAND | replaygainEnabled );
+		const UINT gainCalculatorEnabled = selectedItems ? MF_ENABLED : MF_DISABLED;
+		EnableMenuItem( menu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | gainCalculatorEnabled );
 		const UINT refreshLibraryEnabled = ( 0 == m_Maintainer.GetPendingCount() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
 		const UINT gracenoteEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) && IsGracenoteEnabled() ) ? MF_ENABLED : MF_DISABLED;
@@ -1415,11 +1415,11 @@ void VUPlayer::OnHotkey( WPARAM wParam )
 	m_Hotkeys.OnHotkey( wParam );
 }
 
-void VUPlayer::OnCalculateReplayGain()
+void VUPlayer::OnCalculateGain()
 {
 	MediaInfo::List mediaList;
 	const Playlist::ItemList selectedItems = m_List.GetSelectedPlaylistItems();
-	m_ReplayGain.Calculate( selectedItems );
+	m_GainCalculator.Calculate( selectedItems );
 }
 
 Playlist::Ptr VUPlayer::NewPlaylist()

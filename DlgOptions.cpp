@@ -3,11 +3,13 @@
 #include "OptionsGeneral.h"
 #include "OptionsHotkeys.h"
 #include "OptionsMod.h"
-#include "OptionsReplaygain.h"
+#include "OptionsLoudness.h"
 
 #include "resource.h"
 #include "Utility.h"
 #include "windowsx.h"
+
+bool DlgOptions::s_IsCentred = false;
 
 // Property sheet procedure
 INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -22,7 +24,10 @@ INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam
 					options->OnInit( hwnd );
 				}
 			}
-			CentreDialog( GetParent( hwnd ) );
+			if ( !s_IsCentred ) {
+				s_IsCentred = true;
+				CentreDialog( GetParent( hwnd ) );
+			}
 			break;
 		}
 		case WM_NOTIFY : {
@@ -61,7 +66,7 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	OptionsGeneral optionsGeneral( instance, settings, output );
 	OptionsHotkeys optionsHotkeys( instance, settings, output );
 	OptionsMod optionsMod( instance, settings, output );
-	OptionsReplaygain optionsReplaygain( instance, settings, output );
+	OptionsLoudness optionsLoudness( instance, settings, output );
 
 	// General property page
 	PROPSHEETPAGE propPageGeneral = {};
@@ -93,15 +98,15 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propPageMODMusic.lParam = reinterpret_cast<LPARAM>( &optionsMod );
 	pages.at( 2 ) = CreatePropertySheetPage( &propPageMODMusic );
 
-	// ReplayGain property page
-	PROPSHEETPAGE propPageReplaygain = {};
-	propPageReplaygain.dwSize = sizeof( PROPSHEETPAGE );
-	propPageReplaygain.dwFlags = PSP_DEFAULT;
-	propPageReplaygain.hInstance = instance;
-	propPageReplaygain.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_REPLAYGAIN );
-	propPageReplaygain.pfnDlgProc = OptionsProc;
-	propPageReplaygain.lParam = reinterpret_cast<LPARAM>( &optionsReplaygain );
-	pages.at( 3 ) = CreatePropertySheetPage( &propPageReplaygain );
+	// Loudness property page
+	PROPSHEETPAGE propPageLoudness = {};
+	propPageLoudness.dwSize = sizeof( PROPSHEETPAGE );
+	propPageLoudness.dwFlags = PSP_DEFAULT;
+	propPageLoudness.hInstance = instance;
+	propPageLoudness.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_GAIN );
+	propPageLoudness.pfnDlgProc = OptionsProc;
+	propPageLoudness.lParam = reinterpret_cast<LPARAM>( &optionsLoudness );
+	pages.at( 3 ) = CreatePropertySheetPage( &propPageLoudness );
 
 	PROPSHEETHEADER propSheetHeader = {};
 	propSheetHeader.dwSize = sizeof( PROPSHEETHEADER );
@@ -120,4 +125,5 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 
 DlgOptions::~DlgOptions()
 {
+	s_IsCentred = false;
 }

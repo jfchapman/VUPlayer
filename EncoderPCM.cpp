@@ -37,7 +37,9 @@ bool EncoderPCM::Open( std::wstring& filename, const long sampleRate, const long
 		m_header.nBlockAlign = m_header.nChannels * m_header.wBitsPerSample / 8;
 		m_header.nAvgBytesPerSec = m_header.nSamplesPerSec * m_header.nBlockAlign;
 		filename += L".wav";
-		if ( 0 == _wfopen_s( &m_file, filename.c_str(), L"wb" ) ) {
+
+		m_file = _wfsopen( filename.c_str(), L"wb", _SH_DENYRW );
+		if ( nullptr != m_file ) {
 			const int headerSize = sizeof( WaveFileHeader );
 			success = ( 1 == fwrite( &m_header, sizeof( WaveFileHeader ), 1, m_file ) );
 			if ( !success ) {

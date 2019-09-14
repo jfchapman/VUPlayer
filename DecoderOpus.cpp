@@ -39,6 +39,81 @@ long DecoderOpus::Read( float* buffer, const long sampleCount )
 			const int bufSize = samplesToRead * channels;
 			const int result = op_read_float( m_OpusFile, buffer + samplesRead * channels, bufSize, nullptr /*link*/ );
 			if ( result > 0 ) {
+				// For multi-channel streams, change from Opus to BASS channel ordering.
+				switch ( channels ) {
+					case 3 : {
+						// (left, center, right) ->
+						// (left, right, center)
+						int offset = samplesRead * channels;
+						for ( int n = 0; n < result; n++, offset += channels ) {
+							std::swap( buffer[ offset + 1 ], buffer[ offset + 2 ] );
+						}
+						break;
+					}
+					case 5 : {
+						// (front left, front center, front right, rear left, rear right) ->
+						// (front left, front right, front center, rear left, rear right)
+						int offset = samplesRead * channels;
+						for ( int n = 0; n < result; n++, offset += channels ) {
+							std::swap( buffer[ offset + 1 ], buffer[ offset + 2 ] );
+						}
+						break;
+					}
+					case 6 : {
+						// (front left, front center, front right, rear left, rear right, LFE) ->
+						// (front left, front right, front center, LFE, rear left, rear right)
+						int offset = samplesRead * channels;
+						for ( int n = 0; n < result; n++, offset += channels ) {
+							std::swap( buffer[ offset + 1 ], buffer[ offset + 2 ] );
+							const float rearL = buffer[ offset + 3 ];
+							const float rearR = buffer[ offset + 4 ];
+							const float lfe = buffer[ offset + 5 ];
+							buffer[ offset + 3 ] = lfe;
+							buffer[ offset + 4 ] = rearL;
+							buffer[ offset + 5 ] = rearR;
+						}
+						break;
+					}
+					case 7 : {
+						// (front left, front center, front right, side left, side right, rear center, LFE) ->
+						// (front left, front right, front center, LFE, rear center, side left, side right)
+						int offset = samplesRead * channels;
+						for ( int n = 0; n < result; n++, offset += channels ) {
+							std::swap( buffer[ offset + 1 ], buffer[ offset + 2 ] );
+							const float sideL = buffer[ offset + 3 ];
+							const float sideR = buffer[ offset + 4 ];
+							const float rearC = buffer[ offset + 5 ];
+							const float lfe = buffer[ offset + 6 ];
+							buffer[ offset + 3 ] = lfe;
+							buffer[ offset + 4 ] = rearC;
+							buffer[ offset + 5 ] = sideL;
+							buffer[ offset + 6 ] = sideR;
+						}
+						break;
+					}
+					case 8 : {
+						// (front left, front center, front right, side left, side right, rear left, rear right, LFE) ->
+						// (front left, front right, front center, LFE, rear left, rear right, side left, side right)
+						int offset = samplesRead * channels;
+						for ( int n = 0; n < result; n++, offset += channels ) {
+							std::swap( buffer[ offset + 1 ], buffer[ offset + 2 ] );
+							const float sideL = buffer[ offset + 3 ];
+							const float sideR = buffer[ offset + 4 ];
+							const float rearL = buffer[ offset + 5 ];
+							const float rearR = buffer[ offset + 6 ];
+							const float lfe = buffer[ offset + 7 ];
+							buffer[ offset + 3 ] = lfe;
+							buffer[ offset + 4 ] = rearL;
+							buffer[ offset + 5 ] = rearR;
+							buffer[ offset + 6 ] = sideL;
+							buffer[ offset + 7 ] = sideR;
+						}
+						break;
+					}
+					default: {
+						break;
+					}
+				}
 				samplesRead += result;
 			} else {
 				break;

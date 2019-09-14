@@ -31,8 +31,8 @@ Playlist::Playlist( Library& library, const std::string& id, const Type& type ) 
 	m_PendingWakeEvent( NULL ),
 	m_RestartPendingThread( false ),
 	m_Library( library ),
-	m_SortColumn( Column::_Undefined ),
-	m_SortAscending( false ),
+	m_SortColumn( ( Type::Folder == type ) ? Column::Filename : Column::_Undefined ),
+	m_SortAscending( ( Type::Folder == type ) ? true : false ),
 	m_Type( type ),
 	m_MergeDuplicates( false )
 {

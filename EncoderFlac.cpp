@@ -17,8 +17,8 @@ bool EncoderFlac::Open( std::wstring& filename, const long sampleRate, const lon
 {
 	bool success = false;
 	filename += L".flac";
-	FILE* f = nullptr;
-	if ( ( 0 == _wfopen_s( &f, filename.c_str(), L"wb" ) ) && ( nullptr != f ) ) {
+	FILE* f = _wfsopen( filename.c_str(), L"wb", _SH_DENYRW );;
+	if ( nullptr != f ) {
 		set_sample_rate( sampleRate );
 		set_channels( channels );
 		set_compression_level( 5 );

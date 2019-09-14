@@ -191,10 +191,7 @@ static int vcedit_supported_stream(vcedit_state *state, ogg_page *og) {
 	{
                 result = 1;
 	} else {
-		/* Not vorbis, may eventually become a chain of checks (Speex,
-		 * Theora), but for the moment return 0, bos scan will push
-                 * the current page onto the buffer.
-		 */
+		result = 1;
 	}
 
 	ogg_stream_clear(&os);

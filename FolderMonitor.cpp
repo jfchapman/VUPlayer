@@ -98,7 +98,7 @@ DWORD WINAPI FolderMonitor::AddFileThreadProc( LPVOID lpParam )
 	if ( nullptr != monitorInfo ) {
 
 		const DWORD retryInterval = 1000 /*msec*/;
-		const long long maximumTimeInQueue = 60 /*sec*/ * 10000000 /*100-nanosecond intervals*/;
+		const long long maximumTimeInQueue = 5ll * 60ll /*sec*/ * 10000000ll /*100-nanosecond intervals*/;
 
 		while ( WAIT_OBJECT_0 != WaitForSingleObject( monitorInfo->CancelHandle, retryInterval ) ) {
 			FILETIME fileTime = {};
@@ -114,7 +114,7 @@ DWORD WINAPI FolderMonitor::AddFileThreadProc( LPVOID lpParam )
 				const DWORD attributes = GetFileAttributes( filename.c_str() );
 				if ( INVALID_FILE_ATTRIBUTES != attributes ) {
 					const DWORD desiredAccess = GENERIC_READ;
-					const DWORD shareMode = FILE_SHARE_READ;
+					const DWORD shareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
 					const DWORD creationDisposition = OPEN_EXISTING;
 					const DWORD flags = 0;
 					const HANDLE fileHandle = CreateFile( filename.c_str(), desiredAccess, shareMode, nullptr /*securtyAttributes*/, creationDisposition, flags, nullptr /*template*/ );

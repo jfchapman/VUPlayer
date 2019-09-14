@@ -28,7 +28,7 @@ bool HandlerPCM::GetTags( const std::wstring& /*filename*/, Tags& /*tags*/ ) con
 	return false;
 }
 
-bool HandlerPCM::SetTags( const std::wstring& /*filename*/, const Handler::Tags& /*tags*/ ) const
+bool HandlerPCM::SetTags( const std::wstring& /*filename*/, const Tags& /*tags*/ ) const
 {
 	return false;
 }

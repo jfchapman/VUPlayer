@@ -2,15 +2,15 @@
 
 #include "Options.h"
 
-class OptionsReplaygain : public Options
+class OptionsLoudness : public Options
 {
 public:
 	// 'instance' - module instance handle.
 	// 'settings' - application settings.
 	// 'output' - output object.
-	OptionsReplaygain( HINSTANCE instance, Settings& settings, Output& output );
+	OptionsLoudness( HINSTANCE instance, Settings& settings, Output& output );
 
-	virtual ~OptionsReplaygain();
+	virtual ~OptionsLoudness();
 
 	// Called when the options page should be initialised.
 	// 'hwnd' - dialog window handle.

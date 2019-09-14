@@ -3,7 +3,7 @@
 #include "resource.h"
 #include "Utility.h"
 
-#include "replaygain_analysis.h"
+#include "ebur128.h"
 
 #include <iomanip>
 #include <sstream>
@@ -404,17 +404,17 @@ void CDDAExtract::EncodeHandler()
 		size_t tracksEncoded = 0;
 		MediaInfo::List encodedMediaList;
 
-		replaygain_analysis analysis;
-		analysis.InitGainAnalysis( 44100 );
-		const long replayGainScale = 1 << 15;
-		float albumPeak = 0;
-		float trackPeak = 0;
-
 		std::wstring extractFolder;
 		std::wstring extractFilename;
 		bool extractToLibrary = false;
 		bool extractJoin = false;
 		m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
+
+		std::vector<ebur128_state*> r128States;
+		if ( !extractJoin ) {
+			r128States.reserve( trackCount );
+		}
+		ebur128_state* r128State = nullptr;
 
 		bool encoderOK = true;
 		if ( extractJoin ) {
@@ -422,6 +422,10 @@ void CDDAExtract::EncodeHandler()
 			const long channels = m_Tracks.front().Info.GetChannels();
 			const long bps = m_Tracks.front().Info.GetBitsPerSample();
 			encoderOK = m_Encoder->Open( m_JoinFilename, sampleRate, channels, bps, m_EncoderSettings );
+			r128State = ebur128_init( static_cast<unsigned int>( channels ), static_cast<unsigned int>( sampleRate ), EBUR128_MODE_I );
+			if ( nullptr != r128State ) {
+				r128States.push_back( r128State );
+			}
 		}
 
 		if ( encoderOK ) {
@@ -442,22 +446,24 @@ void CDDAExtract::EncodeHandler()
 				m_PendingEncodeMutex.unlock();
 
 				if ( data ) {
-					if ( !extractJoin ) {
-						trackPeak = 0;
-					}
+					const long sampleRate = mediaInfo.GetSampleRate();
+					const long channels = mediaInfo.GetChannels();
+					const long bps = mediaInfo.GetBitsPerSample();
 					long long samplesEncoded = 0;
+
+					if ( !extractJoin ) {
+						r128State = ebur128_init( static_cast<unsigned int>( channels ), static_cast<unsigned int>( sampleRate ), EBUR128_MODE_I );
+						if ( nullptr != r128State ) {
+							r128States.push_back( r128State );
+						}
+					}
+
 					std::wstring filename = extractJoin ? m_JoinFilename : GetOutputFilename( mediaInfo );
 					if ( !filename.empty() ) {
-						const long sampleRate = mediaInfo.GetSampleRate();
-						const long channels = mediaInfo.GetChannels();
-						const long bps = mediaInfo.GetBitsPerSample();
 						if ( extractJoin || m_Encoder->Open( filename, sampleRate, channels, bps, m_EncoderSettings ) ) {
 							const long sampleBufferSize = 65536;
 							std::vector<float> sampleBuffer( sampleBufferSize * channels );
-
-							std::vector<float> analysisLeft( sampleBufferSize );
-							std::vector<float> analysisRight( sampleBufferSize );
-
+							int r128Error = EBUR128_SUCCESS;
 							auto sourceIter = data->begin();
 							while ( !Cancelled() && ( data->end() != sourceIter ) ) {
 								auto destIter = sampleBuffer.begin();
@@ -466,19 +472,9 @@ void CDDAExtract::EncodeHandler()
 								}
 								const long sampleCount = static_cast<long>( destIter - sampleBuffer.begin() ) / channels;
 								if ( m_Encoder->Write( &sampleBuffer[ 0 ], sampleCount ) ) {
-
-									for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
-										analysisLeft[ sampleIndex ] = sampleBuffer[ sampleIndex * channels ] * replayGainScale;
-										if ( sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] ) > trackPeak ) {
-											trackPeak = sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] );
-										}
-										analysisRight[ sampleIndex ] = sampleBuffer[ sampleIndex * channels + 1 ] * replayGainScale;
-										if ( sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] ) > trackPeak ) {
-											trackPeak = sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] );
-										}
+									if ( ( nullptr != r128State ) && ( EBUR128_SUCCESS == r128Error ) ) {
+										r128Error = ebur128_add_frames_float( r128State, &sampleBuffer[ 0 ], static_cast<size_t>( sampleCount ) );
 									}
-									analysis.AnalyzeSamples( &analysisLeft[ 0 ], &analysisRight[ 0 ], sampleCount, channels );
-
 									samplesEncoded += sampleCount;
 									totalSamplesEncoded += sampleCount;
 									m_ProgressEncode.store( static_cast<float>( totalSamplesEncoded ) / totalSamples );
@@ -501,29 +497,30 @@ void CDDAExtract::EncodeHandler()
 									break;
 								}
 							} else {
-								if ( trackPeak > albumPeak ) {
-									albumPeak = trackPeak;
+								if ( nullptr != r128State ) {
+									double loudness = 0;
+									if ( EBUR128_SUCCESS == ebur128_loudness_global( r128State, &loudness ) ) {
+										const float trackGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
+										mediaInfo.SetGainTrack( trackGain );
+									}
 								}
-								float trackGain = analysis.GetTitleGain();
-								if ( GAIN_NOT_ENOUGH_SAMPLES == trackGain ) {
-									trackGain = REPLAYGAIN_NOVALUE;
-								}
-								mediaInfo.SetPeakTrack( trackPeak );
-								mediaInfo.SetGainTrack( trackGain );
 								WriteTrackTags( filename, mediaInfo );
 
 								encodedMediaList.push_back( MediaInfo( filename ) );
 
 								if ( ++tracksEncoded == trackCount ) {
-									float albumGain = analysis.GetAlbumGain();
-									if ( GAIN_NOT_ENOUGH_SAMPLES == albumGain ) {
-										albumGain = REPLAYGAIN_NOVALUE;
+									float albumGain = NAN;
+									if ( !r128States.empty() ) {
+										double loudness = 0;
+										if ( EBUR128_SUCCESS == ebur128_loudness_global_multiple( &r128States[ 0 ], r128States.size(), &loudness ) ) {
+											albumGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
+										}
 									}
-									mediaInfo.SetPeakAlbum( albumPeak );
 									mediaInfo.SetGainAlbum( albumGain );
+
 									for ( auto& encodedMedia : encodedMediaList ) {
 										WriteAlbumTags( encodedMedia.GetFilename(), mediaInfo );					
-										if ( extractToLibrary ) {
+										if ( extractToLibrary || m_Library.GetMediaInfo( encodedMedia, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
 											m_Library.GetMediaInfo( encodedMedia );
 										}
 									}
@@ -553,14 +550,16 @@ void CDDAExtract::EncodeHandler()
 				MediaInfo::GetCommonInfo( mediaList, joinedMediaInfo );
 				joinedMediaInfo.SetFilename( m_JoinFilename );
 
-				float trackGain = analysis.GetTitleGain();
-				if ( GAIN_NOT_ENOUGH_SAMPLES != trackGain ) {
-					joinedMediaInfo.SetPeakTrack( trackPeak );
-					joinedMediaInfo.SetGainTrack( trackGain );
+				if ( nullptr != r128State ) {
+					double loudness = 0;
+					if ( EBUR128_SUCCESS == ebur128_loudness_global( r128State, &loudness ) ) {
+						const float trackGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
+						joinedMediaInfo.SetGainTrack( trackGain );
+					}
 				}
 
 				WriteTrackTags( joinedMediaInfo.GetFilename(), joinedMediaInfo );
-				if ( extractToLibrary ) {
+				if ( extractToLibrary || m_Library.GetMediaInfo( joinedMediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
 					m_Library.GetMediaInfo( joinedMediaInfo );
 				}
 
@@ -572,6 +571,11 @@ void CDDAExtract::EncodeHandler()
 
 		if ( !encoderOK && !Cancelled() ) {
 			PostMessage( m_hWnd, MSG_EXTRACTERROR, IDS_EXTRACT_ERROR_ENCODER, 0 );
+		}
+
+		for ( const auto& iter : r128States ) {
+			ebur128_state* state = iter;
+			ebur128_destroy( &state );
 		}
 	}
 }
@@ -738,47 +742,43 @@ void CDDAExtract::UpdateStatus()
 
 void CDDAExtract::WriteTrackTags( const std::wstring& filename, const MediaInfo& mediaInfo )
 {
-	Handler::Tags tags;
+	Tags tags;
 	const std::wstring& title = mediaInfo.GetTitle();
 	if ( !title.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Title, title ) );
+		tags.insert( Tags::value_type( Tag::Title, WideStringToUTF8( title ) ) );
 	}
 	const std::wstring& artist = mediaInfo.GetArtist();
 	if ( !artist.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Artist, artist ) );
+		tags.insert( Tags::value_type( Tag::Artist, WideStringToUTF8( artist ) ) );
 	}
 	const std::wstring& album = mediaInfo.GetAlbum();
 	if ( !album.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Album, album ) );
+		tags.insert( Tags::value_type( Tag::Album, WideStringToUTF8( album ) ) );
 	}
 	const std::wstring& genre = mediaInfo.GetGenre();
 	if ( !genre.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Genre, genre ) );
+		tags.insert( Tags::value_type( Tag::Genre, WideStringToUTF8( genre ) ) );
 	}
 	const std::wstring& comment = mediaInfo.GetComment();
 	if ( !comment.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Comment, comment ) );
+		tags.insert( Tags::value_type( Tag::Comment, WideStringToUTF8( comment ) ) );
 	}
-	const std::wstring track = ( mediaInfo.GetTrack() > 0 ) ? std::to_wstring( mediaInfo.GetTrack() ) : std::wstring();
+	const std::string track = ( mediaInfo.GetTrack() > 0 ) ? std::to_string( mediaInfo.GetTrack() ) : std::string();
 	if ( !track.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Track, track ) );
+		tags.insert( Tags::value_type( Tag::Track, track ) );
 	}
-	const std::wstring year = ( mediaInfo.GetYear() > 0 ) ? std::to_wstring( mediaInfo.GetYear() ) : std::wstring();
+	const std::string year = ( mediaInfo.GetYear() > 0 ) ? std::to_string( mediaInfo.GetYear() ) : std::string();
 	if ( !year.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Year, year ) );
+		tags.insert( Tags::value_type( Tag::Year, year ) );
 	}
-	const std::wstring peakTrack = PeakToWideString( mediaInfo.GetPeakTrack() );
-	if ( !peakTrack.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::PeakTrack, peakTrack ) );
-	}
-	const std::wstring gainTrack = ( REPLAYGAIN_NOVALUE != mediaInfo.GetGainTrack() ) ? GainToWideString( mediaInfo.GetGainTrack() ) : std::wstring();
+	const std::string gainTrack = GainToString( mediaInfo.GetGainTrack() );
 	if ( !gainTrack.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::GainTrack, gainTrack ) );
+		tags.insert( Tags::value_type( Tag::GainTrack, gainTrack ) );
 	}
 	const std::vector<BYTE> imageBytes = m_Library.GetMediaArtwork( mediaInfo );
 	if ( !imageBytes.empty() ) {
-		const std::wstring encodedArtwork = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageBytes.size() ) );
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Artwork, encodedArtwork ) );
+		const std::string encodedArtwork = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageBytes.size() ) );
+		tags.insert( Tags::value_type( Tag::Artwork, encodedArtwork ) );
 	}
 
 	if ( !tags.empty() ) {
@@ -788,14 +788,10 @@ void CDDAExtract::WriteTrackTags( const std::wstring& filename, const MediaInfo&
 
 void CDDAExtract::WriteAlbumTags( const std::wstring& filename, const MediaInfo& mediaInfo )
 {
-	Handler::Tags tags;
-	const std::wstring peakAlbum = PeakToWideString( mediaInfo.GetPeakAlbum() );
-	if ( !peakAlbum.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::PeakAlbum, peakAlbum ) );
-	}
-	const std::wstring gainAlbum = ( REPLAYGAIN_NOVALUE != mediaInfo.GetGainAlbum() ) ? GainToWideString( mediaInfo.GetGainAlbum() ) : std::wstring();
+	Tags tags;
+	const std::string gainAlbum = GainToString( mediaInfo.GetGainAlbum() );
 	if ( !gainAlbum.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::GainAlbum, gainAlbum ) );
+		tags.insert( Tags::value_type( Tag::GainAlbum, gainAlbum ) );
 	}
 
 	if ( !tags.empty() ) {

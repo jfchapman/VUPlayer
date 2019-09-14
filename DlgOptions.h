@@ -18,6 +18,9 @@ private:
 	// Options dialog procedure.
 	static INT_PTR CALLBACK OptionsProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
+	// Indicates whether the dialog has been centred.
+	static bool s_IsCentred;
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 

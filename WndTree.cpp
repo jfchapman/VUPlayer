@@ -169,7 +169,8 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_FolderMonitor( parent ),
 	m_ScratchListUpdateThread( nullptr ),
 	m_ScratchListUpdateStopEvent( CreateEvent( nullptr /*securityAttributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
-	m_MergeDuplicates( settings.GetMergeDuplicates() )
+	m_MergeDuplicates( settings.GetMergeDuplicates() ),
+	m_SupportedFileExtensions( m_Library.GetAllSupportedFileExtensions() )
 {
 	const DWORD exStyle = 0;
 	LPCTSTR className = WC_TREEVIEW;
@@ -2927,7 +2928,9 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 						Playlist::Ptr playlist = playlistIter->second;
 						if ( playlist ) {
 							playlist->RemoveItem( MediaInfo( oldFilename ) );
-							playlist->AddPending( newFilename );
+							if ( !IgnoreFileMonitorEvent( newFilename ) ) {
+								playlist->AddPending( newFilename );
+							}
 						}
 					}
 				}
@@ -2935,15 +2938,17 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			break;
 		}
 		case FolderMonitor::Event::FileCreated : {
-			const auto folderIter = m_FolderNodesMap.find( folder );
-			if ( m_FolderNodesMap.end() != folderIter ) {
-				const std::set<HTREEITEM>& nodes = folderIter->second;
-				for ( const auto& node : nodes ) {
-					const auto playlistIter = m_FolderPlaylistMap.find( node );
-					if ( m_FolderPlaylistMap.end() != playlistIter ) {
-						Playlist::Ptr playlist = playlistIter->second;
-						if ( playlist ) {
-							playlist->AddPending( newFilename );
+			if ( !IgnoreFileMonitorEvent( newFilename ) ) {
+				const auto folderIter = m_FolderNodesMap.find( folder );
+				if ( m_FolderNodesMap.end() != folderIter ) {
+					const std::set<HTREEITEM>& nodes = folderIter->second;
+					for ( const auto& node : nodes ) {
+						const auto playlistIter = m_FolderPlaylistMap.find( node );
+						if ( m_FolderPlaylistMap.end() != playlistIter ) {
+							Playlist::Ptr playlist = playlistIter->second;
+							if ( playlist ) {
+								playlist->AddPending( newFilename );
+							}
 						}
 					}
 				}
@@ -3244,4 +3249,15 @@ void WndTree::SetMergeDuplicates( const bool mergeDuplicates )
 			}
 		}
 	}
+}
+
+bool WndTree::IgnoreFileMonitorEvent( const std::wstring& filename ) const
+{
+	bool ignore = true;
+	const size_t pos = filename.rfind( '.' );
+	if ( std::wstring::npos != pos ) {
+		const std::wstring ext = WideStringToLower( filename.substr( 1 + pos ) );
+		ignore = ( m_SupportedFileExtensions.end() == m_SupportedFileExtensions.find( ext ) );
+	}
+	return ignore;
 }

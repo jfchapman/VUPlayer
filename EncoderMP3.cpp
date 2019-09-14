@@ -39,7 +39,8 @@ bool EncoderMP3::Open( std::wstring& filename, const long sampleRate, const long
 
 		if ( success ) {
 			filename += L".mp3";
-			success = ( 0 == _wfopen_s( &m_file, filename.c_str(), L"w+b" ) );
+			m_file = _wfsopen( filename.c_str(), L"w+b", _SH_DENYRW );
+			success = ( nullptr != m_file );
 		} else {
 			lame_close( m_flags );
 			m_flags = nullptr;

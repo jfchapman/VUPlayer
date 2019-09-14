@@ -35,11 +35,18 @@ public:
 		bool Shift;				// Shift key modifier.
 	};
 
-	// ReplayGain mode.
-	enum class ReplaygainMode {
+	// Gain mode.
+	enum class GainMode {
 		Disabled,
 		Track,
 		Album
+	};
+
+	// Limiter mode.
+	enum class LimitMode {
+		None,
+		Hard,
+		Soft
 	};
 
 	// Notification area icon click commands.
@@ -298,23 +305,23 @@ public:
 	// 'it' - IT settings.
 	void SetMODSettings( const long long mod, const long long mtm, const long long s3m, const long long xm, const long long it );
 
-	// Gets default ReplayGain settings.
-	// 'mode' - out, ReplayGain mode.
+	// Gets default gain settings.
+	// 'gainMode' - out, gain mode.
+	// 'limitMode' - out, limiter mode.
 	// 'preamp' - out, preamp in dB.
-	// 'hardlimit' - out, true to hard limit, false to allow clipping.
-	void GetDefaultReplaygainSettings( ReplaygainMode& mode, float& preamp, bool& hardlimit );
+	void GetDefaultGainSettings( GainMode& gainMode, LimitMode& limitMode, float& preamp );
 
-	// Gets ReplayGain settings.
-	// 'mode' - out, ReplayGain mode.
+	// Gets gain settings.
+	// 'gainMode' - out, gain mode.
+	// 'limitMode' - out, limiter mode.
 	// 'preamp' - out, preamp in dB.
-	// 'hardlimit' - out, true to hard limit, false to allow clipping.
-	void GetReplaygainSettings( ReplaygainMode& mode, float& preamp, bool& hardlimit );
+	void GetGainSettings( GainMode& gainMode, LimitMode& limitMode, float& preamp );
 
-	// Sets ReplayGain settings.
-	// 'mode' - ReplayGain mode.
+	// Sets gain settings.
+	// 'gainMode' - gain mode.
+	// 'limitMode' - limiter mode.
 	// 'preamp' - preamp in dB.
-	// 'hardlimit' - true to hard limit, false to allow clipping.
-	void SetReplaygainSettings( const ReplaygainMode mode, const float preamp, const bool hardlimit );
+	void SetGainSettings( const GainMode gainMode, const LimitMode limitMode, const float preamp );
 
 	// Gets notification area settings.
 	// 'enable' - out, whether the notification area icon is shown.

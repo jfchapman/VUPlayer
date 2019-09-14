@@ -2,7 +2,7 @@
 
 #include "Settings.h"
 
-#include "replaygain_analysis.h"
+#include "ebur128.h"
 
 #include <windows.h>
 
@@ -63,7 +63,7 @@ void Decoder::SetBPS( const long bitsPerSample )
 
 float Decoder::CalculateTrackGain( const float secondsLimit )
 {
-	float trackGain = REPLAYGAIN_NOVALUE;
+	float trackGain = NAN;
 	if ( ( m_SampleRate > 0 ) && ( m_Channels > 0 ) ) {
 
 		LARGE_INTEGER perfFreq, perfStart, perfEnd;
@@ -74,45 +74,35 @@ float Decoder::CalculateTrackGain( const float secondsLimit )
 			Seek( m_Duration * 0.33f );
 		}
 
-		replaygain_analysis analysis;
-		analysis.InitGainAnalysis( m_SampleRate );
-		const long scale = 1 << 15;
-		const long bufferSize = 4096;
-		float* buffer = new float[ bufferSize * m_Channels ];
-		const int numChannels = ( 1 == m_Channels ) ? 1 : 2;
-		float* leftSamples = new float[ bufferSize ];
-		float* rightSamples = ( 1 == numChannels ) ? nullptr : new float[ bufferSize ];
-
-		long totalSamplesRead = 0;
-		long samplesRead = Read( buffer, bufferSize );
-		while ( samplesRead > 0 ) {
-			totalSamplesRead += samplesRead;
-			for ( long index = 0; index < samplesRead; index++ ) {
-				leftSamples[ index ] = buffer[ index * m_Channels ] * scale;
+		ebur128_state* r128State = ebur128_init( static_cast<unsigned int>( m_Channels ), static_cast<unsigned int>( m_SampleRate ), EBUR128_MODE_I );
+		if ( nullptr != r128State ) {
+			const long bufferSize = 4096;
+			float* buffer = new float[ bufferSize * m_Channels ];
+			long totalSamplesRead = 0;
+			long samplesRead = Read( buffer, bufferSize );
+			int errorState = EBUR128_SUCCESS;
+			while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) ) {
+				totalSamplesRead += samplesRead;
+				errorState = ebur128_add_frames_float( r128State, buffer, static_cast<size_t>( samplesRead ) );
+				if ( secondsLimit > 0 ) {
+					QueryPerformanceCounter( &perfEnd );
+					const float seconds = static_cast<float>( perfEnd.QuadPart - perfStart.QuadPart ) / perfFreq.QuadPart;
+					if ( seconds >= secondsLimit ) {
+						break;
+					}
+				}
+				samplesRead = Read( buffer, bufferSize );
 			}
-			if ( nullptr != rightSamples ) {
-				for ( long index = 0; index < samplesRead; index++ ) {
-					rightSamples[ index ] = buffer[ index * m_Channels + 1 ] * scale;
+
+			if ( EBUR128_SUCCESS == errorState ) {
+				double loudness = 0;
+				errorState = ebur128_loudness_global( r128State, &loudness );
+				if ( EBUR128_SUCCESS == errorState ) {
+					trackGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
 				}
 			}
-			analysis.AnalyzeSamples( leftSamples, rightSamples, samplesRead, numChannels );
-			if ( secondsLimit > 0 ) {
-				QueryPerformanceCounter( &perfEnd );
-				const float seconds = static_cast<float>( perfEnd.QuadPart - perfStart.QuadPart ) / perfFreq.QuadPart;
-				if ( seconds >= secondsLimit ) {
-					break;
-				}
-			}
-			samplesRead = Read( buffer, bufferSize );
-		}
-
-		delete [] leftSamples;
-		delete [] rightSamples;
-		delete [] buffer;
-
-		trackGain = analysis.GetTitleGain();
-		if ( GAIN_NOT_ENOUGH_SAMPLES == trackGain ) {
-			trackGain = REPLAYGAIN_NOVALUE;
+			ebur128_destroy( &r128State );
+			delete [] buffer;
 		}
 	}
 	return trackGain;

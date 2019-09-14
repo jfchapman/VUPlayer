@@ -52,8 +52,11 @@ private:
 	// Updates the status of the progress bars.
 	void UpdateStatus();
 
-	// Writes tags to 'filename' based on the 'mediaInfo'.
-	void WriteTags( const std::wstring& filename, const MediaInfo& mediaInfo );
+	// Writes track tags to 'filename' based on the 'mediaInfo'.
+	void WriteTrackTags( const std::wstring& filename, const MediaInfo& mediaInfo );
+
+	// Writes album tags to 'filename' based on the 'mediaInfo'.
+	void WriteAlbumTags( const std::wstring& filename, const MediaInfo& mediaInfo );
 
 	// Returns a decoder for the 'item', or nullptr if a decoder could not be opened.
 	Decoder::Ptr OpenDecoder( const Playlist::Item& item ) const;

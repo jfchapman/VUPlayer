@@ -3,20 +3,24 @@
 #include "Bling.h"
 #include "Utility.h"
 
+#include "opus.h"
+
+#include <cmath>
+
 // Output buffer length, in seconds.
 static const float s_BufferLength = 1.5f;
 
 // Cutoff point, in seconds, within which previous track replays the current track from the beginning.
 static const float s_PreviousTrackCutoff = 2.0f;
 
-// Amount of time to devote to estimating a ReplayGain value, in seconds.
-static const float s_ReplayGainPrecalcTime = 0.2f;
+// Amount of time to devote to estimating a gain value, in seconds.
+static const float s_GainPrecalcTime = 0.25f;
 
-// Minimum allowed ReplayGain adjustment, in dB.
-static const float s_ReplayGainMin = -15.0f;
+// Minimum allowed gain adjustment, in dB.
+static const float s_GainMin = -20.0f;
 
-// Maximum allowed ReplayGain adjustment, in dB.
-static const float s_ReplayGainMax = 12.0f;
+// Maximum allowed gain adjustment, in dB.
+static const float s_GainMax = 20.0f;
 
 // Fade out duration, in seconds.
 static const float s_FadeOutDuration = 5.0f;
@@ -78,6 +82,7 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_Settings( settings ),
 	m_Playlist(),
 	m_CurrentItemDecoding( {} ),
+	m_SoftClipStateDecoding(),
 	m_DecoderStream(),
 	m_DecoderSampleRate( 0 ),
 	m_OutputStream( 0 ),
@@ -93,9 +98,9 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_Crossfade( false ),
 	m_CurrentSelectedPlaylistItem( {} ),
 	m_UsingDefaultDevice( false ),
-	m_ReplaygainMode( Settings::ReplaygainMode::Disabled ),
-	m_ReplaygainPreamp( 0 ),
-	m_ReplaygainHardlimit( false ),
+	m_GainMode( Settings::GainMode::Disabled ),
+	m_LimitMode( Settings::LimitMode::None ),
+	m_GainPreamp( 0 ),
 	m_StopAtTrackEnd( false ),
 	m_Muted( false ),
 	m_FadeOut( false ),
@@ -110,8 +115,9 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_CrossfadingStream(),
 	m_CrossfadingStreamMutex(),
 	m_CurrentItemCrossfading( {} ),
+	m_SoftClipStateCrossfading(),
 	m_CrossfadeSeekOffset( 0 ),
-	m_ReplayGainEstimateMap(),
+	m_GainEstimateMap(),
 	m_BlingMap(),
 	m_CurrentEQ( m_Settings.GetEQSettings() ),
 	m_FX(),
@@ -122,7 +128,7 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	SetVolume( initialVolume );
 	SetPitch( m_Pitch );
 
-	m_Settings.GetReplaygainSettings( m_ReplaygainMode, m_ReplaygainPreamp, m_ReplaygainHardlimit );
+	m_Settings.GetGainSettings( m_GainMode, m_LimitMode, m_GainPreamp );
 	m_Settings.GetPlaybackSettings( m_RandomPlay, m_RepeatTrack, m_RepeatPlaylist, m_Crossfade );
 }
 
@@ -157,7 +163,7 @@ bool Output::Play( const long playlistID, const float seek )
 				BASS_SetConfig( BASS_CONFIG_BUFFER, outputBufferSize );
 			}
 
-			EstimateReplayGain( item );
+			EstimateGain( item );
 			item.Info.SetChannels( m_DecoderStream->GetChannels() );
 			item.Info.SetBitsPerSample( m_DecoderStream->GetBPS() );
 			item.Info.SetDuration( m_DecoderStream->GetDuration() );
@@ -231,7 +237,9 @@ void Output::Stop()
 	m_DecoderStream.reset();
 	m_CrossfadingStream.reset();
 	m_CurrentItemDecoding = {};
+	m_SoftClipStateDecoding.clear();
 	m_CurrentItemCrossfading = {};
+	m_SoftClipStateCrossfading.clear();
 	m_RestartItemID = 0;
 	SetOutputQueue( Queue() );
 	m_FadeOut = false;
@@ -389,6 +397,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 									std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 									m_CrossfadingStream = m_DecoderStream;
 									m_CurrentItemCrossfading = m_CurrentItemDecoding;
+									m_SoftClipStateCrossfading = m_SoftClipStateDecoding;
 								}
 							}
 						}
@@ -401,6 +410,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 				m_CrossfadingStream = m_DecoderStream;
 				m_CurrentItemCrossfading = m_CurrentItemDecoding;
 				m_CurrentItemCrossfading.ID = s_ItemIsFadingToNext;
+				m_SoftClipStateCrossfading = m_SoftClipStateDecoding;
 			}
 
 			bytesRead = static_cast<DWORD>( m_DecoderStream->Read( buffer, samplesToRead ) * channels * 4 );
@@ -429,7 +439,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 					m_Playlist->GetNextItem( m_CurrentItemDecoding, nextItem, GetRepeatPlaylist() /*wrap*/ );
 				}
 				if ( nextItem.ID > 0 ) {
-					EstimateReplayGain( nextItem );
+					EstimateGain( nextItem );
 					const long channels = m_DecoderStream->GetChannels();
 					const long sampleRate = m_DecoderStream->GetSampleRate();
 					m_DecoderStream = OpenDecoder( nextItem );
@@ -464,13 +474,17 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 				if ( m_CrossfadingStream ) {
 					m_CrossfadingStream.reset();
 					m_CurrentItemCrossfading = {};
+					m_SoftClipStateCrossfading.clear();
 				}
 			}
 		}
 	}
 
 	if ( 0 != bytesRead ) {
-		ApplyReplayGain( buffer, static_cast<long>( bytesRead ), m_CurrentItemDecoding );
+		const long currentDecodingChannels = m_CurrentItemDecoding.Info.GetChannels();
+		if ( currentDecodingChannels > 0 ) {
+			ApplyGain( buffer, static_cast<long>( bytesRead / ( currentDecodingChannels * 4 ) ), m_CurrentItemDecoding, m_SoftClipStateDecoding );
+		}
 
 		std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 		if ( m_CrossfadingStream ) {
@@ -481,7 +495,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 				const long samplesToRead = static_cast<long>( bytesRead ) / ( channels * 4 );
 				std::vector<float> crossfadingBuffer( bytesRead / 4 );
 				const long crossfadingBytesRead = m_CrossfadingStream->Read( &crossfadingBuffer[ 0 ], samplesToRead ) * channels * 4;
-				ApplyReplayGain( &crossfadingBuffer[ 0 ], crossfadingBytesRead, m_CurrentItemCrossfading );
+				ApplyGain( &crossfadingBuffer[ 0 ], crossfadingBytesRead / ( channels * 4 ), m_CurrentItemCrossfading, m_SoftClipStateCrossfading );
 				if ( crossfadingBytesRead <= static_cast<long>( bytesRead ) ) {
 					long crossfadingSamplesRead = crossfadingBytesRead / ( channels * 4 );
 
@@ -529,6 +543,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 					if ( 0 == crossfadingSamplesRead ) {
 						m_CrossfadingStream.reset();
 						m_CurrentItemCrossfading = {};
+						m_SoftClipStateCrossfading.clear();
 					} else {
 						for ( long sample = 0; sample < crossfadingSamplesRead * channels; sample++ ) {
 							buffer[ sample ] += crossfadingBuffer[ sample ];
@@ -812,15 +827,15 @@ void Output::SettingsChanged()
 		InitialiseBass();
 	}
 
-	Settings::ReplaygainMode replaygainMode = Settings::ReplaygainMode::Disabled;
-	float replaygainPreamp = 0;
-	bool replaygainHardlimit = false;
-	m_Settings.GetReplaygainSettings( replaygainMode, replaygainPreamp, replaygainHardlimit );
-	if ( ( replaygainMode != m_ReplaygainMode ) || ( replaygainPreamp != m_ReplaygainPreamp ) || ( replaygainHardlimit != m_ReplaygainHardlimit ) ) {
-		m_ReplaygainMode = replaygainMode;
-		m_ReplaygainPreamp = replaygainPreamp;
-		m_ReplaygainHardlimit = replaygainHardlimit;
-		EstimateReplayGain( m_CurrentItemDecoding );
+	Settings::GainMode gainMode = Settings::GainMode::Disabled;
+	Settings::LimitMode limitMode = Settings::LimitMode::None;
+	float gainPreamp = 0;
+	m_Settings.GetGainSettings( gainMode, limitMode, gainPreamp );
+	if ( ( gainMode != m_GainMode ) || ( limitMode != m_LimitMode ) || ( gainPreamp != m_GainPreamp ) ) {
+		m_GainMode = gainMode;
+		m_LimitMode = limitMode;
+		m_GainPreamp = gainPreamp;
+		EstimateGain( m_CurrentItemDecoding );
 	}
 
 	m_Handlers.SettingsChanged( m_Settings );
@@ -861,26 +876,26 @@ void Output::InitialiseBass()
 	}
 }
 
-void Output::EstimateReplayGain( Playlist::Item& item )
+void Output::EstimateGain( Playlist::Item& item )
 {
-	if ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) {
+	if ( Settings::GainMode::Disabled != m_GainMode ) {
 		float gain = item.Info.GetGainAlbum();
-		if ( ( REPLAYGAIN_NOVALUE == gain ) || ( Settings::ReplaygainMode::Track == m_ReplaygainMode ) ) {
+		if ( std::isnan( gain ) || ( Settings::GainMode::Track == m_GainMode ) ) {
 			const float trackGain = item.Info.GetGainTrack();
-			if ( REPLAYGAIN_NOVALUE != trackGain ) {
+			if ( !std::isnan( trackGain ) ) {
 				gain = trackGain;
 			}
 		}
-		if ( REPLAYGAIN_NOVALUE == gain ) {
-			const auto estimateIter = m_ReplayGainEstimateMap.find( item.ID );
-			if ( m_ReplayGainEstimateMap.end() != estimateIter ) {
+		if ( std::isnan( gain ) ) {
+			const auto estimateIter = m_GainEstimateMap.find( item.ID );
+			if ( m_GainEstimateMap.end() != estimateIter ) {
 				item.Info.SetGainTrack( estimateIter->second );
 			} else {
 				Decoder::Ptr tempDecoder = OpenDecoder( item );
 				if ( tempDecoder ) {
-					const float trackGain = tempDecoder->CalculateTrackGain( s_ReplayGainPrecalcTime );
+					const float trackGain = tempDecoder->CalculateTrackGain( s_GainPrecalcTime );
 					item.Info.SetGainTrack( trackGain );
-					m_ReplayGainEstimateMap.insert( ReplayGainEstimateMap::value_type( item.ID, trackGain ) );
+					m_GainEstimateMap.insert( GainEstimateMap::value_type( item.ID, trackGain ) );
 				}
 			}
 		}
@@ -1026,6 +1041,7 @@ void Output::ToggleFadeToNext()
 		if ( m_CrossfadingStream ) {
 			m_CrossfadingStream.reset();
 			m_CurrentItemCrossfading = {};
+			m_SoftClipStateCrossfading.clear();
 		}
 	}
 }
@@ -1035,39 +1051,55 @@ bool Output::GetFadeToNext() const
 	return m_FadeToNext;
 }
 
-void Output::ApplyReplayGain( float* buffer, const long bufferSize, const Playlist::Item& item )
+void Output::ApplyGain( float* buffer, const long sampleCount, const Playlist::Item& item, std::vector<float>& softClipState )
 {
 	const bool eqEnabled = m_EQEnabled;
-	if ( ( 0 != bufferSize ) && ( ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) || eqEnabled ) ) {
+	const long channels = item.Info.GetChannels();
+	if ( ( 0 != sampleCount ) && ( channels > 0 ) && ( ( Settings::GainMode::Disabled != m_GainMode ) || eqEnabled ) ) {
 		float preamp = eqEnabled ? m_EQPreamp : 0;
 
-		if ( Settings::ReplaygainMode::Disabled != m_ReplaygainMode ) {
+		if ( Settings::GainMode::Disabled != m_GainMode ) {
 			float gain = item.Info.GetGainAlbum();
-			if ( ( REPLAYGAIN_NOVALUE == gain ) || ( Settings::ReplaygainMode::Track == m_ReplaygainMode ) ) {
+			if ( std::isnan( gain ) || ( Settings::GainMode::Track == m_GainMode ) ) {
 				gain = item.Info.GetGainTrack();
 			}
-			if ( REPLAYGAIN_NOVALUE != gain ) {
-				if ( gain < s_ReplayGainMin ) {
-					gain = s_ReplayGainMin;
-				} else if ( gain > s_ReplayGainMax ) {
-					gain = s_ReplayGainMax;
+			if ( !std::isnan( gain ) ) {
+				if ( gain < s_GainMin ) {
+					gain = s_GainMin;
+				} else if ( gain > s_GainMax ) {
+					gain = s_GainMax;
 				}
-				preamp += m_ReplaygainPreamp;
+				preamp += m_GainPreamp;
 				preamp += gain;
 			}
 		}
 
 		if ( 0 != preamp ) {
 			const float scale = powf( 10.0f, preamp / 20.0f );
-			const long sampleCount = bufferSize / 4;
-			for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
+			const long totalSamples = sampleCount * channels;
+			for ( long sampleIndex = 0; sampleIndex < totalSamples; sampleIndex++ ) {
 				buffer[ sampleIndex ] *= scale;
-				if ( m_ReplaygainHardlimit && !eqEnabled ) {
-					if ( buffer[ sampleIndex ] < -1.0f ) {
-						buffer[ sampleIndex ] = -1.0f;
-					} else if ( buffer[ sampleIndex ] > 1.0f ) {
-						buffer[ sampleIndex ] = 1.0f;
+			}
+			switch ( m_LimitMode ) {
+				case Settings::LimitMode::Hard : {
+					for ( long sampleIndex = 0; sampleIndex < totalSamples; sampleIndex++ ) {
+						if ( buffer[ sampleIndex ] < -1.0f ) {
+							buffer[ sampleIndex ] = -1.0f;
+						} else if ( buffer[ sampleIndex ] > 1.0f ) {
+							buffer[ sampleIndex ] = 1.0f;
+						}
 					}
+					break;
+				}
+				case Settings::LimitMode::Soft : {
+					if ( softClipState.size() != static_cast<size_t>( channels ) ) {
+						softClipState.resize( channels, 0 );
+					}
+					opus_pcm_soft_clip( buffer, sampleCount, channels, &softClipState[ 0 ] );
+					break;
+				}
+				default : {
+					break;
 				}
 			}
 		}

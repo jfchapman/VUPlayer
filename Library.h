@@ -35,10 +35,10 @@ public:
 		Version,
 		GainTrack,
 		GainAlbum,
-		PeakTrack,
-		PeakAlbum,
-		Artwork,
-		CDDB,
+//		PeakTrack = 18,	*DEPRECATED*
+//		PeakAlbum = 19,	*DEPRECATED*
+		Artwork = 20,
+		CDDB = 21,
 
 		_Undefined
 	};
@@ -119,12 +119,18 @@ public:
 	// Returns true if the library was updated.
 	bool RemoveFromLibrary( const MediaInfo& mediaInfo );
 
+	// Returns all the file extensions supported by the handlers, as a set of lowercase strings.
+	std::set<std::wstring> GetAllSupportedFileExtensions() const;
+
+	// Returns the 'mediaInfo' as tags.
+	Tags GetTags( const MediaInfo& mediaInfo );
+
 private:
 	// Media library columns.
 	typedef std::map<std::string,Column> Columns;
 
 	// Maps a filename to tag information.
-	typedef std::map<std::wstring,Handler::Tags> FileTags;
+	typedef std::map<std::wstring,Tags> FileTags;
 
 	// Updates the database to the current version if necessary.
 	void UpdateDatabase();
@@ -157,7 +163,7 @@ private:
 	// Writes out tag information to file.
 	// 'mediaInfo' - in/out, media information which will be modified if tags are successfully written.
 	// 'tags' - tags to write.
-	void WriteFileTags( MediaInfo& mediaInfo, const Handler::Tags& tags );
+	void WriteFileTags( MediaInfo& mediaInfo, const Tags& tags );
 
 	// Adds an artwork to the media library.
 	// 'id' - artwork ID.
@@ -175,14 +181,14 @@ private:
 	const Columns& GetColumns( const MediaInfo::Source source ) const;
 
 	// Updates 'mediaInfo' with the 'tags'.
-	void UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Handler::Tags& tags );
+	void UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Tags& tags );
 
 	// Adds any pending 'tags' for the 'filename', to be written out at the next opportunity.
-	void AddPendingTags( const std::wstring& filename, const Handler::Tags& tags );
+	void AddPendingTags( const std::wstring& filename, const Tags& tags );
 
 	// Gets any pending 'tags' for the 'filename'.
 	// Returns whether there are any pending tags.
-	bool GetPendingTags( const std::wstring& filename, Handler::Tags& tags ) const;
+	bool GetPendingTags( const std::wstring& filename, Tags& tags ) const;
 
 	// Database.
 	Database& m_Database;

@@ -35,7 +35,7 @@ bool HandlerMP3::GetTags( const std::wstring& /*filename*/, Tags& /*tags*/ ) con
 	return false;
 }
 
-bool HandlerMP3::SetTags( const std::wstring& /*filename*/, const Handler::Tags& /*tags*/ ) const
+bool HandlerMP3::SetTags( const std::wstring& /*filename*/, const Tags& /*tags*/ ) const
 {
 	return false;
 }
@@ -88,7 +88,7 @@ INT_PTR CALLBACK HandlerMP3::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 					EndDialog( hwnd, IDOK == LOWORD( wParam ) );
 					return TRUE;
 				}
-				case IDC_CONVERT_FILENAME_DEFAULT : {
+				case IDC_ENCODER_MP3_DEFAULT : {
 					ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
 						config->m_Handler->OnConfigureDefault( hwnd, config->m_Settings );

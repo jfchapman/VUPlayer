@@ -3,6 +3,7 @@
 
 #include "Decoder.h"
 #include "Encoder.h"
+#include "Tag.h"
 
 #include <list>
 #include <map>
@@ -30,30 +31,10 @@ public:
 	// A list of handlers.
 	typedef std::list<Ptr> List;
 
-	// Tag types.
-	enum class Tag {
-		Artist,
-		Title,
-		Album,
-		Genre,
-		Year,
-		Comment,
-		Track,
-		Version,
-		GainTrack,
-		GainAlbum,
-		PeakTrack,
-		PeakAlbum,
-		Artwork
-	};
-
-	// Handler tags.
-	typedef std::map<Tag,std::wstring> Tags;
-
 	// Returns a description of the handler.
 	virtual std::wstring GetDescription() const = 0;
 
-	// Returns the supported file extensions.
+	// Returns the supported file extensions, as a set of lowercase strings.
 	virtual std::set<std::wstring> GetSupportedFileExtensions() const = 0;
 
 	// Reads 'tags' from 'filename', returning true if the tags were read.

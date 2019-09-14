@@ -45,35 +45,31 @@ bool HandlerFlac::GetTags( const std::wstring& filename, Tags& tags ) const
 					if ( ( nullptr != vorbisComment ) && ( vorbisComment->is_valid() ) ) {
 						const unsigned char* vendor = vorbisComment->get_vendor_string();
 						if ( ( nullptr != vendor ) && ( vendor[ 0 ] != 0 ) ) {
-							tags.insert( Tags::value_type( Tag::Version, UTF8ToWideString( reinterpret_cast<const char*>( vendor ) ) ) );
+							tags.insert( Tags::value_type( Tag::Version, reinterpret_cast<const char*>( vendor ) ) );
 						}
 						const unsigned int commentCount = vorbisComment->get_num_comments();
 						for ( unsigned int commentIndex = 0; commentIndex < commentCount; commentIndex++ ) {
 							const FLAC::Metadata::VorbisComment::Entry entry = vorbisComment->get_comment( commentIndex );
 							if ( ( entry.is_valid() ) && ( entry.get_field_name_length() != 0 ) && ( entry.get_field_value_length() != 0 ) ) {
 								const char* field = entry.get_field_name();
-								if ( 0 == _stricmp( field, "artist" ) ) {
-									tags.insert( Tags::value_type( Tag::Artist, UTF8ToWideString( entry.get_field_value() ) ) );
-								} else if ( 0 == _stricmp( field, "title" ) ) {
-									tags.insert( Tags::value_type( Tag::Title, UTF8ToWideString( entry.get_field_value() ) ) );
-								} else if ( 0 == _stricmp( field, "album" ) ) {
-									tags.insert( Tags::value_type( Tag::Album, UTF8ToWideString( entry.get_field_value() ) ) );
-								} else if ( 0 == _stricmp( field, "genre" ) ) {
-									tags.insert( Tags::value_type( Tag::Genre, UTF8ToWideString( entry.get_field_value() ) ) );
-								} else if ( ( 0 == _stricmp( field, "year" ) ) || ( 0 == _stricmp( field, "date" ) ) ) {
-									tags.insert( Tags::value_type( Tag::Year, UTF8ToWideString( entry.get_field_value() ) ) );
-								} else if ( 0 == _stricmp( field, "comment" ) ) {
-									tags.insert( Tags::value_type( Tag::Comment, UTF8ToWideString( entry.get_field_value() ) ) );
-								} else if ( ( 0 == _stricmp( field, "track" ) ) || ( 0 == _stricmp( field, "tracknumber" ) ) ) {
-									tags.insert( Tags::value_type( Tag::Track, UTF8ToWideString( entry.get_field_value() ) ) );
-								} else if ( 0 == _stricmp( field, "replaygain_track_gain" ) ) {
-									tags.insert( Tags::value_type( Tag::GainTrack, UTF8ToWideString( entry.get_field_value() ) ) );
-								} else if ( 0 == _stricmp( field, "replaygain_track_peak" ) ) {
-									tags.insert( Tags::value_type( Tag::PeakTrack, UTF8ToWideString( entry.get_field_value() ) ) );
-								} else if ( 0 == _stricmp( field, "replaygain_album_gain" ) ) {
-									tags.insert( Tags::value_type( Tag::GainAlbum, UTF8ToWideString( entry.get_field_value() ) ) );
-								} else if ( 0 == _stricmp( field, "replaygain_album_peak" ) ) {
-									tags.insert( Tags::value_type( Tag::PeakAlbum, UTF8ToWideString( entry.get_field_value() ) ) );
+								if ( 0 == _stricmp( field, "ARTIST" ) ) {
+									tags.insert( Tags::value_type( Tag::Artist, entry.get_field_value() ) );
+								} else if ( 0 == _stricmp( field, "TITLE" ) ) {
+									tags.insert( Tags::value_type( Tag::Title, entry.get_field_value() ) );
+								} else if ( 0 == _stricmp( field, "ALBUM" ) ) {
+									tags.insert( Tags::value_type( Tag::Album, entry.get_field_value() ) );
+								} else if ( 0 == _stricmp( field, "GENRE" ) ) {
+									tags.insert( Tags::value_type( Tag::Genre, entry.get_field_value() ) );
+								} else if ( ( 0 == _stricmp( field, "YEAR" ) ) || ( 0 == _stricmp( field, "DATE" ) ) ) {
+									tags.insert( Tags::value_type( Tag::Year, entry.get_field_value() ) );
+								} else if ( 0 == _stricmp( field, "COMMENT" ) ) {
+									tags.insert( Tags::value_type( Tag::Comment, entry.get_field_value() ) );
+								} else if ( ( 0 == _stricmp( field, "TRACK" ) ) || ( 0 == _stricmp( field, "TRACKNUMBER" ) ) ) {
+									tags.insert( Tags::value_type( Tag::Track, entry.get_field_value() ) );
+								} else if ( 0 == _stricmp( field, "REPLAYGAIN_TRACK_GAIN" ) ) {
+									tags.insert( Tags::value_type( Tag::GainTrack, entry.get_field_value() ) );
+								} else if ( 0 == _stricmp( field, "REPLAYGAIN_ALBUM_GAIN" ) ) {
+									tags.insert( Tags::value_type( Tag::GainAlbum, entry.get_field_value() ) );
 								}
 							}
 						}
@@ -88,7 +84,7 @@ bool HandlerFlac::GetTags( const std::wstring& filename, Tags& tags ) const
 					if ( ( nullptr != picture ) && ( picture->is_valid() ) && ( FLAC__STREAM_METADATA_PICTURE_TYPE_FRONT_COVER == picture->get_type() ) ) {
 						const int dataLength = static_cast<int>( picture->get_data_length() );
 						if ( dataLength > 0 ) {
-							const std::wstring encodedImage = Base64Encode( reinterpret_cast<const BYTE*>( picture->get_data() ), dataLength );
+							const std::string encodedImage = Base64Encode( reinterpret_cast<const BYTE*>( picture->get_data() ), dataLength );
 							if ( !encodedImage.empty() ) {
 								tags.insert( Tags::value_type( Tag::Artwork, encodedImage ) );
 							}
@@ -103,7 +99,7 @@ bool HandlerFlac::GetTags( const std::wstring& filename, Tags& tags ) const
 	return success;
 }
 
-bool HandlerFlac::SetTags( const std::wstring& filename, const Handler::Tags& tags ) const
+bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) const
 {
 	bool success = false;
 
@@ -130,9 +126,7 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Handler::Tags& ta
 					case Tag::Track :
 					case Tag::Year :
 					case Tag::GainAlbum :
-					case Tag::PeakAlbum :
-					case Tag::GainTrack :
-					case Tag::PeakTrack : {
+					case Tag::GainTrack : {
 						updateVorbisComment = true;
 						break;
 					}
@@ -174,7 +168,7 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Handler::Tags& ta
 								if ( nullptr != vorbisComment ) {
 									for ( const auto& tagIter : tags ) {
 										const Tag tag = tagIter.first;
-										const std::string value = WideStringToUTF8( tagIter.second );
+										const std::string& value = tagIter.second;
 										std::string field;
 										switch ( tag ) {
 											case Tag::Album : {
@@ -206,19 +200,11 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Handler::Tags& ta
 												break;
 											}
 											case Tag::GainAlbum : {
-												field = "replaygain_album_gain";
-												break;
-											}
-											case Tag::PeakAlbum : {
-												field = "replaygain_album_peak";
+												field = "REPLAYGAIN_ALBUM_GAIN";
 												break;
 											}
 											case Tag::GainTrack : {
-												field = "replaygain_track_gain";
-												break;
-											}
-											case Tag::PeakTrack : {
-												field = "replaygain_track_peak";
+												field = "REPLAYGAIN_TRACK_GAIN";
 												break;
 											}
 											default : {
@@ -267,7 +253,7 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Handler::Tags& ta
 						// Insert (front cover) picture block.
 						const auto pictureIter = tags.find( Tag::Artwork );
 						if ( tags.end() != pictureIter ) {
-							const std::wstring& encodedImage = pictureIter->second;
+							const std::string& encodedImage = pictureIter->second;
 							const std::vector<BYTE> imageBytes = Base64Decode( encodedImage );
 							const size_t imageSize = imageBytes.size();
 							if ( imageSize > 0 ) {
@@ -276,7 +262,7 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Handler::Tags& ta
 								int height = 0;
 								int depth = 0;
 								int colours = 0;
-								GetImageInformation( pictureIter->second, mimeType, width, height, depth, colours );
+								GetImageInformation( encodedImage, mimeType, width, height, depth, colours );
 								FLAC::Metadata::Picture* picture = new FLAC::Metadata::Picture();
 								picture->set_mime_type( mimeType.c_str() );
 								picture->set_width( static_cast<FLAC__uint32>( width ) );

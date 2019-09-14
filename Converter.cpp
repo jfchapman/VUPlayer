@@ -3,7 +3,7 @@
 #include "resource.h"
 #include "Utility.h"
 
-#include "replaygain_analysis.h"
+#include "ebur128.h"
 
 #include <iomanip>
 #include <sstream>
@@ -194,12 +194,19 @@ void Converter::EncodeHandler()
 			totalDuration += track.Info.GetDuration();
 		}
 		float totalEncodedDuration = 0;
+		MediaInfo::List encodedMediaList;
 
 		std::wstring extractFolder;
 		std::wstring extractFilename;
 		bool extractToLibrary = false;
 		bool extractJoin = false;
 		m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
+
+		std::vector<ebur128_state*> r128States;
+		if ( !extractJoin ) {
+			r128States.reserve( m_Tracks.size() );
+		}
+		ebur128_state* r128State = nullptr;
 
 		long joinChannels = 0;
 		long joinSampleRate = 0;
@@ -209,19 +216,16 @@ void Converter::EncodeHandler()
 				joinChannels = decoder->GetChannels();
 				joinSampleRate = decoder->GetSampleRate();
 				conversionOK = m_Encoder->Open( m_JoinFilename, joinSampleRate, joinChannels, decoder->GetBPS(), m_EncoderSettings );
+				r128State = ebur128_init( static_cast<unsigned int>( joinChannels ), static_cast<unsigned int>( joinSampleRate ), EBUR128_MODE_I );
+				if ( nullptr != r128State ) {
+					r128States.push_back( r128State );
+				}
 			} else {
 				conversionOK = false;
 			}
 		}
 
 		if ( conversionOK ) {
-			replaygain_analysis analysis;
-			const long replayGainScale = 1 << 15;
-			bool calculateReplayGain = extractJoin ? 
-				( ( ( 2 == joinChannels ) || ( 1 == joinChannels ) ) && analysis.InitGainAnalysis( joinSampleRate ) ) : false;
-
-			float trackPeak = 0;
-
 			long currentTrack = 0;
 			auto track = m_Tracks.begin();
 			while ( conversionOK && !Cancelled() && ( m_Tracks.end() != track ) ) {
@@ -250,43 +254,22 @@ void Converter::EncodeHandler()
 							const long sampleCount = 65536;
 							std::vector<float> sampleBuffer( sampleCount * channels );
 
-							std::vector<float> analysisLeft;
-							std::vector<float> analysisRight;
 							if ( !extractJoin ) {
-								calculateReplayGain = ( ( 2 == channels ) || ( 1 == channels ) ) && analysis.InitGainAnalysis( sampleRate );
-							}
-							if ( calculateReplayGain ) {
-								analysisLeft.resize( sampleCount );
-								if ( 2 == channels ) {
-									analysisRight.resize( sampleCount );
+								r128State = ebur128_init( static_cast<unsigned int>( channels ), static_cast<unsigned int>( sampleRate ), EBUR128_MODE_I );
+								if ( nullptr != r128State ) {
+									r128States.push_back( r128State );
 								}
 							}
 
-							if ( !extractJoin ) {
-								trackPeak = 0;
-							}
-
+							int r128Error = EBUR128_SUCCESS;
 							bool continueEncoding = true;
 							while ( !Cancelled() && continueEncoding ) {
 								const long samplesRead = decoder->Read( &sampleBuffer[ 0 ], sampleCount );
 								if ( samplesRead > 0 ) {
-									continueEncoding = m_Encoder->Write( &sampleBuffer[ 0 ], samplesRead );
-
-									if ( calculateReplayGain ) {
-										for ( long sampleIndex = 0; sampleIndex < samplesRead; sampleIndex++ ) {
-											analysisLeft[ sampleIndex ] = sampleBuffer[ sampleIndex * channels ] * replayGainScale;
-											if ( sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] ) > trackPeak ) {
-												trackPeak = sqrt( sampleBuffer[ sampleIndex * channels ] * sampleBuffer[ sampleIndex * channels ] );
-											}
-											if ( 2 == channels ) {
-												analysisRight[ sampleIndex ] = sampleBuffer[ sampleIndex * channels + 1 ] * replayGainScale;
-												if ( sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] ) > trackPeak ) {
-													trackPeak = sqrt( sampleBuffer[ sampleIndex * channels + 1 ] * sampleBuffer[ sampleIndex * channels + 1 ] );
-												}
-											}
-										}
-										analysis.AnalyzeSamples( &analysisLeft[ 0 ], analysisRight.empty() ? nullptr : &analysisRight[ 0 ], sampleCount, channels );
+									if ( ( nullptr != r128State ) && ( EBUR128_SUCCESS == r128Error ) ) {
+										r128Error = ebur128_add_frames_float( r128State, &sampleBuffer[ 0 ], static_cast<size_t>( samplesRead ) );
 									}
+									continueEncoding = m_Encoder->Write( &sampleBuffer[ 0 ], samplesRead );
 
 									trackSamplesRead += samplesRead;
 									if ( 0 != trackSamplesTotal ) {
@@ -305,19 +288,22 @@ void Converter::EncodeHandler()
 							if ( !extractJoin ) {
 								m_Encoder->Close();
 
-								if ( calculateReplayGain ) {
-									float trackGain = analysis.GetTitleGain();
-									if ( GAIN_NOT_ENOUGH_SAMPLES != trackGain ) {
-										mediaInfo.SetPeakTrack( trackPeak );
+								if ( nullptr != r128State ) {
+									double loudness = 0;
+									if ( EBUR128_SUCCESS == ebur128_loudness_global( r128State, &loudness ) ) {
+										const float trackGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
 										mediaInfo.SetGainTrack( trackGain );
 									}
 								}
 
-								WriteTags( filename, mediaInfo );
-								if ( extractToLibrary ) {
+								mediaInfo.SetFilename( filename );
+								encodedMediaList.push_back( mediaInfo );
+
+								WriteTrackTags( filename, mediaInfo );
+								if ( extractToLibrary || m_Library.GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
 									MediaInfo extractedMediaInfo( filename );
 									m_Library.GetMediaInfo( extractedMediaInfo );
-								}
+								}			
 							}
 						}
 					}
@@ -339,20 +325,55 @@ void Converter::EncodeHandler()
 					MediaInfo::GetCommonInfo( mediaList, joinedMediaInfo );
 					joinedMediaInfo.SetFilename( m_JoinFilename );
 
-					if ( calculateReplayGain ) {
-						float trackGain = analysis.GetTitleGain();
-						if ( GAIN_NOT_ENOUGH_SAMPLES != trackGain ) {
-							joinedMediaInfo.SetPeakTrack( trackPeak );
+					if ( nullptr != r128State ) {
+						double loudness = 0;
+						if ( EBUR128_SUCCESS == ebur128_loudness_global( r128State, &loudness ) ) {
+							const float trackGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
 							joinedMediaInfo.SetGainTrack( trackGain );
 						}
 					}
 
-					WriteTags( joinedMediaInfo.GetFilename(), joinedMediaInfo );
-					if ( extractToLibrary ) {
+					WriteTrackTags( joinedMediaInfo.GetFilename(), joinedMediaInfo );
+					if ( extractToLibrary || m_Library.GetMediaInfo( joinedMediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
 						m_Library.GetMediaInfo( joinedMediaInfo );
 					}
 				}
+			} else {
+				if ( conversionOK && !Cancelled() && !encodedMediaList.empty() ) {
+					const std::wstring album = encodedMediaList.front().GetAlbum();
+					bool writeAlbumGain = !album.empty();
+					auto encodedMediaIter = encodedMediaList.begin();
+					while ( writeAlbumGain && ( encodedMediaList.end() != ++encodedMediaIter ) ) {
+						writeAlbumGain = ( encodedMediaIter->GetAlbum() == album );
+					}
+
+					if ( writeAlbumGain ) {
+						float albumGain = NAN;
+						if ( !r128States.empty() ) {
+							double loudness = 0;
+							if ( EBUR128_SUCCESS == ebur128_loudness_global_multiple( &r128States[ 0 ], r128States.size(), &loudness ) ) {
+								albumGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
+							}
+						}
+
+						if ( !std::isnan( albumGain ) ) {
+							for ( auto& encodedMedia : encodedMediaList ) {
+								encodedMedia.SetGainAlbum( albumGain );
+								WriteAlbumTags( encodedMedia.GetFilename(), encodedMedia );
+								MediaInfo info( encodedMedia.GetFilename() );
+								if ( extractToLibrary || m_Library.GetMediaInfo( info, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
+									m_Library.GetMediaInfo( info );
+								}						
+							}
+						}
+					}
+				}
 			}
+		}
+		
+		for ( const auto& iter : r128States ) {
+			ebur128_state* state = iter;
+			ebur128_destroy( &state );
 		}
 	}
 
@@ -500,49 +521,58 @@ void Converter::UpdateStatus()
 	}
 }
 
-void Converter::WriteTags( const std::wstring& filename, const MediaInfo& mediaInfo )
+void Converter::WriteTrackTags( const std::wstring& filename, const MediaInfo& mediaInfo )
 {
-	Handler::Tags tags;
+	Tags tags;
 	const std::wstring& title = mediaInfo.GetTitle();
 	if ( !title.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Title, title ) );
+		tags.insert( Tags::value_type( Tag::Title, WideStringToUTF8( title ) ) );
 	}
 	const std::wstring& artist = mediaInfo.GetArtist();
 	if ( !artist.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Artist, artist ) );
+		tags.insert( Tags::value_type( Tag::Artist, WideStringToUTF8( artist ) ) );
 	}
 	const std::wstring& album = mediaInfo.GetAlbum();
 	if ( !album.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Album, album ) );
+		tags.insert( Tags::value_type( Tag::Album, WideStringToUTF8( album ) ) );
 	}
 	const std::wstring& genre = mediaInfo.GetGenre();
 	if ( !genre.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Genre, genre ) );
+		tags.insert( Tags::value_type( Tag::Genre, WideStringToUTF8( genre ) ) );
 	}
 	const std::wstring& comment = mediaInfo.GetComment();
 	if ( !comment.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Comment, comment ) );
+		tags.insert( Tags::value_type( Tag::Comment, WideStringToUTF8( comment ) ) );
 	}
-	const std::wstring track = ( mediaInfo.GetTrack() > 0 ) ? std::to_wstring( mediaInfo.GetTrack() ) : std::wstring();
+	const std::string track = ( mediaInfo.GetTrack() > 0 ) ? std::to_string( mediaInfo.GetTrack() ) : std::string();
 	if ( !track.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Track, track ) );
+		tags.insert( Tags::value_type( Tag::Track, track ) );
 	}
-	const std::wstring year = ( mediaInfo.GetYear() > 0 ) ? std::to_wstring( mediaInfo.GetYear() ) : std::wstring();
+	const std::string year = ( mediaInfo.GetYear() > 0 ) ? std::to_string( mediaInfo.GetYear() ) : std::string();
 	if ( !year.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Year, year ) );
+		tags.insert( Tags::value_type( Tag::Year, year ) );
 	}
-	const std::wstring peakTrack = PeakToWideString( mediaInfo.GetPeakTrack() );
-	if ( !peakTrack.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::PeakTrack, peakTrack ) );
-	}
-	const std::wstring gainTrack = ( REPLAYGAIN_NOVALUE != mediaInfo.GetGainTrack() ) ? GainToWideString( mediaInfo.GetGainTrack() ) : std::wstring();
+	const std::string gainTrack = GainToString( mediaInfo.GetGainTrack() );
 	if ( !gainTrack.empty() ) {
-		tags.insert( Handler::Tags::value_type( Handler::Tag::GainTrack, gainTrack ) );
+		tags.insert( Tags::value_type( Tag::GainTrack, gainTrack ) );
 	}
 	const std::vector<BYTE> imageBytes = m_Library.GetMediaArtwork( mediaInfo );
 	if ( !imageBytes.empty() ) {
-		const std::wstring encodedArtwork = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageBytes.size() ) );
-		tags.insert( Handler::Tags::value_type( Handler::Tag::Artwork, encodedArtwork ) );
+		const std::string encodedArtwork = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageBytes.size() ) );
+		tags.insert( Tags::value_type( Tag::Artwork, encodedArtwork ) );
+	}
+
+	if ( !tags.empty() ) {
+		m_Handlers.SetTags( filename, tags );
+	}
+}
+
+void Converter::WriteAlbumTags( const std::wstring& filename, const MediaInfo& mediaInfo )
+{
+	Tags tags;
+	const std::string gainAlbum = GainToString( mediaInfo.GetGainAlbum() );
+	if ( !gainAlbum.empty() ) {
+		tags.insert( Tags::value_type( Tag::GainAlbum, gainAlbum ) );
 	}
 
 	if ( !tags.empty() ) {

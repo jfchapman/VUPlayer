@@ -22,13 +22,13 @@ public:
 	// 'filename' - file to get metadata from.
 	// 'tags' - out, metadata.
 	// Returns true if metadata was returned.
-	static bool Get( const std::wstring& filename, Handler::Tags& tags );
+	static bool Get( const std::wstring& filename, Tags& tags );
 
 	// Sets metadata.
 	// 'filename' - file to set metadata to.
 	// 'tags' - metadata.
 	// Returns true if metadata was set.
-	static bool Set( const std::wstring& filename, const Handler::Tags& tags );
+	static bool Set( const std::wstring& filename, const Tags& tags );
 
 	// Returns the audio sub type description from the 'guid'.
 	static std::wstring GetAudioSubType( const std::wstring& guid );
