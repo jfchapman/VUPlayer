@@ -35,6 +35,13 @@ public:
 		bool Shift;				// Shift key modifier.
 	};
 
+	// Output mode.
+	enum class OutputMode {
+		Standard,
+		WASAPIExclusive,
+		ASIO
+	};
+
 	// Gain mode.
 	enum class GainMode {
 		Disabled,
@@ -275,11 +282,15 @@ public:
 	// 'showRemaining' - true to display remaining time, false for elapsed time.
 	void SetCounterSettings( const LOGFONT& font, const COLORREF colour, const bool showRemaining );
 
-	// Returns the output device name (or an empty string for the default device).
-	std::wstring GetOutputDevice();
+	// Gets the output settings.
+	// 'deviceName' - out, device name (or an empty string for the default device).
+	// 'mode' - out, output mode.
+	void GetOutputSettings( std::wstring& deviceName, OutputMode& mode );
 
-	// Sets the output device 'name' (or an empty string for the default device).
-	void SetOutputDevice( const std::wstring& name );
+	// Sets the output settings.
+	// 'deviceName' - device name (or an empty string for the default device).
+	// 'mode' - output mode.
+	void SetOutputSettings( const std::wstring& deviceName, const OutputMode mode );
 
 	// Gets default MOD music settings.
 	// 'mod' - out, MOD settings.
@@ -448,6 +459,46 @@ public:
 
 	// Exports the settings in JSON format to 'output'.
 	void ExportSettings( std::string& output );
+
+	// Gets the default (and maximum allowed) advanced WASAPI exclusive mode settings.
+	// 'useDeviceDefaultFormat' - out, true to use the device's default sample format, false to use the source sample format.
+	// 'bufferLength' - out, buffer length, in milliseconds.
+	// 'leadIn' - out, lead-in length, in milliseconds.
+	// 'maxBufferLength' - out, maximum buffer length, in milliseconds.
+	// 'maxLeadIn' - out, maximum lead-in length, in milliseconds.
+	void GetDefaultAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn, int& maxBufferLength, int& maxLeadIn );
+
+	// Gets the advanced WASAPI exclusive mode settings.
+	// 'useDeviceDefaultFormat' - out, true to use the device's default sample format, false to use the source sample format.
+	// 'bufferLength' - out, buffer length, in milliseconds.
+	// 'leadIn' - out, lead-in length, in milliseconds.
+	void GetAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn );
+
+	// Sets the advanced WASAPI exclusive mode settings.
+	// 'useDeviceDefaultFormat' - true to use the device's default sample format, false to use the source sample format.
+	// 'bufferLength' - buffer length, in milliseconds.
+	// 'leadIn' - lead-in length, in milliseconds.
+	void SetAdvancedWasapiExclusiveSettings( const bool useDeviceDefaultFormat, const int bufferLength, const int leadIn );
+
+	// Gets the default (and maximum allowed) advanced ASIO settings.
+	// 'useDefaultSamplerate' - out, true to use the default sample rate, false to use the source sample rate.
+	// 'defaultSamplerate' - out, default sample rate, in Hz.
+	// 'leadIn' - out, lead-in length, in milliseconds.
+	// 'maxSamplerate' - out, maximum sample rate, in Hz.
+	// 'maxLeadIn' - out, maximum lead-in length, in milliseconds.
+	void GetDefaultAdvancedASIOSettings( bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn, int& maxDefaultSamplerate, int& maxLeadIn );
+
+	// Gets the advanced ASIO settings.
+	// 'useDefaultSamplerate' - out, true to use the default sample rate, false to use the source sample rate.
+	// 'defaultSamplerate' - out, default sample rate, in Hz.
+	// 'leadIn' - out, lead-in length, in milliseconds.
+	void GetAdvancedASIOSettings( bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn );
+
+	// Sets the advanced ASIO settings.
+	// 'useDefaultSamplerate' - true to use the default sample rate, false to use the source sample rate.
+	// 'defaultSamplerate' - default sample rate, in Hz.
+	// 'leadIn' - lead-in length, in milliseconds.
+	void SetAdvancedASIOSettings( const bool useDefaultSamplerate, const int defaultSamplerate, const int leadIn );
 
 private:
 	// Updates the database to the current version if necessary.

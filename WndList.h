@@ -90,12 +90,6 @@ public:
 	// Called when the drag timer interval elapses.
 	void OnDragTimer();
 
-	// Returns the default edit control window procedure.
-	WNDPROC GetEditControlWndProc();
-
-	// Adjusts the edit control 'position' when item editing commences.
-	void RepositionEditControl( WINDOWPOS* position );
-
 	// Updates the list control media information.
 	// 'mediaInfo' - updated media information
 	void OnUpdatedMedia( const MediaInfo& mediaInfo );
@@ -183,11 +177,20 @@ private:
 	// Window procedure
 	static LRESULT CALLBACK ListProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
+	// Edit control window procedure
+	static LRESULT CALLBACK EditControlProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// Maps a column type to the column format.
 	typedef std::map<Playlist::Column,ColumnFormat> ColumnFormats;
 
 	// Maps an item ID to a file name.
 	typedef std::map<long,std::wstring> ItemFilenames;
+
+	// Returns the default edit control window procedure.
+	WNDPROC GetEditControlWndProc();
+
+	// Adjusts the edit control 'position' when item editing commences.
+	void RepositionEditControl( WINDOWPOS* position );
 
 	// Applies the current settings to the list.
 	void ApplySettings();

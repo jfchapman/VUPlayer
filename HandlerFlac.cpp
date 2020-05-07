@@ -3,6 +3,8 @@
 #include "DecoderFlac.h"
 #include "EncoderFlac.h"
 
+#include <share/windows_unicode_filenames.h>
+
 #include "Utility.h"
 
 // Amount of padding to add when writing out FLAC files that don't contain any padding.
@@ -33,8 +35,9 @@ bool HandlerFlac::GetTags( const std::wstring& filename, Tags& tags ) const
 {
 	bool success = false;
 	tags.clear();
+	flac_internal_set_utf8_filenames( true );
 	FLAC::Metadata::SimpleIterator iterator;
-	if ( iterator.is_valid() &&	iterator.init( WideStringToAnsiCodePage( filename ).c_str(), true /*readOnly*/, true /*preserveFileStats*/ ) ) {
+	if ( iterator.is_valid() &&	iterator.init( WideStringToUTF8( filename ).c_str(), true /*readOnly*/, true /*preserveFileStats*/ ) ) {
 		success = true;
 		do {
 			const FLAC__MetadataType blockType = iterator.get_block_type();
@@ -102,9 +105,9 @@ bool HandlerFlac::GetTags( const std::wstring& filename, Tags& tags ) const
 bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) const
 {
 	bool success = false;
-
+	flac_internal_set_utf8_filenames( true );
 	FLAC::Metadata::Chain chain;
-	if ( chain.is_valid() && chain.read( WideStringToAnsiCodePage( filename ).c_str() ) ) {
+	if ( chain.is_valid() && chain.read( WideStringToUTF8( filename ).c_str() ) ) {
 		FLAC::Metadata::Iterator iterator;
 		if ( iterator.is_valid() ) {
 			iterator.init( chain );

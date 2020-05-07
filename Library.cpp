@@ -266,8 +266,8 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 					mediaInfo = info;
 				}
 			}
+			sqlite3_finalize( stmt );
 		}
-		sqlite3_finalize( stmt );
 	}
 	return success;
 }
@@ -665,7 +665,6 @@ bool Library::AddArtwork( const std::wstring& id, const std::vector<BYTE>& image
 				sqlite3_bind_int( stmt, 2, static_cast<int>( image.size() ) );
 				sqlite3_bind_blob( stmt, 3, &image[ 0 ], static_cast<int>( image.size() ), SQLITE_STATIC );
 				success = ( SQLITE_DONE == sqlite3_step( stmt ) );
-				sqlite3_reset( stmt );
 				sqlite3_finalize( stmt );
 			}
 		}
@@ -680,18 +679,19 @@ std::wstring Library::FindArtwork( const std::vector<BYTE>& image )
 	if ( nullptr != database ) {
 		std::string query = "SELECT ID,Image FROM Artwork WHERE Size=?1;";
 		sqlite3_stmt* stmt = nullptr;
-		if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( image.size() ) ) ) ) {
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const size_t numBytes = static_cast<size_t>( sqlite3_column_bytes( stmt, 1 /*columnIndex*/ ) );
-				if ( ( numBytes == image.size() ) && ( numBytes > 0 ) ) {
-					const BYTE* bytes = static_cast<const BYTE*>( sqlite3_column_blob( stmt, 1 /*columnIndex*/ ) );
-					if ( nullptr != bytes ) {
-						if ( 0 == memcmp( bytes, &image[ 0 ], numBytes ) ) {
-							const char* id = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) );
-							if ( nullptr != id ) {
-								result = UTF8ToWideString( id );
-								break;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( image.size() ) ) ) {
+				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					const size_t numBytes = static_cast<size_t>( sqlite3_column_bytes( stmt, 1 /*columnIndex*/ ) );
+					if ( ( numBytes == image.size() ) && ( numBytes > 0 ) ) {
+						const BYTE* bytes = static_cast<const BYTE*>( sqlite3_column_blob( stmt, 1 /*columnIndex*/ ) );
+						if ( nullptr != bytes ) {
+							if ( 0 == memcmp( bytes, &image[ 0 ], numBytes ) ) {
+								const char* id = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) );
+								if ( nullptr != id ) {
+									result = UTF8ToWideString( id );
+									break;
+								}
 							}
 						}
 					}
@@ -713,15 +713,16 @@ std::vector<BYTE> Library::GetMediaArtwork( const MediaInfo& mediaInfo )
 		if ( nullptr != database ) {
 			const std::string query = "SELECT Image FROM Artwork WHERE ID=?1;";
 			sqlite3_stmt* stmt = nullptr;
-			if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-					( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artworkID ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
-				if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-					const size_t numBytes = static_cast<size_t>( sqlite3_column_bytes( stmt, 0 /*columnIndex*/ ) );
-					if ( numBytes > 0 ) {
-						const BYTE* bytes = static_cast<const BYTE*>( sqlite3_column_blob( stmt, 0 /*columnIndex*/ ) );
-						if ( nullptr != bytes ) {
-							result.resize( numBytes );
-							memcpy( &result[ 0 ], bytes, numBytes );
+			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+				if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artworkID ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
+					if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+						const size_t numBytes = static_cast<size_t>( sqlite3_column_bytes( stmt, 0 /*columnIndex*/ ) );
+						if ( numBytes > 0 ) {
+							const BYTE* bytes = static_cast<const BYTE*>( sqlite3_column_blob( stmt, 0 /*columnIndex*/ ) );
+							if ( nullptr != bytes ) {
+								result.resize( numBytes );
+								memcpy( &result[ 0 ], bytes, numBytes );
+							}
 						}
 					}
 				}
@@ -807,14 +808,15 @@ std::set<std::wstring> Library::GetAlbums( const std::wstring artist )
 	if ( nullptr != database ) {
 		const std::string query = "SELECT Album FROM Media WHERE Artist=?1;";
 		sqlite3_stmt* stmt = nullptr;
-		if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) );
-				if ( nullptr != text ) {
-					const std::wstring album = UTF8ToWideString( text );
-					if ( !album.empty() ) {
-						albums.insert( album );
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
+				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) );
+					if ( nullptr != text ) {
+						const std::wstring album = UTF8ToWideString( text );
+						if ( !album.empty() ) {
+							albums.insert( album );
+						}
 					}
 				}
 			}
@@ -877,12 +879,13 @@ MediaInfo::List Library::GetMediaByArtist( const std::wstring& artist )
 	if ( nullptr != database ) {
 		const std::string query = "SELECT * FROM Media WHERE Artist=?1 ORDER BY Filename;";
 		sqlite3_stmt* stmt = nullptr;
-		if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				MediaInfo mediaInfo;
-				ExtractMediaInfo( stmt, mediaInfo );
-				mediaList.push_back( mediaInfo );
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
+				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					MediaInfo mediaInfo;
+					ExtractMediaInfo( stmt, mediaInfo );
+					mediaList.push_back( mediaInfo );
+				}
 			}
 			sqlite3_finalize( stmt );
 			stmt = nullptr;
@@ -898,12 +901,13 @@ MediaInfo::List Library::GetMediaByAlbum( const std::wstring& album )
 	if ( nullptr != database ) {
 		const std::string query = "SELECT * FROM Media WHERE Album=?1 ORDER BY Filename;";
 		sqlite3_stmt* stmt = nullptr;
-		if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				MediaInfo mediaInfo;
-				ExtractMediaInfo( stmt, mediaInfo );
-				mediaList.push_back( mediaInfo );
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
+				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					MediaInfo mediaInfo;
+					ExtractMediaInfo( stmt, mediaInfo );
+					mediaList.push_back( mediaInfo );
+				}
 			}
 			sqlite3_finalize( stmt );
 			stmt = nullptr;
@@ -919,13 +923,14 @@ MediaInfo::List Library::GetMediaByArtistAndAlbum( const std::wstring& artist, c
 	if ( nullptr != database ) {
 		const std::string query = "SELECT * FROM Media WHERE Artist=?1 AND Album=?2 ORDER BY Filename;";
 		sqlite3_stmt* stmt = nullptr;
-		if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				MediaInfo mediaInfo;
-				ExtractMediaInfo( stmt, mediaInfo );
-				mediaList.push_back( mediaInfo );
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+					( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
+				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					MediaInfo mediaInfo;
+					ExtractMediaInfo( stmt, mediaInfo );
+					mediaList.push_back( mediaInfo );
+				}
 			}
 			sqlite3_finalize( stmt );
 			stmt = nullptr;
@@ -941,12 +946,13 @@ MediaInfo::List Library::GetMediaByGenre( const std::wstring& genre )
 	if ( nullptr != database ) {
 		const std::string query = "SELECT * FROM Media WHERE Genre=?1 ORDER BY Filename;";
 		sqlite3_stmt* stmt = nullptr;
-		if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( genre ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				MediaInfo mediaInfo;
-				ExtractMediaInfo( stmt, mediaInfo );
-				mediaList.push_back( mediaInfo );
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( genre ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
+				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					MediaInfo mediaInfo;
+					ExtractMediaInfo( stmt, mediaInfo );
+					mediaList.push_back( mediaInfo );
+				}
 			}
 			sqlite3_finalize( stmt );
 			stmt = nullptr;
@@ -963,12 +969,13 @@ MediaInfo::List Library::GetMediaByYear( const long year )
 		if ( nullptr != database ) {
 			const std::string query = "SELECT * FROM Media WHERE Year=?1 ORDER BY Filename;";
 			sqlite3_stmt* stmt = nullptr;
-			if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-					( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( year ) ) ) ) {
-				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-					MediaInfo mediaInfo;
-					ExtractMediaInfo( stmt, mediaInfo );
-					mediaList.push_back( mediaInfo );
+			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+				if ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( year ) ) ) {
+					while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+						MediaInfo mediaInfo;
+						ExtractMediaInfo( stmt, mediaInfo );
+						mediaList.push_back( mediaInfo );
+					}
 				}
 				sqlite3_finalize( stmt );
 				stmt = nullptr;
@@ -1084,10 +1091,11 @@ bool Library::RemoveFromLibrary( const MediaInfo& mediaInfo )
 	if ( ( nullptr != database ) && !filename.empty() && ( MediaInfo::Source::File == mediaInfo.GetSource() ) ) {
 		const std::string query = "DELETE FROM Media WHERE Filename=?1;";
 		sqlite3_stmt* stmt = nullptr;
-		if ( ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
-			// Should be a maximum of one entry.
-			removed = ( SQLITE_DONE == sqlite3_step( stmt ) );
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
+				// Should be a maximum of one entry.
+				removed = ( SQLITE_DONE == sqlite3_step( stmt ) );
+			}
 			sqlite3_finalize( stmt );
 		}
 	}
@@ -1218,4 +1226,34 @@ Tags Library::GetTags( const MediaInfo& mediaInfo )
 		tags.insert( Tags::value_type( Tag::Artwork, encodedArtwork ) );
 	}
 	return tags;
+}
+
+bool Library::UpdateTrackGain( const MediaInfo& mediaInfo )
+{
+	bool success = false;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = ( MediaInfo::Source::CDDA == mediaInfo.GetSource() ) ?
+			"UPDATE CDDA SET GainTrack=?1 WHERE CDDB=?2 AND Track=?3;" :
+			"UPDATE Media SET GainTrack=?1 WHERE Filename=?2;";
+		sqlite3_stmt* stmt = nullptr;
+		success = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) );
+		if ( success ) {
+			const float gain = mediaInfo.GetGainTrack();
+			success = std::isnan( gain ) ? ( SQLITE_OK == sqlite3_bind_null( stmt, 1 /*param*/ ) ) : ( SQLITE_OK == sqlite3_bind_double( stmt, 1 /*param*/, gain ) );
+			if ( success ) {
+				if ( MediaInfo::Source::CDDA == mediaInfo.GetSource() ) {
+					success = ( ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( mediaInfo.GetCDDB() ) ) ) &&
+						( SQLITE_OK == sqlite3_bind_int( stmt, 3 /*param*/, static_cast<int>( mediaInfo.GetTrack() ) ) ) );
+				} else {
+					success = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( mediaInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+				}
+				if ( success ) {
+					success = ( SQLITE_DONE == sqlite3_step( stmt ) );
+				}
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return success;
 }

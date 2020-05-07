@@ -2,11 +2,11 @@
 
 #include "Utility.h"
 
-// Maps a audio subtype GUID string to an audio format description.
-typedef std::map<std::wstring,std::wstring> AudioFormatMap;
-
 // Audio format descriptions
-static AudioFormatMap sAudioFormatDescriptions;
+ShellMetadata::AudioFormatMap ShellMetadata::s_AudioFormatDescriptions;
+
+// Audio format descriptions mutex
+std::mutex ShellMetadata::s_AudioFormatMutex;
 
 // Maximum thumbnail size
 static const int sMaxThumbnailBytes = 0x1000000;
@@ -96,14 +96,13 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 										if ( SUCCEEDED( stream->Stat( &stats, STATFLAG_NONAME ) ) ) {
 											if ( stats.cbSize.QuadPart <= sMaxThumbnailBytes ) {
 												ULONG bytesRead = 0;
-												BYTE* buffer = new BYTE[ static_cast<long>( stats.cbSize.QuadPart ) ];
-												if ( SUCCEEDED( stream->Read( buffer, static_cast<ULONG>( stats.cbSize.QuadPart ), &bytesRead ) ) ) {
-													const std::string encodedImage = Base64Encode( buffer, bytesRead );
+												std::vector<BYTE> buffer( static_cast<size_t>( stats.cbSize.QuadPart ) );
+												if ( SUCCEEDED( stream->Read( buffer.data(), static_cast<ULONG>( buffer.size() ), &bytesRead ) ) ) {
+													const std::string encodedImage = Base64Encode( buffer.data(), bytesRead );
 													if ( !encodedImage.empty() ) {
 														tags.insert( Tags::value_type( Tag::Artwork, encodedImage ) );
 													}
 												}
-												delete [] buffer;
 											}
 										}
 									}
@@ -123,107 +122,118 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 
 bool ShellMetadata::Set( const std::wstring& filename, const Tags& tags )
 {
+	const std::set<Tag> supportedTags = { Tag::Album, Tag::Artist, Tag::Comment, Tag::Genre, Tag::Title, Tag::Track, Tag::Year, Tag::Artwork };
+	bool anySupportedTags = false;
+	for ( const auto& tag : tags ) {
+		if ( supportedTags.end() != supportedTags.find( tag.first ) ) {
+			anySupportedTags = true;
+			break;
+		}
+	}
+
 	bool success = false;
-	IShellItem2* item = nullptr;
-	HRESULT hr = SHCreateItemFromParsingName( filename.c_str(), NULL /*bindContext*/, IID_PPV_ARGS( &item ) );
-	if ( SUCCEEDED( hr ) ) {
-		IStream* thumbnailStream = nullptr;
-		const GETPROPERTYSTOREFLAGS flags = GPS_READWRITE;
-		IPropertyStore* propStore = nullptr;
-		hr = item->GetPropertyStore( flags, IID_PPV_ARGS( &propStore ) );
+	if ( anySupportedTags ) {
+		IShellItem2* item = nullptr;
+		HRESULT hr = SHCreateItemFromParsingName( filename.c_str(), NULL /*bindContext*/, IID_PPV_ARGS( &item ) );
 		if ( SUCCEEDED( hr ) ) {
-			success = true;
-			bool propStoreModified = false;
-			for ( auto tagIter = tags.begin(); success && ( tagIter != tags.end() ); tagIter++ ) {
-				const Tag tag = tagIter->first;
-				const std::wstring value = UTF8ToWideString( tagIter->second );
-				PROPERTYKEY propKey = {};
-				PROPVARIANT propVar = {};
-				bool updateTag = true;
-				switch ( tag ) {
-					case Tag::Album : {
-						propKey = PKEY_Music_AlbumTitle;
-						hr = InitPropVariantFromString( value.c_str(), &propVar );
-						break;
-					}
-					case Tag::Artist : {
-						propKey = PKEY_Music_Artist;
-						hr = InitPropVariantFromString( value.c_str(), &propVar );
-						break;
-					}
-					case Tag::Comment : {
-						propKey = PKEY_Comment;
-						hr = InitPropVariantFromString( value.c_str(), &propVar );
-						break;
-					}
-					case Tag::Genre : {
-						propKey = PKEY_Music_Genre;
-						hr = InitPropVariantFromString( value.c_str(), &propVar );
-						break;
-					}
-					case Tag::Title : {
-						propKey = PKEY_Title;
-						hr = InitPropVariantFromString( value.c_str(), &propVar );
-						break;
-					}
-					case Tag::Track : {
-						propKey = PKEY_Music_TrackNumber;
-						hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
-						break;
-					}
-					case Tag::Year : {
-						propKey = PKEY_Media_Year;
-						hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
-						break;
-					}
-					case Tag::Artwork : {
-						// Note that there is no way of removing a thumbnail stream from a property store.
-						updateTag = false;
-						if ( nullptr == thumbnailStream ) {
-							const std::vector<BYTE> imageBytes = Base64Decode( tagIter->second );
-							const ULONG imageSize = static_cast<UINT>( imageBytes.size() );
-							if ( imageSize > 0 ) {
-								propKey = PKEY_ThumbnailStream;
-								hr = CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &thumbnailStream );
-								if ( SUCCEEDED( hr ) ) {
-									hr = thumbnailStream->Write( &imageBytes[ 0 ], imageSize, NULL /*bytesWritten*/ );
+			IStream* thumbnailStream = nullptr;
+			const GETPROPERTYSTOREFLAGS flags = GPS_READWRITE;
+			IPropertyStore* propStore = nullptr;
+			hr = item->GetPropertyStore( flags, IID_PPV_ARGS( &propStore ) );
+			if ( SUCCEEDED( hr ) ) {
+				success = true;
+				bool propStoreModified = false;
+				for ( auto tagIter = tags.begin(); success && ( tagIter != tags.end() ); tagIter++ ) {
+					const Tag tag = tagIter->first;
+					const std::wstring value = UTF8ToWideString( tagIter->second );
+					PROPERTYKEY propKey = {};
+					PROPVARIANT propVar = {};
+					bool updateTag = true;
+					switch ( tag ) {
+						case Tag::Album : {
+							propKey = PKEY_Music_AlbumTitle;
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+							break;
+						}
+						case Tag::Artist : {
+							propKey = PKEY_Music_Artist;
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+							break;
+						}
+						case Tag::Comment : {
+							propKey = PKEY_Comment;
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+							break;
+						}
+						case Tag::Genre : {
+							propKey = PKEY_Music_Genre;
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+							break;
+						}
+						case Tag::Title : {
+							propKey = PKEY_Title;
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+							break;
+						}
+						case Tag::Track : {
+							propKey = PKEY_Music_TrackNumber;
+							hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
+							break;
+						}
+						case Tag::Year : {
+							propKey = PKEY_Media_Year;
+							hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
+							break;
+						}
+						case Tag::Artwork : {
+							// Note that there is no way of removing a thumbnail stream from a property store.
+							updateTag = false;
+							if ( nullptr == thumbnailStream ) {
+								const std::vector<BYTE> imageBytes = Base64Decode( tagIter->second );
+								const ULONG imageSize = static_cast<UINT>( imageBytes.size() );
+								if ( imageSize > 0 ) {
+									propKey = PKEY_ThumbnailStream;
+									hr = CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &thumbnailStream );
 									if ( SUCCEEDED( hr ) ) {
-										hr = thumbnailStream->Seek( { 0 }, STREAM_SEEK_SET, NULL /*newPosition*/ );
-									}
-									if ( SUCCEEDED( hr ) ) {
-										propVar.vt = VT_STREAM;
-										propVar.pStream = thumbnailStream;
-										updateTag = true;
-									} else {
-										thumbnailStream->Release();
-										thumbnailStream = nullptr;
+										hr = thumbnailStream->Write( &imageBytes[ 0 ], imageSize, NULL /*bytesWritten*/ );
+										if ( SUCCEEDED( hr ) ) {
+											hr = thumbnailStream->Seek( { 0 }, STREAM_SEEK_SET, NULL /*newPosition*/ );
+										}
+										if ( SUCCEEDED( hr ) ) {
+											propVar.vt = VT_STREAM;
+											propVar.pStream = thumbnailStream;
+											updateTag = true;
+										} else {
+											thumbnailStream->Release();
+											thumbnailStream = nullptr;
+										}
 									}
 								}
 							}
+							break;
 						}
-						break;
+						default : {
+							updateTag = false;
+							break;
+						}
 					}
-					default : {
-						updateTag = false;
-						break;
+					if ( updateTag ) {
+						hr = propStore->SetValue( propKey, propVar );
+						success = SUCCEEDED( hr );
+						propStoreModified = success;
 					}
+					PropVariantClear( &propVar );
 				}
-				if ( updateTag ) {
-					hr = propStore->SetValue( propKey, propVar );
+				if ( propStoreModified ) {
+					hr = propStore->Commit();
 					success = SUCCEEDED( hr );
-					propStoreModified = success;
 				}
-				PropVariantClear( &propVar );
+				propStore->Release();
 			}
-			if ( propStoreModified ) {
-				hr = propStore->Commit();
-				success = SUCCEEDED( hr );
+			item->Release();
+			if ( nullptr != thumbnailStream ) {
+				thumbnailStream->Release();
 			}
-			propStore->Release();
-		}
-		item->Release();
-		if ( nullptr != thumbnailStream ) {
-			thumbnailStream->Release();
 		}
 	}
 	return success;
@@ -231,93 +241,94 @@ bool ShellMetadata::Set( const std::wstring& filename, const Tags& tags )
 
 std::wstring ShellMetadata::GetAudioSubType( const std::wstring& guid )
 {
-	if ( sAudioFormatDescriptions.empty() ) {
+	std::lock_guard<std::mutex> lock( s_AudioFormatMutex );
+	if ( s_AudioFormatDescriptions.empty() ) {
 		LPOLESTR str = nullptr;
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_AAC, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"AAC" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"AAC" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_AMR_NB, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"AMR" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"AMR" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_AMR_WB, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"AMR" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"AMR" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_AMR_WP, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"AMR" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"AMR" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Dolby_AC3, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby Digital" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby Digital" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Dolby_AC3_SPDIF, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby Digital" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby Digital" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Dolby_DDPlus, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby Digital Plus" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby Digital Plus" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_DTS, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"DTS" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"DTS" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Float, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"IEEE Float" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"IEEE Float" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_MP3, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"MP3" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"MP3" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_MPEG, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"MPEG-1" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"MPEG-1" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_MSP1, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA 9 Voice" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA 9 Voice" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_PCM, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"PCM" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"PCM" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_WMASPDIF, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA 9 Pro" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA 9 Pro" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_WMAudio_Lossless, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA Lossless" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA Lossless" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_WMAudioV8, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_WMAudioV9, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA 9 Pro" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA 9 Pro" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_ALAC, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Apple Lossless" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Apple Lossless" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_FLAC, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"FLAC" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"FLAC" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Opus, &str ) ) ) {
-			sAudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Opus" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Opus" ) );
 			CoTaskMemFree( str );
 		}
 	}
 
 	std::wstring description;
-	const auto iter = sAudioFormatDescriptions.find( WideStringToLower( guid ) );
-	if ( iter != sAudioFormatDescriptions.end() ) {
+	const auto iter = s_AudioFormatDescriptions.find( WideStringToLower( guid ) );
+	if ( iter != s_AudioFormatDescriptions.end() ) {
 		description = iter->second;
 	}
 	return description;

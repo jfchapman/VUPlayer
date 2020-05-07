@@ -7,7 +7,7 @@ DecoderOpus::DecoderOpus( const std::wstring& filename ) :
 	m_OpusFile( nullptr )
 {
 	int error = 0;
-	const std::string filepath = WideStringToAnsiCodePage( filename );
+	const std::string filepath = WideStringToUTF8( filename );
 	m_OpusFile = op_open_file( filepath.c_str(), &error );
 	if ( nullptr != m_OpusFile ) {
 		const OpusHead* head = op_head( m_OpusFile, -1 /*link*/ );

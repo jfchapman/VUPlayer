@@ -347,10 +347,11 @@ void Playlist::SavePlaylist( const std::wstring& filename )
 	}
 }
 
-void Playlist::RemoveItem( const Item& item )
+bool Playlist::RemoveItem( const Item& item )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	
+	bool removed = false;
 	for ( auto iter = m_Playlist.begin(); iter != m_Playlist.end(); iter++ ) {
 		if ( iter->ID == item.ID ) {
 			m_Playlist.erase( iter );
@@ -358,15 +359,18 @@ void Playlist::RemoveItem( const Item& item )
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnPlaylistItemRemoved( this, item );
 			}
+			removed = true;
 			break;
 		}
 	}
+	return removed;
 }
 
-void Playlist::RemoveItem( const MediaInfo& mediaInfo )
+bool Playlist::RemoveItem( const MediaInfo& mediaInfo )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	
+	bool removed = false;
 	for ( auto iter = m_Playlist.begin(); iter != m_Playlist.end(); iter++ ) {
 		if ( iter->Info.GetFilename() == mediaInfo.GetFilename() ) {
 			if ( iter->Duplicates.empty() ) {
@@ -376,6 +380,7 @@ void Playlist::RemoveItem( const MediaInfo& mediaInfo )
 				if ( nullptr != vuplayer ) {
 					vuplayer->OnPlaylistItemRemoved( this, item );
 				}
+				removed = true;
 			} else {
 				iter->Info.SetFilename( iter->Duplicates.front() );
 				iter->Duplicates.pop_front();
@@ -388,6 +393,7 @@ void Playlist::RemoveItem( const MediaInfo& mediaInfo )
 			}
 		}
 	}
+	return removed;
 }
 
 long Playlist::GetCount()
@@ -756,5 +762,17 @@ void Playlist::CloseHandles()
 	if ( nullptr != m_PendingThread ) {
 		CloseHandle( m_PendingThread );
 		m_PendingThread = nullptr;
+	}
+}
+
+void Playlist::UpdateItem( const Item& item )
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	auto foundItem = std::find_if( m_Playlist.begin(), m_Playlist.end(), [ item ] ( const Item& entry )
+	{
+		return ( item.ID == entry.ID );
+	} );
+	if ( m_Playlist.end() != foundItem ) {
+		*foundItem = item;
 	}
 }

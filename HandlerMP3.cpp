@@ -3,6 +3,7 @@
 #include "EncoderMP3.h"
 
 #include "resource.h"
+#include "ShellMetadata.h"
 #include "Utility.h"
 
 HandlerMP3::HandlerMP3() :
@@ -35,9 +36,9 @@ bool HandlerMP3::GetTags( const std::wstring& /*filename*/, Tags& /*tags*/ ) con
 	return false;
 }
 
-bool HandlerMP3::SetTags( const std::wstring& /*filename*/, const Tags& /*tags*/ ) const
+bool HandlerMP3::SetTags( const std::wstring& filename, const Tags& tags ) const
 {
-	return false;
+	return ShellMetadata::Set( filename, tags );
 }
 
 Decoder::Ptr HandlerMP3::OpenDecoder( const std::wstring& /*filename*/ ) const
@@ -75,6 +76,10 @@ INT_PTR CALLBACK HandlerMP3::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 				SetWindowLongPtr( hwnd, DWLP_USER, reinterpret_cast<LPARAM>( config ) );
 				config->m_Handler->OnConfigureInit( hwnd, config->m_Settings );
 			}
+			break;
+		}
+		case WM_DESTROY : {
+			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
 		case WM_COMMAND : {

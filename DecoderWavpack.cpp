@@ -7,9 +7,9 @@ DecoderWavpack::DecoderWavpack( const std::wstring& filename ) :
 	m_Context( nullptr )
 {
 	char* error = nullptr;
-	const int flags = OPEN_WVC | OPEN_NORMALIZE | OPEN_DSD_AS_PCM;
+	const int flags = OPEN_WVC | OPEN_NORMALIZE | OPEN_DSD_AS_PCM | OPEN_FILE_UTF8;
 	const int offset = 0;
-	m_Context = WavpackOpenFileInput( WideStringToAnsiCodePage( filename ).c_str(), error, flags, offset );
+	m_Context = WavpackOpenFileInput( WideStringToUTF8( filename ).c_str(), error, flags, offset );
 	if ( nullptr != m_Context ) {
 		SetBPS( static_cast<long>( WavpackGetBitsPerSample( m_Context ) ) );
 		SetChannels( static_cast<long>( WavpackGetNumChannels( m_Context ) ) );

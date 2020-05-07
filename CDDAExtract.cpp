@@ -44,6 +44,10 @@ INT_PTR CALLBACK CDDAExtract::DialogProc( HWND hwnd, UINT message, WPARAM wParam
 			}
 			break;
 		}
+		case WM_DESTROY : {
+			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+			break;
+		}
 		case WM_COMMAND : {
 			switch ( LOWORD( wParam ) ) {
 				case IDCANCEL : {
@@ -128,6 +132,7 @@ CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& 
 	m_ProgressRange( 100 ),
 	m_DisplayedTrack( 0 ),
 	m_DisplayedPass( 0 ),
+	m_EncoderHandler( encoderHandler ),
 	m_Encoder( encoderHandler ? encoderHandler->OpenEncoder() : nullptr ),
 	m_EncoderSettings( m_Encoder ? m_Settings.GetEncoderSettings( encoderHandler->GetDescription() ) : std::string() ),
 	m_JoinFilename( joinFilename )
@@ -782,7 +787,7 @@ void CDDAExtract::WriteTrackTags( const std::wstring& filename, const MediaInfo&
 	}
 
 	if ( !tags.empty() ) {
-		m_Handlers.SetTags( filename, tags );
+		m_EncoderHandler->SetTags( filename, tags );
 	}
 }
 
@@ -795,6 +800,6 @@ void CDDAExtract::WriteAlbumTags( const std::wstring& filename, const MediaInfo&
 	}
 
 	if ( !tags.empty() ) {
-		m_Handlers.SetTags( filename, tags );
+		m_EncoderHandler->SetTags( filename, tags );
 	}
 }

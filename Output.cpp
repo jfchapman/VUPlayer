@@ -1,9 +1,14 @@
 #include "Output.h"
 
 #include "Bling.h"
+#include "GainCalculator.h"
 #include "Utility.h"
 
 #include "opus.h"
+
+#include "bassasio.h"
+#include "bassmix.h"
+#include "basswasapi.h"
 
 #include <cmath>
 
@@ -34,34 +39,89 @@ static const float s_FadeToNextDuration = 3.0f;
 // Indicates when fading to the next track.
 static const long s_ItemIsFadingToNext = -1;
 
-// The fade out duration when stopping a track, in milliseconds.
+// The fade out duration when stopping a track (in standard mode), in milliseconds.
 static const DWORD s_StopFadeDuration = 20;
 
-DWORD CALLBACK Output::StreamProc( HSTREAM handle, void *buf, DWORD len, void *user )
+DWORD CALLBACK Output::StreamProc( HSTREAM handle, void *buf, DWORD length, void *user )
 {
 	DWORD bytesRead = 0;
-	Output* output = reinterpret_cast<Output*>( user );
+	Output* output = static_cast<Output*>( user );
 	if ( nullptr != output ) {
-		float* sampleBuffer = reinterpret_cast<float*>( buf );
-		bytesRead = output->ReadSampleData( sampleBuffer, len, handle );
-		if ( 0 == bytesRead ) {
-			bytesRead = BASS_STREAMPROC_END;
+		float* sampleBuffer = static_cast<float*>( buf );
+		bytesRead = output->ApplyLeadIn( sampleBuffer, length, handle );
+		length -= bytesRead;
+		if ( length > 0 ) {
+			sampleBuffer += bytesRead / 4;
+			bytesRead += output->ReadSampleData( sampleBuffer, length, handle );
+			if ( 0 == bytesRead ) {
+				bytesRead = BASS_STREAMPROC_END;
+			}
 		}
 	}
 	return bytesRead;
 }
 
+DWORD CALLBACK Output::WasapiProc( void *buffer, DWORD length, void *user )
+{
+	DWORD bytesRead = 0;
+	Output* output = static_cast<Output*>( user );
+	if ( nullptr != output ) {
+		if ( output->m_WASAPIPaused ) {
+			float* sampleBuffer = static_cast<float*>( buffer );
+			if ( nullptr != sampleBuffer ) {
+				std::fill( sampleBuffer, sampleBuffer + length / 4, 0.0f );
+			}
+		} else {
+			bytesRead = BASS_ChannelGetData( output->m_MixerStream, buffer, length );
+			if ( 0 == bytesRead ) {
+				if ( 0 == BASS_WASAPI_GetData( nullptr, BASS_DATA_AVAILABLE ) ) {
+					BASS_WASAPI_Stop( TRUE /*reset*/ );
+					bytesRead = BASS_STREAMPROC_END;
+				}
+			}
+		}
+	}
+	return bytesRead;
+}
+
+void CALLBACK Output::WasapiNotifyProc( DWORD notify, DWORD device, void *user )
+{
+	const DWORD currentDevice = BASS_WASAPI_GetDevice();
+	if ( currentDevice == device ) {
+		switch ( notify ) {
+			case BASS_WASAPI_NOTIFY_DISABLED :
+			case BASS_WASAPI_NOTIFY_FAIL : {
+				Output* output = static_cast<Output*>( user );
+				if ( nullptr != output ) {
+					output->m_WASAPIFailed = true;
+				}
+				break;
+			}
+		}
+	}
+}
+
+void CALLBACK Output::AsioNotifyProc( DWORD notify, void *user )
+{
+	Output* output = static_cast<Output*>( user );
+	if ( nullptr != output ) {
+		if ( BASS_ASIO_NOTIFY_RESET == notify ) {
+			output->m_ResetASIO = true;
+		}
+	}
+}
+
 void CALLBACK Output::SyncEnd( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data*/, void *user )
 {
-	Output* output = reinterpret_cast<Output*>( user );
+	Output* output = static_cast<Output*>( user );
 	if ( nullptr != output ) {
-		output->RestartPlayback();
+		output->OnSyncEnd();
 	}
 }
 
 void CALLBACK Output::SyncSlideStop( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data*/, void *user )
 {
-	HANDLE stoppedEvent = reinterpret_cast<HANDLE>( user );
+	HANDLE stoppedEvent = static_cast<HANDLE>( user );
 	if ( nullptr != stoppedEvent ) {
 		SetEvent( stoppedEvent );
 	}
@@ -69,9 +129,18 @@ void CALLBACK Output::SyncSlideStop( HSYNC /*handle*/, DWORD /*channel*/, DWORD 
 
 DWORD WINAPI Output::CrossfadeThreadProc( LPVOID lpParam )
 {
-	Output* output = reinterpret_cast<Output*>( lpParam );
+	Output* output = static_cast<Output*>( lpParam );
 	if ( nullptr != output ) {
-		output->OnCalculateCrossfadeHandler();
+		output->CalculateCrossfadeHandler();
+	}
+	return 0;
+}
+
+DWORD WINAPI Output::LoudnessPrecalcThreadProc( LPVOID lpParam )
+{
+	Output* output = static_cast<Output*>( lpParam );
+	if ( nullptr != output ) {
+		output->LoudnessPrecalcHandler();
 	}
 	return 0;
 }
@@ -86,6 +155,7 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_DecoderStream(),
 	m_DecoderSampleRate( 0 ),
 	m_OutputStream( 0 ),
+	m_MixerStream( 0 ),
 	m_PlaylistMutex(),
 	m_QueueMutex(),
 	m_Volume( 1.0f ),
@@ -97,7 +167,6 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_RepeatPlaylist( false ),
 	m_Crossfade( false ),
 	m_CurrentSelectedPlaylistItem( {} ),
-	m_UsingDefaultDevice( false ),
 	m_GainMode( Settings::GainMode::Disabled ),
 	m_LimitMode( Settings::LimitMode::None ),
 	m_GainPreamp( 0 ),
@@ -112,6 +181,8 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_CrossfadeItem( {} ),
 	m_CrossfadeThread( nullptr ),
 	m_CrossfadeStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
+	m_LoudnessPrecalcThread( nullptr ),
+	m_LoudnessPrecalcStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
 	m_CrossfadingStream(),
 	m_CrossfadingStreamMutex(),
 	m_CurrentItemCrossfading( {} ),
@@ -122,7 +193,13 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_CurrentEQ( m_Settings.GetEQSettings() ),
 	m_FX(),
 	m_EQEnabled( m_CurrentEQ.Enabled ),
-	m_EQPreamp( m_CurrentEQ.Preamp )
+	m_EQPreamp( m_CurrentEQ.Preamp ),
+	m_OutputMode( Settings::OutputMode::Standard ),
+	m_OutputDevice(),
+	m_WASAPIFailed( false ),
+	m_WASAPIPaused( false ),
+	m_ResetASIO( false ),
+	m_LeadInSeconds( 0 )
 {
 	InitialiseBass();
 	SetVolume( initialVolume );
@@ -137,7 +214,14 @@ Output::~Output()
 	StopCrossfadeThread();
 	CloseHandle( m_CrossfadeStopEvent );
 
+	StopLoudnessPrecalcThread();
+	CloseHandle( m_LoudnessPrecalcStopEvent );
+
 	Stop();
+	if ( -1 != BASS_ASIO_GetDevice() ) {
+		BASS_ASIO_Free();
+	}
+
 	BASS_Free();
 }
 
@@ -171,8 +255,6 @@ bool Output::Play( const long playlistID, const float seek )
 
 			m_DecoderSampleRate = m_DecoderStream->GetSampleRate();
 			const DWORD freq = static_cast<DWORD>( m_DecoderSampleRate );
-			const DWORD channels = static_cast<DWORD>( m_DecoderStream->GetChannels() );
-			const DWORD flags = BASS_SAMPLE_FLOAT;
 			float seekPosition = seek;
 			if ( 0.0f != seekPosition ) {
 				if ( seekPosition < 0 ) {
@@ -186,22 +268,25 @@ bool Output::Play( const long playlistID, const float seek )
 				m_DecoderStream->SkipSilence();
 			}
 
-			m_OutputStream = BASS_StreamCreate( freq, channels, flags, StreamProc, this );
-			if ( 0 != m_OutputStream ) {
+			if ( CreateOutputStream( item.Info ) ) {
 				m_CurrentItemDecoding = item;
-				BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_VOL, m_Muted ? 0 : m_Volume );
+				UpdateOutputVolume();
 				if ( 1.0f != m_Pitch ) {
 					BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_FREQ, freq * m_Pitch );
 				}
 				UpdateEQ( m_CurrentEQ );
 
-				if ( TRUE == BASS_ChannelPlay( m_OutputStream, TRUE /*restart*/ ) ) {
+				State state = StartOutput();
+				if ( State::Playing == state ) {
 					Queue queue = GetOutputQueue();
 					queue.push_back( { item, 0, seekPosition } );
 					SetOutputQueue( queue );
 					if ( GetCrossfade() ) {
 						CalculateCrossfadePoint( item, seekPosition );
 					}
+					StartLoudnessPrecalcThread();
+				} else {
+					Stop();
 				}
 			}
 		}
@@ -213,23 +298,48 @@ bool Output::Play( const long playlistID, const float seek )
 void Output::Stop()
 {
 	if ( 0 != m_OutputStream ) {
-		if ( BASS_ACTIVE_PLAYING == BASS_ChannelIsActive( m_OutputStream ) ) {
-			const HANDLE slideFinishedEvent = CreateEvent( nullptr /*attributes*/, FALSE /*manualReset*/, FALSE /*initial*/, L"" /*name*/ );
-			if ( nullptr != slideFinishedEvent ) {
-				const HSYNC syncSlide =	BASS_ChannelSetSync( m_OutputStream, BASS_SYNC_SLIDE | BASS_SYNC_ONETIME, 0 /*param*/, SyncSlideStop, slideFinishedEvent );
-				if ( 0 != syncSlide ) {
-					if ( BASS_ChannelSlideAttribute( m_OutputStream, BASS_ATTRIB_VOL, -1 /*fadeOutAndStop*/, s_StopFadeDuration ) ) {
-						WaitForSingleObject( slideFinishedEvent, 2 * s_StopFadeDuration );
+		if ( Settings::OutputMode::Standard == m_OutputMode ) {
+			if ( BASS_ACTIVE_PLAYING == BASS_ChannelIsActive( m_OutputStream ) ) {
+				const HANDLE slideFinishedEvent = CreateEvent( nullptr /*attributes*/, FALSE /*manualReset*/, FALSE /*initial*/, L"" /*name*/ );
+				if ( nullptr != slideFinishedEvent ) {
+					const HSYNC syncSlide =	BASS_ChannelSetSync( m_OutputStream, BASS_SYNC_SLIDE | BASS_SYNC_ONETIME, 0 /*param*/, SyncSlideStop, slideFinishedEvent );
+					if ( 0 != syncSlide ) {
+						if ( BASS_ChannelSlideAttribute( m_OutputStream, BASS_ATTRIB_VOL, -1 /*fadeOutAndStop*/, s_StopFadeDuration ) ) {
+							WaitForSingleObject( slideFinishedEvent, 2 * s_StopFadeDuration );
+						}
 					}
+					CloseHandle( slideFinishedEvent );
 				}
-				CloseHandle( slideFinishedEvent );
+			}
+			if ( BASS_ACTIVE_STOPPED != BASS_ChannelIsActive( m_OutputStream ) ) {
+				BASS_ChannelStop( m_OutputStream );
 			}
 		}
-		if ( BASS_ACTIVE_STOPPED != BASS_ChannelIsActive( m_OutputStream ) ) {
-			BASS_ChannelStop( m_OutputStream );
+
+		if ( -1 != BASS_WASAPI_GetDevice() ) {
+			if ( BASS_WASAPI_IsStarted() ) {
+				BASS_WASAPI_Stop( TRUE /*reset*/ );
+			}
+			BASS_WASAPI_SetNotify( nullptr, nullptr );
+			BASS_WASAPI_Free();
 		}
+
+		if ( -1 != BASS_ASIO_GetDevice() ) {
+			if ( BASS_ASIO_IsStarted() ) {
+				BASS_ASIO_Stop();
+				if ( BASS_ASIO_ACTIVE_PAUSED == BASS_ASIO_ChannelIsActive( FALSE /*input*/, 0 /*channel*/ ) ) {
+					BASS_ASIO_ChannelReset( FALSE /*input*/, -1 /*channel*/, BASS_ASIO_RESET_PAUSE );
+				}
+			}
+		}
+
 		BASS_StreamFree( m_OutputStream );
 		m_OutputStream = 0;
+
+		if ( 0 != m_MixerStream ) {
+			BASS_StreamFree( m_MixerStream );
+			m_MixerStream = 0;
+		}
 	}
 
 	m_FX.clear();
@@ -247,16 +357,42 @@ void Output::Stop()
 	m_SwitchToNext = false;
 	m_FadeOutStartPosition = 0;
 	m_LastTransitionPosition = 0;
+	m_WASAPIFailed = false;
+	m_WASAPIPaused = false;
 	StopCrossfadeThread();
+	StopLoudnessPrecalcThread();
 }
 
 void Output::Pause()
 {
 	const State state = GetState();
-	if ( State::Paused == state ) {
-		BASS_ChannelPlay( m_OutputStream, FALSE /*restart*/ );
-	} else if ( State::Playing == state ) {
-		BASS_ChannelPause( m_OutputStream );
+	switch ( m_OutputMode ) {
+		case Settings::OutputMode::Standard : {
+			if ( State::Paused == state ) {	
+				BASS_ChannelPlay( m_OutputStream, FALSE /*restart*/ );
+			} else if ( State::Playing == state ) {
+				BASS_ChannelPause( m_OutputStream );
+			}
+			break;
+		}
+		case Settings::OutputMode::WASAPIExclusive : {
+			if ( ( -1 != BASS_WASAPI_GetDevice() ) && BASS_WASAPI_IsStarted() ) {
+				m_WASAPIPaused = !m_WASAPIPaused;
+			}
+			break;
+		}
+		case Settings::OutputMode::ASIO : {
+			if ( -1 != BASS_ASIO_GetDevice() ) {
+				if ( BASS_ASIO_ACTIVE_PAUSED == BASS_ASIO_ChannelIsActive( FALSE /*input*/, 0 /*channel*/ ) ) {
+					if ( TRUE != BASS_ASIO_ChannelReset( FALSE /*input*/, -1 /*channel*/, BASS_ASIO_RESET_PAUSE ) ) {
+						Stop();
+					}
+				} else if ( BASS_ASIO_IsStarted() ) {
+					BASS_ASIO_ChannelPause( FALSE /*input*/, static_cast<DWORD>( -1 ) /*channel*/ );
+				}
+			}
+			break;
+		}
 	}
 }
 
@@ -318,22 +454,49 @@ Playlist::Ptr Output::GetPlaylist()
 Output::State Output::GetState() const
 {
 	State state = State::Stopped;
-	const DWORD channelState = BASS_ChannelIsActive( m_OutputStream );
-	switch ( channelState ) {
-		case BASS_ACTIVE_PLAYING :
-		case BASS_ACTIVE_STALLED : {
-			state = State::Playing;
+	switch ( m_OutputMode ) {
+		case Settings::OutputMode::Standard : {
+			const DWORD channelState = BASS_ChannelIsActive( m_OutputStream );
+			switch ( channelState ) {
+				case BASS_ACTIVE_PLAYING :
+				case BASS_ACTIVE_STALLED : {
+					state = State::Playing;
+					break;
+				}
+				case BASS_ACTIVE_PAUSED : {
+					state = State::Paused;
+					break;
+				}
+			}
 			break;
 		}
-		case BASS_ACTIVE_PAUSED : {
-			state = State::Paused;
+		case Settings::OutputMode::WASAPIExclusive : {
+			if ( -1 != BASS_WASAPI_GetDevice() ) {
+				if ( BASS_WASAPI_IsStarted() ) {
+					state = m_WASAPIPaused ? State::Paused : State::Playing;
+				} else {
+					BASS_WASAPI_SetNotify( nullptr, nullptr );
+					BASS_WASAPI_Free();
+				}
+			}
 			break;
 		}
-		default : {
-			state = State::Stopped;
+		case Settings::OutputMode::ASIO : {
+			if ( -1 != BASS_ASIO_GetDevice() ) {
+				if ( BASS_ASIO_IsStarted() ) {
+					if ( BASS_ASIO_ACTIVE_PAUSED == BASS_ASIO_ChannelIsActive( FALSE /*input*/, 0 /*channel*/ ) ) {
+						state = State::Paused;
+					} else {
+						const DWORD channelState = BASS_ChannelIsActive( m_OutputStream );
+						if ( BASS_ACTIVE_PLAYING == channelState ) {
+							state = State::Playing;
+						}
+					}
+				}
+			}
 			break;
 		}
-	};
+	}
 	return state;
 }
 
@@ -342,8 +505,7 @@ Output::Item Output::GetCurrentPlaying()
 	Item currentItem = {};
 	const State state = GetState();
 	if ( State::Stopped != state ) {
-		const QWORD bytePos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_BYTE );
-		const float seconds = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytePos ) );
+		const float seconds = GetOutputPosition();
 		const Queue queue = GetOutputQueue();
 		for ( auto iter = queue.rbegin(); iter != queue.rend(); iter++ ) {
 			const Item& item = *iter;
@@ -385,8 +547,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 						// Ensure we don't read past the crossfade point.
 						const long sampleRate = m_DecoderStream->GetSampleRate();
 						if ( sampleRate > 0 ) {
-							const QWORD bytesPos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE );
-							const float trackPos = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytesPos ) ) - m_LastTransitionPosition;
+							const float trackPos = GetDecodePosition() - m_LastTransitionPosition - m_LeadInSeconds;
 							const float secondsTillCrossfade = crossfadePosition - trackPos;
 							const long samplesTillCrossfade = static_cast<long>( secondsTillCrossfade * sampleRate );
 							if ( samplesTillCrossfade < samplesToRead ) {
@@ -452,8 +613,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 						bytesRead = static_cast<DWORD>( m_DecoderStream->Read( buffer, sampleCount ) * channels * 4 );
 						m_CurrentItemDecoding = nextItem;
 
-						const QWORD bytesPos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE );
-						m_LastTransitionPosition = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytesPos ) );
+						m_LastTransitionPosition = GetDecodePosition() - m_LeadInSeconds;
 						Queue queue = GetOutputQueue();
 						queue.push_back( { m_CurrentItemDecoding, m_LastTransitionPosition } );
 						SetOutputQueue( queue );
@@ -501,16 +661,15 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 
 					if ( s_ItemIsFadingToNext == m_CurrentItemCrossfading.ID ) {
 						// Fade to next track.
-						const QWORD bytesPos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE );
-						const float currentPos = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytesPos ) );
+						const float currentPos = GetDecodePosition();
 						if ( ( currentPos > m_FadeOutStartPosition ) && ( channels > 0 ) && ( samplerate > 0 ) ) {
-							if ( ( currentPos - m_FadeOutStartPosition ) > s_FadeOutDuration ) {
+							if ( ( currentPos - m_FadeOutStartPosition ) > GetFadeOutDuration() ) {
 								crossfadingSamplesRead = 0;
 							} else {
-								const float fadeOutEndPosition = m_FadeOutStartPosition + s_FadeOutDuration;
+								const float fadeOutEndPosition = m_FadeOutStartPosition + GetFadeOutDuration();
 								for ( long sampleIndex = 0; sampleIndex < crossfadingSamplesRead; sampleIndex++ ) {
 									const float pos = static_cast<float>( sampleIndex ) / samplerate;			
-									float scale = static_cast<float>( fadeOutEndPosition - currentPos - pos ) / s_FadeOutDuration;
+									float scale = static_cast<float>( fadeOutEndPosition - currentPos - pos ) / GetFadeOutDuration();
 									if ( ( scale < 0 ) || ( scale > 1.0f ) ) {
 										scale = 0;
 									}
@@ -522,12 +681,11 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 						}
 					} else {
 						// Crossfade.
-						const QWORD bytesPos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE );
-						const float trackPos = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytesPos ) ) - m_LastTransitionPosition;
-						if ( ( crossfadingBytesRead > 0 ) && ( trackPos < s_FadeOutDuration ) ) {				
+						const float trackPos = GetDecodePosition() - m_LastTransitionPosition - m_LeadInSeconds;
+						if ( ( crossfadingBytesRead > 0 ) && ( trackPos < GetFadeOutDuration() ) ) {				
 							for ( long sampleIndex = 0; sampleIndex < crossfadingSamplesRead; sampleIndex++ ) {
 								const float pos = static_cast<float>( sampleIndex ) / samplerate;			
-								float scale = static_cast<float>( s_FadeOutDuration - trackPos - pos ) / s_FadeOutDuration;
+								float scale = static_cast<float>( GetFadeOutDuration() - trackPos - pos ) / GetFadeOutDuration();
 								if ( ( scale < 0 ) || ( scale > 1.0f ) ) {
 									scale = 0;
 								}
@@ -556,22 +714,21 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 
 	// Apply fade out on the currently decoding track, if necessary.
 	if ( ( GetFadeOut() || GetFadeToNext() ) && ( 0 != bytesRead ) && ( m_FadeOutStartPosition > 0 ) ) {
-		const QWORD bytesPos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE );
-		const float currentPos = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytesPos ) );
+		const float currentPos = GetDecodePosition();
 		const long channels = m_DecoderStream->GetChannels();
 		const long samplerate = m_DecoderStream->GetSampleRate();
 		if ( ( currentPos > m_FadeOutStartPosition ) && ( channels > 0 ) && ( samplerate > 0 ) ) {
-			if ( ( currentPos - m_FadeOutStartPosition ) > s_FadeOutDuration ) {
+			if ( ( currentPos - m_FadeOutStartPosition ) > GetFadeOutDuration() ) {
 				bytesRead = 0;
 				// Set a sync on the output stream, so that the 'fade out' state can be toggled when playback actually finishes.
 				m_RestartItemID = {};
 				BASS_ChannelSetSync( handle, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
 			} else {
 				const long sampleCount = static_cast<long>( bytesRead ) / ( channels * 4 );
-				const float fadeOutEndPosition = m_FadeOutStartPosition + s_FadeOutDuration;
+				const float fadeOutEndPosition = m_FadeOutStartPosition + GetFadeOutDuration();
 				for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
 					const float pos = static_cast<float>( sampleIndex ) / samplerate;			
-					float scale = static_cast<float>( fadeOutEndPosition - currentPos - pos ) / s_FadeOutDuration;
+					float scale = static_cast<float>( fadeOutEndPosition - currentPos - pos ) / GetFadeOutDuration();
 					if ( ( scale < 0 ) || ( scale > 1.0f ) ) {
 						scale = 0;
 					}
@@ -580,7 +737,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 					}
 				}
 
-				if ( GetFadeToNext() && ( currentPos > ( m_FadeOutStartPosition + s_FadeToNextDuration ) ) ) {
+				if ( GetFadeToNext() && ( currentPos > ( m_FadeOutStartPosition + GetFadeToNextDuration() ) ) ) {
 					m_SwitchToNext = true;
 				}
 			}
@@ -599,12 +756,10 @@ void Output::SetVolume( const float volume )
 {
 	if ( volume != m_Volume ) {
 		m_Volume = ( volume < 0.0f ) ? 0.0f : ( ( volume > 1.0f ) ? 1.0f : volume );
-		if ( 0 != m_OutputStream ) {
-			if ( m_Muted ) {
-				m_Muted = false;
-			}
-			BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_VOL, m_Volume );
+		if ( m_Muted ) {
+			m_Muted = false;
 		}
+		UpdateOutputVolume();
 	}
 }
 
@@ -637,36 +792,103 @@ void Output::GetLevels( float& left, float& right )
 	if ( 0 != m_OutputStream ) {
 		float levels[ 2 ] = {};
 		const float length = 0.05f;
-		if ( TRUE == BASS_ChannelGetLevelEx( m_OutputStream, levels, length, BASS_LEVEL_STEREO ) ) {
-			left = levels[ 0 ];
-			right = levels[ 1 ];
+		switch ( m_OutputMode ) {
+			case Settings::OutputMode::Standard : {
+				if ( TRUE == BASS_ChannelGetLevelEx( m_OutputStream, levels, length, BASS_LEVEL_STEREO ) ) {
+					left = levels[ 0 ];
+					right = levels[ 1 ];
+				}
+				break;
+			}
+			case Settings::OutputMode::WASAPIExclusive : {
+				if ( TRUE == BASS_WASAPI_GetLevelEx( levels, length, BASS_LEVEL_STEREO ) ) {
+					left = levels[ 0 ];
+					right = levels[ 1 ];
+				}
+				break;
+			}
+			case Settings::OutputMode::ASIO : {
+				if ( TRUE == BASS_Mixer_ChannelGetLevelEx( m_OutputStream, levels, length, BASS_LEVEL_STEREO ) ) {
+					left = levels[ 0 ];
+					right = levels[ 1 ];
+				}
+				break;
+			}
 		}
 	}
 }
 
 void Output::GetSampleData( const long sampleCount, std::vector<float>& samples, long& channels )
 {
-	BASS_CHANNELINFO channelInfo = {};
-	if ( GetState() != State::Stopped ) {
-		BASS_ChannelGetInfo( m_OutputStream, &channelInfo );
-	}
-	channels = static_cast<long>( channelInfo.chans );
-	if ( ( channels > 0 ) && ( sampleCount > 0 ) ) {
-		const long sampleSize = channels * sampleCount;
-		samples.resize( sampleSize );
-		BASS_ChannelGetData( m_OutputStream, &samples[ 0 ], sampleSize * sizeof( float ) );
+	if ( 0 != m_OutputStream ) {
+		switch ( m_OutputMode ) {
+			case Settings::OutputMode::Standard : 
+			case Settings::OutputMode::ASIO : {
+				BASS_CHANNELINFO channelInfo = {};
+				if ( BASS_ChannelGetInfo( m_OutputStream, &channelInfo ) ) {
+					channels = static_cast<long>( channelInfo.chans );
+					const long sampleSize = channels * sampleCount;
+					if ( sampleSize > 0 ) {
+						samples.resize( sampleSize );
+						if ( Settings::OutputMode::Standard == m_OutputMode ) {
+							BASS_ChannelGetData( m_OutputStream, &samples[ 0 ], sampleSize * sizeof( float ) );
+						} else {
+							BASS_Mixer_ChannelGetData( m_OutputStream, &samples[ 0 ], sampleSize * sizeof( float ) );
+						}
+					}
+				}
+				break;
+			}
+			case Settings::OutputMode::WASAPIExclusive : {
+				if ( BASS_WASAPI_IsStarted() ) {
+					BASS_WASAPI_INFO wasapiInfo = {};
+					if ( TRUE == BASS_WASAPI_GetInfo( &wasapiInfo ) ) {
+						channels = static_cast<long>( wasapiInfo.chans );
+						const long sampleSize = channels * sampleCount;
+						if ( sampleSize > 0 ) {
+							samples.resize( sampleSize );
+							BASS_WASAPI_GetData( &samples[ 0 ], sampleSize * sizeof( float ) );
+						}
+					}
+				}
+				break;
+			}
+		}
 	}
 }
 
 void Output::GetFFTData( std::vector<float>& fft )
 {
-	fft.resize( 2048 );
-	if ( BASS_ChannelGetData( m_OutputStream, &fft[ 0 ], BASS_DATA_FLOAT | BASS_DATA_FFT4096 ) < 0 ) {
-		fft.clear();
+	if ( 0 != m_OutputStream ) {
+		switch ( m_OutputMode ) {
+			case Settings::OutputMode::Standard : {
+				fft.resize( 2048 );
+				if ( -1 == BASS_ChannelGetData( m_OutputStream, &fft[ 0 ], BASS_DATA_FLOAT | BASS_DATA_FFT4096 ) ) {
+					fft.clear();
+				}
+				break;
+			}
+			case Settings::OutputMode::WASAPIExclusive : {
+				if ( BASS_WASAPI_IsStarted() ) {
+					fft.resize( 2048 );
+					if ( -1 == BASS_WASAPI_GetData( &fft[ 0 ], BASS_DATA_FLOAT | BASS_DATA_FFT4096 ) ) {
+						fft.clear();
+					}
+				}
+				break;
+			}
+			case Settings::OutputMode::ASIO : {
+				fft.resize( 2048 );
+				if ( -1 == BASS_Mixer_ChannelGetData( m_OutputStream, &fft[ 0 ], BASS_DATA_FLOAT | BASS_DATA_FFT4096 ) ) {
+					fft.clear();
+				}
+				break;
+			}
+		}
 	}
 }
 
-void Output::RestartPlayback()
+void Output::OnSyncEnd()
 {
 	if ( GetStopAtTrackEnd() || GetFadeOut() ) {
 		if ( GetStopAtTrackEnd() ) {
@@ -787,42 +1009,60 @@ std::set<std::wstring> Output::GetAllSupportedFileExtensions() const
 	return fileExtensions;
 }
 
-Output::Devices Output::GetDevices() const
+Output::Devices Output::GetDevices( const Settings::OutputMode mode ) const
 {
 	Devices devices;
-	BASS_DEVICEINFO deviceInfo = {};
 	DWORD deviceID = 0;
-	while( TRUE == BASS_GetDeviceInfo( ++deviceID, &deviceInfo ) ) {
-		devices.insert( Devices::value_type( deviceID, AnsiCodePageToWideString( deviceInfo.name ) ) );
+	switch ( mode ) {
+		case Settings::OutputMode::Standard : {
+			BASS_DEVICEINFO deviceInfo = {};
+			while ( TRUE == BASS_GetDeviceInfo( ++deviceID, &deviceInfo ) ) {
+				if ( nullptr != deviceInfo.name ) {
+					devices.insert( Devices::value_type( deviceID, AnsiCodePageToWideString( deviceInfo.name ) ) );
+				}
+			}
+			break;
+		}
+		case Settings::OutputMode::WASAPIExclusive : {
+			BASS_WASAPI_DEVICEINFO deviceInfo = {};
+			while ( TRUE == BASS_WASAPI_GetDeviceInfo( deviceID, &deviceInfo ) ) {
+				if ( ( deviceInfo.flags & BASS_DEVICE_ENABLED ) && !( deviceInfo.flags & BASS_DEVICE_INPUT ) && ( nullptr != deviceInfo.name ) ) {
+					devices.insert( Devices::value_type( deviceID, AnsiCodePageToWideString( deviceInfo.name ) ) );
+				}
+				++deviceID;
+			}
+			break;
+		}
+		case Settings::OutputMode::ASIO : {
+			BASS_ASIO_DEVICEINFO deviceInfo = {};
+			while ( TRUE == BASS_ASIO_GetDeviceInfo( deviceID, &deviceInfo ) ) {
+				if ( nullptr != deviceInfo.name ) {
+					devices.insert( Devices::value_type( deviceID, AnsiCodePageToWideString( deviceInfo.name ) ) );
+				}
+				++deviceID;
+			}
+			break;
+		}
+	}
+	if ( !devices.empty() ) {
+		devices.insert( Devices::value_type( -1, std::wstring() ) );
 	}
 	return devices;
 }
 
-std::wstring Output::GetCurrentDevice() const
-{
-	std::wstring name;
-	const DWORD deviceNum = BASS_GetDevice();
-	BASS_DEVICEINFO deviceInfo = {};
-	if ( TRUE == BASS_GetDeviceInfo( deviceNum, &deviceInfo ) ) {
-		name = AnsiCodePageToWideString( deviceInfo.name );
-	}
-	return name;
-}
-
 void Output::SettingsChanged()
 {
-	const std::wstring currentDevice = GetCurrentDevice();
-	const std::wstring settingsDevice = m_Settings.GetOutputDevice();
+	std::wstring settingsDevice;
+	Settings::OutputMode settingsMode = Settings::OutputMode::Standard;
+	m_Settings.GetOutputSettings( settingsDevice, settingsMode );
 
-	bool reinitialise = false;
-	if ( settingsDevice.empty() ) {
-		reinitialise = !m_UsingDefaultDevice;
-	} else {
-		reinitialise = ( currentDevice != settingsDevice ) || m_UsingDefaultDevice;
-	}
+	const bool reinitialise = ( settingsMode != m_OutputMode ) || ( settingsDevice != m_OutputDevice );
 
 	if ( reinitialise ) {
 		Stop();
+		if ( -1 != BASS_ASIO_GetDevice() ) {
+			BASS_ASIO_Free();
+		}
 		BASS_Free();
 		InitialiseBass();
 	}
@@ -836,6 +1076,9 @@ void Output::SettingsChanged()
 		m_LimitMode = limitMode;
 		m_GainPreamp = gainPreamp;
 		EstimateGain( m_CurrentItemDecoding );
+		if ( State::Stopped != GetState() ) {
+			StartLoudnessPrecalcThread();
+		}
 	}
 
 	m_Handlers.SettingsChanged( m_Settings );
@@ -844,32 +1087,40 @@ void Output::SettingsChanged()
 void Output::InitialiseBass()
 {
 	int deviceNum = -1;
-	const std::wstring deviceName = m_Settings.GetOutputDevice();
-	if ( !deviceName.empty() ) {
-		const Devices devices = GetDevices();
-		for ( const auto& device : devices ) {
-			if ( device.second == deviceName ) {
-				deviceNum = device.first;
-				break;
+	m_Settings.GetOutputSettings( m_OutputDevice, m_OutputMode );
+
+	if ( ( Settings::OutputMode::ASIO == m_OutputMode ) && !InitASIO() ) {
+		m_OutputDevice.clear();
+		m_OutputMode = Settings::OutputMode::Standard;
+	}
+
+	if ( Settings::OutputMode::Standard != m_OutputMode ) {
+		// Use no sound device.
+		deviceNum = 0;
+	} else {
+		if ( !m_OutputDevice.empty() ) {
+			const Devices devices = GetDevices( m_OutputMode );
+			for ( const auto& device : devices ) {
+				if ( device.second == m_OutputDevice ) {
+					deviceNum = device.first;
+					break;
+				}
+			}
+			if ( -1 == deviceNum ) {
+				m_OutputDevice.clear();
 			}
 		}
-		if ( -1 == deviceNum ) {
-			m_Settings.SetOutputDevice( std::wstring() );
-		}
 	}
-	m_UsingDefaultDevice = ( -1 == deviceNum );
 
 	BOOL success = BASS_Init( deviceNum, 48000 /*freq*/, 0 /*flags*/, m_Parent /*hwnd*/, NULL /*dsGUID*/ );
 	if ( !success ) {
 		if ( -1 != deviceNum ) {
 			// Use default device.
 			deviceNum = -1;
-			m_Settings.SetOutputDevice( std::wstring() );
-			m_UsingDefaultDevice = true;
 			success = BASS_Init( deviceNum, 48000 /*freq*/, 0 /*flags*/, m_Parent /*hwnd*/, NULL /*dsGUID*/ );
 		}
 		if ( !success ) {
-			// Use no sound.
+			// Use no sound device.
 			deviceNum = 0;
 			success = BASS_Init( deviceNum, 48000 /*freq*/, 0 /*flags*/, m_Parent /*hwnd*/, NULL /*dsGUID*/ );
 		}
@@ -911,7 +1162,7 @@ void Output::CalculateCrossfadePoint( const Playlist::Item& item, const float se
 	m_CrossfadeThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, CrossfadeThreadProc, reinterpret_cast<LPVOID>( this ), 0 /*flags*/, NULL /*threadId*/ );
 }
 
-void Output::OnCalculateCrossfadeHandler()
+void Output::CalculateCrossfadeHandler()
 {
 	Decoder::Ptr decoder = OpenDecoder( m_CrossfadeItem );
 	if ( decoder ) {
@@ -1003,9 +1254,7 @@ bool Output::GetStopAtTrackEnd() const
 void Output::ToggleMuted()
 {
 	m_Muted = !m_Muted;
-	if ( 0 != m_OutputStream ) {
-		BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_VOL, m_Muted ? 0 : m_Volume );
-	}
+	UpdateOutputVolume();
 }
 
 bool Output::GetMuted() const
@@ -1017,8 +1266,7 @@ void Output::ToggleFadeOut()
 {
 	m_FadeOut = !m_FadeOut;
 	if ( m_FadeOut && ( 0 != m_OutputStream ) ) {
-		const QWORD bytePos = BASS_ChannelGetPosition( m_OutputStream , BASS_POS_DECODE );
-		m_FadeOutStartPosition = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytePos ) );
+		m_FadeOutStartPosition = GetDecodePosition();
 	} else {
 		m_FadeOutStartPosition = 0;
 	}
@@ -1033,8 +1281,7 @@ void Output::ToggleFadeToNext()
 {
 	m_FadeToNext = !m_FadeToNext;
 	if ( m_FadeToNext && ( 0 != m_OutputStream ) ) {
-		const QWORD bytePos = BASS_ChannelGetPosition( m_OutputStream , BASS_POS_DECODE );
-		m_FadeOutStartPosition = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytePos ) );
+		m_FadeOutStartPosition = GetDecodePosition();
 	} else {
 		m_SwitchToNext = false;
 		std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
@@ -1127,44 +1374,46 @@ float Output::GetPitchRange() const
 
 void Output::Bling( const int blingID )
 {
-	auto blingIter = m_BlingMap.find( blingID );
-	if ( m_BlingMap.end() == blingIter ) {
-		const BYTE* bling = nullptr;
-		QWORD blingSize = 0;
-		switch ( blingID ) {
-			case 1 : {
-				bling = bling1;
-				blingSize = sizeof( bling1 );
-				break;
+	if ( Settings::OutputMode::Standard == m_OutputMode ) {
+		auto blingIter = m_BlingMap.find( blingID );
+		if ( m_BlingMap.end() == blingIter ) {
+			const BYTE* bling = nullptr;
+			QWORD blingSize = 0;
+			switch ( blingID ) {
+				case 1 : {
+					bling = bling1;
+					blingSize = sizeof( bling1 );
+					break;
+				}
+				case 2 : {
+					bling = bling2;
+					blingSize = sizeof( bling2 );
+					break;
+				}
+				case 3 : {
+					bling = bling3;
+					blingSize = sizeof( bling3 );
+					break;
+				}
+				case 4 : {
+					bling = bling4;
+					blingSize = sizeof( bling4 );
+					break;
+				}
+				default : {
+					break;
+				}
 			}
-			case 2 : {
-				bling = bling2;
-				blingSize = sizeof( bling2 );
-				break;
-			}
-			case 3 : {
-				bling = bling3;
-				blingSize = sizeof( bling3 );
-				break;
-			}
-			case 4 : {
-				bling = bling4;
-				blingSize = sizeof( bling4 );
-				break;
-			}
-			default : {
-				break;
+			if ( nullptr != bling ) {
+				const HSTREAM stream = BASS_StreamCreateFile( TRUE /*mem*/, bling, 0 /*offset*/, blingSize, 0 /*flags*/ );
+				if ( 0 != stream ) {
+					blingIter = m_BlingMap.insert( StreamMap::value_type( blingID, stream ) ).first;
+				}
 			}
 		}
-		if ( nullptr != bling ) {
-			const HSTREAM stream = BASS_StreamCreateFile( TRUE /*mem*/, bling, 0 /*offset*/, blingSize, 0 /*flags*/ );
-			if ( 0 != stream ) {
-				blingIter = m_BlingMap.insert( StreamMap::value_type( blingID, stream ) ).first;
-			}
+		if ( m_BlingMap.end() != blingIter ) {
+			BASS_ChannelPlay( blingIter->second, TRUE /*restart*/ );
 		}
-	}
-	if ( m_BlingMap.end() != blingIter ) {
-		BASS_ChannelPlay( blingIter->second, TRUE /*restart*/ );
 	}
 }
 
@@ -1235,4 +1484,378 @@ Decoder::Ptr Output::OpenDecoder( const Playlist::Item& item ) const
 		}
 	}
 	return decoder;
+}
+
+Output::State Output::StartOutput()
+{
+	State state = State::Stopped;
+	switch ( m_OutputMode ) {
+		case Settings::OutputMode::Standard : {
+			if ( BASS_ChannelPlay( m_OutputStream, TRUE /*restart*/ ) ) {
+				state = State::Playing;
+			}
+			break;
+		}
+		case Settings::OutputMode::WASAPIExclusive : {
+			if ( BASS_WASAPI_Start() ) {
+				BASS_WASAPI_INFO info = {};
+				if ( ( TRUE == BASS_WASAPI_GetInfo( &info ) ) && ( info.freq > 0 ) && ( info.chans > 0 ) ) {
+					const DWORD samplecount = info.buflen / info.chans / 4;
+					float latency = static_cast<float>( samplecount ) / info.freq;
+					if ( info.initflags & BASS_WASAPI_EVENT ) {
+						latency *= 2;
+					}
+					BASS_ChannelSetAttribute( m_MixerStream, BASS_ATTRIB_MIXER_LATENCY, latency );
+				}
+				state = State::Playing;
+			}
+			break;
+		}
+		case Settings::OutputMode::ASIO : {
+			if ( BASS_ASIO_Start( 0, 0 ) ) {
+				BASS_CHANNELINFO channelInfo = {};
+				if ( ( TRUE == BASS_ChannelGetInfo( m_MixerStream, &channelInfo ) ) && ( channelInfo.freq > 0 ) ) {
+					const float latency = static_cast<float>( BASS_ASIO_GetLatency( FALSE /*input*/ ) ) / channelInfo.freq;
+					BASS_ChannelSetAttribute( m_MixerStream, BASS_ATTRIB_MIXER_LATENCY, latency );
+				}
+				state = State::Playing;
+			}
+			break;
+		}
+	}
+	return state;
+}
+
+float Output::GetDecodePosition() const
+{
+	const QWORD bytesPos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE );
+	const float seconds = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytesPos ) );
+	return seconds;
+}
+
+float Output::GetOutputPosition() const
+{
+	float seconds = 0;
+	switch ( m_OutputMode ) {
+		case Settings::OutputMode::Standard : {
+			const QWORD bytePos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_BYTE );
+			seconds = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytePos ) );
+			break;
+		}
+		case Settings::OutputMode::WASAPIExclusive :
+		case Settings::OutputMode::ASIO : {
+			const QWORD bytePos = BASS_Mixer_ChannelGetPosition( m_OutputStream, BASS_POS_BYTE );
+			seconds = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytePos ) ) - m_LeadInSeconds;
+			if ( seconds < 0 ) {
+				seconds = 0;
+			}
+			break;
+		}
+	}
+	return seconds;
+}
+
+LONGLONG Output::GetTick()
+{
+	LARGE_INTEGER count;
+	QueryPerformanceCounter( &count );
+	return count.QuadPart;
+}
+
+float Output::GetInterval( const LONGLONG startTick, const LONGLONG endTick )
+{
+	LARGE_INTEGER tickFreq = {};
+	QueryPerformanceFrequency( &tickFreq );
+	return static_cast<float>( endTick - startTick ) / tickFreq.QuadPart;
+}
+
+bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
+{
+	bool success = false;
+	if ( ( mediaInfo.GetSampleRate() > 0 ) && ( mediaInfo.GetChannels() > 0 ) ) {
+		const DWORD samplerate = static_cast<DWORD>( mediaInfo.GetSampleRate() );
+		const DWORD channels = static_cast<DWORD>( mediaInfo.GetChannels() );
+		switch ( m_OutputMode ) {
+			case Settings::OutputMode::Standard : {
+				m_LeadInSeconds = 0;
+				const DWORD flags = BASS_SAMPLE_FLOAT;
+				m_OutputStream = BASS_StreamCreate( samplerate, channels, flags, StreamProc, this );
+				success = ( 0 != m_OutputStream );
+				break;
+			}
+
+			case Settings::OutputMode::WASAPIExclusive : {
+				int deviceNum = -1;
+				if ( !m_OutputDevice.empty() ) {
+					const Devices devices = GetDevices( m_OutputMode );
+					for ( const auto& device : devices ) {
+						if ( device.second == m_OutputDevice ) {
+							deviceNum = device.first;
+							break;
+						}
+					}
+				}
+
+				bool useMixFormat = false;
+				int bufferMilliseconds = 0;
+				int leadInMilliseconds = 0;
+				m_Settings.GetAdvancedWasapiExclusiveSettings( useMixFormat, bufferMilliseconds, leadInMilliseconds );
+				m_LeadInSeconds = static_cast<float>( leadInMilliseconds ) / 1000;
+
+				if ( !useMixFormat ) {
+					const DWORD format = BASS_WASAPI_CheckFormat( deviceNum, samplerate, channels, BASS_WASAPI_EXCLUSIVE );
+					useMixFormat = ( -1 == format ) && ( BASS_ERROR_FORMAT == BASS_ErrorGetCode() );
+				}
+				DWORD outputSamplerate = useMixFormat ? 0 : samplerate;
+				DWORD outputChannels = useMixFormat ? 0 : channels;
+
+				DWORD flags = BASS_WASAPI_EXCLUSIVE | BASS_WASAPI_BUFFER | BASS_WASAPI_EVENT;
+				const float period = 0;
+				float buffer = static_cast<float>( bufferMilliseconds ) / 1000;
+				if ( flags & BASS_WASAPI_EVENT ) {
+					buffer /= 2;
+				}
+
+				if ( TRUE == BASS_WASAPI_Init( deviceNum, outputSamplerate, outputChannels, flags, buffer, period, WasapiProc, this ) ) {
+					BASS_WASAPI_INFO wasapiInfo = {};
+					success = ( TRUE == BASS_WASAPI_GetInfo( &wasapiInfo ) );
+					if ( success ) {
+						outputSamplerate = wasapiInfo.freq;
+						outputChannels = wasapiInfo.chans;
+						flags = BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE | BASS_MIXER_POSEX;
+						m_MixerStream = BASS_Mixer_StreamCreate( outputSamplerate, outputChannels, flags );
+						success = ( 0 != m_MixerStream );
+						if ( success ) {
+							flags = BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE;
+							m_OutputStream = BASS_StreamCreate( samplerate, channels, flags, StreamProc, this );
+							success = ( 0 != m_OutputStream );
+							if ( success ) {
+								flags = BASS_MIXER_CHAN_BUFFER;
+								if ( channels > outputChannels ) {
+									flags |= BASS_MIXER_CHAN_DOWNMIX;
+								}
+								success = ( 0 != BASS_Mixer_StreamAddChannel( m_MixerStream, m_OutputStream, flags ) );
+							}
+						}
+
+						if ( !success ) {
+							if ( 0 != m_OutputStream ) {
+								BASS_StreamFree( m_OutputStream );
+								m_OutputStream = 0;
+							}
+							if ( 0 != m_MixerStream ) {
+								BASS_StreamFree( m_MixerStream );
+								m_MixerStream = 0;
+							}
+						}
+					}
+
+					if ( success ) {
+						BASS_WASAPI_SetNotify( WasapiNotifyProc, this );
+					} else {
+						BASS_WASAPI_Free();
+					}
+				}
+				break;
+			}
+
+			case Settings::OutputMode::ASIO : {
+				if ( InitASIO() ) {
+					bool useDefaultSamplerate = false;
+					int defaultSamplerate = 0;
+					int leadInMilliseconds = 0;
+					m_Settings.GetAdvancedASIOSettings( useDefaultSamplerate, defaultSamplerate, leadInMilliseconds );
+					m_LeadInSeconds = static_cast<float>( leadInMilliseconds ) / 1000;
+
+					double outputSamplerate = useDefaultSamplerate ? static_cast<double>( defaultSamplerate ) : static_cast<double>( samplerate );
+					if ( FALSE == BASS_ASIO_CheckRate( outputSamplerate ) ) {
+						if ( useDefaultSamplerate ) {
+							outputSamplerate = static_cast<double>( samplerate );
+						} else {
+							outputSamplerate = defaultSamplerate;
+						}
+						if ( FALSE == BASS_ASIO_CheckRate( outputSamplerate ) ) {
+							outputSamplerate = 48000;
+						}
+					}
+
+					BASS_ASIO_INFO asioInfo = {};
+					success = ( TRUE == BASS_ASIO_GetInfo( &asioInfo ) );
+					if ( success ) {
+						const DWORD outputChannels = std::clamp( channels, 2ul, asioInfo.outputs );
+						DWORD flags = BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE | BASS_MIXER_POSEX;
+						m_MixerStream = BASS_Mixer_StreamCreate( static_cast<DWORD>( outputSamplerate ), outputChannels, flags );
+						success = ( 0 != m_MixerStream );
+						if ( success ) {
+							flags = BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE;
+							m_OutputStream = BASS_StreamCreate( samplerate, channels, flags, StreamProc, this );
+							success = ( 0 != m_OutputStream );
+							if ( success ) {
+								flags = BASS_MIXER_CHAN_BUFFER;
+								if ( channels > outputChannels ) {
+									flags |= BASS_MIXER_CHAN_DOWNMIX;
+								}
+								success = ( 0 != BASS_Mixer_StreamAddChannel( m_MixerStream, m_OutputStream, flags ) );
+								if ( success ) {
+									success = ( TRUE == BASS_ASIO_SetRate( outputSamplerate ) );
+									if ( success ) {
+										success = ( TRUE == BASS_ASIO_ChannelEnableBASS( FALSE /*input*/, 0 /*channel*/, m_MixerStream, TRUE /*join*/ ) );
+									}
+								}
+							}
+						}
+
+						if ( !success ) {
+							if ( 0 != m_OutputStream ) {
+								BASS_StreamFree( m_OutputStream );
+								m_OutputStream = 0;
+							}
+							if ( 0 != m_MixerStream ) {
+								BASS_StreamFree( m_MixerStream );
+								m_MixerStream = 0;
+							}
+						}
+					}
+
+					if ( !success ) {
+						BASS_ASIO_Free();
+					}
+				}
+				break;
+			}
+		}
+	}
+	return success;
+}
+
+void Output::UpdateOutputVolume()
+{
+	if ( 0 != m_OutputStream ) {
+		BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_VOL, m_Muted ? 0 : m_Volume );
+	}
+}
+
+bool Output::InitASIO()
+{
+	if ( m_ResetASIO ) {
+		if ( -1 != BASS_ASIO_GetDevice() ) {
+			BASS_ASIO_Free();
+		}
+		m_ResetASIO = false;
+	}
+
+	if ( ( -1 == BASS_ASIO_GetDevice() ) && ( Settings::OutputMode::ASIO == m_OutputMode ) ) {
+		int deviceNum = -1;
+		if ( !m_OutputDevice.empty() ) {
+			const Devices devices = GetDevices( m_OutputMode );
+			for ( const auto& device : devices ) {
+				if ( device.second == m_OutputDevice ) {
+					deviceNum = device.first;
+					break;
+				}
+			}
+		}
+		if ( TRUE == BASS_ASIO_Init( deviceNum, BASS_ASIO_THREAD ) ) {
+			BASS_ASIO_SetNotify( AsioNotifyProc, this );
+		}
+	}
+
+	const bool success = ( -1 != BASS_ASIO_GetDevice() );
+	return success;
+}
+
+DWORD Output::ApplyLeadIn( float* buffer, const DWORD byteCount, HSTREAM handle ) const
+{
+	DWORD bytesPadded = 0;
+	if ( m_LeadInSeconds > 0 ) {
+		const QWORD bytePos = BASS_ChannelGetPosition( handle, BASS_POS_BYTE );
+		const float position = static_cast<float>( BASS_ChannelBytes2Seconds( handle, bytePos ) );
+		if ( position < m_LeadInSeconds ) {
+			BASS_CHANNELINFO info = {};
+			if ( ( TRUE == BASS_ChannelGetInfo( handle, &info ) ) && ( info.freq > 0 ) && ( info.chans > 0 ) ) {
+				bytesPadded = static_cast<DWORD>( 0.5f + ( m_LeadInSeconds - position ) * info.freq ) * info.chans * 4;
+				bytesPadded = min( bytesPadded, byteCount );
+				if ( bytesPadded > 0 ) {
+					std::fill( buffer, buffer + bytesPadded / 4, 0.0f );
+				}
+			}
+		}
+	}
+	return bytesPadded;
+}
+
+float Output::GetFadeOutDuration() const
+{
+	return s_FadeOutDuration;
+}
+
+float Output::GetFadeToNextDuration() const
+{
+	return s_FadeToNextDuration;
+}
+
+void Output::LoudnessPrecalcHandler()
+{
+	// Playlist might have new items, so check back every so often.
+	const DWORD interval = 30 /*sec*/ * 1000;
+
+	GainCalculator::CanContinue canContinue( [ stopEvent = m_LoudnessPrecalcStopEvent ] ()
+	{
+		return ( WAIT_OBJECT_0 != WaitForSingleObject( stopEvent, 0 ) );
+	} );
+
+	do {
+		Playlist::ItemList items;
+		{
+			std::lock_guard<std::mutex> lock( m_PlaylistMutex );
+			items = m_Playlist->GetItems();
+		}
+		auto item = items.begin();
+		while ( ( items.end() != item ) && canContinue() ) {
+			if ( std::isnan( item->Info.GetGainTrack() ) ) {
+				m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
+				if ( std::isnan( item->Info.GetGainTrack() ) ) {
+					const float gain = GainCalculator::CalculateTrackGain( item->Info.GetFilename(), m_Handlers, canContinue );
+					if ( !std::isnan( gain ) ) {
+						item->Info.SetGainTrack( gain );
+						std::lock_guard<std::mutex> lock( m_PlaylistMutex );
+						m_Playlist->UpdateItem( *item );
+						m_Playlist->GetLibrary().UpdateTrackGain( item->Info );
+					}
+				}
+			}
+			++item;
+		}
+	} while ( WAIT_OBJECT_0 != WaitForSingleObject( m_LoudnessPrecalcStopEvent, interval ) );
+}
+
+void Output::StartLoudnessPrecalcThread()
+{
+	StopLoudnessPrecalcThread();
+	if ( nullptr != m_LoudnessPrecalcStopEvent ) {
+		ResetEvent( m_LoudnessPrecalcStopEvent );
+		if ( m_Playlist && ( Playlist::Type::CDDA != m_Playlist->GetType() ) ) {
+			Settings::GainMode gainMode = Settings::GainMode::Disabled;
+			Settings::LimitMode limitMode = Settings::LimitMode::None;
+			float preamp = 0;
+			m_Settings.GetGainSettings( gainMode, limitMode, preamp );
+			if ( Settings::GainMode::Disabled != gainMode ) {
+				m_LoudnessPrecalcThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, LoudnessPrecalcThreadProc, reinterpret_cast<LPVOID>( this ), 0 /*flags*/, NULL /*threadId*/ );
+				if ( nullptr != m_LoudnessPrecalcThread ) {
+					SetThreadPriority( m_LoudnessPrecalcThread, THREAD_PRIORITY_BELOW_NORMAL );
+				}
+			}
+		}
+	}
+}
+
+void Output::StopLoudnessPrecalcThread()
+{
+	if ( nullptr != m_LoudnessPrecalcThread ) {
+		SetThreadPriority( m_LoudnessPrecalcThread, THREAD_PRIORITY_NORMAL );
+		SetEvent( m_LoudnessPrecalcStopEvent );
+		WaitForSingleObject( m_LoudnessPrecalcThread, INFINITE );
+		CloseHandle( m_LoudnessPrecalcThread );
+		m_LoudnessPrecalcThread = nullptr;
+	}
 }

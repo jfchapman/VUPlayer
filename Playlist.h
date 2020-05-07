@@ -155,10 +155,12 @@ public:
 
 	// Removes a playlist item.
 	// 'item' - playlist item containing the ID of the item to remove.
-	void RemoveItem( const Item& item );
+	// Returns whether the item was removed.
+	bool RemoveItem( const Item& item );
 
 	// Removes 'mediaInfo' from the playlist.
-	void RemoveItem( const MediaInfo& mediaInfo );
+	// Returns whether the media information was removed.
+	bool RemoveItem( const MediaInfo& mediaInfo );
 
 	// Returns the number of items in the playlist.
 	long GetCount();
@@ -191,6 +193,9 @@ public:
 
 	// Sets whether duplicate playlist items should be merged.
 	void SetMergeDuplicates( const bool merge );
+
+	// Updates the 'item' in the playlist.
+	void UpdateItem( const Item& item );
 
 private:
 	// Pending file thread proc.

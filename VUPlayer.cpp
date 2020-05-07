@@ -43,6 +43,13 @@ static const UINT MSG_PLAYLISTMENUEND = MSG_PLAYLISTMENUSTART + 50;
 // Online documentation location.
 static const wchar_t s_OnlineDocs[] = L"https://github.com/jfchapman/vuplayer/wiki";
 
+// Database filename.
+#ifdef _DEBUG
+static const wchar_t s_Database[] = L"VUPlayerDebug.db";
+#else
+static const wchar_t s_Database[] = L"VUPlayer.db";
+#endif
+
 VUPlayer* VUPlayer::Get()
 {
 	return s_VUPlayer;
@@ -54,7 +61,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_hWnd( hwnd ),
 	m_hAccel( LoadAccelerators( m_hInst, MAKEINTRESOURCE( IDC_VUPLAYER ) ) ),
 	m_Handlers(),
-	m_Database( ( portable ? std::wstring() : ( DocumentsFolder() + L"VUPlayer.db" ) ), databaseMode ),
+	m_Database( ( portable ? std::wstring() : ( DocumentsFolder() + s_Database ) ), databaseMode ),
 	m_Library( m_Database, m_Handlers ),
 	m_Maintainer( m_Library ),
 	m_Settings( m_Database, m_Library, portableSettings ),
@@ -1290,7 +1297,7 @@ void VUPlayer::OnListSelectionChanged()
 	const Playlist::Item currentSelectedOutputItem = m_Output.GetCurrentSelectedPlaylistItem();
 	m_Output.SetCurrentSelectedPlaylistItem( currentSelectedPlaylistItem );
 	if ( ( Output::State::Stopped == m_Output.GetState() ) && ( ID_VISUAL_ARTWORK == m_Visual.GetCurrentVisualID() ) &&
-			( currentSelectedPlaylistItem.Info.GetArtworkID() != currentSelectedOutputItem.Info.GetArtworkID() ) ) {
+			( currentSelectedPlaylistItem.Info.GetArtworkID( true /*checkFolder*/ ) != currentSelectedOutputItem.Info.GetArtworkID( true /*checkFolder*/ ) ) ) {
 		m_Splitter.Resize();
 		m_Visual.DoRender();
 	}
@@ -1711,6 +1718,21 @@ bool VUPlayer::OnCommandLineFiles( const std::list<std::wstring>& filenames )
 				m_Output.SetPlaylist( scratchList );
 				m_Output.Play();
 				validCommandLine = true;
+			} else {
+				// Handle Audio CD autoplay
+				if ( 1 == filenames.size() ) {
+					const std::wstring& filename = filenames.front();
+					if ( !filename.empty() ) {
+						const UINT driveType = GetDriveType( filename.c_str() );
+						if ( ( DRIVE_CDROM == driveType ) && CDDAMedia::ContainsCDAudio( filename.front() ) ) {
+							const Playlist::Ptr playlist = m_Tree.SelectAudioCD( filename.front() );
+							if ( playlist ) {
+								m_Output.SetPlaylist( playlist );
+								m_Output.Play();
+							}
+						}
+					}
+				}
 			}
 		}
 	}

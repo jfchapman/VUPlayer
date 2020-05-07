@@ -9,7 +9,7 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 		const DWORD bufferSize = 32768;
 		std::vector<unsigned char> buffer( bufferSize );
 		const BOOL watchSubtree = TRUE;
-		const DWORD notifyFilter = ( ChangeType::FileChange == monitorInfo->ChangeType ) ? FILE_NOTIFY_CHANGE_FILE_NAME : FILE_NOTIFY_CHANGE_DIR_NAME;
+		const DWORD notifyFilter = ( ChangeType::FileChange == monitorInfo->ChangeType ) ? ( FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE ) : FILE_NOTIFY_CHANGE_DIR_NAME;
 		DWORD bytesReturned = 0;
 
 		OVERLAPPED overlapped = {};
@@ -32,19 +32,35 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 										const DWORD attributes = GetFileAttributes( filename.c_str() );
 										if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
 											if ( ChangeType::FileChange == monitorInfo->ChangeType ) {
-												// Delay the callback until the newly created file can be read.
+												// Delay the callback.
 												FILETIME fileTime = {};
 												GetSystemTimeAsFileTime( &fileTime );
 												const long long addedTime = ( static_cast<long long>( fileTime.dwHighDateTime ) << 32 ) + fileTime.dwLowDateTime;
-												std::lock_guard<std::mutex> lock( monitorInfo->AddFileMutex );
-												monitorInfo->AddFileQueue.insert( AddFileMap::value_type( addedTime, filename ) );
+												std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
+												monitorInfo->PendingMap.insert( PendingMap::value_type( filename, std::make_pair( PendingAction::FileAdded, addedTime ) ) );
 											} else {
 												monitorInfo->Callback( FolderMonitor::Event::FolderCreated, filename, filename );
 											}
 										}
 										break;
 									}
+									case FILE_ACTION_MODIFIED : {
+										if ( ChangeType::FileChange == monitorInfo->ChangeType ) {
+											const DWORD attributes = GetFileAttributes( filename.c_str() );
+											if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
+												// Delay the callback.
+												FILETIME fileTime = {};
+												GetSystemTimeAsFileTime( &fileTime );
+												const long long modifiedTime = ( static_cast<long long>( fileTime.dwHighDateTime ) << 32 ) + fileTime.dwLowDateTime;
+												std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
+												monitorInfo->PendingMap.insert( PendingMap::value_type( filename, std::make_pair( PendingAction::FileModified, modifiedTime ) ) );
+											}
+										}
+										break;
+									}
 									case FILE_ACTION_REMOVED : {
+										std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
+										monitorInfo->PendingMap.erase( filename );
 										monitorInfo->Callback( ( ChangeType::FileChange == monitorInfo->ChangeType ) ? FolderMonitor::Event::FileDeleted : FolderMonitor::Event::FolderDeleted, filename, filename );
 										break;
 									}
@@ -56,6 +72,9 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 												const std::wstring newFilename = monitorInfo->DirectoryPath + std::wstring( notifyInfo->FileName, notifyInfo->FileNameLength / 2 );
 												const DWORD attributes = GetFileAttributes( newFilename.c_str() );
 												if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
+													std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
+													monitorInfo->PendingMap.erase( filename );
+													monitorInfo->PendingMap.erase( newFilename );
 													monitorInfo->Callback( ( ChangeType::FileChange == monitorInfo->ChangeType ) ? FolderMonitor::Event::FileRenamed : FolderMonitor::Event::FolderRenamed, filename, newFilename );
 												}
 											}
@@ -98,40 +117,59 @@ DWORD WINAPI FolderMonitor::AddFileThreadProc( LPVOID lpParam )
 	if ( nullptr != monitorInfo ) {
 
 		const DWORD retryInterval = 1000 /*msec*/;
-		const long long maximumTimeInQueue = 5ll * 60ll /*sec*/ * 10000000ll /*100-nanosecond intervals*/;
+		const long long maximumPendingTime = 5ll * 60ll /*sec*/ * 10000000ll /*100-nanosecond intervals*/;
+		const long long minimumPendingTime = 1ll /*sec*/ * 10000000ll /*100-nanosecond intervals*/;
 
 		while ( WAIT_OBJECT_0 != WaitForSingleObject( monitorInfo->CancelHandle, retryInterval ) ) {
-			FILETIME fileTime = {};
-			GetSystemTimeAsFileTime( &fileTime );
-			const long long currentTime = ( static_cast<long long>( fileTime.dwHighDateTime ) << 32 ) + fileTime.dwLowDateTime;
+			FILETIME t = {};
+			GetSystemTimeAsFileTime( &t );
+			const long long currentTime = ( static_cast<long long>( t.dwHighDateTime ) << 32 ) + t.dwLowDateTime;
 
-			std::lock_guard<std::mutex> lock( monitorInfo->AddFileMutex );
-			auto fileIter = monitorInfo->AddFileQueue.begin();
-			while ( monitorInfo->AddFileQueue.end() != fileIter ) {
-				bool removeFromQueue = true;
+			std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
+			auto fileIter = monitorInfo->PendingMap.begin();
+			while ( monitorInfo->PendingMap.end() != fileIter ) {
+				bool removePending = true;
 
-				const std::wstring& filename = fileIter->second;
-				const DWORD attributes = GetFileAttributes( filename.c_str() );
+				const std::wstring& fileName = fileIter->first;
+				long long fileTime = fileIter->second.second;
+				const DWORD attributes = GetFileAttributes( fileName.c_str() );
 				if ( INVALID_FILE_ATTRIBUTES != attributes ) {
 					const DWORD desiredAccess = GENERIC_READ;
 					const DWORD shareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
 					const DWORD creationDisposition = OPEN_EXISTING;
 					const DWORD flags = 0;
-					const HANDLE fileHandle = CreateFile( filename.c_str(), desiredAccess, shareMode, nullptr /*securtyAttributes*/, creationDisposition, flags, nullptr /*template*/ );
+					const HANDLE fileHandle = CreateFile( fileName.c_str(), desiredAccess, shareMode, nullptr /*securityAttributes*/, creationDisposition, flags, nullptr /*template*/ );
 					if ( INVALID_HANDLE_VALUE == fileHandle ) {
-						const long long addedTime = fileIter->first;
-						if ( ( currentTime - addedTime ) < maximumTimeInQueue ) {
-							removeFromQueue = false;
+						// File cannot be opened at this time.
+						if ( ( currentTime - fileTime ) < maximumPendingTime ) {
+							// Try again later.
+							removePending = false;
 						}
 					} else {
-						// File can now be read, so fire the callback.
-						CloseHandle( fileHandle );
-						monitorInfo->Callback( FolderMonitor::Event::FileCreated, filename, filename );
+						const long long pendingTime = currentTime - fileTime;
+						if ( pendingTime < minimumPendingTime ) {
+							// Keep the file pending until it has 'settled down'.
+							FILETIME creationTime = {};
+							FILETIME accessTime = {};
+							FILETIME writeTime = {};
+							if ( GetFileTime( fileHandle, &creationTime, &accessTime, &writeTime ) ) {
+								const long long currentFileTime = ( static_cast<long long>( writeTime.dwHighDateTime ) << 32 ) + writeTime.dwLowDateTime;
+								fileIter->second.second = currentFileTime;
+								removePending = false;
+							}
+							CloseHandle( fileHandle );
+						} else {
+							// File has settled down, so fire off the callback.
+							CloseHandle( fileHandle );
+							const PendingAction action = fileIter->second.first;
+							const FolderMonitor::Event monitorEvent = ( PendingAction::FileAdded == action ) ? FolderMonitor::Event::FileCreated : FolderMonitor::Event::FileModified;
+							monitorInfo->Callback( monitorEvent, fileName, fileName );
+						}
 					}
 				}
 
-				if ( removeFromQueue ) {
-					fileIter = monitorInfo->AddFileQueue.erase( fileIter );
+				if ( removePending ) {
+					fileIter = monitorInfo->PendingMap.erase( fileIter );
 				} else {
 					++fileIter;
 				}

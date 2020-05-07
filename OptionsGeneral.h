@@ -31,4 +31,18 @@ public:
 	// 'wParam' - notification parameter.
 	// 'lParam' - notification parameter.
 	virtual void OnNotify( const HWND hwnd, const WPARAM wParam, const LPARAM lParam );
+
+private:
+	// Refreshes the output device list based on the currently selected output mode.
+	// 'hwnd' - dialog window handle.
+	void RefreshOutputDeviceList( const HWND hwnd );
+
+	// Returns the currently selected output mode.
+	Settings::OutputMode GetSelectedMode( const HWND hwnd ) const;
+
+	// Returns the currently selected device name.
+	std::wstring GetSelectedDeviceName( const HWND hwnd ) const;
+
+	// Available output modes, paired with the resource ID of the description.
+	static std::vector<std::pair<Settings::OutputMode,int>> s_OutputModes;
 };

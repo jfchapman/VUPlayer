@@ -151,7 +151,8 @@ public:
 	long GetBitrate() const;
 
 	// Returns the artwork ID.
-	const std::wstring& GetArtworkID() const;
+	// 'checkFolder' - if true and there is no artwork ID, returns the filename of any artwork in the media file's folder.
+	std::wstring GetArtworkID( const bool checkFolder = false ) const;
 
 	// Sets the artwork ID.
 	void SetArtworkID( const std::wstring& id );

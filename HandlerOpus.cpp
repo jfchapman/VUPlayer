@@ -198,6 +198,10 @@ INT_PTR CALLBACK HandlerOpus::DialogProc( HWND hwnd, UINT message, WPARAM wParam
 			}
 			break;
 		}
+		case WM_DESTROY : {
+			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+			break;
+		}
 		case WM_COMMAND : {
 			switch ( LOWORD( wParam ) ) {
 				case IDCANCEL : 

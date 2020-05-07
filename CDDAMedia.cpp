@@ -90,6 +90,31 @@ bool CDDAMedia::ContainsData( const wchar_t drive )
 	return containsData;
 }
 
+bool CDDAMedia::ContainsCDAudio( const wchar_t drive )
+{
+	bool containsCDA = false;
+	const std::wstring drivePath( L"\\\\.\\" + std::wstring( 1, drive ) + L":" );
+	const HANDLE driveHandle = CreateFile( drivePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL /*securityAttributes*/, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL /*template*/ );
+	if ( INVALID_HANDLE_VALUE != driveHandle ) {
+		DWORD bytesReturned = 0;
+		DISK_GEOMETRY diskGeometry = {};
+		CDROM_TOC toc = {};
+		if ( ( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_GET_DRIVE_GEOMETRY, NULL /*inputBuffer*/, 0 /*inputSize*/, &diskGeometry, sizeof( DISK_GEOMETRY ), &bytesReturned, NULL /*overlapped*/ ) ) &&
+				( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_READ_TOC, NULL /*inputBuffer*/, 0 /*inputSize*/, &toc, sizeof( CDROM_TOC ), &bytesReturned, NULL /*overlapped*/ ) ) ) {	
+			unsigned long trackIndex = 0;
+			const unsigned long trackCount = toc.LastTrack - toc.FirstTrack + 1;
+			if ( trackCount < MAXIMUM_NUMBER_TRACKS ) {
+				while ( !containsCDA && ( trackIndex < trackCount ) ) {
+					containsCDA = !( toc.TrackData[ trackIndex ].Control & 4 );
+					++trackIndex;
+				}
+			}
+		}
+		CloseHandle( driveHandle );
+	}
+	return containsCDA;
+}
+
 bool CDDAMedia::ReadTOC()
 {
 	bool containsAudio = false;

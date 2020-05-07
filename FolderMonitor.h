@@ -26,6 +26,7 @@ public:
 		FileRenamed,						// A file has been renamed.
 		FileCreated,						// A file has been created.
 		FileDeleted,						// A file has been deleted.
+		FileModified						// A file has been modified.
 	};
 
 	// Event callback.
@@ -56,8 +57,17 @@ private:
 		FileChange						// File changes.
 	};
 
-	// Maps a file time to a file name.
-	typedef std::map<long long,std::wstring> AddFileMap;
+	// Pending action.
+	enum class PendingAction {
+		FileAdded,						// File has been added.	
+		FileModified					// File has been modified.
+	};
+
+	// Pairs a pending action with a file time.
+	typedef std::pair<PendingAction,long long> PendingInfo;
+
+	// Maps a file name to pending information.
+	typedef std::map<std::wstring,PendingInfo> PendingMap;
 
 	// Monitor information.
 	struct MonitorInfo {
@@ -69,8 +79,8 @@ private:
 		HDEVNOTIFY DevNotifyHandle;	// Device notification handle.
 		EventCallback Callback;			// Event callback.
 		ChangeType ChangeType;			// Change type.
-		AddFileMap AddFileQueue;		// Add file queue.
-		std::mutex AddFileMutex;		// Add file mutex.
+		PendingMap PendingMap;			// Pending files.
+		std::mutex PendingMutex;		// Pending mutex.
 	};
 
 	// A list of monitors.
