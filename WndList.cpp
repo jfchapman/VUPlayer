@@ -163,8 +163,7 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 	return CallWindowProc( wndList->GetDefaultWndProc(), hwnd, message, wParam, lParam );
 }
 
-// Edit control window procedure
-LRESULT CALLBACK EditControlProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK WndList::EditControlProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndList* wndList = reinterpret_cast<WndList*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndList ) {

@@ -56,6 +56,10 @@ INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 			}
 			break;
 		}
+		case WM_DESTROY : {
+			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+			break;
+		}
 		case WM_COMMAND : {
 			switch ( LOWORD( wParam ) ) {
 				case IDOK : {

@@ -136,10 +136,9 @@ public:
 	std::set<std::wstring> GetAllSupportedFileExtensions() const;
 
 	// Returns the available output devices.
-	Devices GetDevices() const;
-
-	// Returns the name of the current output device.
-	std::wstring GetCurrentDevice() const;
+	// Note that if there are any detected devices, an unnamed default device (with ID -1) will also be included.
+	// 'mode' - output mode.
+	Devices GetDevices( const Settings::OutputMode mode ) const;
 
 	// Called when output settings are changed.
 	void SettingsChanged();
@@ -193,6 +192,15 @@ private:
 	// BASS stream callback.
 	static DWORD CALLBACK StreamProc( HSTREAM handle, void *buf, DWORD len, void *user );
 
+	// BASS WASAPI callback.
+	static DWORD CALLBACK WasapiProc( void *buffer, DWORD length, void *user );
+
+	// BASS WASAPI notification callback.
+	static void CALLBACK WasapiNotifyProc( DWORD notify, DWORD device, void *user );
+
+	// BASS ASIO notification callback.
+	static void CALLBACK AsioNotifyProc( DWORD notify, void *user );
+
 	// BASS sync, called when playback has ended.
 	static void CALLBACK SyncEnd( HSYNC handle, DWORD channel, DWORD data, void *user );
 
@@ -202,6 +210,15 @@ private:
 	// Crossfade calculation thread procedure.
 	static DWORD WINAPI CrossfadeThreadProc( LPVOID lpParam );
 
+	// Loudness precalculation thread procedure.
+	static DWORD WINAPI LoudnessPrecalcThreadProc( LPVOID lpParam );
+
+	// Gets the current tick count.
+	static LONGLONG GetTick();
+
+	// Gets the interval between the start and end tick count, in seconds.
+	static float GetInterval( const LONGLONG startTick, const LONGLONG endTick );
+
 	// Reads sample data from the current decoder.
 	// 'buffer' - sample buffer.
 	// 'byteCount' - number of bytes to read.
@@ -209,11 +226,14 @@ private:
 	// Returns the number of bytes read.
 	DWORD ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM handle );
 
-	// Signals that playback should be restarted.
-	void RestartPlayback();
+	// Called when playback has ended.
+	void OnSyncEnd();
 
 	// Background thread handler for calculating the crossfade point for the current track.
-	void OnCalculateCrossfadeHandler();
+	void CalculateCrossfadeHandler();
+
+	// Background thread handler for precalculating loudness values for tracks in the current playlist.
+	void LoudnessPrecalcHandler();
 
 	// Initialises the BASS system;
 	void InitialiseBass();
@@ -246,6 +266,44 @@ private:
 	// Returns a decoder for the 'item', or nullptr if a decoder could not be opened.
 	Decoder::Ptr OpenDecoder( const Playlist::Item& item ) const;
 
+	// Starts the output and returns the output state.
+	State StartOutput();
+	
+	// Gets the current decoding position, in seconds.
+	float GetDecodePosition() const;
+
+	// Gets the current output position, in seconds.
+	float GetOutputPosition() const;
+
+	// Creates the BASS output stream (and mixer stream, if necessary) based on the 'mediaInfo' and the current output mode/device.
+	// Returns whether the stream(s) were created successfully.
+	bool CreateOutputStream( const MediaInfo& mediaInfo );
+
+	// Updates the volume of the BASS output stream (or mixer stream, if necessary).
+	void UpdateOutputVolume();
+
+	// Initialises BASS ASIO output (if necessary), returning whether initialisation was successful.
+	bool InitASIO();
+
+	// Applies lead-in silence when starting playback.
+	// 'buffer' - sample buffer.
+	// 'byteCount' - sample buffer size, in bytes.
+	// 'handle' - stream handle.
+	// Returns the number of bytes that have been fed in to the start of the sample buffer.
+	DWORD ApplyLeadIn( float* buffer, const DWORD byteCount, HSTREAM handle ) const;
+
+	// Returns the fade out duration, in seconds.
+	float GetFadeOutDuration() const;
+
+	// Returns the fade to next duration, in seconds.
+	float GetFadeToNextDuration() const;
+
+	// Starts the loudness precalculation thread.
+	void StartLoudnessPrecalcThread();
+
+	// Stops the loudness precalculation thread.
+	void StopLoudnessPrecalcThread();
+
 	// Parent window handle.
 	HWND m_Parent;
 
@@ -270,8 +328,11 @@ private:
 	// The sample rate of the currently decoding stream.
 	long m_DecoderSampleRate;
 
-	// The current BASS output stream.
+	// The current BASS output stream (or source stream when using the mixer).
 	HSTREAM m_OutputStream;
+
+	// The current BASS mixer stream.
+	HSTREAM m_MixerStream;
 
 	// Playlist mutex.
 	std::mutex m_PlaylistMutex;
@@ -305,9 +366,6 @@ private:
 
 	// The currently selected playlist item (this can be different from the currently playing item).
 	Playlist::Item m_CurrentSelectedPlaylistItem;
-
-	// Indicates whether the default output device is being used.
-	bool m_UsingDefaultDevice;
 
 	// Gain mode.
 	Settings::GainMode m_GainMode;
@@ -351,6 +409,12 @@ private:
 	// Event handle for terminating the crossfade calculation thread.
 	HANDLE m_CrossfadeStopEvent;
 
+	// The thread for loudness precalculation.
+	HANDLE m_LoudnessPrecalcThread;
+
+	// Event handle for terminating the loudness precalculation thread.
+	HANDLE m_LoudnessPrecalcStopEvent;
+
 	// The decoding stream that is being faded out during a crossfade.
 	Decoder::Ptr m_CrossfadingStream;
 
@@ -383,4 +447,22 @@ private:
 
 	// EQ preamp in dB.
 	float m_EQPreamp;
+
+	// Current output mode.
+	Settings::OutputMode m_OutputMode;
+
+	// Current output device.
+	std::wstring m_OutputDevice;
+
+	// Indicates whether the current WASAPI device has failed or been disabled.
+	std::atomic<bool> m_WASAPIFailed;
+
+	// Indicates whether the current WASAPI device is paused.
+	std::atomic<bool> m_WASAPIPaused;
+
+	// Indicates whether ASIO should be reinitialised the next time playback is started.
+	std::atomic<bool> m_ResetASIO;
+
+	// When starting playback in non-standard output mode, the lead-in length before passing through actual sample data.
+	float m_LeadInSeconds;
 };

@@ -32,6 +32,25 @@ static const TCHAR s_portableCmdLineSwitch[] = L"-portable";
 // Command line switch to set the database access mode.
 static const TCHAR s_databasemodeCmdLineSwitch[] = L"-mode";
 
+// Makes a basic check to see whether a command line entry represents Audio CD autoplay.
+// Returns the Audio CD path to autoplay, or an empty string otherwise.
+std::wstring AutoplayAudioCD( LPCWSTR cmdLineEntry )
+{
+	std::wstring autoplay;
+	if ( nullptr != cmdLineEntry ) {
+		std::wstring str( cmdLineEntry );
+		if ( ( str.size() >= 2 ) && ( str.size() <= 3 ) ) {
+			str = str.substr( 0, 2 );
+			str += L"\\";
+			const UINT driveType = GetDriveType( str.c_str() );
+			if ( ( DRIVE_CDROM == driveType ) && CDDAMedia::ContainsCDAudio( str[ 0 ] ) ) {
+				autoplay = str;
+			}
+		}
+	}
+	return autoplay;
+}
+
 // Entry point
 int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow )
 {
@@ -47,6 +66,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 	bool portable = false;
 	std::string portableSettings;
 	Database::Mode mode = Database::Mode::Temp;
+
 	int numArgs = 0;
 	LPWSTR* args = CommandLineToArgvW( GetCommandLine(), &numArgs );
 	if ( nullptr != args ) {
@@ -92,6 +112,12 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 				const DWORD attributes = GetFileAttributes( args[ argc ] );
 				if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
 					cmdLineFiles.push_back( args[ argc ] );
+				} else if ( cmdLineFiles.empty() ) {
+					const std::wstring autoplay = AutoplayAudioCD( args[ argc ] );
+					if ( !autoplay.empty() ) {
+						cmdLineFiles.push_back( autoplay );
+						break;
+					}
 				}
 			}
 		}
@@ -314,6 +340,12 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 						const DWORD attributes = GetFileAttributes( filename );
 						if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
 							filenames.push_back( filename );
+						} else if ( filenames.empty() ) {
+							const std::wstring autoplay = AutoplayAudioCD( filename );
+							if ( !autoplay.empty() ) {
+								filenames.push_back( autoplay );
+								break;
+							}
 						}
 						filename += ( 1 + wcslen( filename ) );
 					}

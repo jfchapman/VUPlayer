@@ -103,6 +103,9 @@ private:
 	// The total number of tracks to convert.
 	long m_TrackCount;
 
+	// The encoder handler to use.
+	Handler::Ptr m_EncoderHandler;
+
 	// The encoder to use.
 	Encoder::Ptr m_Encoder;
 

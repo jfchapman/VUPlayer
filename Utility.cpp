@@ -5,15 +5,11 @@
 #include "Gdiplusimaging.h"
 
 #include <chrono>
-#include <codecvt>
 #include <iomanip>
 #include <locale>
 #include <random>
 #include <set>
 #include <sstream>
-
-// UTF-8 converter object.
-static std::wstring_convert<std::codecvt_utf8<wchar_t>> convert;
 
 // Maximum size when converting images.
 static const int sMaxConvertImageBytes = 0x1000000;
@@ -27,9 +23,14 @@ static std::mt19937_64 engine( seed );
 std::wstring UTF8ToWideString( const std::string& text )
 {
 	std::wstring result;
-	try {
-		result = convert.from_bytes( text );
-	} catch ( const std::range_error& /*exception*/ ) {
+	if ( !text.empty() ) {
+		const int bufferSize = MultiByteToWideChar( CP_UTF8, 0, text.c_str(), -1 /*strLen*/, nullptr /*buffer*/, 0 /*bufferSize*/ );
+		if ( bufferSize > 0 ) {
+			std::vector<WCHAR> buffer( bufferSize );
+			if ( 0 != MultiByteToWideChar( CP_UTF8, 0, text.c_str(), -1 /*strLen*/, buffer.data(), bufferSize ) ) {
+				result = buffer.data();
+			}
+		}
 	}
 	return result;
 }
@@ -37,9 +38,14 @@ std::wstring UTF8ToWideString( const std::string& text )
 std::string WideStringToUTF8( const std::wstring& text )
 {
 	std::string result;
-	try {
-		result = convert.to_bytes( text );
-	} catch ( const std::range_error& /*exception*/ ) {
+	if ( !text.empty() ) {
+		const int bufferSize = WideCharToMultiByte( CP_UTF8, 0, text.c_str(), -1 /*strLen*/, nullptr /*buffer*/, 0 /*bufferSize*/, NULL /*defaultChar*/, NULL /*usedDefaultChar*/ );
+		if ( bufferSize > 0 ) {
+			std::vector<char> buffer( bufferSize );
+			if ( 0 != WideCharToMultiByte( CP_UTF8, 0, text.c_str(), -1 /*strLen*/, buffer.data(), bufferSize, NULL /*defaultChar*/, NULL /*usedDefaultChar*/ ) ) {
+				result = buffer.data();
+			}
+		}
 	}
 	return result;
 }
@@ -50,10 +56,10 @@ std::wstring AnsiCodePageToWideString( const std::string& text )
 	if ( !text.empty() ) {
 		const int bufferSize = MultiByteToWideChar( CP_ACP, MB_PRECOMPOSED, text.c_str(), -1 /*strLen*/, nullptr /*buffer*/, 0 /*bufferSize*/ );
 		if ( bufferSize > 0 ) {
-			WCHAR* buffer = new WCHAR[ bufferSize ];
-			MultiByteToWideChar( CP_ACP, MB_PRECOMPOSED, text.c_str(), -1 /*strLen*/, buffer, bufferSize );
-			result = buffer;
-			delete [] buffer;
+			std::vector<WCHAR> buffer( bufferSize );
+			if ( 0 != MultiByteToWideChar( CP_ACP, MB_PRECOMPOSED, text.c_str(), -1 /*strLen*/, buffer.data(), bufferSize ) ) {
+				result = buffer.data();
+			}
 		}
 	}
 	return result;
@@ -65,10 +71,10 @@ std::string WideStringToAnsiCodePage( const std::wstring& text )
 	if ( !text.empty() ) {
 		const int bufferSize = WideCharToMultiByte( CP_ACP, 0 /*flags*/, text.c_str(), -1 /*strLen*/, nullptr /*buffer*/, 0 /*bufferSize*/, NULL /*defaultChar*/, NULL /*usedDefaultChar*/ );
 		if ( bufferSize > 0 ) {
-			char* buffer = new char[ bufferSize ];
-			WideCharToMultiByte( CP_ACP, 0 /*flags*/, text.c_str(), -1 /*strLen*/, buffer, bufferSize, NULL /*defaultChar*/, NULL /*usedDefaultChar*/ );
-			result = buffer;
-			delete [] buffer;
+			std::vector<char> buffer( bufferSize );
+			if ( 0 != WideCharToMultiByte( CP_ACP, 0 /*flags*/, text.c_str(), -1 /*strLen*/, buffer.data(), bufferSize, NULL /*defaultChar*/, NULL /*usedDefaultChar*/ ) ) {
+				result = buffer.data();
+			}
 		}
 	}
 	return result;
@@ -80,10 +86,10 @@ std::wstring CodePageToWideString( const std::string& text, const UINT codePage 
 	if ( !text.empty() ) {
 		const int bufferSize = MultiByteToWideChar( codePage, MB_PRECOMPOSED, text.c_str(), -1 /*strLen*/, nullptr /*buffer*/, 0 /*bufferSize*/ );
 		if ( bufferSize > 0 ) {
-			WCHAR* buffer = new WCHAR[ bufferSize ];
-			MultiByteToWideChar( codePage, MB_PRECOMPOSED, text.c_str(), -1 /*strLen*/, buffer, bufferSize );
-			result = buffer;
-			delete [] buffer;
+			std::vector<WCHAR> buffer( bufferSize );
+			if ( 0 != MultiByteToWideChar( codePage, MB_PRECOMPOSED, text.c_str(), -1 /*strLen*/, buffer.data(), bufferSize ) ) {
+				result = buffer.data();
+			}
 		}
 	}
 	return result;
@@ -224,11 +230,10 @@ std::string Base64Encode( const BYTE* bytes, const int byteCount )
 		DWORD bufferSize = 0;
 		if ( FALSE != CryptBinaryToStringA( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, nullptr /*buffer*/, &bufferSize ) ) {
 			if ( bufferSize > 0 ) {
-				char* buffer = new char[ bufferSize ];
-				if ( FALSE != CryptBinaryToStringA( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, buffer, &bufferSize ) ) {
-					result = buffer;
+				std::vector<char> buffer( bufferSize );
+				if ( FALSE != CryptBinaryToStringA( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, buffer.data(), &bufferSize ) ) {
+					result = buffer.data();
 				}
-				delete [] buffer;
 			}
 		}
 	}

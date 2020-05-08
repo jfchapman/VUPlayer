@@ -25,6 +25,9 @@ public:
 	// CD audio media information, mapped by drive path.
 	typedef std::map<wchar_t,CDDAMedia> CDDAMediaMap;
 
+	// Returns the CD-ROM drive letters.
+	static std::set<wchar_t> GetCDROMDrives();
+
 	// Returns the available CD audio media.
 	CDDAMediaMap GetCDDADrives();
 
@@ -44,9 +47,6 @@ private:
 
 	// Media update thread handler.
 	void UpdateThreadHandler();
-
-	// Returns the CD-ROM drive letters.
-	std::set<wchar_t> GetCDROMDrives() const;
 
 	// Media library.
 	Library& m_Library;

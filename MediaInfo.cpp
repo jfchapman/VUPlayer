@@ -2,7 +2,9 @@
 
 #include "Utility.h"
 
+#include <array>
 #include <cmath>
+#include <filesystem>
 #include <set>
 #include <tuple>
 
@@ -291,9 +293,25 @@ long MediaInfo::GetBitrate() const
 	return bitrate;
 }
 
-const std::wstring& MediaInfo::GetArtworkID() const
+std::wstring MediaInfo::GetArtworkID( const bool checkFolder ) const
 {
-	return m_ArtworkID;
+	std::wstring artworkID = m_ArtworkID;
+	if ( checkFolder && artworkID.empty() && !GetFilename().empty() && ( Source::File == GetSource() ) ) {
+		const std::array<std::wstring,2> artworkFileNames = { L"cover", L"folder" };
+		const std::array<std::wstring,2> artworkFileTypes = { L"jpg", L"png" };
+		const std::filesystem::path filePath( GetFilename() );
+		for ( auto artworkFileName = artworkFileNames.begin(); artworkID.empty() && ( artworkFileNames.end() != artworkFileName ); artworkFileName++ ) {
+			for ( auto artworkFileType = artworkFileTypes.begin(); artworkID.empty() && ( artworkFileTypes.end() != artworkFileType ); artworkFileType++ ) {
+				std::filesystem::path artworkPath = filePath.parent_path() / *artworkFileName;
+				artworkPath.replace_extension( *artworkFileType );
+				if ( std::filesystem::exists( artworkPath ) ) {
+					artworkID = artworkPath;
+					break;
+				}
+			}
+		}
+	}
+	return artworkID;
 }
 
 void MediaInfo::SetArtworkID( const std::wstring& id )

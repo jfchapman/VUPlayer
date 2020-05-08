@@ -262,8 +262,8 @@ void Settings::GetPlaylistSettings( PlaylistColumns& columns, LOGFONT& font,
 				if ( sizeof( LOGFONT ) == bytes ) {
 					font = *reinterpret_cast<const LOGFONT*>( sqlite3_column_blob( stmt, 0 /*columnIndex*/ ) );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 
 		stmt = nullptr;
@@ -271,8 +271,8 @@ void Settings::GetPlaylistSettings( PlaylistColumns& columns, LOGFONT& font,
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				fontColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 
 		stmt = nullptr;
@@ -280,8 +280,8 @@ void Settings::GetPlaylistSettings( PlaylistColumns& columns, LOGFONT& font,
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				backgroundColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 
 		stmt = nullptr;
@@ -289,8 +289,8 @@ void Settings::GetPlaylistSettings( PlaylistColumns& columns, LOGFONT& font,
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				highlightColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 }
@@ -357,80 +357,80 @@ void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& b
 				if ( sizeof( LOGFONT ) == bytes ) {
 					font = *reinterpret_cast<const LOGFONT*>( sqlite3_column_blob( stmt, 0 /*columnIndex*/ ) );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeFontColour';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				fontColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeBackgroundColour';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				backgroundColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeHighlightColour';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				highlightColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeFavourites';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				showFavourites = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeAllTracks';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				showAllTracks = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeArtists';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				showArtists = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeAlbums';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				showAlbums = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeGenres';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				showGenres = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeYears';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				showYears = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 }
@@ -617,9 +617,10 @@ void Settings::RemovePlaylist( const Playlist& playlist )
 
 			const std::string removePlaylistQuery = "DELETE FROM Playlists WHERE ID = ?1;";
 			sqlite3_stmt* stmt = nullptr;
-			if ( ( SQLITE_OK == sqlite3_prepare_v2( database, removePlaylistQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-					( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, playlistID.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) ) {
-				sqlite3_step( stmt );
+			if ( SQLITE_OK == sqlite3_prepare_v2( database, removePlaylistQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+				if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, playlistID.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) {
+					sqlite3_step( stmt );
+				}
 				sqlite3_finalize( stmt );
 			}
 		}
@@ -674,10 +675,11 @@ void Settings::SavePlaylist( Playlist& playlist )
 				const std::string insertPlaylistQuery = "REPLACE INTO Playlists (ID,Name) VALUES (?1,?2);";
 				const std::string playlistName = WideStringToUTF8( playlist.GetName() );
 				stmt = nullptr;
-				if ( ( SQLITE_OK == sqlite3_prepare_v2( database, insertPlaylistQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-						( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, playlistID.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) &&
-						( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, playlistName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) ) {
-					sqlite3_step( stmt );
+				if ( SQLITE_OK == sqlite3_prepare_v2( database, insertPlaylistQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+					if ( ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, playlistID.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) &&
+							( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, playlistName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) ) {
+						sqlite3_step( stmt );
+					}
 					sqlite3_finalize( stmt );
 				}
 			}
@@ -835,27 +837,27 @@ void Settings::GetSpectrumAnalyserSettings( COLORREF& base, COLORREF& peak, COLO
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				base = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
-				stmt = nullptr;
 			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
 		}
 
 		query = "SELECT Value FROM Settings WHERE Setting='SpectrumAnalyserPeak';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				peak = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
-				stmt = nullptr;
 			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
 		}
 
 		query = "SELECT Value FROM Settings WHERE Setting='SpectrumAnalyserBackground';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				background = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
-				stmt = nullptr;
 			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
 		}
 	}
 }
@@ -900,27 +902,27 @@ void Settings::GetPeakMeterSettings( COLORREF& base, COLORREF& peak, COLORREF& b
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				base = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
-				stmt = nullptr;
 			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
 		}
 
 		query = "SELECT Value FROM Settings WHERE Setting='PeakMeterPeak';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				peak = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
-				stmt = nullptr;
 			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
 		}
 
 		query = "SELECT Value FROM Settings WHERE Setting='PeakMeterBackground';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				background = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
-				stmt = nullptr;
 			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
 		}
 	}
 }
@@ -1227,8 +1229,8 @@ void Settings::GetCounterSettings( LOGFONT& font, COLORREF& colour, bool& showRe
 				if ( sizeof( LOGFONT ) == bytes ) {
 					font = *reinterpret_cast<const LOGFONT*>( sqlite3_column_blob( stmt, 0 /*columnIndex*/ ) );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 
 		stmt = nullptr;
@@ -1236,8 +1238,8 @@ void Settings::GetCounterSettings( LOGFONT& font, COLORREF& colour, bool& showRe
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				colour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 
 		stmt = nullptr;
@@ -1245,8 +1247,8 @@ void Settings::GetCounterSettings( LOGFONT& font, COLORREF& colour, bool& showRe
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				showRemaining = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 }
@@ -1279,27 +1281,35 @@ void Settings::SetCounterSettings( const LOGFONT& font, const COLORREF colour, c
 	}
 }
 
-std::wstring Settings::GetOutputDevice()
+void Settings::GetOutputSettings( std::wstring& deviceName, OutputMode& mode )
 {
-	std::wstring name;
+	deviceName.clear();
+	mode = OutputMode::Standard;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='OutputDevice';";
+		std::string query = "SELECT Value FROM Settings WHERE Setting='OutputDevice';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
 				const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) );
 				if ( nullptr != text ) {
-					name = UTF8ToWideString( text );
+					deviceName = UTF8ToWideString( text );
 				}
 			}
 			sqlite3_finalize( stmt );
 		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='OutputMode';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				mode = static_cast<OutputMode>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
 	}
-	return name;
 }
 
-void Settings::SetOutputDevice( const std::wstring& name )
+void Settings::SetOutputSettings( const std::wstring& deviceName, const OutputMode mode )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -1307,9 +1317,15 @@ void Settings::SetOutputDevice( const std::wstring& name )
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			sqlite3_bind_text( stmt, 1, "OutputDevice", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, WideStringToUTF8( name ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+			sqlite3_bind_text( stmt, 2, WideStringToUTF8( deviceName ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "OutputMode", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( mode ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
 			sqlite3_finalize( stmt );
 		}
 	}
@@ -1336,40 +1352,40 @@ void Settings::GetMODSettings( long long& mod, long long& mtm, long long& s3m, l
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				mod = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='MTM';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				mtm = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='S3M';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				s3m = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='XM';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				xm = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='IT';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				it = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 }
@@ -1432,16 +1448,16 @@ void Settings::GetGainSettings( GainMode& gainMode, LimitMode& limitMode, float&
 				if ( ( value >= static_cast<int>( GainMode::Disabled ) ) && ( value <= static_cast<int>( GainMode::Album ) ) ) {
 					gainMode = static_cast<GainMode>( value );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='GainPreamp';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				preamp = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='GainLimit';";
@@ -1451,8 +1467,8 @@ void Settings::GetGainSettings( GainMode& gainMode, LimitMode& limitMode, float&
 				if ( ( value >= static_cast<int>( LimitMode::None ) ) && ( value <= static_cast<int>( LimitMode::Soft ) ) ) {
 					limitMode = static_cast<LimitMode>( value );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 }
@@ -1497,8 +1513,8 @@ void Settings::GetSystraySettings( bool& enable, SystrayCommand& singleClick, Sy
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				enable = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='SysTraySingleClick';";
@@ -1508,8 +1524,8 @@ void Settings::GetSystraySettings( bool& enable, SystrayCommand& singleClick, Sy
 				if ( ( value >= static_cast<int>( SystrayCommand::None ) ) && ( value <= static_cast<int>( SystrayCommand::ShowHide ) ) ) {
 					singleClick = static_cast<SystrayCommand>( value );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='SysTrayDoubleClick';";
@@ -1519,8 +1535,8 @@ void Settings::GetSystraySettings( bool& enable, SystrayCommand& singleClick, Sy
 				if ( ( value >= static_cast<int>( SystrayCommand::None ) ) && ( value <= static_cast<int>( SystrayCommand::ShowHide ) ) ) {
 					doubleClick = static_cast<SystrayCommand>( value );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 }
@@ -1566,32 +1582,32 @@ void Settings::GetPlaybackSettings( bool& randomPlay, bool& repeatTrack, bool& r
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				randomPlay = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='RepeatTrack';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				repeatTrack = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='RepeatPlaylist';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				repeatPlaylist = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='Crossfade';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				crossfade = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 	if ( randomPlay ) {
@@ -1648,9 +1664,9 @@ void Settings::GetHotkeySettings( bool& enable, HotkeyList& hotkeys )
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				enable = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
 			}
+			sqlite3_finalize( stmt );
 		}
 
-		sqlite3_finalize( stmt );
 		stmt = nullptr;
 		query = "SELECT * FROM Hotkeys;";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
@@ -1806,8 +1822,8 @@ void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename,
 				if ( nullptr != text ) {
 					folder = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='ExtractFilename';";
@@ -1817,24 +1833,24 @@ void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename,
 				if ( nullptr != text ) {
 					filename = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='ExtractToLibrary';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				addToLibrary = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='ExtractJoin';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				joinTracks = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 	if ( folder.empty() || !FolderExists( folder ) ) {
@@ -1897,24 +1913,24 @@ void Settings::GetGracenoteSettings( std::string& userID, bool& enable, bool& en
 				if ( nullptr != text ) {
 					userID = reinterpret_cast<const char*>( text );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='GracenoteEnable';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				enable = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='GracenoteLog';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				enableLog = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 }
@@ -1957,8 +1973,8 @@ Settings::EQ Settings::GetEQSettings()
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				eq.Visible = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 
 		stmt = nullptr;
@@ -1966,8 +1982,8 @@ Settings::EQ Settings::GetEQSettings()
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				eq.X = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 
 		stmt = nullptr;
@@ -1975,8 +1991,8 @@ Settings::EQ Settings::GetEQSettings()
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				eq.Y = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 
 		stmt = nullptr;
@@ -1984,8 +2000,8 @@ Settings::EQ Settings::GetEQSettings()
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				eq.Enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 
 		stmt = nullptr;
@@ -1999,8 +2015,8 @@ Settings::EQ Settings::GetEQSettings()
 					preamp = EQ::MaxGain;
 				}
 				eq.Preamp = preamp;
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 
 		for ( auto& gainIter : eq.Gains ) {
@@ -2015,8 +2031,8 @@ Settings::EQ Settings::GetEQSettings()
 						gain = EQ::MaxGain;
 					}
 					gainIter.second = gain;
-					sqlite3_finalize( stmt );
 				}
+				sqlite3_finalize( stmt );
 			}
 		}
 	}
@@ -2083,8 +2099,8 @@ std::wstring Settings::GetEncoder()
 				if ( nullptr != text ) {
 					encoderName = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 	return encoderName;
@@ -2115,15 +2131,16 @@ std::string Settings::GetEncoderSettings( const std::wstring& encoder )
 		const std::string settingName = WideStringToUTF8( L"Encoder_" + encoder );
 		sqlite3_stmt* stmt = nullptr;
 		const std::string query = "SELECT Value FROM Settings WHERE Setting=?1;";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, settingName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
-				if ( nullptr != text ) {
-					settings = reinterpret_cast<const char*>( text );
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, settingName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) {
+				if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+					const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
+					if ( nullptr != text ) {
+						settings = reinterpret_cast<const char*>( text );
+					}
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 	return settings;
@@ -2160,8 +2177,8 @@ std::wstring Settings::GetSoundFont()
 				if ( nullptr != text ) {
 					soundFont = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 	return soundFont;
@@ -2195,8 +2212,8 @@ bool Settings::GetToolbarEnabled( const int toolbarID )
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 	return enabled;
@@ -2266,8 +2283,8 @@ std::wstring Settings::GetLastFolder( const std::string& folderType )
 				if ( nullptr != text ) {
 					lastFolder = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 	if ( !lastFolder.empty() ) {
@@ -2351,8 +2368,8 @@ std::string Settings::GetScrobblerKey()
 				if ( nullptr != text ) {
 					key = reinterpret_cast<const char*>( text );
 				}
-				sqlite3_finalize( stmt );
 			}
+			sqlite3_finalize( stmt );
 		}
 	}
 	std::string decryptedKey;
@@ -2708,6 +2725,148 @@ void Settings::ImportSettings( const std::string& input )
 					stmt = nullptr;
 				}
 			}
+		}
+	}
+}
+
+void Settings::GetDefaultAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn, int& maxBufferLength, int& maxLeadIn )
+{
+	useDeviceDefaultFormat = false;
+	bufferLength = 100;
+	leadIn = 0;
+	maxBufferLength = 500;
+	maxLeadIn = 2000;
+}
+
+void Settings::GetAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn )
+{
+	int maxBufferLength = 0;
+	int maxLeadIn = 0;
+	GetDefaultAdvancedWasapiExclusiveSettings( useDeviceDefaultFormat, bufferLength, leadIn, maxBufferLength, maxLeadIn );
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		std::string query = "SELECT Value FROM Settings WHERE Setting='WasapiExclusiveUseDeviceFormat';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				useDeviceDefaultFormat = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='WasapiExclusiveBufferLength';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				bufferLength = std::clamp( sqlite3_column_int( stmt, 0 /*columnIndex*/ ), 0, maxBufferLength );
+			}
+			sqlite3_finalize( stmt );
+		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='WasapiExclusiveLeadIn';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				leadIn = std::clamp( sqlite3_column_int( stmt, 0 /*columnIndex*/ ), 0, maxLeadIn );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+void Settings::SetAdvancedWasapiExclusiveSettings( const bool useDeviceDefaultFormat, const int bufferLength, const int leadIn )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "WasapiExclusiveUseDeviceFormat", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, useDeviceDefaultFormat );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "WasapiExclusiveBufferLength", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, bufferLength );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "WasapiExclusiveLeadIn", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, leadIn );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+}
+
+void Settings::GetDefaultAdvancedASIOSettings( bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn, int& maxDefaultSamplerate, int& maxLeadIn )
+{
+	useDefaultSamplerate = false;
+	defaultSamplerate = 48000;
+	leadIn = 0;
+	maxDefaultSamplerate = 192000;
+	maxLeadIn = 2000;
+}
+
+void Settings::GetAdvancedASIOSettings( bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn )
+{
+	int maxDefaultSamplerate = 0;
+	int maxLeadIn = 0;
+	GetDefaultAdvancedASIOSettings( useDefaultSamplerate, defaultSamplerate, leadIn, maxDefaultSamplerate, maxLeadIn );
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		std::string query = "SELECT Value FROM Settings WHERE Setting='ASIOUseDefaultSamplerate';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				useDefaultSamplerate = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='ASIODefaultSamplerate';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				defaultSamplerate = std::clamp( sqlite3_column_int( stmt, 0 /*columnIndex*/ ), 0, maxDefaultSamplerate );
+			}
+			sqlite3_finalize( stmt );
+		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='ASIOLeadIn';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				leadIn = std::clamp( sqlite3_column_int( stmt, 0 /*columnIndex*/ ), 0, maxLeadIn );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+void Settings::SetAdvancedASIOSettings( const bool useDefaultSamplerate, const int defaultSamplerate, const int leadIn )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "ASIOUseDefaultSamplerate", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, useDefaultSamplerate );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "ASIODefaultSamplerate", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, defaultSamplerate );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "ASIOLeadIn", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, leadIn );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
 		}
 	}
 }

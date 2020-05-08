@@ -105,7 +105,7 @@ void CDDAManager::UpdateThreadHandler()
 	}
 }
 
-std::set<wchar_t> CDDAManager::GetCDROMDrives() const
+std::set<wchar_t> CDDAManager::GetCDROMDrives()
 {
 	std::set<wchar_t> drives;
 	const DWORD bufferLength = GetLogicalDriveStrings( 0 /*bufferLength*/, nullptr /*buffer*/ );

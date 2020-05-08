@@ -171,6 +171,7 @@ void WndTray::OnContextMenuCommand( const UINT command )
 		Playlist::Item playlistItem = { menuItemIter->second, MediaInfo() };
 		Playlists playlists = m_Tree.GetPlaylists();
 		playlists.push_back( m_Tree.GetPlaylistFavourites() );
+		playlists.push_back( GetActivePlaylist() );
 		for ( const auto& playlist : playlists ) {
 			if ( playlist && playlist->GetItem( playlistItem ) ) {
 				m_Output.SetPlaylist( playlist );
@@ -202,6 +203,31 @@ void WndTray::ShowContextMenu()
 			m_PlaylistMenuItems.clear();
 			m_NextPlaylistMenuItemID = MSG_TRAYMENUSTART;
 
+			// Current playlist.
+			const Playlist::Ptr currentPlaylist = GetActivePlaylist();
+			if ( currentPlaylist ) {
+				const int itemCount = GetMenuItemCount( traymenu );
+				for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+					HMENU playlistsMenu = GetSubMenu( traymenu, itemIndex );
+					if ( ( nullptr != playlistsMenu ) && ( ID_TRAYMENU_PLAYLISTS == GetMenuItemID( playlistsMenu, 0 /*itemIndex*/ ) ) ) {
+						++itemIndex;
+						LoadString( m_hInst, IDS_TRAY_CURRENTPLAYLIST, buffer, buffersize );
+						HMENU currentPlaylistMenu = CreatePlaylistMenu( currentPlaylist );
+						const bool disableCurrentPlaylist = ( nullptr == currentPlaylistMenu );
+						if ( nullptr == currentPlaylistMenu ) {
+							currentPlaylistMenu = CreatePopupMenu();
+						}
+						if ( nullptr != currentPlaylistMenu ) {
+							InsertMenu( traymenu, itemIndex, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>( currentPlaylistMenu ), buffer );
+						}
+						if ( disableCurrentPlaylist ) {
+							EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_DISABLED );
+						}
+						break;
+					}
+				}
+			}
+
 			// Favourites.
 			const Playlist::Ptr favourites = m_Tree.GetPlaylistFavourites();
 			if ( favourites ) {
@@ -227,7 +253,7 @@ void WndTray::ShowContextMenu()
 				}
 			}
 
-			// Playlists.
+			// User playlists.
 			const int itemCount = GetMenuItemCount( traymenu );
 			for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
 				HMENU playlistsMenu = GetSubMenu( traymenu, itemIndex );
@@ -396,4 +422,10 @@ void WndTray::DoCommand( const Settings::SystrayCommand command )
 			break;
 		}
 	}
+}
+
+Playlist::Ptr WndTray::GetActivePlaylist() const
+{
+	const Playlist::Ptr activePlaylist = ( Output::State::Stopped == m_Output.GetState() ) ? m_List.GetPlaylist() : m_Output.GetPlaylist();
+	return activePlaylist;
 }

@@ -9,6 +9,7 @@
 #include <wmcodecdsp.h>
 #include <mfapi.h>
 
+#include <mutex>
 #include <string>
 
 // Shell metadata functionality 
@@ -35,5 +36,15 @@ public:
 
 	// Converts a 'propVariant' to a string.
 	static std::wstring PropertyToString( const PROPVARIANT& propVariant );
+
+private:
+	// Maps a audio subtype GUID string to an audio format description.
+	typedef std::map<std::wstring,std::wstring> AudioFormatMap;
+
+	// Audio format descriptions
+	static AudioFormatMap s_AudioFormatDescriptions;
+
+	// Audio format descriptions mutex
+	static std::mutex s_AudioFormatMutex;
 };
 

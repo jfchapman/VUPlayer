@@ -1,5 +1,5 @@
-VUPlayer 4.8
-Copyright (c) 2019 James Chapman
+VUPlayer 4.9
+Copyright (c) 2020 James Chapman
 ------------------------------------------------------------------------------
 website: http://www.vuplayer.com
 email:   james@vuplayer.com
@@ -7,7 +7,7 @@ email:   james@vuplayer.com
 
 Overview
 --------
-VUPlayer is a freeware multi-format audio player for Windows 7 SP1 or later.
+VUPlayer is an open-source multi-format audio player for Windows 7 SP1 or later.
 Gracenote functionality requires an internet connection.
 Audioscrobbler functionality requires an internet connection and a Last.fm account.
 
@@ -26,34 +26,34 @@ Please note that Gracenote and Audioscrobbler functionality is disabled when run
 
 Credits
 -------
-Main application is Copyright (c) 2019 James Chapman
+Main application is Copyright (c) 2020 James Chapman
 http://www.vuplayer.com
 
-BASS library is Copyright (c) 1999-2019 Un4seen Developments Ltd.
+BASS library is Copyright (c) 1999-2020 Un4seen Developments Ltd.
 http://www.un4seen.com
 
-Ogg Vorbis is Copyright (c) 1994-2016 Xiph.Org
+Ogg Vorbis is Copyright (c) 1994-2020 Xiph.Org
 http://xiph.org/vorbis/
 
-Opus is Copyright (c) 2011-2017 Xiph.Org
+Opus is Copyright (c) 2011-2020 Xiph.Org
 https://opus-codec.org/
 
-FLAC is Copyright (c) 2000-2009 Josh Coalson, 2011-2019 Xiph.Org
+FLAC is Copyright (c) 2000-2009 Josh Coalson, 2011-2020 Xiph.Org
 http://xiph.org/flac/
 
-WavPack is Copyright (c) 1998-2017 David Bryant
+WavPack is Copyright (c) 1998-2020 David Bryant
 http://www.wavpack.com
 
-Gracenote is Copyright (c) 2000-2019 Gracenote, Inc.
+Gracenote is Copyright (c) 2000-2020 Gracenote, Inc.
 http://www.gracenote.com
 
-Audioscrobbler is Copyright (c) 2019 Last.fm Ltd.
+Audioscrobbler is Copyright (c) 2020 Last.fm Ltd.
 http://www.last.fm
 
 
 License
 -------
-Copyright (c) 2019 James Chapman
+Copyright (c) 2020 James Chapman
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

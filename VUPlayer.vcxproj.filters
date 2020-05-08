@@ -279,9 +279,6 @@
     <ClInclude Include="Scrobbler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\sqlite-3.29.0\sqlite3.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
     <ClInclude Include="EncoderOpus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -302,6 +299,15 @@
     </ClInclude>
     <ClInclude Include="GainCalculator.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgAdvancedWasapi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgAdvancedASIO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\sqlite-3.31.1\sqlite3.h">
+      <Filter>Third Party</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -539,9 +545,6 @@
     <ClCompile Include="Scrobbler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.29.0\sqlite3.c">
-      <Filter>Third Party</Filter>
-    </ClCompile>
     <ClCompile Include="EncoderOpus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -559,6 +562,15 @@
     </ClCompile>
     <ClCompile Include="GainCalculator.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgAdvancedWasapi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgAdvancedASIO.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\sqlite-3.31.1\sqlite3.c">
+      <Filter>Third Party</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

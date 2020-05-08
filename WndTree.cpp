@@ -116,7 +116,7 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 
 DWORD WINAPI WndTree::ScratchListUpdateProc( LPVOID lpParam )
 {
-	ScratchListUpdateInfo* info = reinterpret_cast<ScratchListUpdateInfo*>( lpParam );
+	ScratchListUpdateInfo* info = static_cast<ScratchListUpdateInfo*>( lpParam );
 	if ( nullptr != info ) {
 		CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
 		for ( auto& mediaInfo : info->MediaList ) {
@@ -129,6 +129,17 @@ DWORD WINAPI WndTree::ScratchListUpdateProc( LPVOID lpParam )
 		CoUninitialize();
 	}
 	delete info;
+	return 0;
+}
+
+DWORD WINAPI WndTree::FileModifiedProc( LPVOID lpParam )
+{
+	WndTree* wndTree = static_cast<WndTree*>( lpParam );
+	if ( nullptr != wndTree ) {
+		CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
+		wndTree->OnFileModifiedHandler();
+		CoUninitialize();
+	}
 	return 0;
 }
 
@@ -167,6 +178,11 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_FolderNodesMapMutex(),
 	m_FolderPlaylistMapMutex(),
 	m_FolderMonitor( parent ),
+	m_FileModifiedThread( nullptr ),
+	m_FileModifiedStopEvent( CreateEvent( nullptr /*securityAttributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
+	m_FileModifiedWakeEvent( CreateEvent( nullptr /*securityAttributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
+	m_FilesModified(),
+	m_FilesModifiedMutex(),
 	m_ScratchListUpdateThread( nullptr ),
 	m_ScratchListUpdateStopEvent( CreateEvent( nullptr /*securityAttributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
 	m_MergeDuplicates( settings.GetMergeDuplicates() ),
@@ -192,12 +208,21 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 WndTree::~WndTree()
 {
 	SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_DefaultWndProc ) );
+
 	if ( nullptr != m_ChosenFont ) {
 		DeleteObject( m_ChosenFont );
 	}
+
 	ImageList_Destroy( m_ImageList );
+
 	if ( nullptr != m_ScratchListUpdateStopEvent ) {
 		CloseHandle( m_ScratchListUpdateStopEvent );
+	}
+	if ( nullptr != m_FileModifiedStopEvent ) {
+		CloseHandle( m_FileModifiedStopEvent );
+	}
+	if ( nullptr != m_FileModifiedWakeEvent ) {
+		CloseHandle( m_FileModifiedWakeEvent );
 	}
 }
 
@@ -221,6 +246,7 @@ void WndTree::Initialise()
 		TreeView_SelectItem( m_hWnd, m_NodeComputer );
 		TreeView_Expand( m_hWnd, m_NodeComputer, TVE_EXPAND );
 	}
+	StartFileModifiedThread();
 }
 
 HTREEITEM WndTree::GetStartupItem()
@@ -715,6 +741,7 @@ void WndTree::OnDestroy()
 	m_FolderMonitor.RemoveAllFolders();
 
 	StopScratchListUpdateThread();
+	StopFileModifiedThread();
 
 	for ( const auto& iter : m_PlaylistMap ) {
 		const Playlist::Ptr playlist = iter.second;
@@ -2533,8 +2560,25 @@ HTREEITEM WndTree::GetInsertAfter( const Playlist::Type type ) const
 
 void WndTree::OnCDDARefreshed()
 {
+	Playlist::Ptr previousPlaylist;
+	const HTREEITEM selectedItem = TreeView_GetSelection( m_hWnd );
+	if ( nullptr != selectedItem ) {
+		const auto item = m_CDDAMap.find( selectedItem );
+		if ( m_CDDAMap.end() != item ) {
+			previousPlaylist = item->second;
+		}
+	}
 	RemoveCDDA();
 	AddCDDA();
+	if ( previousPlaylist ) {
+		for ( const auto& item : m_CDDAMap ) {
+			const auto playlist = item.second;
+			if ( playlist && ( playlist->GetID() == previousPlaylist->GetID() ) ) {
+				TreeView_SelectItem( m_hWnd, item.first );
+				break;
+			}
+		}
+	}
 }
 
 void WndTree::RefreshComputerNode()
@@ -2927,8 +2971,8 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 					if ( m_FolderPlaylistMap.end() != playlistIter ) {
 						Playlist::Ptr playlist = playlistIter->second;
 						if ( playlist ) {
-							playlist->RemoveItem( MediaInfo( oldFilename ) );
-							if ( !IgnoreFileMonitorEvent( newFilename ) ) {
+							const bool removed = playlist->RemoveItem( MediaInfo( oldFilename ) );
+							if ( removed || !IgnoreFileMonitorEvent( newFilename ) ) {
 								playlist->AddPending( newFilename );
 							}
 						}
@@ -2955,6 +2999,14 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			}
 			break;
 		}
+		case FolderMonitor::Event::FileModified : {
+			if ( !IgnoreFileMonitorEvent( newFilename ) ) {
+				std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
+				m_FilesModified.insert( newFilename );
+				SetEvent( m_FileModifiedWakeEvent );
+			}
+			break;
+		}
 		case FolderMonitor::Event::FileDeleted : {
 			const auto folderIter = m_FolderNodesMap.find( folder );
 			if ( m_FolderNodesMap.end() != folderIter ) {
@@ -2973,6 +3025,30 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 		}
 		default : {
 			break;
+		}
+	}
+}
+
+void WndTree::OnFileModifiedHandler()
+{
+	const HANDLE eventHandles[ 2 ] = { m_FileModifiedStopEvent, m_FileModifiedWakeEvent };
+	while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
+		std::wstring filename;
+		{
+			std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
+			const auto iter = m_FilesModified.begin();
+			if ( m_FilesModified.end() != iter ) {
+				filename = *iter;
+				m_FilesModified.erase( iter );
+			}
+		}
+		if ( filename.empty() ) {
+			ResetEvent( m_FileModifiedWakeEvent );
+		} else {
+			MediaInfo mediaInfo( filename );
+			if ( m_Library.GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
+				m_Library.GetMediaInfo( mediaInfo );
+			}
 		}
 	}
 }
@@ -3225,6 +3301,24 @@ void WndTree::StopScratchListUpdateThread()
 	}
 }
 
+void WndTree::StartFileModifiedThread()
+{
+	StopFileModifiedThread();
+	if ( ( nullptr != m_FileModifiedStopEvent ) && ( nullptr != m_FileModifiedWakeEvent ) ) {
+		ResetEvent( m_FileModifiedStopEvent );
+		m_FileModifiedThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, FileModifiedProc, this /*param*/, 0 /*flags*/, NULL /*threadId*/ );
+	}
+}
+
+void WndTree::StopFileModifiedThread()
+{
+	if ( nullptr != m_FileModifiedThread ) {
+		SetEvent( m_FileModifiedStopEvent );
+		WaitForSingleObject( m_FileModifiedThread, INFINITE );
+		CloseHandle( m_FileModifiedThread );
+	}
+}
+
 void WndTree::SetMergeDuplicates( const bool mergeDuplicates )
 {
 	if ( mergeDuplicates != m_MergeDuplicates ) {
@@ -3260,4 +3354,27 @@ bool WndTree::IgnoreFileMonitorEvent( const std::wstring& filename ) const
 		ignore = ( m_SupportedFileExtensions.end() == m_SupportedFileExtensions.find( ext ) );
 	}
 	return ignore;
+}
+
+Playlist::Ptr WndTree::SelectAudioCD( const wchar_t drive )
+{
+	Playlist::Ptr cdPlaylist;
+	const std::wstring drivename = WideStringToLower( std::wstring( 1, drive ) );
+	if ( !drivename.empty() ) {
+		for ( const auto& item : m_CDDAMap ) {
+			const Playlist::Ptr playlist = item.second;
+			if ( playlist ) {
+				const auto tracks = playlist->GetItems();
+				if ( !tracks.empty() ) {
+					const std::wstring filename = WideStringToLower( tracks.front().Info.GetFilename() );
+					if ( !filename.empty() && ( filename.front() == drivename.front() ) ) {
+						TreeView_SelectItem( m_hWnd, item.first );
+						cdPlaylist = playlist;
+						break;
+					}
+				}
+			}
+		}
+	}
+	return cdPlaylist;
 }

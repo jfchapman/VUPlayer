@@ -30,6 +30,10 @@ INT_PTR CALLBACK Converter::DialogProc( HWND hwnd, UINT message, WPARAM wParam, 
 			}
 			break;
 		}
+		case WM_DESTROY : {
+			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+			break;
+		}
 		case WM_COMMAND : {
 			switch ( LOWORD( wParam ) ) {
 				case IDCANCEL : {
@@ -97,7 +101,8 @@ Converter::Converter( const HINSTANCE instance, const HWND parent, Library& libr
 	m_ProgressRange( 100 ),
 	m_DisplayedTrack( 0 ),
 	m_TrackCount( static_cast<long>( tracks.size() ) ),
-	m_Encoder( encoderHandler->OpenEncoder() ),
+	m_EncoderHandler( encoderHandler ),
+	m_Encoder( encoderHandler ? encoderHandler->OpenEncoder() : nullptr ),
 	m_EncoderSettings( m_Encoder ? m_Settings.GetEncoderSettings( encoderHandler->GetDescription() ) : std::string() ),
 	m_JoinFilename( joinFilename )
 {
@@ -563,7 +568,7 @@ void Converter::WriteTrackTags( const std::wstring& filename, const MediaInfo& m
 	}
 
 	if ( !tags.empty() ) {
-		m_Handlers.SetTags( filename, tags );
+		m_EncoderHandler->SetTags( filename, tags );
 	}
 }
 
@@ -576,7 +581,7 @@ void Converter::WriteAlbumTags( const std::wstring& filename, const MediaInfo& m
 	}
 
 	if ( !tags.empty() ) {
-		m_Handlers.SetTags( filename, tags );
+		m_EncoderHandler->SetTags( filename, tags );
 	}
 }
 

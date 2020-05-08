@@ -104,12 +104,17 @@ void GainCalculator::Handler()
 			std::vector<ebur128_state*> r128States;
 			r128States.reserve( pendingItems.size() );
 
+			CanContinue canContinue( [ stopEvent = m_StopEvent ] ()
+			{
+				return ( WAIT_OBJECT_0 != WaitForSingleObject( stopEvent, 0 ) );
+			} );
+
 			// Update track gain for all items.
 			Playlist::ItemList processedItems;
 			const size_t threadCount = min( pendingItems.size(), max( 1, static_cast<size_t>( std::thread::hardware_concurrency() ) ) );
 			std::list<std::thread> threads;
 			for ( size_t threadIndex = 0; threadIndex < threadCount; threadIndex++ ) {
-				threads.push_back( std::thread( [ &pendingItems, &processedItems, &itemMutex, &r128States, &r128StatesMutex, this ]() 
+				threads.push_back( std::thread( [ &pendingItems, &processedItems, &itemMutex, &r128States, &r128StatesMutex, canContinue, this ]() 
 				{
 					Playlist::Item item = {};
 					{
@@ -132,13 +137,13 @@ void GainCalculator::Handler()
 
 								int errorState = EBUR128_SUCCESS;
 								long samplesRead = decoder->Read( &buffer[ 0 ], sampleSize );
-								while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) && CanContinue() ) {
+								while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) && canContinue() ) {
 									errorState = ebur128_add_frames_float( r128State, &buffer[ 0 ], static_cast<size_t>( samplesRead ) );
 									samplesRead = decoder->Read( &buffer[ 0 ], sampleSize );
 								}
 								decoder.reset();
 
-								if ( ( EBUR128_SUCCESS == errorState ) && CanContinue() ) {
+								if ( ( EBUR128_SUCCESS == errorState ) && canContinue() ) {
 									double loudness = 0;
 									errorState = ebur128_loudness_global( r128State, &loudness );
 									if ( EBUR128_SUCCESS == errorState ) {
@@ -165,7 +170,7 @@ void GainCalculator::Handler()
 						}
 
 						item = {};
-						if ( CanContinue() ) {
+						if ( canContinue() ) {
 							std::lock_guard<std::mutex> lock( itemMutex );
 							if ( !pendingItems.empty() ) {
 								item = pendingItems.front();
@@ -182,13 +187,13 @@ void GainCalculator::Handler()
 			}
 
 			const std::wstring& album = std::get< 2 >( albumKey );
-			if ( CanContinue() && !album.empty() ) {
+			if ( canContinue() && !album.empty() ) {
 				// Update album gain for all items.
 				double loudness = 0;
 				int errorState = ebur128_loudness_global_multiple( &r128States[ 0 ], r128States.size(), &loudness );
 				if ( EBUR128_SUCCESS == errorState ) {
 					const float albumGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
-					for ( auto item = processedItems.begin(); ( processedItems.end() != item ) && CanContinue(); item++ ) {
+					for ( auto item = processedItems.begin(); ( processedItems.end() != item ) && canContinue(); item++ ) {
 						if ( albumGain != item->Info.GetGainAlbum() ) {
 							MediaInfo previousMediaInfo( item->Info );
 							item->Info.SetGainAlbum( albumGain );
@@ -213,12 +218,6 @@ void GainCalculator::Handler()
 	}
 }
 
-bool GainCalculator::CanContinue() const
-{
-	const bool canContinue = ( WAIT_OBJECT_0 != WaitForSingleObject( m_StopEvent, 0 ) );
-	return canContinue;
-}
-
 int GainCalculator::GetPendingCount() const
 {
 	return m_PendingCount.load();
@@ -235,4 +234,38 @@ Decoder::Ptr GainCalculator::OpenDecoder( const Playlist::Item& item ) const
 		}
 	}
 	return decoder;
+}
+
+float GainCalculator::CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, CanContinue canContinue )
+{
+	float gain = NAN;
+	if ( nullptr != canContinue ) {
+		const Decoder::Ptr decoder = handlers.OpenDecoder( filename );
+		if ( decoder ) {
+			const unsigned int channels = static_cast<unsigned int>( decoder->GetChannels() );
+			const unsigned long samplerate = static_cast<unsigned long>( decoder->GetSampleRate() );
+			ebur128_state* r128State = ebur128_init( channels, samplerate, EBUR128_MODE_I );
+			if ( nullptr != r128State ) {
+				const long sampleSize = 4096;
+				std::vector<float> buffer( sampleSize * channels );
+
+				int errorState = EBUR128_SUCCESS;
+				long samplesRead = decoder->Read( &buffer[ 0 ], sampleSize );
+				while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) && canContinue() ) {
+					errorState = ebur128_add_frames_float( r128State, &buffer[ 0 ], static_cast<size_t>( samplesRead ) );
+					samplesRead = decoder->Read( &buffer[ 0 ], sampleSize );
+				}
+
+				if ( ( EBUR128_SUCCESS == errorState ) && canContinue() ) {
+					double loudness = 0;
+					errorState = ebur128_loudness_global( r128State, &loudness );
+					if ( EBUR128_SUCCESS == errorState ) {
+						gain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
+					}
+				}
+				ebur128_destroy( &r128State );
+			}
+		}
+	}
+	return gain;
 }

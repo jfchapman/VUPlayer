@@ -78,6 +78,9 @@ private:
 	// Does a 'command'.
 	void DoCommand( const Settings::SystrayCommand command );
 
+	// Returns the currently active playlist.
+	Playlist::Ptr GetActivePlaylist() const;
+
 	// Maps a volume menu ID to a volume level.
 	static std::map<UINT,float> s_VolumeMenuMap;
 

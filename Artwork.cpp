@@ -91,7 +91,7 @@ void Artwork::OnSettingsChanged()
 
 void Artwork::LoadArtwork( const MediaInfo& mediaInfo, ID2D1DeviceContext* deviceContext )
 {
-	const std::wstring artworkID = mediaInfo.GetArtworkID();
+	const std::wstring artworkID = mediaInfo.GetArtworkID( true /*checkFolder*/ );
 	if ( ( artworkID != m_ArtworkID ) && ( nullptr != deviceContext ) ) {
 		FreeArtwork();
 		std::shared_ptr<Gdiplus::Bitmap> bitmap = GetArtworkBitmap( mediaInfo );
@@ -137,6 +137,17 @@ std::shared_ptr<Gdiplus::Bitmap> Artwork::GetArtworkBitmap( const MediaInfo& med
 			stream->Release();
 		}
 	}
+
+	if ( !bitmapPtr || ( bitmapPtr->GetWidth() == 0 ) || ( bitmapPtr->GetHeight() == 0 ) ) {
+		const std::wstring artworkID = mediaInfo.GetArtworkID( true /*checkFolder*/ );
+		if ( !artworkID.empty() && ( artworkID != mediaInfo.GetArtworkID( false /*checkFolder*/ ) ) ) {
+			try {
+				bitmapPtr = std::make_shared<Gdiplus::Bitmap>( artworkID.c_str() );
+			} catch ( ... ) {
+			}
+		}
+	}
+
   if ( !bitmapPtr || ( bitmapPtr->GetWidth() == 0 ) || ( bitmapPtr->GetHeight() == 0 ) ) {
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {

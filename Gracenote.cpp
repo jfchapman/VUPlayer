@@ -171,6 +171,7 @@ INT_PTR CALLBACK Gracenote::MatchDialogProc( HWND hwnd, UINT message, WPARAM wPa
 					}
 				}
 			}
+			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
 		default : {

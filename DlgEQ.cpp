@@ -77,7 +77,8 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			DlgEQ* dialog = reinterpret_cast<DlgEQ*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != dialog ) {
 				dialog->SaveSettings();
-			}		
+			}
+			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
 		default : {

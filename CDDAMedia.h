@@ -37,6 +37,9 @@ public:
 	// Returns whether the table of contents for a CD-ROM 'drive' letter contains any data tracks.
 	static bool	ContainsData( const wchar_t drive );
 
+	// Returns whether the table of contents for a CD-ROM 'drive' letter contains any CD Audio tracks.
+	static bool	ContainsCDAudio( const wchar_t drive );
+
 	// Returns the CDDB ID.
 	long GetCDDB() const;
 

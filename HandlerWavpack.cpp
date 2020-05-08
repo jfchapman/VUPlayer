@@ -42,9 +42,9 @@ bool HandlerWavpack::GetTags( const std::wstring& filename, Tags& tags ) const
 {
 	bool success = false;
 	char* error = nullptr;
-	const int flags = OPEN_TAGS | OPEN_WVC | OPEN_NORMALIZE | OPEN_DSD_AS_PCM;
+	const int flags = OPEN_TAGS | OPEN_WVC | OPEN_NORMALIZE | OPEN_DSD_AS_PCM | OPEN_FILE_UTF8;
 	const int offset = 0;
-	WavpackContext* context = WavpackOpenFileInput( WideStringToAnsiCodePage( filename ).c_str(), error, flags, offset );
+	WavpackContext* context = WavpackOpenFileInput( WideStringToUTF8( filename ).c_str(), error, flags, offset );
 	if ( nullptr != context ) {
 		const int tagCount = WavpackGetNumTagItems( context );
 		for ( const auto& tagIter : s_SupportedTags ) {
@@ -106,9 +106,9 @@ bool HandlerWavpack::SetTags( const std::wstring& filename, const Tags& tags ) c
 {
 	bool success = false;
 	char* error = nullptr;
-	const int flags = OPEN_TAGS | OPEN_EDIT_TAGS | OPEN_WVC | OPEN_NORMALIZE | OPEN_DSD_AS_PCM;
+	const int flags = OPEN_TAGS | OPEN_EDIT_TAGS | OPEN_WVC | OPEN_NORMALIZE | OPEN_DSD_AS_PCM | OPEN_FILE_UTF8;
 	const int offset = 0;
-	WavpackContext* context = WavpackOpenFileInput( WideStringToAnsiCodePage( filename ).c_str(), error, flags, offset );
+	WavpackContext* context = WavpackOpenFileInput( WideStringToUTF8( filename ).c_str(), error, flags, offset );
 	if ( nullptr != context ) {
 		success = true;
 		bool writeTags = false;

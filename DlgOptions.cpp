@@ -30,6 +30,10 @@ INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam
 			}
 			break;
 		}
+		case WM_DESTROY : {
+			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+			break;
+		}
 		case WM_NOTIFY : {
 			LPPSHNOTIFY pshNotify = reinterpret_cast<LPPSHNOTIFY>( lParam );
 			if ( nullptr != pshNotify ) {

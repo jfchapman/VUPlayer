@@ -9,7 +9,7 @@
 #include <list>
 #include <sstream>
 
-std::set<std::wstring> HandlerBass::s_SupportedFileExtensions( { L"mod", L"s3m", L"xm", L"it", L"mtm", L"mo3", L"umx", L"mp3", L"ogg", L"wav", L"mp4", L"m4a", L"mid", L"midi", L"dsd", L"dsf" } );
+std::set<std::wstring> HandlerBass::s_SupportedFileExtensions( { L"mod", L"s3m", L"xm", L"it", L"mtm", L"mo3", L"umx", L"mp2", L"mp3", L"ogg", L"wav", L"mp4", L"m4a", L"mid", L"midi", L"dsd", L"dsf" } );
 
 HandlerBass::HandlerBass() :
 	Handler(),

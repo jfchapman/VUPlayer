@@ -125,6 +125,9 @@ public:
 	// Returns the 'mediaInfo' as tags.
 	Tags GetTags( const MediaInfo& mediaInfo );
 
+	// Updates the track gain from the 'mediaInfo', returning whether the library was updated.
+	bool UpdateTrackGain( const MediaInfo& mediaInfo );
+
 private:
 	// Media library columns.
 	typedef std::map<std::string,Column> Columns;

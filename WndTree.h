@@ -165,12 +165,19 @@ public:
 	// Saves the tree control settings to application settings.
 	void SaveSettings();
 
+	// Selects the Audio CD 'drive'.
+	// Returns the playlist if the Audio CD was selected, or nullptr if not.
+	Playlist::Ptr SelectAudioCD( const wchar_t drive );
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
 	// Thread for updating media information in the scratch list.
 	static DWORD WINAPI ScratchListUpdateProc( LPVOID lpParam );
+
+	// Thread for handling file modification events from the folder monitor.
+	static DWORD WINAPI FileModifiedProc( LPVOID lpParam );
 
 	// Information for the scratch list update thread.
 	struct ScratchListUpdateInfo {
@@ -402,6 +409,9 @@ private:
 	// 'newFilename' - the new file or folder name.
 	void OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, const std::wstring& oldFilename, const std::wstring& newFilename );
 
+	// File modification thread handler.
+	void OnFileModifiedHandler();
+
 	// Returns the 'children' (including all sub-children) of the tree 'item'.
 	void GetAllChildren( const HTREEITEM item, std::set<HTREEITEM>& children ) const;
 
@@ -429,6 +439,12 @@ private:
 
 	// Stops the thread which updates the media information for the scratch list.
 	void StopScratchListUpdateThread();
+
+	// Starts the thread which handles file modification notifications.
+	void StartFileModifiedThread();
+
+	// Stops the thread which handles file modification notifications.
+	void StopFileModifiedThread();
 
 	// Returns whether to ignore a file monitor event for the 'filename'.
 	bool IgnoreFileMonitorEvent( const std::wstring& filename ) const;
@@ -537,6 +553,21 @@ private:
 
 	// Folder monitor.
 	FolderMonitor m_FolderMonitor;
+
+	// File modification thread handle.
+	HANDLE m_FileModifiedThread;
+
+	// File modification thread stop event.
+	HANDLE m_FileModifiedStopEvent;
+
+	// File modification thread wake event.
+	HANDLE m_FileModifiedWakeEvent;
+
+	// Files modified.
+	std::set<std::wstring> m_FilesModified;
+
+	// Mutex for the files modified.
+	std::mutex m_FilesModifiedMutex;
 
 	// Scratch list update thread handle.
 	HANDLE m_ScratchListUpdateThread;

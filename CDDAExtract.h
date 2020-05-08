@@ -137,6 +137,9 @@ private:
 	// The total number of samples to extract.
 	long m_TotalSamples;
 
+	// The encoder handler to use.
+	Handler::Ptr m_EncoderHandler;
+
 	// The encoder to use.
 	Encoder::Ptr m_Encoder;
 
