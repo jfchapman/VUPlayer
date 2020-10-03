@@ -243,9 +243,6 @@
     <ClInclude Include="CDDAExtract.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Gracenote.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="DlgEQ.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -509,9 +506,6 @@
     <ClCompile Include="CDDAExtract.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Gracenote.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DlgEQ.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -667,9 +661,6 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\pitch.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\gracenote.png">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\eq.ico">

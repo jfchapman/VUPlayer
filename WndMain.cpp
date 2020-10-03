@@ -386,17 +386,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
-		case MSG_GRACENOTEQUERYRESULT : {
-			if ( nullptr != vuplayer ) {
-				const Gracenote::Result* result = reinterpret_cast<const Gracenote::Result*>( wParam );
-				if ( nullptr != result ) {
-					vuplayer->OnGracenoteResult( *result, lParam );
-					delete result;
-					result = nullptr;
-				}
-			}
-			break;
-		}
 		case MSG_TRAYNOTIFY : {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnTrayNotify( wParam, lParam );
@@ -421,17 +410,6 @@ INT_PTR CALLBACK About( HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam )
 			if ( nullptr != vuplayer ) {
 				const std::wstring bassVersion = vuplayer->GetBassVersion();
 				SetDlgItemText( hDlg, IDC_ABOUT_BASSVERSION, bassVersion.c_str() );
-
-				const HWND wndLogo = GetDlgItem( hDlg, IDC_ABOUT_GRACENOTE );
-				if ( nullptr != wndLogo ) {
-					RECT clientRect = {};
-					GetClientRect( wndLogo, &clientRect );
-					const HBITMAP hBitmap = vuplayer->GetGracenoteLogo( clientRect );
-					if ( nullptr != hBitmap ) {
-						SendDlgItemMessage( hDlg, IDC_ABOUT_GRACENOTE, STM_SETIMAGE, IMAGE_BITMAP, reinterpret_cast<LPARAM>( hBitmap ) );
-						DeleteObject( hBitmap );
-					}
-				}
 			}
 			return (INT_PTR)TRUE;
 		}

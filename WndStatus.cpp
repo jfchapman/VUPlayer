@@ -46,7 +46,6 @@ WndStatus::WndStatus( HINSTANCE instance, HWND parent ) :
 	m_Playlist(),
 	m_GainStatusCount( -1 ),
 	m_LibraryStatusCount( -1 ),
-	m_GracenoteActive( false ),
 	m_IdleText()
 {
 	const int versionSize = 16;
@@ -111,19 +110,13 @@ void WndStatus::Update( Playlist* playlist )
 	}
 }
 
-void WndStatus::Update( const GainCalculator& gainCalculator, const LibraryMaintainer& libraryMaintainer, const Gracenote& gracenote )
+void WndStatus::Update( const GainCalculator& gainCalculator, const LibraryMaintainer& libraryMaintainer )
 {
 	const int pendingGain = gainCalculator.GetPendingCount();
 	const int pendingLibrary = libraryMaintainer.GetPendingCount();
-	const bool gracenoteActive = gracenote.IsActive();
-	if ( ( pendingGain != m_GainStatusCount ) || ( pendingLibrary != m_LibraryStatusCount ) || ( gracenoteActive != m_GracenoteActive ) ) {
+	if ( ( pendingGain != m_GainStatusCount ) || ( pendingLibrary != m_LibraryStatusCount ) ) {
 		std::wstring idleText = m_IdleText;
-		if ( gracenoteActive ) {
-			const int bufSize = 64;
-			WCHAR buf[ bufSize ];
-			LoadString( m_hInst, IDS_GRACENOTE_ACTIVE, buf, bufSize );
-			idleText = buf;
-		} else if ( 0 != pendingLibrary ) {
+		if ( 0 != pendingLibrary ) {
 			const int bufSize = 64;
 			WCHAR buf[ bufSize ];
 			LoadString( m_hInst, IDS_STATUS_LIBRARY, buf, bufSize );
@@ -145,7 +138,6 @@ void WndStatus::Update( const GainCalculator& gainCalculator, const LibraryMaint
 		SendMessage( m_hWnd, SB_SETTEXT, 0, reinterpret_cast<LPARAM>( idleText.c_str() ) );
 		m_GainStatusCount = pendingGain;
 		m_LibraryStatusCount = pendingLibrary;
-		m_GracenoteActive = gracenoteActive;
 	}
 }
 

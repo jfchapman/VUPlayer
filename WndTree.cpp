@@ -459,10 +459,6 @@ void WndTree::OnContextMenu( const POINT& position )
 			const UINT enableExtract = ( playlist && ( playlist->GetCount() > 0 ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( treemenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
-			VUPlayer* vuplayer = VUPlayer::Get();
-			const UINT gracenoteEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) && ( nullptr != vuplayer ) && vuplayer->IsGracenoteEnabled() ) ? MF_ENABLED : MF_DISABLED;
-			EnableMenuItem( treemenu, ID_FILE_GRACENOTE_QUERY, MF_BYCOMMAND | gracenoteEnabled );
-
 			const UINT flags = TPM_RIGHTBUTTON;
 			TrackPopupMenu( treemenu, flags, position.x, position.y, 0 /*reserved*/, m_hWnd, NULL /*rect*/ );
 		}

@@ -90,7 +90,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.31.1;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.3\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.3.0\include;libs\opus-1.3.1\include;libs\opusfile-0.11\include;libs\libopusenc-0.2.1\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.31.1;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.3\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.3.0\include;libs\opus-1.3.1\include;libs\opusfile-0.11\include;libs\libopusenc-0.2.1\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableEnhancedInstructionSet>
@@ -108,10 +108,6 @@ copy "$(ProjectDir)libs\bassdsd-2.4.1\bassdsd.dll" "$(OutDir)bassdsd.dll"
 copy "$(ProjectDir)libs\bassmix-2.4.10\bassmix.dll" "$(OutDir)bassmix.dll"
 copy "$(ProjectDir)libs\basswasapi-2.4.3\basswasapi.dll" "$(OutDir)basswasapi.dll"
 copy "$(ProjectDir)libs\bassasio-1.4\bassasio.dll" "$(OutDir)bassasio.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_vuplayer.dll" "$(OutDir)gnsdk_vuplayer.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_manager.dll" "$(OutDir)gnsdk_manager.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_musicid.dll" "$(OutDir)gnsdk_musicid.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_storage_sqlite.dll" "$(OutDir)gnsdk_storage_sqlite.dll"
 copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
 </Command>
     </PostBuildEvent>
@@ -146,10 +142,6 @@ copy "$(ProjectDir)libs\bassdsd-2.4.1\x64\bassdsd.dll" "$(OutDir)bassdsd.dll"
 copy "$(ProjectDir)libs\bassmix-2.4.10\x64\bassmix.dll" "$(OutDir)bassmix.dll"
 copy "$(ProjectDir)libs\basswasapi-2.4.3\x64\basswasapi.dll" "$(OutDir)basswasapi.dll"
 copy "$(ProjectDir)libs\bassasio-1.4\x64\bassasio.dll" "$(OutDir)bassasio.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_vuplayer.dll" "$(OutDir)gnsdk_vuplayer.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_manager.dll" "$(OutDir)gnsdk_manager.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_musicid.dll" "$(OutDir)gnsdk_musicid.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)gnsdk_storage_sqlite.dll"
 copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
 </Command>
     </PostBuildEvent>
@@ -168,7 +160,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.31.1;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.3\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.3.0\include;libs\opus-1.3.1\include;libs\opusfile-0.11\include;libs\libopusenc-0.2.1\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.31.1;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.3\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.3.0\include;libs\opus-1.3.1\include;libs\opusfile-0.11\include;libs\libopusenc-0.2.1\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <EnableEnhancedInstructionSet>
@@ -189,10 +181,6 @@ copy "$(ProjectDir)libs\bassdsd-2.4.1\bassdsd.dll" "$(OutDir)bassdsd.dll"
 copy "$(ProjectDir)libs\bassmix-2.4.10\bassmix.dll" "$(OutDir)bassmix.dll"
 copy "$(ProjectDir)libs\basswasapi-2.4.3\basswasapi.dll" "$(OutDir)basswasapi.dll"
 copy "$(ProjectDir)libs\bassasio-1.4\bassasio.dll" "$(OutDir)bassasio.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_vuplayer.dll" "$(OutDir)gnsdk_vuplayer.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_manager.dll" "$(OutDir)gnsdk_manager.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_musicid.dll" "$(OutDir)gnsdk_musicid.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x86\gnsdk_storage_sqlite.dll" "$(OutDir)gnsdk_storage_sqlite.dll"
 copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
 </Command>
     </PostBuildEvent>
@@ -232,10 +220,6 @@ copy "$(ProjectDir)libs\bassdsd-2.4.1\x64\bassdsd.dll" "$(OutDir)bassdsd.dll"
 copy "$(ProjectDir)libs\bassmix-2.4.10\x64\bassmix.dll" "$(OutDir)bassmix.dll"
 copy "$(ProjectDir)libs\basswasapi-2.4.3\x64\basswasapi.dll" "$(OutDir)basswasapi.dll"
 copy "$(ProjectDir)libs\bassasio-1.4\x64\bassasio.dll" "$(OutDir)bassasio.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_vuplayer.dll" "$(OutDir)gnsdk_vuplayer.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_manager.dll" "$(OutDir)gnsdk_manager.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_musicid.dll" "$(OutDir)gnsdk_musicid.dll"
-copy "$(ProjectDir)libs\gnsdk_vuplayer\x64\gnsdk_storage_sqlite.dll" "$(OutDir)gnsdk_storage_sqlite.dll"
 copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
 </Command>
     </PostBuildEvent>
@@ -271,7 +255,6 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="EncoderOpus.h" />
     <ClInclude Include="EncoderPCM.h" />
     <ClInclude Include="FolderMonitor.h" />
-    <ClInclude Include="Gracenote.h" />
     <ClInclude Include="Handler.h" />
     <ClInclude Include="HandlerBass.h" />
     <ClInclude Include="HandlerCDDA.h" />
@@ -372,7 +355,6 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClCompile Include="EncoderOpus.cpp" />
     <ClCompile Include="EncoderPCM.cpp" />
     <ClCompile Include="FolderMonitor.cpp" />
-    <ClCompile Include="Gracenote.cpp" />
     <ClCompile Include="HandlerBass.cpp">
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4200</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4200</DisableSpecificWarnings>

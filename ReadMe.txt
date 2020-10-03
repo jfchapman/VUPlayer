@@ -1,4 +1,4 @@
-VUPlayer 4.9
+VUPlayer 4.9.1
 Copyright (c) 2020 James Chapman
 ------------------------------------------------------------------------------
 website: http://www.vuplayer.com
@@ -8,7 +8,6 @@ email:   james@vuplayer.com
 Overview
 --------
 VUPlayer is an open-source multi-format audio player for Windows 7 SP1 or later.
-Gracenote functionality requires an internet connection.
 Audioscrobbler functionality requires an internet connection and a Last.fm account.
 
 
@@ -43,9 +42,6 @@ http://xiph.org/flac/
 
 WavPack is Copyright (c) 1998-2020 David Bryant
 http://www.wavpack.com
-
-Gracenote is Copyright (c) 2000-2020 Gracenote, Inc.
-http://www.gracenote.com
 
 Audioscrobbler is Copyright (c) 2020 Last.fm Ltd.
 http://www.last.fm

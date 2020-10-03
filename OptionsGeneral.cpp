@@ -63,17 +63,6 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		Button_SetCheck( hwndMergeDuplicates, ( mergeDuplicates ? BST_CHECKED : BST_UNCHECKED ) );
 	}
 
-	const HWND hwndGracenote = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_GRACENOTE_ENABLE );
-	if ( nullptr != hwndGracenote ) {
-		const bool gracenoteAvailable = ( nullptr != vuplayer ) && vuplayer->IsGracenoteAvailable();
-		std::string userID;
-		bool gracenoteEnabled = true;
-		bool gracenoteLog = true;
-		GetSettings().GetGracenoteSettings( userID, gracenoteEnabled, gracenoteLog );
-		Button_SetCheck( hwndGracenote, ( gracenoteEnabled ? BST_CHECKED : BST_UNCHECKED ) );
-		EnableWindow( hwndGracenote, gracenoteAvailable ? TRUE : FALSE );
-	}
-
 	const bool scrobblerAvailable = ( nullptr != vuplayer ) && vuplayer->IsScrobblerAvailable();
 	const HWND hwndScrobblerEnable = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SCROBBLER_ENABLE );
 	if ( nullptr != hwndScrobblerEnable ) {
@@ -134,13 +123,6 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 	GetSettings().SetOutputSettings( device, mode );
 
 	// Miscellaneous settings
-	std::string userID;
-	bool gracenoteEnabled = true;
-	bool gracenoteLog = true;
-	GetSettings().GetGracenoteSettings( userID, gracenoteEnabled, gracenoteLog );
-	gracenoteEnabled = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_GRACENOTE_ENABLE ) ) );
-	GetSettings().SetGracenoteSettings( userID, gracenoteEnabled, gracenoteLog );
-
 	const bool mergeDuplicates = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_HIDEDUPLICATES ) ) );
 	GetSettings().SetMergeDuplicates( mergeDuplicates );
 

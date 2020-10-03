@@ -67,9 +67,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_Settings( m_Database, m_Library, portableSettings ),
 	m_Output( m_hWnd, m_Handlers, m_Settings, m_Settings.GetVolume() ),
 	m_GainCalculator( m_Library, m_Handlers ),
-	m_Gracenote( m_hInst, m_hWnd, m_Settings, portable /*disable*/ ),
 	m_Scrobbler( m_Database, m_Settings, portable /*disable*/ ),
-	m_CDDAManager( m_hInst, m_hWnd, m_Library, m_Handlers, m_Gracenote ),
+	m_CDDAManager( m_hInst, m_hWnd, m_Library, m_Handlers ),
 	m_Rebar( m_hInst, m_hWnd, m_Settings ),
 	m_Status( m_hInst, m_hWnd ),
 	m_Tree( m_hInst, m_hWnd, m_Library, m_Settings, m_CDDAManager ),
@@ -501,7 +500,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_ToolbarConvert.Update( currentPlaylist );
 		m_Rebar.Update();
 		m_Counter.Refresh();
-		m_Status.Update( m_GainCalculator, m_Maintainer, m_Gracenote );
+		m_Status.Update( m_GainCalculator, m_Maintainer );
 		m_Tray.Update( m_CurrentOutput );
 	}
 	if ( !handled ) {
@@ -901,10 +900,6 @@ void VUPlayer::OnCommand( const int commandID )
 			OnConvert();
 			break;
 		}
-		case ID_FILE_GRACENOTE_QUERY : {
-			OnGracenoteQuery();
-			break;
-		}
 		case ID_FILE_EXPORTSETTINGS : {
 			OnExportSettings();
 			break;
@@ -1085,8 +1080,6 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | gainCalculatorEnabled );
 		const UINT refreshLibraryEnabled = ( 0 == m_Maintainer.GetPendingCount() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
-		const UINT gracenoteEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) && IsGracenoteEnabled() ) ? MF_ENABLED : MF_DISABLED;
-		EnableMenuItem( menu, ID_FILE_GRACENOTE_QUERY, MF_BYCOMMAND | gracenoteEnabled );
 
 		const int bufferSize = 64;
 		WCHAR buffer[ bufferSize ] = {};
@@ -1345,41 +1338,6 @@ std::shared_ptr<Gdiplus::Bitmap> VUPlayer::GetPlaceholderImage()
 	return bitmap;
 }
 
-HBITMAP VUPlayer::GetGracenoteLogo( const RECT& rect )
-{
-	HBITMAP hBitmap = nullptr;
-	const std::shared_ptr<Gdiplus::Bitmap> gracenoteLogo = LoadResourcePNG( IDB_GRACENOTE );
-	if ( gracenoteLogo ) {
-		Gdiplus::Bitmap bitmap( rect.right - rect.left, rect.bottom - rect.top, PixelFormat32bppARGB );
-		Gdiplus::Graphics graphics( &bitmap );
-		graphics.SetInterpolationMode( Gdiplus::InterpolationModeHighQualityBicubic );
-		const Gdiplus::RectF destRect( 0, 0, static_cast<Gdiplus::REAL>( bitmap.GetWidth() ), static_cast<Gdiplus::REAL>( bitmap.GetHeight() ) );
-		const Gdiplus::RectF logoRect( 0, 0, static_cast<Gdiplus::REAL>( gracenoteLogo->GetWidth() ), static_cast<Gdiplus::REAL>( gracenoteLogo->GetHeight() ) );
-		if ( ( destRect.Width > 0 ) && ( destRect.Height > 0 ) && ( logoRect.Width > 0 ) && ( logoRect.Height > 0 ) ) {
-			Gdiplus::REAL x = 0;
-			Gdiplus::REAL y = 0;
-			Gdiplus::REAL width = 0;
-			Gdiplus::REAL height = 0;
-			const Gdiplus::REAL destAspectRatio = destRect.Width / destRect.Height;
-			const Gdiplus::REAL logoAspectRatio = logoRect.Width / logoRect.Height;
-			if ( destAspectRatio < logoAspectRatio ) {
-				width = destRect.Width;
-				height = destRect.Width / logoAspectRatio;
-				y = ( destRect.Height - height ) / 2;
-			} else {
-				height = destRect.Height;
-				width = destRect.Height * logoAspectRatio;
-				x = ( destRect.Width - width ) / 2;
-			}
-			if ( Gdiplus::Ok == graphics.DrawImage( gracenoteLogo.get(), x, y, width, height ) ) {
-				const Gdiplus::Color background( static_cast<Gdiplus::ARGB>( Gdiplus::Color::Transparent ) );
-				bitmap.GetHBITMAP( background, &hBitmap );
-			}
-		}
-	}
-	return hBitmap;
-}
-
 void VUPlayer::OnOptions()
 {
 	const std::string previousScrobblerToken = m_Scrobbler.GetToken();
@@ -1582,87 +1540,6 @@ void VUPlayer::OnConvert()
 			}
 		}
 	}
-}
-
-void VUPlayer::OnGracenoteQuery()
-{
-	const Playlist::Ptr playlist = m_List.GetPlaylist();
-	if ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) {
-		const Playlist::ItemList playlistItems = playlist->GetItems();
-		if ( !playlistItems.empty() ) {
-			const long cddbID = playlistItems.front().Info.GetCDDB();
-			const CDDAManager::CDDAMediaMap drives = m_CDDAManager.GetCDDADrives();
-			for ( const auto& drive : drives ) {
-				if ( cddbID == drive.second.GetCDDB() ) {
-					const std::string toc = drives.begin()->second.GetGracenoteTOC();
-					m_Gracenote.Query( toc, true /*forceDialog*/ );
-					break;
-				}
-			}
-		}
-	}
-}
-
-void VUPlayer::OnGracenoteResult( const Gracenote::Result& result, const bool forceDialog )
-{
-	const int selectedResult = ( result.ExactMatch && !forceDialog ) ? 0 : m_Gracenote.ShowMatchesDialog( result );
-	if ( ( selectedResult >= 0 ) && ( selectedResult < static_cast<int>( result.Albums.size() ) ) ) {
-		const Gracenote::Album& album = result.Albums[ selectedResult ];
-		const CDDAManager::CDDAMediaMap drives = m_CDDAManager.GetCDDADrives();
-		for ( const auto& drive : drives ) {
-			if ( result.TOC == drive.second.GetGracenoteTOC() ) {
-				const CDDAMedia& cddaMedia = drive.second;
-				const Playlist::Ptr playlist = cddaMedia.GetPlaylist();
-				if ( playlist ) {
-					const Playlist::ItemList items = playlist->GetItems();
-					for ( const auto& item : items ) {
-						const MediaInfo previousMediaInfo( item.Info );
-						MediaInfo mediaInfo( item.Info );
-						mediaInfo.SetAlbum( album.Title );
-						mediaInfo.SetArtist( album.Artist );
-						mediaInfo.SetGenre( album.Genre );
-						mediaInfo.SetYear( album.Year );
-
-						mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
-
-						const auto trackIter = album.Tracks.find( mediaInfo.GetTrack() );
-						if ( album.Tracks.end() != trackIter ) {
-							const Gracenote::Track& track = trackIter->second;
-							mediaInfo.SetTitle( track.Title );
-							if ( !track.Artist.empty() ) {
-								mediaInfo.SetArtist( track.Artist );
-							}
-							if ( !track.Genre.empty() ) {
-								mediaInfo.SetGenre( track.Genre );
-							}
-							if ( 0 != track.Year ) {
-								mediaInfo.SetYear( track.Year );
-							}
-						}
-						m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
-					}
-				}
-				break;
-			}
-		}
-	}
-}
-
-bool VUPlayer::IsGracenoteAvailable()
-{
-	const bool available = m_Gracenote.IsAvailable();
-	return available;
-}
-
-bool VUPlayer::IsGracenoteEnabled()
-{
-	bool enabled = IsGracenoteAvailable();
-	if ( enabled ) {
-		std::string userID;
-		bool enableLog = true;
-		m_Settings.GetGracenoteSettings( userID, enabled, enableLog );
-	}
-	return enabled;
 }
 
 bool VUPlayer::IsScrobblerAvailable()
