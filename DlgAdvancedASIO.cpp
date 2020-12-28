@@ -11,6 +11,7 @@ INT_PTR CALLBACK DlgAdvancedASIO::DialogProc( HWND hwnd, UINT message, WPARAM wP
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
+				return TRUE;
 			}
 			break;
 		}

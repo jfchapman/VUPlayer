@@ -76,6 +76,9 @@ private:
 	// BASS DSD plugin.
 	HPLUGIN m_BassDSD;
 
+	// BASS HLS plugin.
+	HPLUGIN m_BassHLS;
+
 	// BASS midi soundfont.
 	HSOUNDFONT m_BassMidiSoundFont;
 

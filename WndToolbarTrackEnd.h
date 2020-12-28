@@ -7,9 +7,8 @@ class WndToolbarTrackEnd : public WndToolbar
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndToolbarTrackEnd( HINSTANCE instance, HWND parent );
-
-	virtual ~WndToolbarTrackEnd();
+	// 'settings' - application settings.
+	WndToolbarTrackEnd( HINSTANCE instance, HWND parent, Settings& settings );
 
 	// Updates the toolbar state.
 	// 'output' - output object.
@@ -23,14 +22,5 @@ public:
 private:
 	// Creates the buttons.
 	void CreateButtons();
-
-	// Creates the image list.
-	void CreateImageList();
-
-	// Image list.
-	HIMAGELIST m_ImageList;
-
-	// Maps an image list index to a command ID.
-	std::map<int,UINT> m_ImageMap;
 };
 

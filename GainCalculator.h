@@ -2,6 +2,7 @@
 
 #include "Playlist.h"
 #include "Settings.h"
+#include "Decoder.h"
 
 #include <atomic>
 #include <functional>
@@ -16,15 +17,12 @@ public:
 
 	virtual ~GainCalculator();
 
-	// A callback which returns true to continue.
-	typedef std::function< bool() > CanContinue;
-
 	// Calculates track gain for a single file.
 	// 'filename' - media filename.
 	// 'handlers' - media handlers.
 	// 'canContinue' - callback which returns whether the calculation can continue.
 	// Returns the track gain, or NaN if the calculation failed or was cancelled.
-	static float CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, CanContinue canContinue );
+	static float CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, Decoder::CanContinue canContinue );
 
 	// Calculates gain values for the playlist 'items'.
 	void Calculate( const Playlist::ItemList& items );

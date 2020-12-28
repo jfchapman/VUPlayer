@@ -59,14 +59,16 @@ public:
 	// Plays the next track.
 	void Next();
 	
-	// Sets the current 'playlist', setting the current state to stopped if necessary.
-	void SetPlaylist( const Playlist::Ptr playlist );
+	// Sets the current 'playlist', and starts playback.
+	// 'startID' - Playlist ID at which to start playback (or zero to start playback at the first playlist item).
+	// 'seek' - Initial start position in seconds (negative value to seek relative to the end of the track).
+	void Play( const Playlist::Ptr playlist, const long startID = 0, const float seek = 0.0f );
 
 	// Gets the current playlist.
 	Playlist::Ptr GetPlaylist();
 
 	// Returns the current output state.
-	State GetState() const;
+	State GetState();
 
 	// Returns the currently playing item.
 	Item GetCurrentPlaying();
@@ -176,6 +178,9 @@ public:
 	// Updates the EQ settings.
 	void UpdateEQ( const Settings::EQ& eq );
 
+	// Returns the available handlers.
+	const Handlers& GetHandlers() const;
+
 private:
 	// Output queue.
 	typedef std::vector<Item> Queue;
@@ -188,6 +193,13 @@ private:
 
 	// A list of FX.
 	typedef std::list<HFX> FXList;
+
+	// Preloaded decoder information.
+	struct PreloadedDecoder {
+		Playlist::Item itemToPreload = {};			// Item to preload.
+		Playlist::Item item = {};								// Preloaded item.
+		Decoder::Ptr	 decoder = {};						// Preloaded decoder.
+	};
 
 	// BASS stream callback.
 	static DWORD CALLBACK StreamProc( HSTREAM handle, void *buf, DWORD len, void *user );
@@ -213,6 +225,9 @@ private:
 	// Loudness precalculation thread procedure.
 	static DWORD WINAPI LoudnessPrecalcThreadProc( LPVOID lpParam );
 
+	// Preload decoder thread procedure.
+	static DWORD WINAPI PreloadDecoderProc( LPVOID lpParam );
+
 	// Gets the current tick count.
 	static LONGLONG GetTick();
 
@@ -234,6 +249,9 @@ private:
 
 	// Background thread handler for precalculating loudness values for tracks in the current playlist.
 	void LoudnessPrecalcHandler();
+
+	// Background thread handler for preloading the next decoder.
+	void PreloadDecoderHandler();
 
 	// Initialises the BASS system;
 	void InitialiseBass();
@@ -263,8 +281,9 @@ private:
 	// Sets the output 'queue'.
 	void SetOutputQueue( const Queue& queue );
 
-	// Returns a decoder for the 'item', or nullptr if a decoder could not be opened.
-	Decoder::Ptr OpenDecoder( const Playlist::Item& item ) const;
+	// Returns a decoder for the 'item' (and updates the item if necessary), or nullptr if a decoder could not be opened.
+	// 'usePreloadedDecoder' - whether to use the preloaded decoder (when available).
+	Decoder::Ptr OpenDecoder( Playlist::Item& item, const bool usePreloadedDecoder = false );
 
 	// Starts the output and returns the output state.
 	State StartOutput();
@@ -303,6 +322,22 @@ private:
 
 	// Stops the loudness precalculation thread.
 	void StopLoudnessPrecalcThread();
+
+	// Sets whether the output stream has finished.
+	void SetOutputStreamFinished( const bool finished );
+
+	// Returns the next decoder on from the 'item', or nullptr if a decoder could not be opened.
+	// Updates 'item' with the next playlist item on success, resets 'item' on failure.
+	Decoder::Ptr GetNextDecoder( Playlist::Item& item );
+
+	// Starts the preload decoder thread.
+	void StartPreloadDecoderThread();
+
+	// Stops the preload decoder thread.
+	void StopPreloadDecoderThread();
+
+	// Preloads the next decoder on from the current 'item'.
+	void PreloadNextDecoder( const Playlist::Item& item );
 
 	// Parent window handle.
 	HWND m_Parent;
@@ -415,6 +450,15 @@ private:
 	// Event handle for terminating the loudness precalculation thread.
 	HANDLE m_LoudnessPrecalcStopEvent;
 
+	// The thread for preloading the next decoder.
+	HANDLE m_PreloadDecoderThread;
+
+	// Event handle for terminating the preload decoder thread.
+	HANDLE m_PreloadDecoderStopEvent;
+
+	// Event handle for waking the preload decoder thread.
+	HANDLE m_PreloadDecoderWakeEvent;
+
 	// The decoding stream that is being faded out during a crossfade.
 	Decoder::Ptr m_CrossfadingStream;
 
@@ -463,6 +507,15 @@ private:
 	// Indicates whether ASIO should be reinitialised the next time playback is started.
 	std::atomic<bool> m_ResetASIO;
 
+	// Indicates whether the output stream has finished.
+	std::atomic<bool> m_OutputStreamFinished;
+
 	// When starting playback in non-standard output mode, the lead-in length before passing through actual sample data.
 	float m_LeadInSeconds;
+
+	// A preloaded decoder, which can be used to minimize the delay when switching streams.
+	PreloadedDecoder m_PreloadedDecoder;
+
+	// A mutex for the preloaded decoder.
+	std::mutex m_PreloadedDecoderMutex;
 };

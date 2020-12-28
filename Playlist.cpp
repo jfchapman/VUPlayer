@@ -3,10 +3,15 @@
 #include "Utility.h"
 #include "VUPlayer.h"
 
+#include <array>
+#include <filesystem>
 #include <fstream>
 
 // Next available playlist item ID.
 long Playlist::s_NextItemID = 0;
+
+// Supported playlist file extensions.
+constexpr std::array s_SupportedExtensions { L"vpl", L"m3u", L"m3u8", L"pls" };
 
 DWORD WINAPI Playlist::PendingThreadProc( LPVOID lpParam )
 {
@@ -166,15 +171,25 @@ bool Playlist::GetPreviousItem( const Item& currentItem, Item& previousItem, con
 	return success;
 }
 
-Playlist::Item Playlist::GetRandomItem()
+Playlist::Item Playlist::GetRandomItem( const Item& currentItem )
 {
-	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	Item item;
-	if ( !m_Playlist.empty() ) {
-		const long long itemPosition = GetRandomNumber( 0 /*minimum*/, m_Playlist.size() -1 /*maximum*/ );
-		auto iter = m_Playlist.begin();
-		std::advance( iter, itemPosition );
-		item = *iter;
+	std::vector<Item> pickItems;
+	{
+		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+		pickItems.reserve( m_Playlist.size() );
+		for ( const auto& item : m_Playlist ) {
+			if ( currentItem.ID != item.ID ) {
+				pickItems.emplace_back( item );
+			}
+		}
+	}
+
+	Item item = currentItem;
+	if ( !pickItems.empty() ) {
+		const size_t pos = static_cast<size_t>( GetRandomNumber( 0 /*minimum*/, pickItems.size() - 1 /*maximum*/ ) );
+		if ( pos < pickItems.size() ) {
+			item = pickItems[ pos ];
+		}
 	}
 	return item;
 }
@@ -271,7 +286,7 @@ void Playlist::OnPendingThreadHandler()
 		if ( !filename.empty() ) {
 			bool addItem = true;
 			const Type type = GetType();
-			if ( ( Type::All == type ) || ( Type::Favourites == type ) || ( Type::Folder == type ) ) {
+			if ( ( Type::All == type ) || ( Type::Favourites == type ) || ( Type::Folder == type ) || ( Type::Streams == type ) ) {
 				addItem = !ContainsFilename( filename );
 			}
 			if ( addItem ) {
@@ -775,4 +790,146 @@ void Playlist::UpdateItem( const Item& item )
 	if ( m_Playlist.end() != foundItem ) {
 		*foundItem = item;
 	}
+}
+
+bool Playlist::AddPlaylist( const std::wstring& filename, const bool startPendingThread )
+{
+	bool added = false;
+	const std::wstring fileExt = GetFileExtension( filename );
+	if ( L"vpl" == fileExt ) {
+		added = AddVPL( filename );
+	} else if ( ( L"m3u" == fileExt ) || ( L"m3u8" == fileExt ) ) {
+		added = AddM3U( filename );
+	} else if ( L"pls" == fileExt ) {
+		added = AddPLS( filename );
+	}
+	if ( added && startPendingThread ) {
+		StartPendingThread();
+	}
+	return added;
+}
+
+bool Playlist::AddVPL( const std::wstring& filename )
+{
+	bool added = false;
+	try {
+		std::ifstream stream;
+		stream.open( filename, std::ios::binary | std::ios::in );
+		if ( stream.is_open() ) {
+			do {
+				std::string line;
+				std::getline( stream, line );
+				const size_t delimiter = line.find_first_of( 0x01 );
+				if ( std::string::npos != delimiter ) {
+					const std::string name = line.substr( 0 /*offset*/, delimiter /*count*/ );			
+					AddPending( AnsiCodePageToWideString( name ), false /*startPendingThread*/ );
+					added = true;
+				}
+			} while ( !stream.eof() );
+			stream.close();
+		}
+	} catch ( ... ) {
+	}
+	return added;
+}
+
+bool Playlist::AddM3U( const std::wstring& filename )
+{
+	bool added = false;
+	try {
+		std::ifstream stream;
+		stream.open( filename, std::ios::in );
+		if ( stream.is_open() ) {
+			std::filesystem::path playlistPath( filename );
+			playlistPath = playlistPath.parent_path();
+			do {
+				std::string line;
+				std::getline( stream, line );
+				if ( !line.empty() ) {
+					const std::wstring filenameEntry = UTF8ToWideString( line );
+					if ( ( filenameEntry.size() > 0 ) && ( '#' != filenameEntry.front() ) ) {
+						if ( IsURL( filenameEntry ) ) {
+							AddPending( filenameEntry, false /*startPendingThread*/ );
+							added = true;
+						} else {
+							std::filesystem::path filePath = std::filesystem::path( filenameEntry ).lexically_normal();
+							if ( filePath.is_relative() ) {
+								filePath = playlistPath / filePath;
+							}
+							if ( std::filesystem::exists( filePath ) ) {
+								AddPending( filePath, false /*startPendingThread*/ );
+								added = true;
+							}
+						}
+					}
+				}
+			} while ( !stream.eof() );
+			stream.close();
+		}
+	} catch ( ... ) {
+	}
+	return added;
+}
+
+bool Playlist::AddPLS( const std::wstring& filename )
+{
+	bool added = false;
+	try {
+		std::ifstream stream;
+		stream.open( filename, std::ios::in );
+		if ( stream.is_open() ) {
+			std::filesystem::path playlistPath( filename );
+			playlistPath = playlistPath.parent_path();
+			do {
+				std::string line;
+				std::getline( stream, line );
+				const size_t fileEntry = line.find( "File" );
+				const size_t delimiter = line.find_first_of( '=' );
+				if ( ( 0 == fileEntry ) && ( std::string::npos != delimiter ) ) {
+					const std::string name = line.substr( delimiter + 1 );
+					if ( !name.empty() ) {
+						const std::wstring filenameEntry = UTF8ToWideString( name );
+						if ( IsURL( filenameEntry ) ) {
+							AddPending( filenameEntry, false /*startPendingThread*/ );
+							added = true;
+						} else {
+							std::filesystem::path filePath = std::filesystem::path( filenameEntry ).lexically_normal();
+							if ( filePath.is_relative() ) {
+								filePath = playlistPath / filePath;
+							}
+							if ( std::filesystem::exists( filePath ) ) {
+								AddPending( filePath, false /*startPendingThread*/ );
+								added = true;
+							}
+						}
+					}
+				}
+			} while ( !stream.eof() );
+			stream.close();
+		}
+	} catch ( ... ) {
+	}
+	return added;
+}
+
+std::set<std::wstring> Playlist::GetSupportedPlaylistExtensions()
+{
+	return { s_SupportedExtensions.begin(), s_SupportedExtensions.end() };
+}
+
+bool Playlist::IsSupportedPlaylist( const std::wstring& filename )
+{
+	return ( s_SupportedExtensions.end() != std::find( s_SupportedExtensions.begin(), s_SupportedExtensions.end(), GetFileExtension( filename ) ) );
+}
+
+bool Playlist::CanConvertAnyItems()
+{
+	bool canConvert = false;
+	const auto items = GetItems();
+	auto item = items.begin();
+	while ( !canConvert && ( items.end() != item ) ) {
+		canConvert = ( item->Info.GetDuration() > 0 );
+		++item;
+	}
+	return canConvert;
 }

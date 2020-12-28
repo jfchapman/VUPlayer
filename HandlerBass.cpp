@@ -15,6 +15,7 @@ HandlerBass::HandlerBass() :
 	Handler(),
 	m_BassMidi( BASS_PluginLoad( L"bassmidi.dll", BASS_UNICODE ) ),
 	m_BassDSD( BASS_PluginLoad( L"bassdsd.dll", BASS_UNICODE ) ),
+	m_BassHLS( BASS_PluginLoad( L"basshls.dll", BASS_UNICODE ) ),
 	m_BassMidiSoundFont( 0 ),
 	m_SoundFontFilename()
 {
@@ -33,6 +34,10 @@ HandlerBass::~HandlerBass()
 	if ( 0 != m_BassDSD ) {
 		BASS_PluginFree( m_BassDSD );
 		m_BassDSD = 0;
+	}
+	if ( 0 != m_BassHLS ) {
+		BASS_PluginFree( m_BassHLS );
+		m_BassHLS = 0;
 	}
 }
 

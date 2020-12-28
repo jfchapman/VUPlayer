@@ -39,6 +39,7 @@ public:
 //		PeakAlbum = 19,	*DEPRECATED*
 		Artwork = 20,
 		CDDB = 21,
+		Bitrate = 22,
 
 		_Undefined
 	};
@@ -100,6 +101,9 @@ public:
 	// Returns all media information contained in the media library.
 	MediaInfo::List GetAllMedia();
 
+	// Returns all network streams contained in the media library.
+	MediaInfo::List GetStreams();
+
 	// Returns whether the 'artist' exists in the media library.
 	bool GetArtistExists( const std::wstring& artist );
 
@@ -125,8 +129,16 @@ public:
 	// Returns the 'mediaInfo' as tags.
 	Tags GetTags( const MediaInfo& mediaInfo );
 
-	// Updates the track gain from the 'mediaInfo', returning whether the library was updated.
-	bool UpdateTrackGain( const MediaInfo& mediaInfo );
+	// Updates the track gain, if necessary.
+	// 'previousInfo' - previous media information.
+	// 'updatedInfo' - updated media information.
+	// 'sendNotification' - whether to notify the main application if the library has been updated.
+	// Returns whether the library was updated.
+	bool UpdateTrackGain( const MediaInfo& previousInfo, const MediaInfo& updatedInfo, const bool sendNotification = true );
+
+	// Updates 'mediaInfo' with 'decoder' information.
+	// 'sendNotification' - whether to notify the main application if the library has been updated.
+	void UpdateMediaInfoFromDecoder( MediaInfo& mediaInfo, const Decoder& decoder, const bool sendNotification = true );
 
 private:
 	// Media library columns.

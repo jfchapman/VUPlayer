@@ -32,6 +32,9 @@ public:
 	// Starts playback at the playlist 'itemID'.
 	void OnPlay( const long itemID );
 
+	// Starts playback at the currently selected item.
+	void PlaySelected();
+
 	// Displays the context menu at the specified 'position', in screen coordinates.
 	void OnContextMenu( const POINT& position );
 
@@ -129,6 +132,9 @@ public:
 
 	// Launches a file selector dialog to add files to the playlist.
 	void OnCommandAddFiles();
+
+	// Launches a dialog to add a network stream to the playlist.
+	void OnCommandAddStream();
 
 	// Called when a 'command' is received to show or hide a column.
 	void OnShowColumn( const UINT command );

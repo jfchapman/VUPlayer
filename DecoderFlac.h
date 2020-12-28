@@ -14,30 +14,33 @@ public:
 	// Throws a std::runtime_error exception if the file could not be loaded.
 	DecoderFlac( const std::wstring& filename );
 
-	virtual ~DecoderFlac();
+	~DecoderFlac() override;
 
 	// Reads sample data.
 	// 'buffer' - output buffer (floating point format scaled to +/-1.0f).
 	// 'sampleCount' - number of samples to read.
 	// Returns the number of samples read, or zero if the stream has ended.
-	virtual long Read( float* buffer, const long sampleCount );
+	long Read( float* buffer, const long sampleCount ) override;
 
 	// Seeks to a 'position' in the stream, in seconds.
 	// Returns the new position in seconds.
-	virtual float Seek( const float position );
+	float Seek( const float position ) override;
 
 protected:
 	// FLAC callbacks
-	virtual FLAC__StreamDecoderReadStatus read_callback( FLAC__byte [], size_t * );
-	virtual FLAC__StreamDecoderSeekStatus seek_callback( FLAC__uint64 );
-	virtual FLAC__StreamDecoderTellStatus tell_callback( FLAC__uint64 * );
-	virtual FLAC__StreamDecoderLengthStatus length_callback( FLAC__uint64 * );
-	virtual bool eof_callback();
-	virtual FLAC__StreamDecoderWriteStatus write_callback( const FLAC__Frame *, const FLAC__int32 *const [] );
-	virtual void metadata_callback( const FLAC__StreamMetadata * );
-	virtual void error_callback( FLAC__StreamDecoderErrorStatus );
+	FLAC__StreamDecoderReadStatus read_callback( FLAC__byte [], size_t * ) override;
+	FLAC__StreamDecoderSeekStatus seek_callback( FLAC__uint64 ) override;
+	FLAC__StreamDecoderTellStatus tell_callback( FLAC__uint64 * ) override;
+	FLAC__StreamDecoderLengthStatus length_callback( FLAC__uint64 * ) override;
+	bool eof_callback() override;
+	FLAC__StreamDecoderWriteStatus write_callback( const FLAC__Frame *, const FLAC__int32 *const [] ) override;
+	void metadata_callback( const FLAC__StreamMetadata * ) override;
+	void error_callback( FLAC__StreamDecoderErrorStatus ) override;
 
 private:
+	// Calculates the bitrate of the FLAC stream.
+	float CalculateBitrate();
+
 	// Input file stream.
 	std::ifstream m_FileStream;
 

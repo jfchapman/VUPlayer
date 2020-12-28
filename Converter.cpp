@@ -27,6 +27,7 @@ INT_PTR CALLBACK Converter::DialogProc( HWND hwnd, UINT message, WPARAM wParam, 
 			if ( nullptr != converter ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				converter->OnInitDialog( hwnd );
+				return TRUE;
 			}
 			break;
 		}

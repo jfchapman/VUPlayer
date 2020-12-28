@@ -73,6 +73,10 @@ LRESULT CALLBACK WndSplit::SplitProc( HWND hwnd, UINT message, WPARAM wParam, LP
 				}
 				break;
 			}
+			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+				break;
+			}
 		}
 	}
 	return DefWindowProc( hwnd, message, wParam, lParam );
@@ -267,4 +271,9 @@ void WndSplit::Resize()
 
 		InvalidateRect( m_hParent, &invalidParentRect, TRUE /*erase*/ );
 	}
+}
+
+void WndSplit::SetRebarWindowHandle( const HWND hwnd )
+{
+	m_hRebar = hwnd;
 }

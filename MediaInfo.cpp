@@ -28,7 +28,8 @@ MediaInfo::MediaInfo( const std::wstring& filename ) :
 	m_GainAlbum( NAN ),
 	m_ArtworkID(),
 	m_Source( Source::File ),
-	m_CDDB( 0 )
+	m_CDDB( 0 ),
+	m_Bitrate( NAN )
 {
 }
 
@@ -45,12 +46,11 @@ MediaInfo::~MediaInfo()
 
 bool MediaInfo::operator<( const MediaInfo& other ) const
 {
-	const bool lessThan = std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Artist,
-		m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_GainTrack,
-		m_GainAlbum, m_ArtworkID, m_Source, m_CDDB ) <
+	const bool lessThan = std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate,
+		m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_GainTrack, m_GainAlbum, m_ArtworkID, m_Source, m_CDDB ) <
 
-		std::tie( other.m_Filename, other.m_Filetime, other.m_Filesize, other.m_Duration, other.m_SampleRate, other.m_BitsPerSample, other.m_Channels, other.m_Artist,
-		other.m_Title, other.m_Album, other.m_Genre, other.m_Year, other.m_Comment, other.m_Track, other.m_Version, other.m_GainTrack,
+		std::tie( other.m_Filename, other.m_Filetime, other.m_Filesize, other.m_Duration, other.m_SampleRate, other.m_BitsPerSample, other.m_Channels, other.m_Bitrate,
+		other.m_Artist, other.m_Title, other.m_Album, other.m_Genre, other.m_Year, other.m_Comment, other.m_Track, other.m_Version, other.m_GainTrack,
 		other.m_GainAlbum, other.m_ArtworkID, other.m_Source, other.m_CDDB );
 
 	return lessThan;
@@ -264,15 +264,8 @@ std::wstring MediaInfo::GetTitle( const bool filenameAsTitle ) const
 {
 	std::wstring title = m_Title;
 	if ( title.empty() && filenameAsTitle ) {
-		title = m_Filename;
-		size_t pos = title.rfind( '.' );
-		if ( std::wstring::npos != pos ) {
-			title = title.substr( 0 /*offset*/, pos /*count*/ );
-		}
-		pos = title.find_last_of( L"/\\" );
-		if ( std::wstring::npos != pos ) {
-			title = title.substr( pos + 1 /*offset*/ );
-		}
+		const std::filesystem::path path( m_Filename );
+		title = IsURL( m_Filename ) ? path.filename() : path.stem();
 	}
 	return title;
 }
@@ -280,17 +273,24 @@ std::wstring MediaInfo::GetTitle( const bool filenameAsTitle ) const
 std::wstring MediaInfo::GetType() const
 {
 	std::wstring type;
-	const size_t pos = m_Filename.rfind( '.' );
-	if ( std::wstring::npos != pos ) {
-		type = WideStringToUpper( m_Filename.substr( pos + 1 /*offset*/ ) );
+	if ( !IsURL( m_Filename ) ) {
+		const size_t pos = m_Filename.rfind( '.' );
+		if ( std::wstring::npos != pos ) {
+			type = WideStringToUpper( m_Filename.substr( pos + 1 /*offset*/ ) );
+		}
 	}
 	return type;
 }
 
-long MediaInfo::GetBitrate() const
+float MediaInfo::GetBitrate( const bool calculate ) const
 {
-	const long bitrate = ( m_Duration > 0 ) ? static_cast<long>( 0.5f + ( m_Filesize * 8 ) / ( m_Duration * 1000 ) ) : 0;
+	const float bitrate = ( calculate && !( m_Bitrate > 0 ) ) ? ( ( m_Filesize * 8 ) / ( m_Duration * 1000 ) ) : m_Bitrate;
 	return bitrate;
+}
+
+void MediaInfo::SetBitrate( const float bitrate )
+{
+	m_Bitrate = bitrate;
 }
 
 std::wstring MediaInfo::GetArtworkID( const bool checkFolder ) const
@@ -332,9 +332,9 @@ long MediaInfo::GetCDDB() const
 bool MediaInfo::IsDuplicate( const MediaInfo& o ) const
 {
 	const bool isDuplicate = 
-		std::tie( m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Artist, m_Title, m_Album, m_Genre, m_Year,
+		std::tie( m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate, m_Artist, m_Title, m_Album, m_Genre, m_Year,
 			m_Comment, m_Track, m_Version, m_GainTrack, m_GainAlbum, m_ArtworkID ) ==
-		std::tie( o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_BitsPerSample, o.m_Channels, o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year,
+		std::tie( o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_BitsPerSample, o.m_Channels, o.m_Bitrate, o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year,
 			o.m_Comment, o.m_Track, o.m_Version, o.m_GainTrack, o.m_GainAlbum, o.m_ArtworkID );
 	return isDuplicate;
 }

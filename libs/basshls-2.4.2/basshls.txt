@@ -1,0 +1,125 @@
+BASSHLS 2.4
+Copyright (c) 2015-2019 Un4seen Developments Ltd. All rights reserved.
+
+Files that you should have found in the BASSHLS package
+=======================================================
+Win32 version
+-------------
+BASSHLS.TXT     This file
+BASSHLS.DLL     BASSHLS module
+BASSHLS.CHM     BASSHLS documentation
+X64\
+  BASSHLS.DLL     64-bit BASSHLS module
+C\              C/C++ API...
+  BASSHLS.H       BASSHLS C/C++ header file
+  BASSHLS.LIB     BASSHLS import library
+  X64\
+    BASSHLS.LIB     64-bit BASSHLS import library
+VB\             Visual Basic API...
+  BASSHLS.BAS     BASSHLS Visual Basic module
+DELPHI\         Delphi API...
+  BASSHLS.PAS     BASSHLS Delphi unit
+
+MacOSX version
+--------------
+BASSHLS.TXT     This file
+LIBBASSHLS.DYLIB  BASSHLS module
+BASSHLS.CHM     BASSHLS documentation
+BASSHLS.H       BASSHLS C/C++ header file
+
+Linux version
+-------------
+BASSHLS.TXT     This file
+LIBBASSHLS.SO   BASSHLS module
+BASSHLS.CHM     BASSHLS documentation
+BASSHLS.H       BASSHLS C/C++ header file
+X64\
+  LIBBASSHLS.SO   64-bit BASSHLS module
+
+
+What's the point?
+=================
+BASSHLS is an extension to the BASS audio library, enabling the playing of
+HLS (HTTP Live Streaming) streams. Local media playlists and segments are
+also supported.
+
+
+Requirements
+============
+BASS 2.4 is required (2.4.13 or above is recommended).
+
+
+Using BASSHLS
+=============
+The plugin system (see BASS_PluginLoad) can be used to add HLS support to
+the standard BASS stream creation functions. Dedicated HLS stream creation
+functions are also provided by BASSHLS.
+
+The usage information in the BASS.TXT file (from the BASS package) is also
+applicable to BASSHLS and other add-ons.
+
+TIP: The BASSHLS.CHM file should be put in the same directory as the BASS.CHM
+     file, so that the BASSHLS documentation can be accessed from within the
+     BASS documentation.
+
+
+Latest Version
+==============
+The latest versions of BASSHLS & BASS can be found at the BASS website:
+
+	www.un4seen.com
+
+
+Licence
+=======
+BASSHLS is free to use with BASS.
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, BASSHLS IS PROVIDED
+"AS IS", WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY
+AND/OR FITNESS FOR A PARTICULAR PURPOSE. THE AUTHORS SHALL NOT BE HELD
+LIABLE FOR ANY DAMAGE THAT MAY RESULT FROM THE USE OF BASSHLS. YOU USE
+BASSHLS ENTIRELY AT YOUR OWN RISK.
+
+Usage of BASSHLS indicates that you agree to the above conditions.
+
+All trademarks and other registered names contained in the BASSHLS
+package are the property of their respective owners.
+
+
+History
+=======
+These are the major (and not so major) changes at each version stage.
+There are of course bug fixes and other little improvements made along
+the way too! To make upgrading simpler, all functions affected by a
+change to the BASSHLS interface are listed.
+
+2.4.2 - 12/3/2019
+-----------------
+* Bandwidth/bitrate-based stream selection for master playlists
+	BASS_CONFIG_HLS_BANDWIDTH
+* Delay control for live streams
+	BASS_CONFIG_HLS_DELAY
+* Receiving ID3v2 tags in DOWNLOADPROCs is now optional
+	BASS_CONFIG_HLS_DOWNLOAD_TAGS
+
+2.4.1 - 31/1/2018
+-----------------
+* Asynchronous/non-blocking seeking
+	BASS_ChannelSetPosition
+* Support for push file system with MPEG-TS data
+	BASS_StreamCreateFileUser
+* Support for asynchronous pre-buffering
+	BASS_CONFIG_NET_PREBUF_WAIT (BASS_SetConfig option)
+* Improved support for cookies
+
+2.4 - 3/10/2017
+---------------
+* First release
+
+
+Bug reports, Suggestions, Comments, Enquiries, etc...
+=====================================================
+If you have any of the aforementioned please visit the BASS forum at
+the website.
+

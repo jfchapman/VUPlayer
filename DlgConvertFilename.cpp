@@ -11,6 +11,7 @@ INT_PTR CALLBACK DlgConvertFilename::DialogProc( HWND hwnd, UINT message, WPARAM
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
+				return TRUE;
 			}
 			break;
 		}

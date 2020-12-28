@@ -147,8 +147,12 @@ public:
 	// Returns the filename extension.
 	std::wstring GetType() const;
 
-	// Returns the bitrate.
-	long GetBitrate() const;
+	// Returns the bitrate, in kbps.
+	// 'calculate' - calculates the bitrate based on the filesize, if the bitrate is zero.
+	float GetBitrate( const bool calculate = false ) const;
+
+	// Sets the bitrate, in kbps.
+	void SetBitrate( const float bitrate );
 
 	// Returns the artwork ID.
 	// 'checkFolder' - if true and there is no artwork ID, returns the filename of any artwork in the media file's folder.
@@ -193,5 +197,6 @@ private:
 	std::wstring m_ArtworkID;
 	Source m_Source;
 	long m_CDDB;
+	float m_Bitrate;
 };
 

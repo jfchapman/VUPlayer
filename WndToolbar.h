@@ -7,10 +7,15 @@
 class WndToolbar
 {
 public:
+	// List of icon resource IDs.
+	typedef std::list<UINT> IconList;
+
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
 	// 'id' - toolbar ID.
-	WndToolbar( HINSTANCE instance, HWND parent, const long long id );
+	// 'settings' - application settings.
+	// 'iconList' - list of icon resource IDs.
+	WndToolbar( HINSTANCE instance, HWND parent, const long long id, Settings& settings, const IconList& iconList );
 
 	virtual ~WndToolbar();
 
@@ -38,6 +43,12 @@ public:
 	// Returns the toolbar ID.
 	int GetID() const;
 
+	// Returns the toolbar button size.
+	int GetButtonSize() const;
+
+	// Called when the toolbar size changes.
+	void OnChangeToolbarSize();
+
 protected:
 	// Sets whether the button corresponding to 'commandID' is 'enabled'.
 	void SetButtonEnabled( const UINT commandID, const bool enabled );
@@ -45,9 +56,15 @@ protected:
 	// Sets whether the button corresponding to 'commandID' is 'checked'.
 	void SetButtonChecked( const UINT commandID, const bool checked );
 
+	// Returns the image list.
+	HIMAGELIST GetImageList() const;
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK ToolbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
+	// Creates and returns an image list.
+	HIMAGELIST CreateImageList() const;
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
@@ -57,5 +74,14 @@ private:
 
 	// Default window procedure.
 	WNDPROC m_DefaultWndProc;
+
+	// Application settings.
+	Settings& m_Settings;
+
+	// List of icon resource IDs.
+	IconList m_IconList;
+
+	// Image list.
+	HIMAGELIST m_ImageList;
 };
 

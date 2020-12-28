@@ -73,6 +73,13 @@ public:
 		Large
 	};
 
+	// Toolbar size.
+	enum class ToolbarSize {
+		Small = 0,
+		Medium,
+		Large
+	};
+
 	// EQ settings.
 	struct EQ {
 		// Maps a centre frequency, in Hz, to a gain value.
@@ -116,6 +123,9 @@ public:
 	// Maps a pitch range option to a pitch adjustment factor.
 	typedef std::map<PitchRange,float> PitchRangeMap;
 
+	// Maps a toolbar size to a button size.
+	typedef std::map<Settings::ToolbarSize,int> ButtonSizeMap;
+
 	// Returns the playlist control settings.
 	// 'columns' - out, column settings.
 	// 'font' - out, list control font.
@@ -140,13 +150,14 @@ public:
 	// 'backgroundColour' - out, tree control background colour.
 	// 'highlightColour' - out, tree control highlight colour.
 	// 'showFavourites' - out, whether Favourites is shown.
+	// 'showStreams' - out, whether Streams is shown.
 	// 'showAllTracks' - out, whether All Tracks is shown.
 	// 'showArtists' - out, whether Artists are shown.
 	// 'showAlbums' - out, whether Albums are shown.
 	// 'showGenres' - out, whether Genres are shown.
 	// 'showYears' - out, whether Years are shown.
 	void GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour,
-			bool& showFavourites, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears );
+			bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears );
 
 	// Sets the tree control settings.
 	// 'font' - tree control font.
@@ -154,13 +165,14 @@ public:
 	// 'backgroundColour' - tree control background colour.
 	// 'highlightColour' - tree control highlight colour.
 	// 'showFavourites' - whether Favourites is shown.
+	// 'showStreams' - whether Streams is shown.
 	// 'showAllTracks' - whether All Tracks is shown.
 	// 'showArtists' - whether Artists are shown.
 	// 'showAlbums' - whether Albums are shown.
 	// 'showGenres' - whether Genres are shown.
 	// 'showYears' - whether Years are shown.
 	void SetTreeSettings( const LOGFONT& font, const COLORREF& fontColour, const COLORREF& backgroundColour, const COLORREF& highlightColour,
-			const bool showFavourites, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears );
+			const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears );
 
 	// Gets the playlists.
 	Playlists GetPlaylists();
@@ -488,6 +500,15 @@ public:
 	// 'leadIn' - lead-in length, in milliseconds.
 	void SetAdvancedASIOSettings( const bool useDefaultSamplerate, const int defaultSamplerate, const int leadIn );
 
+	// Gets the toolbar size.
+	ToolbarSize GetToolbarSize();
+
+	// Sets the toolbar 'size'.
+	void SetToolbarSize( const ToolbarSize size );
+
+	// Gets the button size which corresponds to the toolbar 'size'.
+	static int GetToolbarButtonSize( const ToolbarSize size );
+
 private:
 	// Updates the database to the current version if necessary.
 	void UpdateDatabase();
@@ -507,6 +528,9 @@ private:
 	// Updates the playlist table if necessary.
 	void UpdatePlaylistTable( const std::string& table );
 
+	// Applies font scaling to all fonts stored in the settings table, based on the current screen DPI.
+	void UpdateFontSettings();
+
 	// Sets the playlist files from the database.
 	void ReadPlaylistFiles( Playlist& playlist );
 
@@ -521,4 +545,10 @@ private:
 
 	// Media library.
 	Library& m_Library;
+
+	// Pitch ranges.
+	static const PitchRangeMap s_PitchRanges;
+
+	// Button sizes.
+	static const ButtonSizeMap s_ButtonSizes;
 };

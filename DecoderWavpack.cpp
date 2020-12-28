@@ -16,7 +16,8 @@ DecoderWavpack::DecoderWavpack( const std::wstring& filename ) :
 		SetSampleRate( static_cast<long>( WavpackGetSampleRate( m_Context ) ) );
 		if ( GetSampleRate() > 0 ) {
 			SetDuration( static_cast<float>( WavpackGetNumSamples64( m_Context ) ) / GetSampleRate() );
-		}	
+		}
+		SetBitrate( static_cast<float>( WavpackGetAverageBitrate( m_Context, TRUE /*count_wvc*/ ) / 1000 ) );
 	} else {
 		throw std::runtime_error( "DecoderWavpack could not load file" );
 	}

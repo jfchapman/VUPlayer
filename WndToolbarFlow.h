@@ -7,9 +7,8 @@ class WndToolbarFlow : public WndToolbar
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndToolbarFlow( HINSTANCE instance, HWND parent );
-
-	virtual ~WndToolbarFlow();
+	// 'settings' - application settings.
+	WndToolbarFlow( HINSTANCE instance, HWND parent, Settings& settings );
 
 	// Updates the toolbar state.
 	// 'output' - output object.
@@ -23,14 +22,5 @@ public:
 private:
 	// Creates the buttons.
 	void CreateButtons();
-
-	// Creates the image list.
-	void CreateImageList();
-
-	// Image list.
-	HIMAGELIST m_ImageList;
-
-	// Maps an image list index to a command ID.
-	std::map<int,UINT> m_ImageMap;
 };
 

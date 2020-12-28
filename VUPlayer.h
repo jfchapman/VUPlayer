@@ -148,12 +148,16 @@ public:
 	// Gets the currently displayed playlist.
 	Playlist::Ptr GetSelectedPlaylist();
 
+	// Selects and returns the streams playlist.
+	Playlist::Ptr SelectStreamsPlaylist();
+
 	// Returns the BASS library version.
 	std::wstring GetBassVersion() const;
 
 	// Inserts the Add to Playlists sub menu into the 'menu'.
+	// 'insertAfterItemID' - the menu item ID after which to add the sub menu.
 	// 'addPrefix' - whether to add an alt prefix to the sub menu.
-	void InsertAddToPlaylists( const HMENU menu, const bool addPrefix );
+	void InsertAddToPlaylists( const HMENU menu, const UINT insertAfterItemID, const bool addPrefix );
 
 	// Processes a device change message.
 	void OnDeviceChange( const WPARAM wParam, const LPARAM lParam );
@@ -176,6 +180,9 @@ public:
 
 	// Exports application settings, for use when running in 'portable' mode.
 	void OnExportSettings();
+
+	// Returns the EQ modeless dialog window handle.
+	HWND GetEQ() const;
 
 private:
 	// Main application instance.
@@ -235,6 +242,12 @@ private:
 	// Saves various applications settings.
 	void SaveSettings();
 
+	// Recreates the rebar when the toolbar 'size' changes.
+	void RecreateRebar( const Settings::ToolbarSize& size );
+
+	// Initialises the rebar controls.
+	void InitialiseRebar();
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -272,7 +285,7 @@ private:
 	CDDAManager m_CDDAManager;
 
 	// Rebar control.
-	WndRebar m_Rebar;
+	std::unique_ptr<WndRebar> m_Rebar;
 
 	// Status bar control.
 	WndStatus m_Status;
@@ -287,46 +300,46 @@ private:
 	WndList m_List;
 
 	// Seek control.
-	WndTrackbarSeek m_SeekControl;
+	std::unique_ptr<WndTrackbarSeek> m_SeekControl;
 
 	// Volume control.
-	WndTrackbarVolume m_VolumeControl;
+	std::unique_ptr<WndTrackbarVolume> m_VolumeControl;
 
 	// Toolbar (crossfade).
-	WndToolbarCrossfade m_ToolbarCrossfade;
+	std::unique_ptr<WndToolbarCrossfade> m_ToolbarCrossfade;
 
 	// Toolbar (file).
-	WndToolbarFile m_ToolbarFile;
+	std::unique_ptr<WndToolbarFile> m_ToolbarFile;
 
 	// Toolbar (random/repeat).
-	WndToolbarFlow m_ToolbarFlow;
+	std::unique_ptr<WndToolbarFlow> m_ToolbarFlow;
 
 	// Toolbar (track information).
-	WndToolbarInfo m_ToolbarInfo;
+	std::unique_ptr<WndToolbarInfo> m_ToolbarInfo;
 
 	// Toolbar (options).
-	WndToolbarOptions m_ToolbarOptions;
+	std::unique_ptr<WndToolbarOptions> m_ToolbarOptions;
 
 	// Toolbar (playback).
-	WndToolbarPlayback m_ToolbarPlayback;
+	std::unique_ptr<WndToolbarPlayback> m_ToolbarPlayback;
 
 	// Toolbar (playlist).
-	WndToolbarPlaylist m_ToolbarPlaylist;
+	std::unique_ptr<WndToolbarPlaylist> m_ToolbarPlaylist;
 
 	// Toolbar (favourites).
-	WndToolbarFavourites m_ToolbarFavourites;
+	std::unique_ptr<WndToolbarFavourites> m_ToolbarFavourites;
 
 	// Toolbar (EQ).
-	WndToolbarEQ m_ToolbarEQ;
+	std::unique_ptr<WndToolbarEQ> m_ToolbarEQ;
 
 	// Toolbar (convert).
-	WndToolbarConvert m_ToolbarConvert;
+	std::unique_ptr<WndToolbarConvert> m_ToolbarConvert;
 
 	// Toolbar (track end).
-	WndToolbarTrackEnd m_ToolbarTrackEnd;
+	std::unique_ptr<WndToolbarTrackEnd> m_ToolbarTrackEnd;
 
 	// Counter control.
-	WndCounter m_Counter;
+	std::unique_ptr<WndCounter> m_Counter;
 
 	// Splitter control.
 	WndSplit m_Splitter;

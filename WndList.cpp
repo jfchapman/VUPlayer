@@ -4,6 +4,7 @@
 
 #include <windowsx.h>
 
+#include "DlgAddStream.h"
 #include "Settings.h"
 #include "Utility.h"
 #include "VUPlayer.h"
@@ -103,13 +104,32 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			}
 			case WM_CONTEXTMENU : {
 				POINT pt = {};
-				pt.x = LOWORD( lParam );
-				pt.y = HIWORD( lParam );
+				if ( -1 == lParam ) {
+					const int itemIndex = wndList->GetCurrentSelectedIndex();
+					if ( ( itemIndex >= 0 ) && ListView_IsItemVisible( hwnd, itemIndex ) ) {
+						RECT rect = {};
+						ListView_GetItemRect( hwnd, itemIndex, &rect, LVIR_BOUNDS );
+						pt.x = rect.left;
+						pt.y = rect.bottom;
+					} else {
+						const HWND header = ListView_GetHeader( hwnd );
+						if ( nullptr != header ) {
+							RECT rect = {};
+							GetClientRect( header, &rect );
+							pt.y = rect.bottom - rect.top;
+						}
+					}
+					ClientToScreen( hwnd, &pt );
+				} else {
+					pt.x = LOWORD( lParam );
+					pt.y = HIWORD( lParam );
+				}
 				wndList->OnContextMenu( pt );
 				break;
 			}
 			case WM_DESTROY : {
 				wndList->SaveSettings();
+				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndList->GetDefaultWndProc() ) );
 				break;
 			}
 			case WM_KEYDOWN : {
@@ -117,16 +137,6 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 					case VK_DELETE : {
 						wndList->DeleteSelectedItems();
 						return 0;
-					}
-					case VK_RETURN : {
-						const Playlist::Item item = wndList->GetCurrentSelectedItem();
-						if ( item.ID > 0 ) {
-							wndList->OnPlay( item.ID );
-						}
-						return 0;					
-					}
-					default : {
-						break;
 					}
 				}
 				break;
@@ -172,6 +182,10 @@ LRESULT CALLBACK WndList::EditControlProc( HWND hwnd, UINT message, WPARAM wPara
 				wndList->RepositionEditControl( reinterpret_cast<WINDOWPOS*>( lParam ) );
 				break;
 			}
+			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndList->GetEditControlWndProc() ) );
+				break;
+			}
 			default : {
 				break;
 			}
@@ -202,7 +216,7 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	const DWORD exStyle = WS_EX_ACCEPTFILES;
 	LPCTSTR className = WC_LISTVIEW;
 	LPCTSTR windowName = NULL;
-	const DWORD style = WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_EDITLABELS;
+	const DWORD style = WS_CHILD | WS_TABSTOP | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_EDITLABELS;
 	const int x = 100;
 	const int y = 100;
 	const int width = 600;
@@ -213,6 +227,7 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	ListView_SetExtendedListViewStyle( m_hWnd, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_HEADERDRAGDROP | LVS_EX_DOUBLEBUFFER );
 	SetWindowLongPtr( ListView_GetHeader( m_hWnd ), GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( ListProc ) ) );
+	SetWindowAccessibleName( instance, m_hWnd, IDS_ACCNAME_LISTVIEW );
 
 	// Insert a dummy column.
 	LVCOLUMN lvc = {};
@@ -225,7 +240,6 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 
 WndList::~WndList()
 {
-	SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_DefaultWndProc ) );
 	if ( nullptr != m_ChosenFont ) {
 		DeleteObject( m_ChosenFont );
 	}
@@ -351,28 +365,24 @@ void WndList::ShowColumn( const Playlist::Column column, const int width, const 
 void WndList::OnDropFiles( const HDROP hDrop )
 {
 	if ( nullptr != hDrop ) {
-		if ( !m_Playlist ) {
+		const bool addToExisting = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
+		if ( !addToExisting ) {
 			VUPlayer* vuplayer = VUPlayer::Get();
 			if ( nullptr != vuplayer ) {
 				m_Playlist = vuplayer->NewPlaylist();
 			}
 		}
-		if ( m_Playlist ) {
-			const Playlist::Type type = m_Playlist->GetType();
-			if ( ( Playlist::Type::User == type ) || ( Playlist::Type::All == type ) || ( Playlist::Type::Favourites == type ) ) {
-				const int bufSize = 512;
-				WCHAR filename[ bufSize ];
-				const UINT fileCount = DragQueryFile( hDrop, 0xffffffff, nullptr /*filename*/, 0 /*bufSize*/ );
-				for( UINT fileIndex = 0; fileIndex < fileCount; fileIndex++ ) {
-					if ( 0 != DragQueryFile( hDrop, fileIndex, filename, bufSize ) ) {
-						const DWORD attributes = GetFileAttributes( filename );
-						if ( INVALID_FILE_ATTRIBUTES != attributes ) {
-							if( attributes & FILE_ATTRIBUTE_DIRECTORY ) {
-								AddFolderToPlaylist( filename );
-							} else {
-								AddFileToPlaylist( filename );
-							}
-						}
+		const int bufSize = 512;
+		WCHAR filename[ bufSize ];
+		const UINT fileCount = DragQueryFile( hDrop, 0xffffffff, nullptr /*filename*/, 0 /*bufSize*/ );
+		for( UINT fileIndex = 0; fileIndex < fileCount; fileIndex++ ) {
+			if ( 0 != DragQueryFile( hDrop, fileIndex, filename, bufSize ) ) {
+				const DWORD attributes = GetFileAttributes( filename );
+				if ( INVALID_FILE_ATTRIBUTES != attributes ) {
+					if( attributes & FILE_ATTRIBUTE_DIRECTORY ) {
+						AddFolderToPlaylist( filename );
+					} else {
+						AddFileToPlaylist( filename );
 					}
 				}
 			}
@@ -383,7 +393,11 @@ void WndList::OnDropFiles( const HDROP hDrop )
 void WndList::AddFileToPlaylist( const std::wstring& filename )
 {
 	if ( m_Playlist ) {
-		m_Playlist->AddPending( filename );
+		if ( Playlist::IsSupportedPlaylist( filename ) ) {
+			m_Playlist->AddPlaylist( filename );
+		} else {		
+			m_Playlist->AddPending( filename );
+		}
 	}
 }
 
@@ -464,12 +478,12 @@ void WndList::SetListViewItemText( int itemIndex, const Playlist::Item& playlist
 			}
 			case Playlist::Column::Bitrate : {
 				std::wstringstream ss;
-				const long bitrate = mediaInfo.GetBitrate();
+				const float bitrate = mediaInfo.GetBitrate( true /*calculate*/ );
 				if ( bitrate > 0 ) {
 					const int bufSize = 16;
 					WCHAR buf[ bufSize ] = {};
 					if ( 0 != LoadString( m_hInst, IDS_UNITS_BITRATE, buf, bufSize ) ) {
-						ss << std::to_wstring( bitrate ) << L" " << buf;
+						ss << std::to_wstring( std::lroundf( bitrate ) ) << L" " << buf;
 					}
 				}
 				const std::wstring str = ss.str();
@@ -581,7 +595,14 @@ void WndList::SetListViewItemText( int itemIndex, const Playlist::Item& playlist
 				break;
 			}
 			case Playlist::Column::Type : {
-				const std::wstring str = mediaInfo.GetType();
+				std::wstring str = mediaInfo.GetType();
+				if ( str.empty() && IsURL( mediaInfo.GetFilename() ) ) {
+					const int bufSize = 16;
+					WCHAR buf[ bufSize ] = {};
+					if ( 0 != LoadString( m_hInst, IDS_TYPE_STREAM, buf, bufSize ) ) {
+						str = buf;
+					}
+				}
 				ListView_SetItemText( m_hWnd, itemIndex, columnIndex, const_cast<LPWSTR>( str.c_str() ) );
 				break;
 			}
@@ -607,8 +628,15 @@ void WndList::SetListViewItemText( int itemIndex, const Playlist::Item& playlist
 
 void WndList::OnPlay( const long itemID )
 {
-	m_Output.SetPlaylist( m_Playlist );
-	m_Output.Play( itemID );
+	m_Output.Play( m_Playlist, itemID );
+}
+
+void WndList::PlaySelected()
+{
+	const Playlist::Item item = GetCurrentSelectedItem();
+	if ( item.ID > 0 ) {
+		OnPlay( item.ID );
+	}
 }
 
 void WndList::OnContextMenu( const POINT& position )
@@ -632,6 +660,7 @@ void WndList::OnContextMenu( const POINT& position )
 			const bool allowPaste = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
 			const bool allowCut = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
 			const bool allowCopy = ( m_Playlist && ( Playlist::Type::CDDA != m_Playlist->GetType() ) );
+			const bool allowAddStream = ( m_Playlist && ( ( Playlist::Type::Streams == m_Playlist->GetType() ) || ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
 
 			const UINT enablePaste = ( allowPaste && ( ( FALSE != IsClipboardFormatAvailable( CF_TEXT ) ) || ( FALSE != IsClipboardFormatAvailable( CF_UNICODETEXT ) ) ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PASTE, MF_BYCOMMAND | enablePaste );
@@ -651,6 +680,8 @@ void WndList::OnContextMenu( const POINT& position )
 			const UINT enableAddFiles = allowPaste ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDFOLDER, MF_BYCOMMAND | enableAddFiles );
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | enableAddFiles );
+			const UINT enableAddStream = allowAddStream ? MF_ENABLED : MF_DISABLED;
+			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDSTREAM, MF_BYCOMMAND | enableAddStream );
 			const UINT enableRemoveFiles = ( m_Playlist && hasSelectedItems && ( Playlist::Type::CDDA != m_Playlist->GetType() ) && ( Playlist::Type::Folder != m_Playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | enableRemoveFiles );
 			const UINT enableAddToFavourites = ( m_Playlist && ( Playlist::Type::Favourites != m_Playlist->GetType() ) && ( Playlist::Type::CDDA != m_Playlist->GetType() ) && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
@@ -663,7 +694,7 @@ void WndList::OnContextMenu( const POINT& position )
 				ModifyMenu( menu, ID_FILE_CONVERT, MF_BYCOMMAND | MF_STRING, ID_FILE_CONVERT, buffer );
 			}
 
-			const UINT enableExtract = ( m_Playlist && ( m_Playlist->GetCount() > 0 ) ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableExtract = ( m_Playlist && m_Playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
 			const UINT enableGainCalculator = hasSelectedItems ? MF_ENABLED : MF_DISABLED;
@@ -671,7 +702,7 @@ void WndList::OnContextMenu( const POINT& position )
 
 			VUPlayer* vuplayer = VUPlayer::Get();
 			if ( nullptr != vuplayer ) {
-				vuplayer->InsertAddToPlaylists( listmenu, false /*addPrefix*/ );
+				vuplayer->InsertAddToPlaylists( listmenu, ID_FILE_ADDTOFAVOURITES, false /*addPrefix*/ );
 			}
 
 			const UINT flags = TPM_RIGHTBUTTON;
@@ -736,6 +767,10 @@ void WndList::OnCommand( const UINT command )
 		}
 		case ID_FILE_SELECTALL : {
 			SelectAllItems();
+			break;
+		}
+		case ID_FILE_PLAYLISTADDSTREAM : {
+			OnCommandAddStream();
 			break;
 		}
 		case ID_FILE_PLAYLISTADDFOLDER : {
@@ -1218,7 +1253,6 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 				}
 			}
 		}
-		SetWindowLongPtr( m_EditControl, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_EditControlWndProc ) );
 		m_EditControl = nullptr;
 		m_EditControlWndProc = nullptr;
 		m_EditItem = -1;
@@ -1562,7 +1596,8 @@ void WndList::OnCommandAddFolder()
 		const DWORD pathSize = 1024;
 		WCHAR path[ pathSize ] = {};
 		if ( TRUE == SHGetPathFromIDListEx( idlist, path, pathSize, GPFIDL_DEFAULT ) ) {
-			if ( !m_Playlist ) {
+			const bool addToExisting = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
+			if ( !addToExisting ) {
 				VUPlayer* vuplayer = VUPlayer::Get();
 				if ( nullptr != vuplayer ) {
 					m_Playlist = vuplayer->NewPlaylist();
@@ -1582,9 +1617,13 @@ void WndList::OnCommandAddFiles()
 	WCHAR filter[ MAX_PATH ] = {};
 	LoadString( m_hInst, IDS_ADDFILES_FILTERAUDIO, filter, MAX_PATH );
 	const std::wstring filter1( filter );
-	const std::set<std::wstring> audioTypes = m_Output.GetAllSupportedFileExtensions();
+	std::set<std::wstring> fileTypes = m_Output.GetAllSupportedFileExtensions();
+
+	std::set<std::wstring> playlistTypes = Playlist::GetSupportedPlaylistExtensions();
+	fileTypes.merge( playlistTypes );
+
 	std::wstring filter2;
-	for ( const auto& iter : audioTypes ) {
+	for ( const auto& iter : fileTypes ) {
 		filter2 += L"*." + iter + L";";
 	}
 	if ( !filter2.empty() ) {
@@ -1625,7 +1664,8 @@ void WndList::OnCommandAddFiles()
 		foldername += L"\\";
 		WCHAR* filenameOffset = ofn.lpstrFile + ofn.nFileOffset;
 		while ( 0 != *filenameOffset ) {
-			if ( !m_Playlist ) {
+			const bool addToExisting = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
+			if ( !addToExisting ) {
 				VUPlayer* vuplayer = VUPlayer::Get();
 				if ( nullptr != vuplayer ) {
 					m_Playlist = vuplayer->NewPlaylist();
@@ -1636,6 +1676,35 @@ void WndList::OnCommandAddFiles()
 			filenameOffset += wcslen( filenameOffset ) + 1;
 		}
 		m_Settings.SetLastFolder( initialFolderSetting, std::wstring( ofn.lpstrFile ).substr( 0, ofn.nFileOffset ) );
+	}
+}
+
+void WndList::OnCommandAddStream()
+{
+	const DlgAddStream dlg( m_hInst, m_hWnd );
+	const std::wstring& url = dlg.GetURL();
+	if ( !url.empty() ) {
+		const auto decoder = IsURL( url ) ? m_Output.GetHandlers().OpenDecoder( url ) : nullptr;
+		if ( decoder ) {
+			const bool addToExisting = ( m_Playlist && ( ( Playlist::Type::Streams == m_Playlist->GetType() ) || ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
+			if ( !addToExisting ) {
+				VUPlayer* vuplayer = VUPlayer::Get();
+				if ( nullptr != vuplayer ) {
+					m_Playlist = vuplayer->SelectStreamsPlaylist();
+				}
+			}
+			if ( m_Playlist ) {
+				m_Playlist->AddPending( url );
+			}
+		} else {
+			const int bufferSize = 256;
+			WCHAR buffer[ bufferSize ] = {};
+			LoadString( m_hInst, IDS_ADDSTREAM_ERROR_CAPTION, buffer, bufferSize );
+			const std::wstring caption = buffer;
+			LoadString( m_hInst, IDS_ADDSTREAM_ERROR_TEXT, buffer, bufferSize );
+			std::wstring text = buffer + url;
+			MessageBox( m_hWnd, text.c_str(), caption.c_str(), MB_OK | MB_ICONWARNING );
+		}
 	}
 }
 

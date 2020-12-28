@@ -23,6 +23,7 @@ public:
 		Favourites,
 		CDDA,
 		Folder,
+		Streams,
 
 		_Undefined
 	};
@@ -42,6 +43,12 @@ public:
 	Playlist( Library& library, const Type& type, const bool mergeDuplicates );
 
 	virtual ~Playlist();
+
+	// Returns the supported playlist file extensions.
+	static std::set<std::wstring> GetSupportedPlaylistExtensions();
+
+	// Returns whether 'filename' is a supported playlist type.
+	static bool IsSupportedPlaylist( const std::wstring& filename );
 
 	// Column type.
 	enum class Column {
@@ -127,7 +134,8 @@ public:
 	bool GetPreviousItem( const Item& currentItem, Item& previousItem, const bool wrap = true );
 
 	// Gets a random playlist item.
-	Item GetRandomItem();
+	// 'currentItem' - the current item.
+	Item GetRandomItem( const Item& currentItem );
 
 	// Adds 'mediaInfo' to the playlist, returning the added item.
 	Item AddItem( const MediaInfo& mediaInfo );
@@ -140,6 +148,11 @@ public:
 	// Adds 'filename' to the list of pending files to be added to the playlist.
 	// 'startPendingThread' - whether to start the background thread to process pending files.
 	void AddPending( const std::wstring& filename, const bool startPendingThread = true );
+
+	// Adds a playlist 'filename' to this playlist.
+	// 'startPendingThread' - whether to start the background thread to process pending files.
+	// Returns whether any pending files were added to this playlist.
+	bool AddPlaylist( const std::wstring& filename, const bool startPendingThread = true );
 
 	// Starts the thread for adding pending files to the playlist.
 	void StartPendingThread();
@@ -197,6 +210,9 @@ public:
 	// Updates the 'item' in the playlist.
 	void UpdateItem( const Item& item );
 
+	// Returns whether the playlist contains any items that can be converted (or extracted).
+	bool CanConvertAnyItems();
+
 private:
 	// Pending file thread proc.
 	static DWORD WINAPI PendingThreadProc( LPVOID lpParam );
@@ -224,6 +240,18 @@ private:
 
 	// Closes the thread and event handles.
 	void CloseHandles();
+
+	// Adds a VPL playlist 'filename' to this playlist.
+	// Returns whether any pending files were added to this playlist.
+	bool AddVPL( const std::wstring& filename );
+	
+	// Adds an M3U playlist 'filename' to this playlist.
+	// Returns whether any pending files were added to this playlist.
+	bool AddM3U( const std::wstring& filename );
+
+	// Adds a PLS playlist 'filename' to this playlist.
+	// Returns whether any pending files were added to this playlist.
+	bool AddPLS( const std::wstring& filename );
 
 	// Playlist ID.
 	const std::string m_ID;

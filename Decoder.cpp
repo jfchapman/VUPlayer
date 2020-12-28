@@ -13,7 +13,8 @@ Decoder::Decoder() :
 	m_Duration( 0 ),
 	m_SampleRate( 0 ),
 	m_Channels( 0 ),
-	m_BPS( 0 )
+	m_BPS( 0 ),
+	m_Bitrate( NAN )
 {
 }
 
@@ -61,7 +62,17 @@ void Decoder::SetBPS( const long bitsPerSample )
 	m_BPS = bitsPerSample;
 }
 
-float Decoder::CalculateTrackGain( const float secondsLimit )
+float Decoder::GetBitrate() const
+{
+	return m_Bitrate;
+}
+
+void Decoder::SetBitrate( const float bitrate )
+{
+	m_Bitrate = bitrate;
+}
+
+float Decoder::CalculateTrackGain( CanContinue canContinue, const float secondsLimit )
 {
 	float trackGain = NAN;
 	if ( ( m_SampleRate > 0 ) && ( m_Channels > 0 ) ) {
@@ -76,14 +87,12 @@ float Decoder::CalculateTrackGain( const float secondsLimit )
 
 		ebur128_state* r128State = ebur128_init( static_cast<unsigned int>( m_Channels ), static_cast<unsigned int>( m_SampleRate ), EBUR128_MODE_I );
 		if ( nullptr != r128State ) {
-			const long bufferSize = 4096;
-			float* buffer = new float[ bufferSize * m_Channels ];
-			long totalSamplesRead = 0;
-			long samplesRead = Read( buffer, bufferSize );
+			const long sampleSize = 4096;
+			std::vector<float> buffer( sampleSize * m_Channels );
+			long samplesRead = Read( buffer.data(), sampleSize );
 			int errorState = EBUR128_SUCCESS;
-			while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) ) {
-				totalSamplesRead += samplesRead;
-				errorState = ebur128_add_frames_float( r128State, buffer, static_cast<size_t>( samplesRead ) );
+			while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) && canContinue() ) {
+				errorState = ebur128_add_frames_float( r128State, buffer.data(), static_cast<size_t>( samplesRead ) );
 				if ( secondsLimit > 0 ) {
 					QueryPerformanceCounter( &perfEnd );
 					const float seconds = static_cast<float>( perfEnd.QuadPart - perfStart.QuadPart ) / perfFreq.QuadPart;
@@ -91,10 +100,10 @@ float Decoder::CalculateTrackGain( const float secondsLimit )
 						break;
 					}
 				}
-				samplesRead = Read( buffer, bufferSize );
+				samplesRead = Read( buffer.data(), sampleSize );
 			}
 
-			if ( EBUR128_SUCCESS == errorState ) {
+			if ( ( EBUR128_SUCCESS == errorState ) && canContinue() ) {
 				double loudness = 0;
 				errorState = ebur128_loudness_global( r128State, &loudness );
 				if ( EBUR128_SUCCESS == errorState ) {
@@ -102,7 +111,6 @@ float Decoder::CalculateTrackGain( const float secondsLimit )
 				}
 			}
 			ebur128_destroy( &r128State );
-			delete [] buffer;
 		}
 	}
 	return trackGain;

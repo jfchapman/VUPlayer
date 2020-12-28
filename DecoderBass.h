@@ -14,18 +14,22 @@ public:
 	// Throws a std::runtime_error exception if the file could not be loaded.
 	DecoderBass( const std::wstring& filename );
 
-	virtual ~DecoderBass();
+	~DecoderBass() override;
 
 	// Reads sample data.
 	// 'buffer' - output buffer (floating point format scaled to +/-1.0f).
 	// 'sampleCount' - number of samples to read.
 	// Returns the number of samples read, or zero if the stream has ended.
-	virtual long Read( float* buffer, const long sampleCount );
+	long Read( float* buffer, const long sampleCount ) override;
 
 	// Seeks to a 'position' in the stream, in seconds.
 	// Returns the new position in seconds.
-	virtual float Seek( const float position );
+	float Seek( const float position ) override;
 
+	// Returns the track gain, in dB.
+	// 'canContinue' - callback which returns whether the calculation can continue.
+	// 'secondslimit' - number of seconds to devote to calculating an estimate, or 0 to perform a complete calculation.
+	float CalculateTrackGain( CanContinue canContinue, const float secondsLimit = 0 ) override;
 private:
 	// Stream handle
 	DWORD m_Handle;
@@ -38,5 +42,11 @@ private:
 
 	// Current decoding position.
 	QWORD m_CurrentPosition;
+
+	// Indicates whether the current stream is a URL.
+	bool m_IsURL;
+
+	// Current number of silence samples that have been returned for URL streams.
+	long m_CurrentSilenceSamples;
 };
 

@@ -11,8 +11,12 @@ static const UINT_PTR s_WndCounterID = 1300;
 // Counter window class name
 static const wchar_t s_CounterClass[] = L"VUCounterClass";
 
-// Counter width
-static const int s_CounterWidth = 130;
+// Counter widths
+static const std::map<Settings::ToolbarSize, int> s_CounterWidths = {
+	{ Settings::ToolbarSize::Small, 130 },
+	{ Settings::ToolbarSize::Medium, 145 },
+	{ Settings::ToolbarSize::Large, 160 }
+};
 
 LRESULT CALLBACK WndCounter::CounterProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -45,6 +49,10 @@ LRESULT CALLBACK WndCounter::CounterProc( HWND hwnd, UINT message, WPARAM wParam
 				wndCounter->Toggle();
 				break;
 			}
+			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+				break;
+			}
 		}
 	}
 	return DefWindowProc( hwnd, message, wParam, lParam );
@@ -72,7 +80,12 @@ WndCounter::WndCounter( HINSTANCE instance, HWND parent, Settings& settings, Out
 	const DWORD style = WS_CHILD | WS_VISIBLE;
 	const int x = 0;
 	const int y = 0;
-	const int width = static_cast<int>( s_CounterWidth * GetDPIScaling() );
+	auto widthIter = s_CounterWidths.find( m_Settings.GetToolbarSize() );
+	if ( s_CounterWidths.end() == widthIter ) {
+		widthIter = s_CounterWidths.begin();
+	}
+	const int width = static_cast<int>( widthIter->second * GetDPIScaling() );
+
 	LPVOID param = NULL;
 	m_hWnd = CreateWindowEx( 0, s_CounterClass, NULL, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndCounterID ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
@@ -91,18 +104,12 @@ WndCounter::WndCounter( HINSTANCE instance, HWND parent, Settings& settings, Out
 
 WndCounter::~WndCounter()
 {
-	SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_DefaultWndProc ) );
 	SaveSettings();
 }
 
 HWND WndCounter::GetWindowHandle()
 {
 	return m_hWnd;
-}
-
-WNDPROC WndCounter::GetDefaultWndProc()
-{
-	return m_DefaultWndProc;
 }
 
 void WndCounter::Refresh()

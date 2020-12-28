@@ -8,7 +8,8 @@ public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
 	// 'output' - output object.
-	WndTrackbarSeek( HINSTANCE instance, HWND parent, Output& output );
+	// 'settings' - application settings.
+	WndTrackbarSeek( HINSTANCE instance, HWND parent, Output& output, Settings& settings );
 
 	virtual ~WndTrackbarSeek();
 

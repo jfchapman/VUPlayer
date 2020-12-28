@@ -30,7 +30,8 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "Version", Column::Version ),
 		Columns::value_type( "GainTrack", Column::GainTrack ),
 		Columns::value_type( "GainAlbum", Column::GainAlbum ),
-		Columns::value_type( "Artwork", Column::Artwork )
+		Columns::value_type( "Artwork", Column::Artwork ),
+		Columns::value_type( "Bitrate", Column::Bitrate )
 	} ),
 	m_CDDAColumns( {
 		Columns::value_type( "CDDB", Column::CDDB ),
@@ -275,21 +276,23 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 bool Library::GetFileInfo( const std::wstring& filename, long long& lastModified, long long& fileSize ) const
 {
 	bool success = false;
-	fileSize = 0;
-	lastModified = 0;
-	const DWORD shareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
-	const HANDLE handle = CreateFile( filename.c_str(), GENERIC_READ, shareMode, NULL /*security*/, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL /*template*/ );
-	if ( INVALID_HANDLE_VALUE != handle ) {
-		LARGE_INTEGER size = {};
-		if ( FALSE != GetFileSizeEx( handle, &size ) ) {
-			fileSize = static_cast<long long>( size.QuadPart );
+	if ( !IsURL( filename ) ) {
+		fileSize = 0;
+		lastModified = 0;
+		const DWORD shareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+		const HANDLE handle = CreateFile( filename.c_str(), GENERIC_READ, shareMode, NULL /*security*/, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL /*template*/ );
+		if ( INVALID_HANDLE_VALUE != handle ) {
+			LARGE_INTEGER size = {};
+			if ( FALSE != GetFileSizeEx( handle, &size ) ) {
+				fileSize = static_cast<long long>( size.QuadPart );
+			}
+			FILETIME lastWriteTime;
+			if ( FALSE != GetFileTime( handle, NULL /*creationTime*/, NULL /*lastAccessTime*/, &lastWriteTime ) ) {
+				lastModified = ( static_cast<long long>( lastWriteTime.dwHighDateTime ) << 32 ) + lastWriteTime.dwLowDateTime;
+			}
+			CloseHandle( handle );
+			success = true;
 		}
-		FILETIME lastWriteTime;
-		if ( FALSE != GetFileTime( handle, NULL /*creationTime*/, NULL /*lastAccessTime*/, &lastWriteTime ) ) {
-			lastModified = ( static_cast<long long>( lastWriteTime.dwHighDateTime ) << 32 ) + lastWriteTime.dwLowDateTime;
-		}
-		CloseHandle( handle );
-		success = true;
 	}
 	return success;
 }
@@ -303,6 +306,7 @@ bool Library::GetDecoderInfo( MediaInfo& mediaInfo )
 		mediaInfo.SetChannels( stream->GetChannels() );
 		mediaInfo.SetDuration( stream->GetDuration() );
 		mediaInfo.SetSampleRate( stream->GetSampleRate() );
+		mediaInfo.SetBitrate( stream->GetBitrate() );
 
 		Tags tags;
 		if ( m_Handlers.GetTags( mediaInfo.GetFilename(), tags ) ) {
@@ -429,6 +433,12 @@ void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 						}
 						break;
 					}
+					case Column::Bitrate : {
+						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
+							mediaInfo.SetBitrate( static_cast<float>( sqlite3_column_double( stmt, columnIndex ) ) );
+						}
+						break;
+					}
 				}
 			}
 		}
@@ -546,6 +556,15 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						sqlite3_bind_int( stmt, ++param, static_cast<int>( mediaInfo.GetCDDB() ) );
 						break;
 					}
+					case Column::Bitrate : {
+						const float bitrate = mediaInfo.GetBitrate();
+						if ( std::isnan( bitrate ) ) {
+							sqlite3_bind_null( stmt, ++param );
+						} else {
+							sqlite3_bind_double( stmt, ++param, bitrate );
+						}
+						break;
+					}
 					default : {
 						break;
 					}
@@ -585,7 +604,8 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 		const std::string yearStr = ( updatedMediaInfo.GetYear() > 0 ) ? std::to_string( updatedMediaInfo.GetYear() ) : std::string();
 		tags.insert( Tags::value_type( Tag::Year, yearStr ) );
 	}
-	if ( previousMediaInfo.GetGainAlbum() != updatedMediaInfo.GetGainAlbum() ) {
+	if ( ( std::isfinite( previousMediaInfo.GetGainAlbum() ) || std::isfinite( updatedMediaInfo.GetGainAlbum() ) ) && ( previousMediaInfo.GetGainAlbum() != updatedMediaInfo.GetGainAlbum() ) ) {
+
 		if ( std::isnan( updatedMediaInfo.GetGainAlbum() ) ) {
 			tags.insert( Tags::value_type( Tag::GainAlbum, std::string() ) );
 		} else {
@@ -596,7 +616,7 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 			}
 		}
 	}
-	if ( previousMediaInfo.GetGainTrack() != updatedMediaInfo.GetGainTrack() ) {
+	if ( ( std::isfinite( previousMediaInfo.GetGainTrack() ) || std::isfinite( updatedMediaInfo.GetGainTrack() ) ) && ( previousMediaInfo.GetGainTrack() != updatedMediaInfo.GetGainTrack() ) ) {
 		if ( std::isnan( updatedMediaInfo.GetGainTrack() ) ) {
 			tags.insert( Tags::value_type( Tag::GainTrack, std::string() ) );
 		} else {
@@ -1005,6 +1025,26 @@ MediaInfo::List Library::GetAllMedia()
 	return mediaList;
 }
 
+MediaInfo::List Library::GetStreams()
+{
+	MediaInfo::List mediaList;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "SELECT * FROM Media WHERE Filename LIKE 'http:%' OR Filename LIKE 'https:%' OR Filename LIKE 'ftp:%' ORDER BY Filename COLLATE NOCASE;";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				MediaInfo mediaInfo;
+				ExtractMediaInfo( stmt, mediaInfo );
+				mediaList.push_back( mediaInfo );
+			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+	return mediaList;
+}
+
 bool Library::GetArtistExists( const std::wstring& artist )
 {
 	bool exists = false;
@@ -1228,32 +1268,68 @@ Tags Library::GetTags( const MediaInfo& mediaInfo )
 	return tags;
 }
 
-bool Library::UpdateTrackGain( const MediaInfo& mediaInfo )
+bool Library::UpdateTrackGain( const MediaInfo& previousInfo, const MediaInfo& updatedInfo, const bool sendNotification )
 {
-	bool success = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = ( MediaInfo::Source::CDDA == mediaInfo.GetSource() ) ?
-			"UPDATE CDDA SET GainTrack=?1 WHERE CDDB=?2 AND Track=?3;" :
-			"UPDATE Media SET GainTrack=?1 WHERE Filename=?2;";
-		sqlite3_stmt* stmt = nullptr;
-		success = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) );
-		if ( success ) {
-			const float gain = mediaInfo.GetGainTrack();
-			success = std::isnan( gain ) ? ( SQLITE_OK == sqlite3_bind_null( stmt, 1 /*param*/ ) ) : ( SQLITE_OK == sqlite3_bind_double( stmt, 1 /*param*/, gain ) );
-			if ( success ) {
-				if ( MediaInfo::Source::CDDA == mediaInfo.GetSource() ) {
-					success = ( ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( mediaInfo.GetCDDB() ) ) ) &&
-						( SQLITE_OK == sqlite3_bind_int( stmt, 3 /*param*/, static_cast<int>( mediaInfo.GetTrack() ) ) ) );
-				} else {
-					success = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( mediaInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+	bool updated = false;
+	if ( ( std::isfinite( previousInfo.GetGainTrack() ) || std::isfinite( updatedInfo.GetGainTrack() ) ) && ( previousInfo.GetGainTrack() != updatedInfo.GetGainTrack() ) ) {
+		sqlite3* database = m_Database.GetDatabase();
+		if ( nullptr != database ) {
+			const std::string query = ( MediaInfo::Source::CDDA == updatedInfo.GetSource() ) ?
+				"UPDATE CDDA SET GainTrack=?1 WHERE CDDB=?2 AND Track=?3;" :
+				"UPDATE Media SET GainTrack=?1 WHERE Filename=?2;";
+			sqlite3_stmt* stmt = nullptr;
+			updated = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) );
+			if ( updated ) {
+				const float gain = updatedInfo.GetGainTrack();
+				updated = std::isnan( gain ) ? ( SQLITE_OK == sqlite3_bind_null( stmt, 1 /*param*/ ) ) : ( SQLITE_OK == sqlite3_bind_double( stmt, 1 /*param*/, gain ) );
+				if ( updated ) {
+					if ( MediaInfo::Source::CDDA == updatedInfo.GetSource() ) {
+						updated = ( ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( updatedInfo.GetCDDB() ) ) ) &&
+							( SQLITE_OK == sqlite3_bind_int( stmt, 3 /*param*/, static_cast<int>( updatedInfo.GetTrack() ) ) ) );
+					} else {
+						updated = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( updatedInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+					}
+					if ( updated ) {
+						updated = ( SQLITE_DONE == sqlite3_step( stmt ) );
+					}
 				}
-				if ( success ) {
-					success = ( SQLITE_DONE == sqlite3_step( stmt ) );
-				}
+				sqlite3_finalize( stmt );
 			}
-			sqlite3_finalize( stmt );
 		}
 	}
-	return success;
+	if ( updated && sendNotification ) {
+		VUPlayer* vuplayer = VUPlayer::Get();
+		if ( nullptr != vuplayer ) {
+			vuplayer->OnMediaUpdated( previousInfo, updatedInfo );
+		}
+	}
+	return updated;
+}
+
+void Library::UpdateMediaInfoFromDecoder( MediaInfo& mediaInfo, const Decoder& decoder, const bool sendNotification )
+{
+	MediaInfo originalInfo( mediaInfo );
+	GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
+	mediaInfo.SetChannels( decoder.GetChannels() );
+	mediaInfo.SetBitsPerSample( decoder.GetBPS() );
+	mediaInfo.SetDuration( decoder.GetDuration() );
+	mediaInfo.SetSampleRate( decoder.GetSampleRate() );
+	mediaInfo.SetBitrate( decoder.GetBitrate() );
+
+	bool updated = 
+		mediaInfo.GetChannels() != originalInfo.GetChannels() || 
+		mediaInfo.GetBitsPerSample() != originalInfo.GetBitsPerSample() ||
+		mediaInfo.GetDuration() != originalInfo.GetDuration() ||
+		mediaInfo.GetSampleRate() != originalInfo.GetSampleRate() ||	
+		!AreRoughlyEqual( mediaInfo.GetBitrate(), originalInfo.GetBitrate(), 0.5f );
+
+	if ( updated ) {
+		updated = UpdateMediaLibrary( mediaInfo );
+		if ( updated && sendNotification ) {
+			VUPlayer* vuplayer = VUPlayer::Get();
+			if ( nullptr != vuplayer ) {
+				vuplayer->OnMediaUpdated( originalInfo, mediaInfo );
+			}
+		}
+	}
 }

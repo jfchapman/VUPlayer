@@ -1,8 +1,5 @@
 #include "WndTree.h"
 
-#include <PathCch.h>
-#include <Shlwapi.h>
-#include <Uxtheme.h>
 #include <windowsx.h>
 
 #include <fstream>
@@ -22,6 +19,9 @@ static const std::list<KNOWNFOLDERID> s_UserFolders = { FOLDERID_Desktop, FOLDER
 
 // Playlist ID for the scratch list.
 static const std::string s_ScratchListID = "F641E764-3385-428A-9F39-88E928234E17";
+
+// Unique ID for the streams list.
+static const std::string s_StreamsListID = "F9E5A333-6043-43AF-B972-C633FC10650F";
 
 // Initial folder setting for choosing playlists.
 static const std::string s_PlaylistFolderSetting = "Playlist";
@@ -47,11 +47,12 @@ WndTree::OrderMap WndTree::s_RootOrder = {
 	{ Playlist::Type::CDDA,				2 },
 	{ Playlist::Type::User,				3 },
 	{ Playlist::Type::Favourites,	4 },
-	{ Playlist::Type::All,				5 },
-	{ Playlist::Type::Artist,			6 },
-	{ Playlist::Type::Album,			7 },
-	{ Playlist::Type::Genre,			8 },
-	{ Playlist::Type::Year,				9 }
+	{ Playlist::Type::Streams,		5 },
+	{ Playlist::Type::All,				6 },
+	{ Playlist::Type::Artist,			7 },
+	{ Playlist::Type::Album,			8 },
+	{ Playlist::Type::Genre,			9 },
+	{ Playlist::Type::Year,				10 }
 };
 
 LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -66,12 +67,35 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			}
 			case WM_CONTEXTMENU : {
 				POINT pt = {};
-				pt.x = LOWORD( lParam );
-				pt.y = HIWORD( lParam );
+				if ( -1 == lParam ) {
+					HTREEITEM item = TreeView_GetSelection( hwnd );
+					if ( nullptr == item ) {
+						item = TreeView_GetFirstVisible( hwnd );
+					}
+					if ( nullptr != item ) {
+						RECT itemRect = {};
+						TreeView_GetItemRect( hwnd, item, &itemRect, TRUE );
+						RECT clientRect = {};
+						GetClientRect( hwnd, &clientRect );
+						RECT intersectRect = {};
+						if ( FALSE == IntersectRect( &intersectRect, &itemRect, &clientRect ) ) {
+							item = TreeView_GetFirstVisible( hwnd );
+							TreeView_GetItemRect( hwnd, item, &itemRect, TRUE );
+						}						
+						pt.x = itemRect.left;
+						pt.y = itemRect.bottom;
+					}
+					ClientToScreen( hwnd, &pt );
+				} else {
+					pt.x = LOWORD( lParam );
+					pt.y = HIWORD( lParam );
+				}
 				wndTree->OnContextMenu( pt );
 				break;
 			}
 			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndTree->GetDefaultWndProc() ) );
+				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 				wndTree->OnDestroy();
 				break;
 			}
@@ -154,6 +178,8 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_NodeYears( nullptr ),
 	m_NodeAll( nullptr ),
 	m_NodeFavourites( nullptr ),
+	m_NodeStreams( nullptr ),
+	m_NodeComputer( nullptr ),
 	m_Library( library ),
 	m_Settings( settings ),
 	m_CDDAManager( cddaManager ),
@@ -166,6 +192,7 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_FolderPlaylistMap(),
 	m_PlaylistAll( nullptr ),
 	m_PlaylistFavourites( nullptr ),
+	m_PlaylistStreams( nullptr ),
 	m_ChosenFont( NULL ),
 	m_ColourHighlight( GetSysColor( COLOR_HIGHLIGHT ) ),
 	m_ImageList( nullptr ),
@@ -191,7 +218,7 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	const DWORD exStyle = 0;
 	LPCTSTR className = WC_TREEVIEW;
 	LPCTSTR windowName = NULL;
-	const DWORD style = WS_CHILD | WS_VISIBLE | TVS_HASBUTTONS | TVS_LINESATROOT | TVS_DISABLEDRAGDROP | TVS_SHOWSELALWAYS | TVS_EDITLABELS;
+	const DWORD style = WS_CHILD | WS_TABSTOP | WS_VISIBLE | TVS_HASBUTTONS | TVS_LINESATROOT | TVS_DISABLEDRAGDROP | TVS_SHOWSELALWAYS | TVS_EDITLABELS;
 	const int x = 0;
 	const int y = 0;
 	const int width = 0;
@@ -201,14 +228,13 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	TreeView_SetExtendedStyle( m_hWnd, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( TreeProc ) ) );
+	SetWindowAccessibleName( instance, m_hWnd, IDS_ACCNAME_TREEVIEW );
 	ApplySettings();
 	CreateImageList();
 }
 
 WndTree::~WndTree()
 {
-	SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_DefaultWndProc ) );
-
 	if ( nullptr != m_ChosenFont ) {
 		DeleteObject( m_ChosenFont );
 	}
@@ -253,31 +279,36 @@ HTREEITEM WndTree::GetStartupItem()
 {
 	HTREEITEM selectedItem = nullptr;
 	const std::wstring startupPlaylist = m_Settings.GetStartupPlaylist();
-	for ( const auto& playlistIter : m_PlaylistMap ) {
-		const Playlist::Ptr playlist = playlistIter.second;
-		if ( playlist && ( UTF8ToWideString( playlist->GetID() ) == startupPlaylist ) ) {
-			selectedItem = playlistIter.first;
-			break;
+	if ( m_PlaylistStreams && ( UTF8ToWideString( m_PlaylistStreams->GetID() ) == startupPlaylist ) ) {
+		SelectPlaylist( m_PlaylistStreams );
+		selectedItem = m_NodeStreams;
+	} else {
+		for ( const auto& playlistIter : m_PlaylistMap ) {
+			const Playlist::Ptr playlist = playlistIter.second;
+			if ( playlist && ( UTF8ToWideString( playlist->GetID() ) == startupPlaylist ) ) {
+				selectedItem = playlistIter.first;
+				break;
+			}
 		}
-	}
-	if ( nullptr == selectedItem ) {
-		selectedItem = GetComputerFolderNode( startupPlaylist );
 		if ( nullptr == selectedItem ) {
-			const std::list<std::wstring> parts = WideStringSplit( startupPlaylist, '\t' );
-			auto currentPart = parts.begin();
-			HTREEITEM currentItem = TreeView_GetRoot( m_hWnd );
-			while ( ( nullptr != currentItem ) && ( parts.end() != currentPart ) ) {
-				const std::wstring itemLabel = GetItemLabel( currentItem );
-				if ( itemLabel == *currentPart ) {
-					++currentPart;
-					if ( parts.end() == currentPart ) {
-						selectedItem = currentItem;
-						break;
+			selectedItem = GetComputerFolderNode( startupPlaylist );
+			if ( nullptr == selectedItem ) {
+				const std::list<std::wstring> parts = WideStringSplit( startupPlaylist, '\t' );
+				auto currentPart = parts.begin();
+				HTREEITEM currentItem = TreeView_GetRoot( m_hWnd );
+				while ( ( nullptr != currentItem ) && ( parts.end() != currentPart ) ) {
+					const std::wstring itemLabel = GetItemLabel( currentItem );
+					if ( itemLabel == *currentPart ) {
+						++currentPart;
+						if ( parts.end() == currentPart ) {
+							selectedItem = currentItem;
+							break;
+						} else {
+							currentItem = TreeView_GetChild( m_hWnd, currentItem );
+						}
 					} else {
-						currentItem = TreeView_GetChild( m_hWnd, currentItem );
+						currentItem = TreeView_GetNextSibling( m_hWnd, currentItem );
 					}
-				} else {
-					currentItem = TreeView_GetNextSibling( m_hWnd, currentItem );
 				}
 			}
 		}
@@ -298,6 +329,10 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 			case Playlist::Type::All :
 			case Playlist::Type::Favourites : {
 				startupPlaylist = playlist->GetName();
+				break;
+			}
+			case Playlist::Type::Streams : {
+				startupPlaylist = UTF8ToWideString( s_StreamsListID );
 				break;
 			}
 			case Playlist::Type::Artist : {
@@ -366,7 +401,7 @@ void WndTree::OnCommand( const UINT command )
 {
 	switch ( command ) {
 		case ID_FILE_NEWPLAYLIST : {
-			NewPlaylist();
+			NewPlaylist( true /*editTitle*/ );
 			break;
 		}
 		case ID_FILE_DELETEPLAYLIST : {
@@ -397,6 +432,10 @@ void WndTree::OnCommand( const UINT command )
 		}
 		case ID_TREEMENU_FAVOURITES : {
 			OnFavourites();
+			break;
+		}
+		case ID_TREEMENU_STREAMS : {
+			OnStreams();
 			break;
 		}
 		case ID_TREEMENU_ALLTRACKS : {
@@ -440,6 +479,7 @@ void WndTree::OnContextMenu( const POINT& position )
 			EnableMenuItem( treemenu, ID_FILE_RENAMEPLAYLIST, MF_BYCOMMAND | ( IsPlaylistRenameEnabled() ? MF_ENABLED : MF_DISABLED ) );
 
 			CheckMenuItem( treemenu, ID_TREEMENU_FAVOURITES, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_FAVOURITES ) ? MF_CHECKED : MF_UNCHECKED ) );
+			CheckMenuItem( treemenu, ID_TREEMENU_STREAMS, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_STREAMS ) ? MF_CHECKED : MF_UNCHECKED ) );
 			CheckMenuItem( treemenu, ID_TREEMENU_ALLTRACKS, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_ALLTRACKS ) ? MF_CHECKED : MF_UNCHECKED ) );
 			CheckMenuItem( treemenu, ID_TREEMENU_ARTISTS, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_ARTISTS ) ? MF_CHECKED : MF_UNCHECKED ) );
 			CheckMenuItem( treemenu, ID_TREEMENU_ALBUMS, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_ALBUMS ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -456,7 +496,7 @@ void WndTree::OnContextMenu( const POINT& position )
 				ModifyMenu( menu, ID_FILE_CONVERT, MF_BYCOMMAND | MF_STRING, ID_FILE_CONVERT, buffer );
 			}
 
-			const UINT enableExtract = ( playlist && ( playlist->GetCount() > 0 ) ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableExtract = ( playlist && playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( treemenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
 			const UINT flags = TPM_RIGHTBUTTON;
@@ -516,14 +556,14 @@ void WndTree::LoadPlaylists()
 	Playlists playlists = m_Settings.GetPlaylists();
 	for ( const auto& iter : playlists ) {
 		const Playlist::Ptr playlist = iter;
-		if ( playlist ) {
+		if ( playlist && ( ( s_ScratchListID != playlist->GetID() ) || ( UTF8ToWideString( s_ScratchListID ) == m_Settings.GetStartupPlaylist() ) ) ) {
 			const HTREEITEM hItem = AddItem( m_NodePlaylists, playlist->GetName(), Playlist::Type::User );
 			m_PlaylistMap.insert( PlaylistMap::value_type( hItem, playlist ) );
 		}
 	}
 }
 
-Playlist::Ptr WndTree::NewPlaylist()
+Playlist::Ptr WndTree::NewPlaylist( const bool editTitle )
 {
 	const int bufSize = 32;
 	WCHAR buffer[ bufSize ] = {};
@@ -558,8 +598,9 @@ Playlist::Ptr WndTree::NewPlaylist()
 
 	SetFocus( m_hWnd );
 	TreeView_SelectItem( m_hWnd, hItem );
-	TreeView_EditLabel( m_hWnd, hItem );
-
+	if ( editTitle ) {
+		TreeView_EditLabel( m_hWnd, hItem );
+	}
 	return playlist;
 }
 
@@ -608,6 +649,10 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 		}
 		case Playlist::Type::Favourites : {
 			playlist = m_PlaylistFavourites;
+			break;
+		}
+		case Playlist::Type::Streams : {
+			playlist = m_PlaylistStreams;
 			break;
 		}
 		case Playlist::Type::Artist : {
@@ -758,6 +803,10 @@ void WndTree::OnDestroy()
 		m_Settings.SavePlaylist( *m_PlaylistFavourites );
 	}
 
+	if ( m_PlaylistStreams ) {
+		m_PlaylistStreams->StopPendingThread();
+	}
+
 	if ( m_PlaylistAll ) {
 		m_PlaylistAll->StopPendingThread();
 	}
@@ -853,7 +902,16 @@ void WndTree::ImportPlaylist( const std::wstring& filename )
 		WCHAR filter[ MAX_PATH ] = {};
 		LoadString( m_hInst, IDS_IMPORTPLAYLIST_FILTERPLAYLISTS, filter, MAX_PATH );
 		const std::wstring filter1( filter );
-		const std::wstring filter2( L"*.vpl;*.m3u;*.pls" );
+
+		const std::set<std::wstring> playlistFiletypes = Playlist::GetSupportedPlaylistExtensions();
+		std::wstring filter2;
+		for ( const auto& iter : playlistFiletypes ) {
+			filter2 += L"*." + iter + L";";
+		}
+		if ( !filter2.empty() ) {
+			filter2.pop_back();
+		}
+
 		LoadString( m_hInst, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
 		const std::wstring filter3( filter );
 		const std::wstring filter4( L"*.*" );
@@ -889,16 +947,8 @@ void WndTree::ImportPlaylist( const std::wstring& filename )
 	}
 
 	if ( !playlistFilename.empty() ) {
-		const std::wstring fileExt = GetFileExtension( playlistFilename );
-		Playlist::Ptr playlist;
-		if ( L"vpl" == fileExt ) {
-			playlist = ImportPlaylistVPL( playlistFilename );
-		} else if ( L"m3u" == fileExt ) {
-			playlist = ImportPlaylistM3U( playlistFilename );
-		} else if ( L"pls" == fileExt ) {
-			playlist = ImportPlaylistPLS( playlistFilename );
-		}
-		if ( playlist ) {
+		Playlist::Ptr playlist( new Playlist( m_Library, Playlist::Type::User ) );
+		if ( playlist->AddPlaylist( playlistFilename, false /*startPendingThread*/ ) ) {
 			const size_t nameDelimiter = playlistFilename.find_last_of( L"/\\" );
 			const size_t extDelimiter = playlistFilename.rfind( '.' );
 			if ( ( std::wstring::npos != nameDelimiter ) && ( extDelimiter > nameDelimiter ) ) {
@@ -907,108 +957,6 @@ void WndTree::ImportPlaylist( const std::wstring& filename )
 			AddPlaylist( playlist );
 		}
 	}
-}
-
-Playlist::Ptr WndTree::ImportPlaylistVPL( const std::wstring& filename )
-{
-	Playlist::Ptr playlist( new Playlist( m_Library, Playlist::Type::User ) );
-	try {
-		std::ifstream stream;
-		stream.open( filename, std::ios::binary | std::ios::in );
-		if ( stream.is_open() ) {
-			do {
-				std::string line;
-				std::getline( stream, line );
-				const size_t delimiter = line.find_first_of( 0x01 );
-				if ( std::string::npos != delimiter ) {
-					const std::string name = line.substr( 0 /*offset*/, delimiter /*count*/ );			
-					playlist->AddPending( AnsiCodePageToWideString( name ), false /*startPendingThread*/ );
-				}
-			} while ( !stream.eof() );
-			stream.close();
-		}
-	} catch ( ... ) {
-	}
-	return playlist;
-}
-
-Playlist::Ptr WndTree::ImportPlaylistM3U( const std::wstring& filename )
-{
-	Playlist::Ptr playlist( new Playlist( m_Library, Playlist::Type::User ) );
-	try {
-		std::ifstream stream;
-		stream.open( filename, std::ios::in );
-		if ( stream.is_open() ) {
-			const size_t pathDelimiter = filename.find_last_of( L"/\\" );
-			const std::wstring playlistPath = filename.substr( 0 /*offset*/, pathDelimiter );
-			if ( std::wstring::npos != pathDelimiter ) {
-				do {
-					std::string line;
-					std::getline( stream, line );
-					if ( !line.empty() ) {
-						std::wstring wFilename = AnsiCodePageToWideString( line );
-						WCHAR buffer[ MAX_PATH + 1 ] = {};
-						if ( 0 != ExpandEnvironmentStrings( wFilename.c_str(), buffer, MAX_PATH ) ) {
-							wFilename = buffer;
-						}
-						if ( TRUE == PathIsRelative( wFilename.c_str() ) ) {
-							// Use legacy PathCombine function to maintain Windows 7 support.
-							if ( nullptr != PathCombine( buffer, playlistPath.c_str(), wFilename.c_str() ) ) {
-								wFilename = buffer;
-							}
-						}
-						if ( TRUE == PathFileExists( wFilename.c_str() ) ) {
-							playlist->AddPending( wFilename, false /*startPendingThread*/ );
-						}
-					}
-				} while ( !stream.eof() );
-			}
-			stream.close();
-		}
-	} catch ( ... ) {
-	}
-	return playlist;
-}
-
-Playlist::Ptr WndTree::ImportPlaylistPLS( const std::wstring& filename )
-{
-	Playlist::Ptr playlist( new Playlist( m_Library, Playlist::Type::User ) );
-	try {
-		std::ifstream stream;
-		stream.open( filename, std::ios::in );
-		if ( stream.is_open() ) {
-			const size_t pathDelimiter = filename.find_last_of( L"/\\" );
-			const std::wstring playlistPath = filename.substr( 0 /*offset*/, pathDelimiter );
-			if ( std::wstring::npos != pathDelimiter ) {
-				do {
-					std::string line;
-					std::getline( stream, line );
-					const size_t fileEntry = line.find( "File" );
-					const size_t delimiter = line.find_first_of( '=' );
-					if ( ( 0 == fileEntry ) && ( std::string::npos != delimiter ) ) {
-						const std::string name = line.substr( delimiter + 1 );
-						std::wstring wFilename = AnsiCodePageToWideString( name );
-						WCHAR buffer[ MAX_PATH + 1 ] = {};
-						if ( 0 != ExpandEnvironmentStrings( wFilename.c_str(), buffer, MAX_PATH ) ) {
-							wFilename = buffer;
-						}
-						if ( TRUE == PathIsRelative( wFilename.c_str() ) ) {
-							// Use legacy PathCombine function to maintain Windows 7 support.
-							if ( nullptr != PathCombine( buffer, playlistPath.c_str(), wFilename.c_str() ) ) {
-								wFilename = buffer;
-							}
-						}
-						if ( TRUE == PathFileExists( wFilename.c_str() ) ) {
-							playlist->AddPending( wFilename, false /*startPendingThread*/ );
-						}
-					}
-				} while ( !stream.eof() );
-			}
-			stream.close();
-		}
-	} catch ( ... ) {
-	}
-	return playlist;
 }
 
 void WndTree::ExportSelectedPlaylist()
@@ -1121,14 +1069,27 @@ void WndTree::ProcessPendingPlaylists()
 	}
 }
 
-void WndTree::SelectPlaylist( const Playlist::Ptr playlist )
+void WndTree::SelectPlaylist( const Playlist::Ptr playlist, const bool showNode )
 {
 	if ( playlist ) {
-		if ( Playlist::Type::Favourites == playlist->GetType() ) {
+		if ( Playlist::Type::Streams == playlist->GetType() ) {
+			if ( showNode && ( nullptr == m_NodeStreams ) ) {
+				OnStreams();
+			}
+			if ( nullptr != m_NodeStreams ) {
+				TreeView_SelectItem( m_hWnd, m_NodeStreams );
+			}
+		} else if ( Playlist::Type::Favourites == playlist->GetType() ) {
+			if ( showNode && ( nullptr == m_NodeFavourites ) ) {
+				OnFavourites();
+			}
 			if ( nullptr != m_NodeFavourites ) {
 				TreeView_SelectItem( m_hWnd, m_NodeFavourites );
 			}
 		} else if ( Playlist::Type::All == playlist->GetType() ) {
+			if ( showNode && ( nullptr == m_NodeAll ) ) {
+				OnAllTracks();
+			}
 			if ( nullptr != m_NodeAll ) {
 				TreeView_SelectItem( m_hWnd, m_NodeAll );
 			}
@@ -1204,12 +1165,13 @@ void WndTree::ApplySettings()
 	COLORREF fontColour = TreeView_GetTextColor( m_hWnd );
 	COLORREF backgroundColour = TreeView_GetBkColor( m_hWnd );
 	bool favourites = false;
+	bool streams = false;
 	bool allTracks = false;
 	bool artists = false;
 	bool albums = false;
 	bool genres = false;
 	bool years = false;
-	m_Settings.GetTreeSettings( logFont, fontColour, backgroundColour, m_ColourHighlight, favourites, allTracks, artists, albums, genres, years );
+	m_Settings.GetTreeSettings( logFont, fontColour, backgroundColour, m_ColourHighlight, favourites, streams, allTracks, artists, albums, genres, years );
 	TreeView_SetTextColor( m_hWnd, fontColour );
 	TreeView_SetBkColor( m_hWnd, backgroundColour );
 	SetFont( logFont );
@@ -1222,12 +1184,13 @@ void WndTree::SaveSettings()
 	COLORREF backgroundColour = TreeView_GetBkColor( m_hWnd );
 	COLORREF highlightColour = GetHighlightColour();
 	const bool favourites = IsShown( ID_TREEMENU_FAVOURITES );
+	const bool streams = IsShown( ID_TREEMENU_STREAMS );
 	const bool allTracks = IsShown( ID_TREEMENU_ALLTRACKS );
 	const bool artists = IsShown( ID_TREEMENU_ARTISTS );
 	const bool albums = IsShown( ID_TREEMENU_ALBUMS );
 	const bool genres = IsShown( ID_TREEMENU_GENRES );
 	const bool years = IsShown( ID_TREEMENU_YEARS );
-	m_Settings.SetTreeSettings( logFont, fontColour, backgroundColour, highlightColour, favourites, allTracks, artists, albums, genres, years );
+	m_Settings.SetTreeSettings( logFont, fontColour, backgroundColour, highlightColour, favourites, streams, allTracks, artists, albums, genres, years );
 }
 
 void WndTree::OnSelectColour( const UINT commandID )
@@ -1302,6 +1265,24 @@ void WndTree::AddFavourites()
 	tvInsert.hInsertAfter = GetInsertAfter( Playlist::Type::Favourites );
 	tvInsert.itemex = tvItem;
 	m_NodeFavourites = TreeView_InsertItem( m_hWnd, &tvInsert );
+}
+
+void WndTree::AddStreams()
+{
+	const int bufSize = 32;
+	WCHAR buffer[ bufSize ] = {};
+	LoadString( m_hInst, IDS_STREAMS, buffer, bufSize );
+	TVITEMEX tvItem = {};
+	tvItem.mask = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+	tvItem.pszText = buffer;
+	tvItem.lParam = MAKELPARAM( static_cast<LPARAM>( Playlist::Type::Streams ), s_RootOrder[ Playlist::Type::Streams ] );
+	tvItem.iImage = GetIconIndex( Playlist::Type::Streams );
+	tvItem.iSelectedImage = tvItem.iImage;
+	TVINSERTSTRUCT tvInsert = {};
+	tvInsert.hParent = TVI_ROOT;
+	tvInsert.hInsertAfter = GetInsertAfter( Playlist::Type::Streams );
+	tvInsert.itemex = tvItem;
+	m_NodeStreams = TreeView_InsertItem( m_hWnd, &tvInsert );
 }
 
 void WndTree::AddAllTracks()
@@ -1619,6 +1600,7 @@ void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList )
 	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
 	const Playlist::Ptr selectedPlaylist = GetSelectedPlaylist();
 	const bool updateAllTracks = m_PlaylistAll && ( selectedPlaylist != m_PlaylistAll );
+	const bool updateStreams = m_PlaylistStreams && ( selectedPlaylist != m_PlaylistStreams );
 
 	for ( const auto& previousMediaInfo : mediaList ) {
 		Playlist::Set updatedPlaylists;
@@ -1629,6 +1611,9 @@ void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList )
 		UpdateYears( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		if ( updateAllTracks ) {
 			m_PlaylistAll->RemoveItem( previousMediaInfo );
+		}
+		if ( updateStreams && IsURL( previousMediaInfo.GetFilename() ) ) {
+			m_PlaylistStreams->RemoveItem( previousMediaInfo );
 		}
 	}
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
@@ -1671,6 +1656,10 @@ void WndTree::OnMediaLibraryRefreshed()
 			}
 			case Playlist::Type::Favourites : {
 				hSelectedItem = m_NodeFavourites;
+				break;
+			}
+			case Playlist::Type::Streams : {
+				hSelectedItem = m_NodeStreams;
 				break;
 			}
 			case Playlist::Type::Genre : {
@@ -1803,6 +1792,10 @@ void WndTree::UpdatePlaylists( const MediaInfo& updatedMediaInfo, Playlist::Set&
 
 	if ( m_PlaylistFavourites && m_PlaylistFavourites->OnUpdatedMedia( updatedMediaInfo ) ) {
 		updatedPlaylists.insert( m_PlaylistFavourites );
+	}
+
+	if ( m_PlaylistStreams && m_PlaylistStreams->OnUpdatedMedia( updatedMediaInfo ) ) {
+		updatedPlaylists.insert( m_PlaylistStreams );
 	}
 }
 
@@ -2157,6 +2150,10 @@ bool WndTree::IsShown( const UINT commandID ) const
 			isShown = ( nullptr != m_NodeFavourites );
 			break;
 		}
+		case ID_TREEMENU_STREAMS : {
+			isShown = ( nullptr != m_NodeStreams );
+			break;
+		}
 		case ID_TREEMENU_ALLTRACKS : {
 			isShown = ( nullptr != m_NodeAll );
 			break;
@@ -2187,6 +2184,15 @@ void WndTree::OnFavourites()
 		AddFavourites();
 	} else {
 		RemoveFavourites();
+	}
+}
+
+void WndTree::OnStreams()
+{
+	if ( nullptr == m_NodeStreams ) {
+		AddStreams();
+	} else {
+		RemoveStreams();
 	}
 }
 
@@ -2240,6 +2246,14 @@ void WndTree::RemoveFavourites()
 	if ( nullptr != m_NodeFavourites ) {
 		TreeView_DeleteItem( m_hWnd, m_NodeFavourites );
 		m_NodeFavourites = nullptr;
+	}
+}
+
+void WndTree::RemoveStreams()
+{
+	if ( nullptr != m_NodeStreams ) {
+		TreeView_DeleteItem( m_hWnd, m_NodeStreams );
+		m_NodeStreams = nullptr;
 	}
 }
 
@@ -2362,20 +2376,25 @@ void WndTree::Populate()
 
 	LoadAllTracks();
 	LoadFavourites();
+	LoadStreams();
 
 	LOGFONT font = {};
 	COLORREF fontColour = 0;
 	COLORREF backgroundColour = 0;
 	COLORREF highlightColour = 0;
 	bool favourites = true;
+	bool streams = true;
 	bool allTracks = true;
 	bool artists = true;
 	bool albums = true;
 	bool genres = true;
 	bool years = true;
-	m_Settings.GetTreeSettings( font, fontColour, backgroundColour, highlightColour, favourites, allTracks, artists, albums, genres, years );
+	m_Settings.GetTreeSettings( font, fontColour, backgroundColour, highlightColour, favourites, streams, allTracks, artists, albums, genres, years );
 	if ( favourites ) {
 		AddFavourites();
+	}
+	if ( streams ) {
+		AddStreams();
 	}
 	if ( allTracks ) {
 		AddAllTracks();
@@ -2445,6 +2464,11 @@ void WndTree::CreateImageList()
 		m_IconMap.insert( IconMap::value_type( Playlist::Type::Favourites, ImageList_ReplaceIcon( m_ImageList, -1, hIcon ) ) );
 	}
 
+	hIcon = static_cast<HICON>( LoadImage( m_hInst, MAKEINTRESOURCE( IDI_STREAMS ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
+	if ( NULL != hIcon ) {
+		m_IconMap.insert( IconMap::value_type( Playlist::Type::Streams, ImageList_ReplaceIcon( m_ImageList, -1, hIcon ) ) );
+	}
+
 	hIcon = static_cast<HICON>( LoadImage( m_hInst, MAKEINTRESOURCE( IDI_FOLDER ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
 	if ( NULL != hIcon ) {
 		m_IconIndexFolder = ImageList_ReplaceIcon( m_ImageList, -1, hIcon );
@@ -2479,6 +2503,11 @@ Playlist::Ptr WndTree::GetPlaylistFavourites() const
 	return m_PlaylistFavourites;
 }
 
+Playlist::Ptr WndTree::GetPlaylistStreams() const
+{
+	return m_PlaylistStreams;
+}
+
 Playlist::Ptr WndTree::GetPlaylistAll() const
 {
 	return m_PlaylistAll;
@@ -2505,6 +2534,19 @@ void WndTree::LoadFavourites()
 		WCHAR buffer[ bufSize ] = {};
 		LoadString( m_hInst, IDS_FAVOURITES, buffer, bufSize );
 		m_PlaylistFavourites->SetName( buffer );
+	}
+}
+
+void WndTree::LoadStreams()
+{
+	m_PlaylistStreams = std::make_shared<Playlist>( m_Library, s_StreamsListID, Playlist::Type::Streams );
+	const int bufSize = 32;
+	WCHAR buffer[ bufSize ] = {};
+	LoadString( m_hInst, IDS_STREAMS, buffer, bufSize );
+	m_PlaylistStreams->SetName( buffer );
+	const auto items = m_Library.GetStreams();
+	for ( const auto& item : items ) {
+		m_PlaylistStreams->AddItem( item );
 	}
 }
 

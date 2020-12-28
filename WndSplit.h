@@ -41,6 +41,9 @@ public:
 	// Resizes the split window and all child windows.
 	void Resize();
 
+	// Sets the rebar window handle to 'hwnd'.
+	void SetRebarWindowHandle( const HWND hwnd );
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK SplitProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );

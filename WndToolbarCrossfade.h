@@ -7,9 +7,8 @@ class WndToolbarCrossfade : public WndToolbar
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndToolbarCrossfade( HINSTANCE instance, HWND parent );
-
-	virtual ~WndToolbarCrossfade();
+	// 'settings' - application settings.
+	WndToolbarCrossfade( HINSTANCE instance, HWND parent, Settings& settings );
 
 	// Updates the toolbar state.
 	// 'output' - output object.
@@ -23,11 +22,5 @@ public:
 private:
 	// Creates the buttons.
 	void CreateButtons();
-
-	// Creates the image list.
-	void CreateImageList();
-
-	// Image list.
-	HIMAGELIST m_ImageList;
 };
 

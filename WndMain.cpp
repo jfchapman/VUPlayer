@@ -181,7 +181,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 	MSG msg;
 	// Main message loop
 	while ( GetMessage( &msg, nullptr, 0, 0 ) ) {
-		if ( !TranslateAccelerator( g_hWnd, hAccelTable, &msg ) ) {
+		if ( !TranslateAccelerator( g_hWnd, hAccelTable, &msg ) && !IsDialogMessage( g_hWnd, &msg ) && !IsDialogMessage( vuplayer->GetEQ(), &msg ) ) {
 			TranslateMessage( &msg );
 			DispatchMessage( &msg );
 		}
@@ -249,7 +249,9 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			// Parse the menu selections:
 			switch ( wmId ) {
 				case IDM_ABOUT : {
+					const HWND previousFocus = GetFocus();
 					DialogBoxParam( g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About, reinterpret_cast<LPARAM>( vuplayer ) );
+					SetFocus( previousFocus );
 					break;
 				}
 				case IDM_EXIT : {
@@ -275,6 +277,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnDestroy();
 			}
+			SetWindowLongPtr( hWnd, DWLP_USER, 0 );
 			PostQuitMessage( 0 );
 			break;
 		}

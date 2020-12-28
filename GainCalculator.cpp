@@ -1,5 +1,7 @@
 #include "GainCalculator.h"
 
+#include "Utility.h"
+
 #include "ebur128.h"
 
 DWORD WINAPI GainCalculator::CalcThreadProc( LPVOID lpParam )
@@ -104,7 +106,7 @@ void GainCalculator::Handler()
 			std::vector<ebur128_state*> r128States;
 			r128States.reserve( pendingItems.size() );
 
-			CanContinue canContinue( [ stopEvent = m_StopEvent ] ()
+			Decoder::CanContinue canContinue( [ stopEvent = m_StopEvent ] ()
 			{
 				return ( WAIT_OBJECT_0 != WaitForSingleObject( stopEvent, 0 ) );
 			} );
@@ -225,46 +227,27 @@ int GainCalculator::GetPendingCount() const
 
 Decoder::Ptr GainCalculator::OpenDecoder( const Playlist::Item& item ) const
 {
-	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
-	if ( !decoder ) {
-		auto duplicate = item.Duplicates.begin();
-		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
-			decoder = m_Handlers.OpenDecoder( *duplicate );
-			++duplicate;
+	Decoder::Ptr decoder;
+	if ( !IsURL( item.Info.GetFilename() ) ) {
+		decoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
+		if ( !decoder ) {
+			auto duplicate = item.Duplicates.begin();
+			while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
+				decoder = m_Handlers.OpenDecoder( *duplicate );
+				++duplicate;
+			}
 		}
 	}
 	return decoder;
 }
 
-float GainCalculator::CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, CanContinue canContinue )
+float GainCalculator::CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, Decoder::CanContinue canContinue )
 {
 	float gain = NAN;
-	if ( nullptr != canContinue ) {
+	if ( ( nullptr != canContinue ) && !IsURL( filename ) ) {
 		const Decoder::Ptr decoder = handlers.OpenDecoder( filename );
 		if ( decoder ) {
-			const unsigned int channels = static_cast<unsigned int>( decoder->GetChannels() );
-			const unsigned long samplerate = static_cast<unsigned long>( decoder->GetSampleRate() );
-			ebur128_state* r128State = ebur128_init( channels, samplerate, EBUR128_MODE_I );
-			if ( nullptr != r128State ) {
-				const long sampleSize = 4096;
-				std::vector<float> buffer( sampleSize * channels );
-
-				int errorState = EBUR128_SUCCESS;
-				long samplesRead = decoder->Read( &buffer[ 0 ], sampleSize );
-				while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) && canContinue() ) {
-					errorState = ebur128_add_frames_float( r128State, &buffer[ 0 ], static_cast<size_t>( samplesRead ) );
-					samplesRead = decoder->Read( &buffer[ 0 ], sampleSize );
-				}
-
-				if ( ( EBUR128_SUCCESS == errorState ) && canContinue() ) {
-					double loudness = 0;
-					errorState = ebur128_loudness_global( r128State, &loudness );
-					if ( EBUR128_SUCCESS == errorState ) {
-						gain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
-					}
-				}
-				ebur128_destroy( &r128State );
-			}
+			gain = decoder->CalculateTrackGain( canContinue );
 		}
 	}
 	return gain;

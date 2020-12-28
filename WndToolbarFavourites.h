@@ -7,9 +7,8 @@ class WndToolbarFavourites : public WndToolbar
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndToolbarFavourites( HINSTANCE instance, HWND parent );
-
-	virtual ~WndToolbarFavourites();
+	// 'settings' - application settings.
+	WndToolbarFavourites( HINSTANCE instance, HWND parent, Settings& settings );
 
 	// Updates the toolbar state.
 	// 'output' - output object.
@@ -23,11 +22,5 @@ public:
 private:
 	// Creates the buttons.
 	void CreateButtons();
-
-	// Creates the image list.
-	void CreateImageList();
-
-	// Image list.
-	HIMAGELIST m_ImageList;
 };
 

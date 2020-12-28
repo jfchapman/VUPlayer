@@ -1,4 +1,4 @@
-VUPlayer 4.9.1
+VUPlayer 4.10
 Copyright (c) 2020 James Chapman
 ------------------------------------------------------------------------------
 website: http://www.vuplayer.com
@@ -20,7 +20,7 @@ To run in 'portable' mode, leaving no database footprint, the application can be
 
 The optional [settings file] parameter specifies the location of an application settings file to use.
 The 'Export Settings' function in the main application can be used to save the current settings in the correct format.
-Please note that Gracenote and Audioscrobbler functionality is disabled when running in 'portable' mode.
+Please note that Audioscrobbler functionality is disabled when running in 'portable' mode.
 
 
 Credits
@@ -42,6 +42,12 @@ http://xiph.org/flac/
 
 WavPack is Copyright (c) 1998-2020 David Bryant
 http://www.wavpack.com
+
+Monkey's Audio is Copyright (c) 2000-2020 Matt Ashland
+https://monkeysaudio.com
+
+Musepack is Copyright (c) The Musepack Development Team
+https://www.musepack.net
 
 Audioscrobbler is Copyright (c) 2020 Last.fm Ltd.
 http://www.last.fm

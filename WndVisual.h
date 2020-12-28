@@ -91,6 +91,9 @@ public:
 	// Returns the command ID mappings for VUMeter decay rates.
 	std::map<UINT,float> GetVUMeterDecayRates() const;
 
+	// Sets the rebar window handle to 'hwnd'.
+	void SetRebarWindowHandle( const HWND hwnd );
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK VisualProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );

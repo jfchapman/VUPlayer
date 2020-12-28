@@ -303,8 +303,23 @@
     <ClInclude Include="DlgAdvancedASIO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\sqlite-3.31.1\sqlite3.h">
+    <ClInclude Include="DecoderMAC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HandlerMAC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgAddStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\sqlite-3.34.0\sqlite3.h">
       <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="DecoderMPC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HandlerMPC.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -563,8 +578,23 @@
     <ClCompile Include="DlgAdvancedASIO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.31.1\sqlite3.c">
+    <ClCompile Include="DecoderMAC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlerMAC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgAddStream.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\sqlite-3.34.0\sqlite3.c">
       <Filter>Third Party</Filter>
+    </ClCompile>
+    <ClCompile Include="DecoderMPC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlerMPC.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -574,9 +604,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\VUPlayer.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="res\small.ico">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\placeholder.png">
@@ -636,9 +663,6 @@
     <Image Include="res\album.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="res\icon3.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="res\artist.ico">
       <Filter>Resource Files</Filter>
     </Image>
@@ -685,6 +709,12 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\fade_to_next.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\add_stream.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\streams.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

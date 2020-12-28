@@ -30,6 +30,11 @@ LRESULT CALLBACK WndStatus::StatusProc( HWND hwnd, UINT message, WPARAM wParam, 
 				}
 				break;
 			}
+			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndStatus->GetDefaultWndProc() ) );
+				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+				break;
+			}
 			case MSG_UPDATESTATUS : {
 				wndStatus->Refresh();
 				break;
@@ -71,7 +76,6 @@ WndStatus::WndStatus( HINSTANCE instance, HWND parent ) :
 
 WndStatus::~WndStatus()
 {
-	SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_DefaultWndProc ) );
 }
 
 WNDPROC WndStatus::GetDefaultWndProc()

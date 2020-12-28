@@ -17,10 +17,11 @@ public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
 	// 'output' - output object.
+	// 'settings' - application settings.
 	// 'minValue' - minimum trackbar value.
 	// 'maxValue' - maximum trackbar value.
 	// 'type' - trackbar type.
-	WndTrackbar( HINSTANCE instance, HWND parent, Output& output, const int minValue, const int maxValue, const Type type );
+	WndTrackbar( HINSTANCE instance, HWND parent, Output& output, Settings& settings, const int minValue, const int maxValue, const Type type );
 
 	virtual ~WndTrackbar();
 
@@ -64,6 +65,9 @@ protected:
 	// Returns the output object.
 	const Output& GetOutput() const;
 
+	// Returns the application settings.
+	Settings& GetSettings();
+
 	// Returns the module instance handle.
 	HINSTANCE GetInstanceHandle();
 
@@ -94,6 +98,9 @@ private:
 
 	// Output object.
 	Output& m_Output;
+
+	// Application settings.
+	Settings& m_Settings;
 
 	// Trackbar type.
 	Type m_Type;

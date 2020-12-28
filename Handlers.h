@@ -49,6 +49,9 @@ private:
 	// Returns a decoder handler supported by the 'filename' extension, or nullptr of there was no match.
 	Handler::Ptr FindDecoderHandler( const std::wstring& filename ) const;
 
+	// BASS Handler.
+	Handler::Ptr m_HandlerBASS;
+
 	// Available handlers.
 	Handler::List m_Handlers;
 

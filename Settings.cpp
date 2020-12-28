@@ -12,11 +12,20 @@
 #include "stringbuffer.h"
 #include "prettywriter.h"
 
-// Pitch range options
-static const Settings::PitchRangeMap s_PitchRanges = {
-		{ Settings::PitchRange::Small, 0.1f },
-		{ Settings::PitchRange::Medium, 0.2f },
-		{ Settings::PitchRange::Large, 0.3f }
+#include <array>
+
+// Pitch ranges
+const Settings::PitchRangeMap Settings::s_PitchRanges = {
+	{ Settings::PitchRange::Small, 0.1f },
+	{ Settings::PitchRange::Medium, 0.2f },
+	{ Settings::PitchRange::Large, 0.3f }
+};
+
+// Button sizes
+const Settings::ButtonSizeMap Settings::s_ButtonSizes = {
+	{ Settings::ToolbarSize::Small, 24 },
+	{ Settings::ToolbarSize::Medium, 32 },
+	{ Settings::ToolbarSize::Large, 40 }
 };
 
 // Default conversion/extraction filename format.
@@ -42,6 +51,7 @@ void Settings::UpdateDatabase()
 	UpdatePlaylistColumnsTable();
 	UpdatePlaylistsTable();
 	UpdateHotkeysTable();
+	UpdateFontSettings();
 }
 
 void Settings::UpdateSettingsTable()
@@ -230,6 +240,84 @@ void Settings::UpdateHotkeysTable()
 	}
 }
 
+void Settings::UpdateFontSettings()
+{
+	// Apply DPI scaling, if necessary, to all logfont blobs in the settings table.
+	constexpr std::array allFontSettings { "ListFont", "TreeFont", "CounterFont" };
+
+	// Get the current pixel count per logical inch.
+	const HDC dc = GetDC( 0 );
+	const int currentLogPixels = ( nullptr != dc ) ? GetDeviceCaps( dc, LOGPIXELSX ) : 0;
+	if ( nullptr != dc ) {
+		ReleaseDC( 0, dc );
+	}
+	
+	if ( currentLogPixels > 0 ) {
+		sqlite3* database = m_Database.GetDatabase();
+		if ( nullptr != database ) {
+			int settingsLogPixels = currentLogPixels;
+
+			// Get the pixel count per logical inch which applies to logfont blobs in the settings table.
+			sqlite3_stmt* stmt = nullptr;
+			std::string query = "SELECT Value FROM Settings WHERE Setting='LogPixels';";
+			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+				if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					settingsLogPixels = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+				}
+				sqlite3_finalize( stmt );
+			}
+
+			// Set the pixel count per logical inch which applies to logfont blobs in the settings table.
+			query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+			stmt = nullptr;
+			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+				sqlite3_bind_text( stmt, 1, "LogPixels", -1 /*strLen*/, SQLITE_STATIC );
+				sqlite3_bind_int( stmt, 2, currentLogPixels );
+				sqlite3_step( stmt );
+				sqlite3_reset( stmt );
+				sqlite3_finalize( stmt );
+			}
+
+			if ( ( settingsLogPixels != currentLogPixels ) && ( settingsLogPixels > 0 ) ) {
+				const float scaling = static_cast<float>( currentLogPixels ) / settingsLogPixels;
+
+				// Extract logfont blobs from the settings table and apply DPI scaling.
+				std::map<std::string,LOGFONT> fontSettingsToUpdate;
+				stmt = nullptr;
+				query = "SELECT Value FROM Settings WHERE Setting = ?1;";
+				if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+					for ( const auto& setting : allFontSettings ) {
+						sqlite3_bind_text( stmt, 1, setting, -1 /*strLen*/, SQLITE_STATIC );
+						if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+							const int bytes = sqlite3_column_bytes( stmt, 0 /*columnIndex*/ );
+							if ( sizeof( LOGFONT ) == bytes ) {
+								LOGFONT font = *reinterpret_cast<const LOGFONT*>( sqlite3_column_blob( stmt, 0 /*columnIndex*/ ) );
+								font.lfHeight = std::lroundf( scaling * font.lfHeight );
+								fontSettingsToUpdate.insert( { setting, font } );
+							}
+						}
+						sqlite3_reset( stmt );
+					}
+					sqlite3_finalize( stmt );
+				}
+
+				// Update settings table with DPI scaled logfont blobs.
+				stmt = nullptr;
+				query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+				if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+					for ( const auto& setting : fontSettingsToUpdate ) {
+						sqlite3_bind_text( stmt, 1, setting.first.c_str(), -1 /*strLen*/, SQLITE_STATIC );
+						sqlite3_bind_blob( stmt, 2, &setting.second, sizeof( LOGFONT ), SQLITE_STATIC );
+						sqlite3_step( stmt );
+						sqlite3_reset( stmt );
+					}
+					sqlite3_finalize( stmt );
+				}
+			}
+		}
+	}
+}
+
 void Settings::GetPlaylistSettings( PlaylistColumns& columns, LOGFONT& font,
 			COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour )
 {
@@ -345,7 +433,7 @@ void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const LOGFON
 }
 
 void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour,
-		bool& showFavourites, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears )
+		bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -393,6 +481,14 @@ void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& b
 			sqlite3_finalize( stmt );
 		}
 		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='TreeStreams';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				showStreams = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='TreeAllTracks';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
@@ -436,7 +532,7 @@ void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& b
 }
 
 void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF& fontColour, const COLORREF& backgroundColour, const COLORREF& highlightColour,
-		const bool showFavourites, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears )
+		const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -465,6 +561,11 @@ void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF& fontColour,
 
 			sqlite3_bind_text( stmt, 1, "TreeFavourites", -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_int( stmt, 2, static_cast<int>( showFavourites ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "TreeStreams", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( showStreams ) );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
@@ -2805,4 +2906,49 @@ void Settings::SetAdvancedASIOSettings( const bool useDefaultSamplerate, const i
 			stmt = nullptr;
 		}
 	}
+}
+
+Settings::ToolbarSize Settings::GetToolbarSize()
+{
+	ToolbarSize size = ToolbarSize::Small;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='ToolbarSize';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+				if ( ( value >= static_cast<int>( ToolbarSize::Small ) ) && ( value <= static_cast<int>( ToolbarSize::Large ) ) ) {
+					size = static_cast<ToolbarSize>( value );
+				}
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return size;
+}
+
+void Settings::SetToolbarSize( const ToolbarSize size )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "ToolbarSize", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( size ) );
+			sqlite3_step( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+int Settings::GetToolbarButtonSize( const ToolbarSize size )
+{
+	auto iter = s_ButtonSizes.find( size );
+	if ( s_ButtonSizes.end() == iter ) {
+		iter = s_ButtonSizes.begin();
+	}
+	const int buttonSize = static_cast<int>( iter->second * GetDPIScaling() );
+	return buttonSize;
 }

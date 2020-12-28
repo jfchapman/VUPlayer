@@ -53,6 +53,7 @@ INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
+				return TRUE;
 			}
 			break;
 		}

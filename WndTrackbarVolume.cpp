@@ -7,9 +7,8 @@
 #include <sstream>
 
 WndTrackbarVolume::WndTrackbarVolume( HINSTANCE instance, HWND parent, Output& output, Settings& settings ) :
-	WndTrackbar( instance, parent, output, 0 /*minValue*/, 200 /*maxValue*/, GetControlType( settings ) ),
-	m_Tooltip(),
-	m_Settings( settings )
+	WndTrackbar( instance, parent, output, settings, 0 /*minValue*/, 200 /*maxValue*/, GetControlType( settings ) ),
+	m_Tooltip()
 {
 	Update();
 }
@@ -182,7 +181,7 @@ void WndTrackbarVolume::OnContextMenu( const POINT& position )
 			CheckMenuItem( trackbarMenu, ID_VIEW_TRACKBAR_PITCH, ( Type::Pitch == type ) ? MF_CHECKED : MF_UNCHECKED );
 			EnableMenuItem( trackbarMenu, ID_CONTROL_PITCHRESET, ( GetOutput().GetPitch() != 1.0f ) ? MF_ENABLED : MF_DISABLED );
 
-			const Settings::PitchRange pitchRange = m_Settings.GetPitchRange();
+			const Settings::PitchRange pitchRange = GetSettings().GetPitchRange();
 			CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_SMALL, ( Settings::PitchRange::Small == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
 			CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_MEDIUM, ( Settings::PitchRange::Medium == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
 			CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_LARGE, ( Settings::PitchRange::Large == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );

@@ -19,7 +19,9 @@ DecoderFlac::DecoderFlac( const std::wstring& filename ) :
 	} catch ( ... ) {
 	}
 
-	if ( !m_Valid ) {
+	if ( m_Valid ) {
+		SetBitrate( CalculateBitrate() );
+	} else {
 		finish();
 		m_FileStream.close();
 		throw std::runtime_error( "DecoderFlac could not load file" );
@@ -66,6 +68,46 @@ float DecoderFlac::Seek( const float position )
 		reset();
 	}
 	return seekPosition;
+}
+
+float DecoderFlac::CalculateBitrate()
+{
+	float bitrate = NAN;
+	if ( const float duration = GetDuration(); ( duration > 0 ) && m_FileStream.good() ) {
+		const auto initial = m_FileStream.tellg();
+
+		m_FileStream.seekg( 0, std::ios_base::end );
+		const long long filesize = m_FileStream.tellg();
+		m_FileStream.seekg( 0, std::ios_base::beg );
+
+		std::vector<char> block( 4 );
+		m_FileStream.read( block.data(), 4 );
+		if ( ( 'f' == block[ 0 ] ) && ( 'L' == block[ 1 ] ) && ( 'a' ==  block[ 2 ] ) && ('C' == block[ 3 ] ) ) {
+			m_FileStream.read( block.data(), 4 );
+			while ( m_FileStream.good() ) {
+				const long long currentPos = m_FileStream.tellg();
+				const unsigned long blockSize = ( static_cast<unsigned char>( block[ 1 ] ) << 16 ) | ( static_cast<unsigned char>( block[ 2 ] ) << 8 ) | static_cast<unsigned char>( block[ 3 ] );
+				if ( ( currentPos + blockSize ) < filesize ) {
+					const bool lastBlock = block[ 0 ] & 0x80;
+					if ( lastBlock ) {
+						const long long streamsize = filesize - currentPos - blockSize;
+						bitrate = ( streamsize * 8 ) / ( duration * 1000 );
+						break;
+					}
+				} else {
+					break;
+				}
+				m_FileStream.seekg( blockSize, std::ios_base::cur );
+				m_FileStream.read( block.data(), 4 );
+			};
+		}
+
+		if ( !m_FileStream.good() ) {
+			m_FileStream.clear();
+		}
+		m_FileStream.seekg( initial );
+	}
+	return bitrate;
 }
 
 FLAC__StreamDecoderReadStatus DecoderFlac::read_callback( FLAC__byte buf[], size_t * size )

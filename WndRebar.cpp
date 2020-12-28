@@ -15,9 +15,6 @@ static const UINT s_FirstBandID = 13;
 // Next available band ID.
 UINT WndRebar::s_BandID = s_FirstBandID;
 
-// Rebar image size.
-static const int s_ImageSize = 24;
-
 LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndRebar* wndRebar = reinterpret_cast<WndRebar*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
@@ -58,6 +55,11 @@ LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LP
 				wndRebar->RearrangeBands();
 				break;
 			}
+			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndRebar->GetDefaultWndProc() ) );
+				SetWindowLongPtr( hwnd, GWLP_USERDATA, 0 );
+				break;
+			}
 		}
 	}
 	return CallWindowProc( wndRebar->GetDefaultWndProc(), hwnd, message, wParam, lParam );
@@ -94,7 +96,6 @@ WndRebar::WndRebar( HINSTANCE instance, HWND parent, Settings& settings ) :
 
 WndRebar::~WndRebar()
 {
-	SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_DefaultWndProc ) );
 	ImageList_Destroy( m_ImageList );
 }
 
@@ -121,20 +122,15 @@ void WndRebar::AddControl( HWND hwnd, const bool canHide )
 
 void WndRebar::AddControl( HWND hwnd, const std::set<UINT>& icons, IconCallback iconCallback, ClickCallback clickCallback, const bool canHide )
 {
-	REBARBANDINFO info = {};
-	info.cbSize = sizeof( REBARBANDINFO );
-	info.fStyle = RBBS_CHILDEDGE | RBBS_FIXEDSIZE;
-	info.fMask = RBBIM_CHILD | RBBIM_CHILDSIZE | RBBIM_SIZE | RBBIM_STYLE | RBBIM_ID | RBBIM_IMAGE;
-	info.wID = s_BandID++;
-
+	const UINT bandID = s_BandID++;
 	if ( canHide ) {
-		m_CanBeHidden.insert( info.wID );
+		m_CanBeHidden.insert( bandID );
 	}
-	m_BandChildWindows.insert( BandChildMap::value_type( info.wID, hwnd ) );
+	m_BandChildWindows.insert( BandChildMap::value_type( bandID, hwnd ) );
 
-	const float dpiScale = GetDPIScaling();
-	const int cx = static_cast<int>( s_ImageSize * dpiScale );
-	const int cy = static_cast<int>( s_ImageSize * dpiScale );
+	const int buttonSize = GetButtonSize();
+	const int cx = buttonSize;
+	const int cy = buttonSize;
 
 	for ( const auto& iconID : icons ) {
 		HICON hIcon = static_cast<HICON>( LoadImage( m_hInst, MAKEINTRESOURCE( iconID ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
@@ -143,18 +139,11 @@ void WndRebar::AddControl( HWND hwnd, const std::set<UINT>& icons, IconCallback 
 			m_ImageListMap.insert( ImageListMap::value_type( iconID, imageListIndex ) );
 		}	
 	}
-	m_IconCallbackMap.insert( IconCallbackMap::value_type( info.wID, iconCallback ) );
-	m_ClickCallbackMap.insert( ClickCallbackMap::value_type( info.wID, clickCallback ) );
-	info.iImage = GetImageListIndex( info.wID );
-	m_IconBands.insert( info.wID );
+	m_IconCallbackMap.insert( IconCallbackMap::value_type( bandID, iconCallback ) );
+	m_ClickCallbackMap.insert( ClickCallbackMap::value_type( bandID, clickCallback ) );
+	m_IconBands.insert( bandID );
 
-	RECT rect = {};
-	GetWindowRect( hwnd, &rect );
-	info.hwndChild = hwnd;
-	info.cx = rect.right - rect.left;
-	info.cxMinChild = info.cx;
-	info.cyMinChild = rect.bottom - rect.top;
-	SendMessage( m_hWnd, RB_INSERTBAND, static_cast<WPARAM>( -1 ), reinterpret_cast<LPARAM>( &info ) );
+	InsertBand( bandID, hwnd, GetImageListIndex( bandID ) );
 }
 
 int WndRebar::GetPosition( const HWND hwnd ) const
@@ -181,9 +170,9 @@ void WndRebar::MoveToStart( const int currentPosition )
 
 void WndRebar::CreateImageList()
 {
-	const float dpiScale = GetDPIScaling();
-	const int cx = static_cast<int>( s_ImageSize * dpiScale );
-	const int cy = static_cast<int>( s_ImageSize * dpiScale );
+	const int buttonSize = GetButtonSize();
+	const int cx = buttonSize;
+	const int cy = buttonSize;
 	m_ImageList = ImageList_Create( cx, cy, ILC_COLOR32, 0 /*initial*/, 1 /*grow*/ );
 
 	REBARINFO rebarInfo = {};
@@ -349,14 +338,22 @@ void WndRebar::ReorderBandsByID()
 	}
 }
 
-void WndRebar::InsertBand( const UINT bandID, const HWND controlWnd )
+void WndRebar::InsertBand( const UINT bandID, const HWND controlWnd, const int imageIndex )
 {
 	REBARBANDINFO info = {};
 	info.cbSize = sizeof( REBARBANDINFO );
 	info.fStyle = RBBS_CHILDEDGE | RBBS_FIXEDSIZE;
-	info.fMask = RBBIM_CHILD | RBBIM_CHILDSIZE | RBBIM_SIZE | RBBIM_STYLE | RBBIM_ID | RBBIM_HEADERSIZE;
 	info.wID = bandID;
-	info.cxHeader = 1;
+
+	UINT mask = RBBIM_CHILD | RBBIM_CHILDSIZE | RBBIM_SIZE | RBBIM_STYLE | RBBIM_ID;
+	if ( imageIndex < 0 ) {
+		mask |= RBBIM_HEADERSIZE;
+		info.cxHeader = 1;
+	} else {
+		mask |= RBBIM_IMAGE;
+		info.iImage = imageIndex;
+	}
+	info.fMask = mask;
 
 	RECT rect = {};
 	GetWindowRect( controlWnd, &rect );
@@ -436,8 +433,19 @@ void WndRebar::OnContextMenu( const POINT& position )
 				}
 				CheckMenuItem( toolbarmenu, toolbarID, state );
 			}
+
+			const auto toolbarSize = m_Settings.GetToolbarSize();
+			CheckMenuItem( menu, ID_TOOLBARSIZE_SMALL, ( Settings::ToolbarSize::Small == toolbarSize ) ? MF_CHECKED : MF_UNCHECKED );
+			CheckMenuItem( menu, ID_TOOLBARSIZE_MEDIUM, ( Settings::ToolbarSize::Medium == toolbarSize ) ? MF_CHECKED : MF_UNCHECKED );
+			CheckMenuItem( menu, ID_TOOLBARSIZE_LARGE, ( Settings::ToolbarSize::Large == toolbarSize ) ? MF_CHECKED : MF_UNCHECKED );
+
 			TrackPopupMenu( toolbarmenu, TPM_RIGHTBUTTON, position.x, position.y, 0 /*reserved*/, m_hWnd, NULL /*rect*/ );
 		}
 		DestroyMenu( menu );
 	}
+}
+
+int WndRebar::GetButtonSize() const
+{
+	return Settings::GetToolbarButtonSize( m_Settings.GetToolbarSize() );
 }

@@ -61,9 +61,6 @@ private:
 	// Toggles the counter between track elapsed & track remaining.
 	void Toggle();
 
-	// Returns the default window procedure.
-	WNDPROC GetDefaultWndProc();
-
 	// Returns the background on which to draw the counter.
 	std::shared_ptr<Gdiplus::Bitmap> GetBackgroundBitmap();
 

@@ -97,8 +97,11 @@ private:
 	// Reorders rebar bands by ID.
 	void ReorderBandsByID();
 
-	// Inserts the 'bandID' containing the 'controlWnd'.
-	void InsertBand( const UINT bandID, const HWND controlWnd );
+	// Inserts a rebar band.
+	// 'bandID' - band ID.
+	// 'controlWnd' - child control window.
+	// 'imageIndex' - image list index (for bands that contain icons).
+	void InsertBand( const UINT bandID, const HWND controlWnd, const int imageIndex = -1 );
 
 	// Deletes the 'bandID'.
 	void DeleteBand( const UINT bandID );
@@ -108,6 +111,9 @@ private:
 
 	// Returns whether the 'bandID' can be hidden.
 	bool CanBeHidden( const UINT bandID ) const;
+
+	// Returns the rebar button size.
+	int GetButtonSize() const;
 
 	// Next available rebar band ID.
 	static UINT s_BandID;

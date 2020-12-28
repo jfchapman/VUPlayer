@@ -46,11 +46,23 @@ LRESULT CALLBACK DlgHotkey::ButtonProc( HWND hwnd, UINT message, WPARAM wParam, 
 			case WM_KEYDOWN: {
 				if ( dialog->OnKeyDown( wParam, lParam ) ) {
 					PostMessage( GetParent( hwnd ), WM_COMMAND, IDOK, 0 );
+				} else {
+					switch ( wParam ) {
+						case VK_ESCAPE :
+						case VK_RETURN : {
+							PostMessage( GetParent( hwnd ), WM_COMMAND, IDCANCEL, 0 );
+							break;
+						}
+					}
 				}
 				break;
 			}
 			case WM_GETDLGCODE : {
 				return DLGC_WANTALLKEYS;
+			}
+			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( dialog->GetDefaultButtonProc() ) );
+				break;
 			}
 			default : {
 				break;
@@ -74,8 +86,6 @@ DlgHotkey::DlgHotkey( const HINSTANCE instance, const HWND parent ) :
 
 DlgHotkey::~DlgHotkey()
 {
-	const HWND buttonWnd = GetDlgItem( m_hWnd, IDCANCEL );
-	SetWindowLongPtr( buttonWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_DefaultButtonProc ) );
 }
 
 void DlgHotkey::OnInitDialog( const HWND hwnd )

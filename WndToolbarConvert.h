@@ -7,9 +7,8 @@ class WndToolbarConvert : public WndToolbar
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndToolbarConvert( HINSTANCE instance, HWND parent );
-
-	virtual ~WndToolbarConvert();
+	// 'settings' - application settings.
+	WndToolbarConvert( HINSTANCE instance, HWND parent, Settings& settings );
 
 	// Updates the toolbar state.
 	// 'playlist' - currently displayed playlist.
@@ -21,12 +20,6 @@ public:
 private:
 	// Creates the buttons.
 	void CreateButtons();
-
-	// Creates the image list.
-	void CreateImageList();
-
-	// Image list.
-	HIMAGELIST m_ImageList;
 
 	// The current tooltip resource ID.
 	WORD m_TooltipID;

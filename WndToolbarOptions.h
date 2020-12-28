@@ -7,9 +7,8 @@ class WndToolbarOptions : public WndToolbar
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndToolbarOptions( HINSTANCE instance, HWND parent );
-
-	virtual ~WndToolbarOptions();
+	// 'settings' - application settings.
+	WndToolbarOptions( HINSTANCE instance, HWND parent, Settings& settings );
 
 	// Updates the toolbar state.
 	// 'output' - output object.
@@ -23,11 +22,5 @@ public:
 private:
 	// Creates the buttons.
 	void CreateButtons();
-
-	// Creates the image list.
-	void CreateImageList();
-
-	// Image list.
-	HIMAGELIST m_ImageList;
 };
 

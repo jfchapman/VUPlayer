@@ -14,21 +14,22 @@ public:
 	// Throws a std::runtime_error exception if the file could not be loaded.
 	DecoderCDDA( const CDDAMedia& cddaMedia, const long track );
 
-	virtual ~DecoderCDDA();
+	~DecoderCDDA() override;
 
 	// Reads sample data.
 	// 'buffer' - output buffer (floating point format scaled to +/-1.0f).
 	// 'sampleCount' - number of samples to read.
 	// Returns the number of samples read, or zero if the stream has ended.
-	virtual long Read( float* buffer, const long sampleCount );
+	long Read( float* buffer, const long sampleCount ) override;
 
 	// Seeks to a 'position' in the stream, in seconds.
 	// Returns the new position in seconds.
-	virtual float Seek( const float position );
+	float Seek( const float position ) override;
 
 	// Returns the track gain, in dB.
+	// 'canContinue' - callback which returns whether the calculation can continue.
 	// 'secondslimit' - number of seconds to devote to calculating an estimate, or 0 to perform a complete calculation.
-	virtual float CalculateTrackGain( const float secondsLimit = 0 );
+	float CalculateTrackGain( CanContinue canContinue, const float secondsLimit = 0 ) override;
 
 private:
 	// CD audio disc information.

@@ -8,8 +8,8 @@
 // Trackbar maximum position.
 static const int s_RangeMax = 2000;
 
-WndTrackbarSeek::WndTrackbarSeek( HINSTANCE instance, HWND parent, Output& output ) :
-	WndTrackbar( instance, parent, output, 0 /*minValue*/, s_RangeMax, Type::Seek ),
+WndTrackbarSeek::WndTrackbarSeek( HINSTANCE instance, HWND parent, Output& output, Settings& settings ) :
+	WndTrackbar( instance, parent, output, settings, 0 /*minValue*/, s_RangeMax, Type::Seek ),
 	m_Tooltip(),
 	m_IsDragging( false ),
 	m_OutputItem()
@@ -39,9 +39,10 @@ void WndTrackbarSeek::OnPositionChanged( const int position )
 	if ( duration > 0.0f ) {
 		const float seekPosition = position * duration / s_RangeMax;
 		if ( m_Playlist ) {
-			GetOutput().SetPlaylist( m_Playlist );
+			GetOutput().Play( m_Playlist, m_OutputItem.PlaylistItem.ID, seekPosition );
+		} else {
+			GetOutput().Play( m_OutputItem.PlaylistItem.ID, seekPosition );
 		}
-		GetOutput().Play( m_OutputItem.PlaylistItem.ID, seekPosition );
 	}
 }
 

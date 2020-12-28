@@ -4,6 +4,11 @@
 
 #include "Gdiplusimaging.h"
 
+#include <initguid.h> 
+#include "objbase.h"
+#include "uiautomation.h" 
+
+#include <array>
 #include <chrono>
 #include <iomanip>
 #include <locale>
@@ -586,4 +591,33 @@ std::wstring GetFileExtension( const std::wstring filename )
 	const size_t pos = filename.rfind( '.' );
 	const std::wstring ext = ( std::wstring::npos != pos ) ? WideStringToLower( filename.substr( pos + 1 ) ) : std::wstring();
 	return ext;
+}
+
+bool IsURL( const std::wstring filename )
+{
+	bool isURL = false;
+	constexpr std::array schemes { L"ftp", L"http", L"https" };
+	const size_t pos = filename.find( ':' );
+	if ( std::wstring::npos != pos ) {
+		isURL = ( schemes.end() != std::find( schemes.begin(), schemes.end(), WideStringToLower( filename.substr( 0, pos ) ) ) );
+	}
+	return isURL;
+}
+
+void SetWindowAccessibleName( const HINSTANCE instance, const HWND hwnd, const UINT stringID )
+{
+	const int textSize = 256;
+	WCHAR text[ textSize ] = {};
+	LoadString( instance, stringID, text, textSize );
+	IAccPropServices* accPropServices = nullptr;
+	HRESULT hr = CoCreateInstance( CLSID_AccPropServices, nullptr, CLSCTX_INPROC, IID_PPV_ARGS( &accPropServices ) );
+	if ( SUCCEEDED( hr ) ) {
+		hr = accPropServices->SetHwndPropStr( hwnd, static_cast<DWORD>( OBJID_CLIENT ), CHILDID_SELF, Name_Property_GUID, text );
+		accPropServices->Release();
+	}
+}
+
+bool AreRoughlyEqual( const float value1, const float value2, const float tolerance )
+{
+	return ( fabsf( value1 - value2 ) < tolerance ) || ( std::isnan( value1 ) && std::isnan( value2 ) );
 }

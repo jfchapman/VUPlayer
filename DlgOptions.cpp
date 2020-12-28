@@ -28,7 +28,7 @@ INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam
 				s_IsCentred = true;
 				CentreDialog( GetParent( hwnd ) );
 			}
-			break;
+			return TRUE;
 		}
 		case WM_DESTROY : {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );

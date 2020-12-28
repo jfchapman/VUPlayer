@@ -61,6 +61,10 @@ LRESULT CALLBACK WndVisual::VisualProc( HWND hwnd, UINT message, WPARAM wParam, 
 				wndVisual->OnContextMenu( pt );
 				break;
 			}
+			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+				break;
+			}
 		}
 	}
 	return DefWindowProc( hwnd, message, wParam, lParam );
@@ -572,4 +576,9 @@ std::map<UINT,float> WndVisual::GetOscilloscopeWeights() const
 std::map<UINT,float> WndVisual::GetVUMeterDecayRates() const
 {
 	return s_VUMeterDecay;
+}
+
+void WndVisual::SetRebarWindowHandle( const HWND hwnd )
+{
+	m_hWndRebar = hwnd;
 }

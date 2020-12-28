@@ -16,6 +16,10 @@ DecoderOpus::DecoderOpus( const std::wstring& filename ) :
 			SetChannels( head->channel_count );
 			const ogg_int64_t pcmTotal = op_pcm_total( m_OpusFile, -1 /*link*/ );
 			SetDuration( static_cast<float>( pcmTotal ) / 48000 );
+			const opus_int32 bitrate = op_bitrate( m_OpusFile, -1 );
+			if ( bitrate > 0 ) {
+				SetBitrate( static_cast<float>( bitrate ) / 1000 );
+			}
 		}
 	} else {
 		throw std::runtime_error( "DecoderOpus could not load file" );

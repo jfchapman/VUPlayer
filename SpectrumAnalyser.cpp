@@ -102,7 +102,7 @@ void SpectrumAnalyser::OnPaint()
 					const float decay = targetSize.height / s_DecayFactor;
 
 					for ( long pos = 1; ( pos < width ); pos += 3 ) {
-						const size_t bin = static_cast<size_t>( pow( static_cast<float>( fftSize - 1 ), pow( ( static_cast<float>( pos ) / width ), 0.4 ) ) );
+						const size_t bin = std::lround( pow( static_cast<float>( fftSize - 1 ), pow( ( static_cast<float>( pos ) / width ), 0.4 ) ) );
 						const float value = fft.at( bin );
 						float y = ( -targetSize.height / 4.0f ) * ( ( value < 0.0001 ) ? -4.0f : log10f( value ) );
 

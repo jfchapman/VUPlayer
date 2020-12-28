@@ -9,9 +9,10 @@ class DlgEQ
 {
 public:
 	// 'instance' - module instance handle.
+	// 'wndFocusOnHide' - the window handle which gains focus when the dialog is hidden.
 	// 'settings' - application settings.
 	// 'output' - output object.
-	DlgEQ( const HINSTANCE instance, Settings& settings, Output& output );
+	DlgEQ( const HINSTANCE instance, const HWND wndFocusOnHide, Settings& settings, Output& output );
 
 	virtual ~DlgEQ();
 
@@ -26,6 +27,9 @@ public:
 
 	// Saves the current EQ settings to application settings.
 	void SaveSettings();
+
+	// Returns the modeless dialog window handle.
+	HWND GetWindowHandle() const;
 
 private:
 	// Maps a slider control handle to a value.
@@ -61,6 +65,9 @@ private:
 
 	// Dialog window handle.
 	HWND m_hWnd;
+
+	// The window handle to gain focus when the dialog is hidden.
+	HWND m_hWndFocusOnHide;
 
 	// Application settings.
 	Settings& m_Settings;

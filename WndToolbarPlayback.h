@@ -7,9 +7,8 @@ class WndToolbarPlayback : public WndToolbar
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndToolbarPlayback( HINSTANCE instance, HWND parent );
-
-	virtual ~WndToolbarPlayback();
+	// 'settings' - application settings.
+	WndToolbarPlayback( HINSTANCE instance, HWND parent, Settings& settings );
 
 	// Updates the toolbar state.
 	// 'output' - output object.
@@ -24,19 +23,10 @@ private:
 	// Creates the buttons.
 	void CreateButtons();
 
-	// Creates the image list.
-	void CreateImageList();
-
 	// Sets whether the 'paused' button is shown.
 	void SetPaused( const bool paused ) const;
 
 	// Returns whether the pause button is shown.
 	bool IsPauseShown() const;
-
-	// Image list.
-	HIMAGELIST m_ImageList;
-
-	// Maps an image list index to a command ID.
-	std::map<int,UINT> m_ImageMap;
 };
 

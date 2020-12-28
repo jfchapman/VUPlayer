@@ -20,6 +20,7 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
+				return TRUE;
 			}
 			break;
 		}
@@ -36,6 +37,10 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 						}
 						case IDC_EQ_RESET : {
 							dialog->OnReset();
+							break;
+						}
+						case IDCANCEL : {
+							dialog->ToggleVisibility();
 							break;
 						}
 						default : {
@@ -66,13 +71,6 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			}
 			break;
 		}
-		case WM_CLOSE : {
-			DlgEQ* dialog = reinterpret_cast<DlgEQ*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
-			if ( nullptr != dialog ) {
-				dialog->ToggleVisibility();
-			}		
-			break;
-		}
 		case WM_DESTROY : {
 			DlgEQ* dialog = reinterpret_cast<DlgEQ*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != dialog ) {
@@ -88,9 +86,10 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 	return FALSE;
 }
 
-DlgEQ::DlgEQ( const HINSTANCE instance, Settings& settings, Output& output ) :
+DlgEQ::DlgEQ( const HINSTANCE instance, const HWND wndFocusOnHide, Settings& settings, Output& output ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
+	m_hWndFocusOnHide( wndFocusOnHide ),
 	m_Settings( settings ),
 	m_Output( output ),
 	m_SliderPositions(),
@@ -174,6 +173,8 @@ void DlgEQ::OnInitDialog( const HWND hwnd )
 	}
 	if ( m_CurrentEQ.Visible ) {
 		ShowWindow( m_hWnd, SW_SHOW );
+	} else {
+		ShowWindow( m_hWnd, SW_HIDE );
 	}
 }
 
@@ -187,6 +188,9 @@ void DlgEQ::ToggleVisibility()
 	const int cmdShow = m_CurrentEQ.Visible ? SW_HIDE : SW_SHOW;
 	ShowWindow( m_hWnd, cmdShow );
 	m_CurrentEQ.Visible = !m_CurrentEQ.Visible;
+	if ( SW_HIDE == cmdShow ) {
+		SetFocus( m_hWndFocusOnHide );
+	}
 }
 
 void DlgEQ::SaveSettings()
@@ -307,4 +311,9 @@ std::wstring DlgEQ::GetTooltip( const HWND slider ) const
 void DlgEQ::Init( const HWND parent )
 {
 	CreateDialogParam( m_hInst, MAKEINTRESOURCE( IDD_EQ ), parent, DialogProc, reinterpret_cast<LPARAM>( this ) );
+}
+
+HWND DlgEQ::GetWindowHandle() const
+{
+	return m_hWnd;
 }

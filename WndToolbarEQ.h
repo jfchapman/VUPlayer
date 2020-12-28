@@ -7,9 +7,8 @@ class WndToolbarEQ : public WndToolbar
 public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
-	WndToolbarEQ( HINSTANCE instance, HWND parent );
-
-	virtual ~WndToolbarEQ();
+	// 'settings' - application settings.
+	WndToolbarEQ( HINSTANCE instance, HWND parent, Settings& settings );
 
 	// Updates the toolbar state.
 	// 'eqVisible' - indicates whether the EQ dialog is visible.
@@ -21,11 +20,5 @@ public:
 private:
 	// Creates the buttons.
 	void CreateButtons();
-
-	// Creates the image list.
-	void CreateImageList();
-
-	// Image list.
-	HIMAGELIST m_ImageList;
 };
 

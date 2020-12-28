@@ -1,5 +1,7 @@
 #include "WndToolbar.h"
 
+#include "Utility.h"
+
 LRESULT CALLBACK WndToolbar::ToolbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndToolbar* wndToolbar = reinterpret_cast<WndToolbar*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
@@ -17,6 +19,17 @@ LRESULT CALLBACK WndToolbar::ToolbarProc( HWND hwnd, UINT message, WPARAM wParam
 				}
 				break;
 			}
+			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndToolbar->GetDefaultWndProc() ) );
+				SetWindowLongPtr( hwnd, GWLP_USERDATA, 0 );
+				break;
+			}
+			case WM_SIZE : {
+        UINT width = LOWORD( lParam );
+        UINT height = HIWORD( lParam );
+				height = width;
+				break;
+			}
 			default : {
 				break;
 			}
@@ -25,10 +38,13 @@ LRESULT CALLBACK WndToolbar::ToolbarProc( HWND hwnd, UINT message, WPARAM wParam
 	return CallWindowProc( wndToolbar->GetDefaultWndProc(), hwnd, message, wParam, lParam );
 }
 
-WndToolbar::WndToolbar( HINSTANCE instance, HWND parent, const long long id ) :
+WndToolbar::WndToolbar( HINSTANCE instance, HWND parent, const long long id, Settings& settings, const IconList& iconList ) :
 	m_hInst( instance ),
 	m_hWnd( NULL ),
-	m_DefaultWndProc( NULL )
+	m_DefaultWndProc( NULL ),
+	m_Settings( settings ),
+	m_IconList( iconList ),
+	m_ImageList( CreateImageList() )
 {
 	const DWORD style = WS_CHILD | WS_VISIBLE | TBSTYLE_FLAT | CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NODIVIDER | TBSTYLE_TOOLTIPS;
 	const int x = 0;
@@ -44,7 +60,7 @@ WndToolbar::WndToolbar( HINSTANCE instance, HWND parent, const long long id ) :
 
 WndToolbar::~WndToolbar()
 {
-	SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_DefaultWndProc ) );
+	ImageList_Destroy( m_ImageList );
 }
 
 WNDPROC WndToolbar::GetDefaultWndProc()
@@ -107,4 +123,45 @@ void WndToolbar::SetButtonChecked( const UINT commandID, const bool checked )
 int WndToolbar::GetID() const
 {
 	return static_cast<int>( GetDlgCtrlID( m_hWnd ) );
+}
+
+int WndToolbar::GetButtonSize() const
+{
+	return Settings::GetToolbarButtonSize( m_Settings.GetToolbarSize() );
+}
+
+HIMAGELIST WndToolbar::CreateImageList() const
+{
+	const int buttonSize = GetButtonSize();
+	const int cx = buttonSize;
+	const int cy = buttonSize;
+
+	const int imageCount = static_cast<int>( m_IconList.size() );
+	HIMAGELIST imageList = ImageList_Create( cx, cy, ILC_COLOR32, 0 /*initial*/, imageCount /*grow*/ );
+	for ( const auto& iconID : m_IconList ) {
+		HICON hIcon = static_cast<HICON>( LoadImage( GetInstanceHandle(), MAKEINTRESOURCE( iconID ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
+		if ( NULL != hIcon ) {
+			ImageList_ReplaceIcon( imageList, -1, hIcon );
+		}
+	}
+	return imageList;
+}
+
+HIMAGELIST WndToolbar::GetImageList() const
+{
+	return m_ImageList;
+}
+
+void WndToolbar::OnChangeToolbarSize()
+{
+	const HIMAGELIST imageList = CreateImageList();
+	SendMessage( m_hWnd, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>( imageList ) );
+
+	const DWORD previousSize = static_cast<DWORD>( SendMessage( m_hWnd, TB_GETBUTTONSIZE, 0, 0 ) );
+	const int previousWidth = LOWORD( previousSize );
+	const int previousHeight = HIWORD( previousSize );
+
+	SendMessage( m_hWnd, TB_SETBUTTONSIZE, 0, MAKELPARAM( GetButtonSize(), GetButtonSize() ) );
+	ImageList_Destroy( m_ImageList );
+	m_ImageList = imageList;
 }

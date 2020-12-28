@@ -55,7 +55,4 @@ private:
 
 	// Tooltip text.
 	std::wstring m_Tooltip;
-
-	// Application settings.
-	Settings& m_Settings;
 };

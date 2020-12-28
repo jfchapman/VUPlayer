@@ -171,12 +171,12 @@ void WndTray::OnContextMenuCommand( const UINT command )
 		Playlist::Item playlistItem = { menuItemIter->second, MediaInfo() };
 		Playlists playlists = m_Tree.GetPlaylists();
 		playlists.push_back( m_Tree.GetPlaylistFavourites() );
+		playlists.push_back( m_Tree.GetPlaylistStreams() );
 		playlists.push_back( GetActivePlaylist() );
 		for ( const auto& playlist : playlists ) {
 			if ( playlist && playlist->GetItem( playlistItem ) ) {
-				m_Output.SetPlaylist( playlist );
-				m_Output.Play( playlistItem.ID );
-				m_Tree.SelectPlaylist( playlist );
+				m_Output.Play( playlist, playlistItem.ID );
+				m_Tree.SelectPlaylist( playlist, false /*showNode*/ );
 				m_List.EnsureVisible( playlistItem );
 				break;
 			}
@@ -204,8 +204,7 @@ void WndTray::ShowContextMenu()
 			m_NextPlaylistMenuItemID = MSG_TRAYMENUSTART;
 
 			// Current playlist.
-			const Playlist::Ptr currentPlaylist = GetActivePlaylist();
-			if ( currentPlaylist ) {
+			if ( const Playlist::Ptr currentPlaylist = GetActivePlaylist(); currentPlaylist ) {
 				const int itemCount = GetMenuItemCount( traymenu );
 				for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
 					HMENU playlistsMenu = GetSubMenu( traymenu, itemIndex );
@@ -229,8 +228,7 @@ void WndTray::ShowContextMenu()
 			}
 
 			// Favourites.
-			const Playlist::Ptr favourites = m_Tree.GetPlaylistFavourites();
-			if ( favourites ) {
+			if ( const Playlist::Ptr favourites = m_Tree.GetPlaylistFavourites(); favourites ) {
 				const int itemCount = GetMenuItemCount( traymenu );
 				for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
 					HMENU playlistsMenu = GetSubMenu( traymenu, itemIndex );
@@ -246,6 +244,30 @@ void WndTray::ShowContextMenu()
 							InsertMenu( traymenu, itemIndex, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>( favouritesMenu ), buffer );
 						}
 						if ( disableFavourites ) {
+							EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_DISABLED );
+						}
+						break;
+					}
+				}
+			}
+
+			// Streams.
+			if ( const Playlist::Ptr streams = m_Tree.GetPlaylistStreams(); streams ) {
+				const int itemCount = GetMenuItemCount( traymenu );
+				for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+					HMENU playlistsMenu = GetSubMenu( traymenu, itemIndex );
+					if ( ( nullptr != playlistsMenu ) && ( ID_TRAYMENU_PLAYLISTS == GetMenuItemID( playlistsMenu, 0 /*itemIndex*/ ) ) ) {
+						++itemIndex;
+						LoadString( m_hInst, IDS_STREAMS, buffer, buffersize );
+						HMENU streamsMenu = CreatePlaylistMenu( streams );
+						const bool disableStreams = ( nullptr == streamsMenu );
+						if ( nullptr == streamsMenu ) {
+							streamsMenu = CreatePopupMenu();
+						}
+						if ( nullptr != streamsMenu ) {
+							InsertMenu( traymenu, itemIndex, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>( streamsMenu ), buffer );
+						}
+						if ( disableStreams ) {
 							EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_DISABLED );
 						}
 						break;

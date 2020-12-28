@@ -6,11 +6,15 @@
 // Trackbar control ID
 UINT_PTR WndTrackbar::s_WndTrackbarID = 1600;
 
-// Trackbar width
-static const int s_TrackbarWidth = 127;
-
 // Trackbar height
 static const int s_TrackbarHeight = 26;
+
+// Trackbar widths
+static const std::map<Settings::ToolbarSize, int> s_TrackbarWidths = {
+	{ Settings::ToolbarSize::Small, 130 },
+	{ Settings::ToolbarSize::Medium, 145 },
+	{ Settings::ToolbarSize::Large, 160 }
+};
 
 LRESULT CALLBACK WndTrackbar::TrackbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -42,8 +46,15 @@ LRESULT CALLBACK WndTrackbar::TrackbarProc( HWND hwnd, UINT message, WPARAM wPar
 			}
 			case WM_CONTEXTMENU : {
 				POINT pt = {};
-				pt.x = LOWORD( lParam );
-				pt.y = HIWORD( lParam );
+				if ( -1 == lParam ) {
+					RECT rect = {};
+					GetClientRect( hwnd, &rect );
+					pt.y = rect.bottom;
+					ClientToScreen( hwnd, &pt );
+				} else {
+					pt.x = LOWORD( lParam );
+					pt.y = HIWORD( lParam );
+				}
 				wndTrackbar->OnContextMenu( pt );
 				break;
 			}
@@ -66,6 +77,11 @@ LRESULT CALLBACK WndTrackbar::TrackbarProc( HWND hwnd, UINT message, WPARAM wPar
 				}
 				break;
 			}
+			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndTrackbar->GetDefaultWndProc() ) );
+				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+				break;
+			}
 			default : {
 				break;
 			}
@@ -74,21 +90,25 @@ LRESULT CALLBACK WndTrackbar::TrackbarProc( HWND hwnd, UINT message, WPARAM wPar
 	return CallWindowProc( wndTrackbar->GetDefaultWndProc(), hwnd, message, wParam, lParam );
 }
 
-WndTrackbar::WndTrackbar( HINSTANCE instance, HWND parent, Output& output, const int minValue, const int maxValue, const Type type ) :
+WndTrackbar::WndTrackbar( HINSTANCE instance, HWND parent, Output& output, Settings& settings, const int minValue, const int maxValue, const Type type ) :
 	m_hInst( instance ),
 	m_hWnd( NULL ),
 	m_DefaultWndProc( NULL ),
 	m_Output( output ),
+	m_Settings( settings ),
 	m_Type( type )
 {
 	DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | TBS_DOWNISLEFT | TBS_NOTICKS | TBS_TRANSPARENTBKGND | CCS_NODIVIDER | CCS_NORESIZE | CCS_NOPARENTALIGN;
 	const int x = 0;
 	const int y = 0;
-	const float dpiScaling = GetDPIScaling();
-	const int width = static_cast<int>( s_TrackbarWidth * dpiScaling );
-	const int height = static_cast<int>( s_TrackbarHeight * dpiScaling );
-	LPVOID param = NULL;
+	auto widthIter = s_TrackbarWidths.find( m_Settings.GetToolbarSize() );
+	if ( s_TrackbarWidths.end() == widthIter ) {
+		widthIter = s_TrackbarWidths.begin();
+	}
+	const int width = static_cast<int>( widthIter->second * GetDPIScaling() );
+	const int height = static_cast<int>( s_TrackbarHeight * GetDPIScaling() );
 
+	LPVOID param = NULL;
 	m_hWnd = CreateWindowEx( 0, TRACKBAR_CLASS, 0, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndTrackbarID ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( TrackbarProc ) ) );
@@ -114,7 +134,6 @@ WndTrackbar::WndTrackbar( HINSTANCE instance, HWND parent, Output& output, const
 
 WndTrackbar::~WndTrackbar()
 {
-	SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( m_DefaultWndProc ) );
 }
 
 WNDPROC WndTrackbar::GetDefaultWndProc()
@@ -166,6 +185,11 @@ Output& WndTrackbar::GetOutput()
 const Output& WndTrackbar::GetOutput() const
 {
 	return m_Output;
+}
+
+Settings& WndTrackbar::GetSettings()
+{
+	return m_Settings;
 }
 
 bool WndTrackbar::GetEnabled() const

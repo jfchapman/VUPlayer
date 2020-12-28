@@ -117,3 +117,15 @@ unsigned char FloatToUnsigned8( const float value );
 
 // Returns the 'filename' extension in lowercase.
 std::wstring GetFileExtension( const std::wstring filename );
+
+// Returns whether the 'filename' represents a URI with a FTP, HTTP or HTTPS scheme.
+bool IsURL( const std::wstring filename );
+
+// Sets the accessible name of a window.
+// 'instance' - module instance handle.
+// 'hwnd' - window handle.
+// 'stringID' - string resource ID.
+void SetWindowAccessibleName( const HINSTANCE instance, const HWND hwnd, const UINT stringID );
+
+// Returns whether 'value1' and 'value2' are equal within the 'tolerance'.
+bool AreRoughlyEqual( const float value1, const float value2, const float tolerance );

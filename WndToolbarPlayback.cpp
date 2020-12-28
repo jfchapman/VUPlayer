@@ -1,21 +1,9 @@
 #include "WndToolbarPlayback.h"
 
 #include "resource.h"
-#include "Utility.h"
 
-// Toolbar button size.
-static const int s_ButtonSize = 24;
-
-WndToolbarPlayback::WndToolbarPlayback( HINSTANCE instance, HWND parent ) :
-	WndToolbar( instance, parent, ID_TOOLBAR_PLAYBACK ),
-	m_ImageList( nullptr ),
-	m_ImageMap( {
-		{ 0, IDI_PLAY },
-		{ 1, IDI_PAUSE },
-		{ 2, IDI_STOP },
-		{ 3, IDI_PREVIOUS },
-		{ 4, IDI_NEXT }
-	} )
+WndToolbarPlayback::WndToolbarPlayback( HINSTANCE instance, HWND parent, Settings& settings ) :
+	WndToolbar( instance, parent, ID_TOOLBAR_PLAYBACK, settings, { IDI_PLAY, IDI_PAUSE, IDI_STOP, IDI_PREVIOUS, IDI_NEXT } )
 {
 	CreateButtons();
 
@@ -23,11 +11,6 @@ WndToolbarPlayback::WndToolbarPlayback( HINSTANCE instance, HWND parent ) :
 	SendMessage( GetWindowHandle(), TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>( &rect ) );
 	const int buttonCount = static_cast<int>( SendMessage( GetWindowHandle(), TB_BUTTONCOUNT, 0, 0 ) );
 	MoveWindow( GetWindowHandle(), 0 /*x*/, 0 /*y*/, ( rect.right - rect.left ) * buttonCount, rect.bottom - rect.top, TRUE /*repaint*/ );
-}
-
-WndToolbarPlayback::~WndToolbarPlayback()
-{
-	ImageList_Destroy( m_ImageList );
 }
 
 void WndToolbarPlayback::Update( Output& output, const Playlist::Ptr playlist, const Playlist::Item& selectedItem )
@@ -76,27 +59,10 @@ void WndToolbarPlayback::Update( Output& output, const Playlist::Ptr playlist, c
 	SetButtonEnabled( ID_CONTROL_NEXTTRACK, nextEnabled );
 }
 
-void WndToolbarPlayback::CreateImageList()
-{
-	const float dpiScale = GetDPIScaling();
-	const int cx = static_cast<int>( s_ButtonSize * dpiScale );
-	const int cy = static_cast<int>( s_ButtonSize * dpiScale );
-	const int imageCount = static_cast<int>( m_ImageMap.size() );
-	m_ImageList = ImageList_Create( cx, cy, ILC_COLOR32, 0 /*initial*/, imageCount /*grow*/ );
-	for ( const auto& iter : m_ImageMap ) {
-		HICON hIcon = static_cast<HICON>( LoadImage( GetInstanceHandle(), MAKEINTRESOURCE( iter.second ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
-		if ( NULL != hIcon ) {
-			ImageList_ReplaceIcon( m_ImageList, -1, hIcon );
-		}
-	}
-}
-
 void WndToolbarPlayback::CreateButtons()
 {
-	CreateImageList();
-
 	SendMessage( GetWindowHandle(), TB_BUTTONSTRUCTSIZE, sizeof( TBBUTTON ), 0 );
-	SendMessage( GetWindowHandle(), TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>( m_ImageList ) );
+	SendMessage( GetWindowHandle(), TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>( GetImageList() ) );
 	const int buttonCount = 4;
 	TBBUTTON buttons[ buttonCount ] = {};
 	buttons[ 0 ].fsStyle = TBSTYLE_BUTTON;

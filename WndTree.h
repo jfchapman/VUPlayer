@@ -54,7 +54,8 @@ public:
 	void AddPlaylist( const Playlist::Ptr playlist );
 
 	// Creates and returns a new playlist.
-	Playlist::Ptr NewPlaylist();
+	// 'editTitle' - whether to begin label edit mode on creation.
+	Playlist::Ptr NewPlaylist( const bool editTitle = false );
 
 	// Deletes the currently selected playlist.
 	void DeleteSelectedPlaylist();
@@ -67,7 +68,8 @@ public:
 	void ExportSelectedPlaylist();
 
 	// Selects a 'playlist'.
-	void SelectPlaylist( const Playlist::Ptr playlist );
+	// 'showNode' - shows the playlist node, if it is not already shown.
+	void SelectPlaylist( const Playlist::Ptr playlist, const bool showNode = true );
 
 	// Selects, and shows if necessary, the 'All Tracks' playlist.
 	void SelectAllTracks();
@@ -100,6 +102,9 @@ public:
 	// Toggles 'Favourites' on the tree control.
 	void OnFavourites();
 
+	// Toggles 'Streams' on the tree control.
+	void OnStreams();
+
 	// Toggles 'All Tracks' on the tree control.
 	void OnAllTracks();
 
@@ -126,6 +131,9 @@ public:
 
 	// Returns the Favourites playlist.
 	Playlist::Ptr GetPlaylistFavourites() const;
+
+	// Returns the Streams playlist.
+	Playlist::Ptr GetPlaylistStreams() const;
 
 	// Returns the All Tracks playlist.
 	Playlist::Ptr GetPlaylistAll() const;
@@ -236,15 +244,6 @@ private:
 	// Loads playlists
 	void LoadPlaylists();
 
-	// Imports a VPL playlist from 'filename', returning the playlist.
-	Playlist::Ptr ImportPlaylistVPL( const std::wstring& filename );
-	
-	// Imports an M3U playlist from 'filename', returning the playlist.
-	Playlist::Ptr ImportPlaylistM3U( const std::wstring& filename );
-
-	// Imports a PLS playlist from 'filename', returning the playlist.
-	Playlist::Ptr ImportPlaylistPLS( const std::wstring& filename );
-
 	// Gets the current tree control font.
 	LOGFONT GetFont();
 
@@ -256,6 +255,9 @@ private:
 
 	// Adds 'Favourites' to the tree control.
 	void AddFavourites();
+
+	// Adds 'Streams' to the tree control.
+	void AddStreams();
 
 	// Adds 'All Tracks' to the tree control.
 	void AddAllTracks();
@@ -277,6 +279,9 @@ private:
 
 	// Removes 'Favourites' from the tree control.
 	void RemoveFavourites();
+
+	// Removes 'Streams' from the tree control.
+	void RemoveStreams();
 
 	// Removes 'All Tracks' from the tree control.
 	void RemoveAllTracks();
@@ -375,6 +380,9 @@ private:
 
 	// Loads the 'Favourites' playlist.
 	void LoadFavourites();
+
+	// Loads the 'Streams' playlist.
+	void LoadStreams();
 
 	// Returns the item order for the root 'item'
 	LPARAM WndTree::GetItemOrder( const HTREEITEM item ) const;
@@ -479,6 +487,9 @@ private:
 	// Favourites node.
 	HTREEITEM m_NodeFavourites;
 
+	// Streams node.
+	HTREEITEM m_NodeStreams;
+
 	// Computer node.
 	HTREEITEM m_NodeComputer;
 
@@ -517,6 +528,9 @@ private:
 
 	// Favourites playlist.
 	Playlist::Ptr m_PlaylistFavourites;
+
+	// Streams playlist.
+	Playlist::Ptr m_PlaylistStreams;
 
 	// The font resulting from the font selection dialog.
 	HFONT m_ChosenFont;
