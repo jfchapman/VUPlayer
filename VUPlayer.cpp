@@ -956,6 +956,10 @@ void VUPlayer::OnCommand( const int commandID )
 			m_Tree.OnFavourites();
 			break;
 		}
+		case ID_TREEMENU_STREAMS : {
+			m_Tree.OnStreams();
+			break;
+		}
 		case ID_TREEMENU_ALLTRACKS : {
 			m_Tree.OnAllTracks();
 			break;
@@ -1082,6 +1086,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 
 		// View menu
 		CheckMenuItem( menu, ID_TREEMENU_FAVOURITES, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_FAVOURITES ) ? MF_CHECKED : MF_UNCHECKED ) );
+		CheckMenuItem( menu, ID_TREEMENU_STREAMS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_STREAMS ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_ALLTRACKS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_ALLTRACKS ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_ARTISTS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_ARTISTS ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_ALBUMS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_ALBUMS ) ? MF_CHECKED : MF_UNCHECKED ) );
