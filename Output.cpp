@@ -1958,7 +1958,9 @@ Decoder::Ptr Output::GetNextDecoder( Playlist::Item& item )
 			} else if ( GetRepeatTrack() ) {
 				nextItem = m_CurrentItemDecoding;
 			} else {
-				m_Playlist->GetNextItem( nextItem, nextItem, GetRepeatPlaylist() /*wrap*/ );
+				Playlist::Item currentItem = nextItem;
+				nextItem = {};
+				m_Playlist->GetNextItem( currentItem, nextItem, GetRepeatPlaylist() /*wrap*/ );
 			}
 			if ( nextItem.ID > 0 ) {
 				nextDecoder = OpenDecoder( nextItem, true /*usePreloadedDecoder*/ );
