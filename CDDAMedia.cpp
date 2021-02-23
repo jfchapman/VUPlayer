@@ -16,9 +16,10 @@ static const unsigned long SECTORSIZE = 2352;
 // CDDA pregap in sectors.
 static const unsigned long PREGAP = 150;
 
-CDDAMedia::CDDAMedia( const wchar_t drive, Library& library ) :
+CDDAMedia::CDDAMedia( const wchar_t drive, Library& library, MusicBrainz& musicbrainz ) :
 	m_DrivePath( L"\\\\.\\" + std::wstring( 1, drive ) + L":" ),
 	m_Library( library ),
+	m_MusicBrainz( musicbrainz ),
 	m_DiskGeometry( {} ),
 	m_TOC( {} ),
 	m_CDDB( 0 ),
@@ -172,8 +173,9 @@ long CDDAMedia::GetStartSector( const long track ) const
 {
 	long trackOffset = 0;
 	if ( ( track >= static_cast<long>( m_TOC.FirstTrack ) ) && ( track <= static_cast<long>( m_TOC.LastTrack + 1 ) ) ) {
-		const long index = track - m_TOC.FirstTrack;
-		trackOffset = ( m_TOC.TrackData[ index ].Address[ 1 ] * 60 * 75 ) + ( m_TOC.TrackData[ index ].Address[ 2 ] * 75 ) + ( m_TOC.TrackData[ index ].Address[ 3 ] );
+		if ( const unsigned long index = track - m_TOC.FirstTrack; index < MAXIMUM_NUMBER_TRACKS ) {
+			trackOffset = ( m_TOC.TrackData[ index ].Address[ 1 ] * 60 * 75 ) + ( m_TOC.TrackData[ index ].Address[ 2 ] * 75 ) + ( m_TOC.TrackData[ index ].Address[ 3 ] );
+		}
 	}
 	return trackOffset;
 }
@@ -181,11 +183,13 @@ long CDDAMedia::GetStartSector( const long track ) const
 long CDDAMedia::GetSectorCount( const long track ) const
 {
 	long sectorCount = 0;
-	if ( ( track >= m_TOC.FirstTrack ) && ( track <= m_TOC.LastTrack ) && ( 0 == ( m_TOC.TrackData[ track ].Control & 4 ) ) ) {
-		const long offset1 = GetStartSector( track );
-		const long offset2 = GetStartSector( 1 + track );
-		if ( offset2 > offset1 ) {
-			sectorCount = ( offset2 - offset1 );
+	if ( ( track >= static_cast<long>( m_TOC.FirstTrack ) ) && ( track <= static_cast<long>( m_TOC.LastTrack ) ) ) {
+		if ( const unsigned long index = track - m_TOC.FirstTrack; ( index < MAXIMUM_NUMBER_TRACKS ) && ( 0 == ( m_TOC.TrackData[ index ].Control & 4 ) ) ) {
+			const long offset1 = GetStartSector( track );
+			const long offset2 = GetStartSector( 1 + track );
+			if ( offset2 > offset1 ) {
+				sectorCount = ( offset2 - offset1 );
+			}
 		}
 	}
 	return sectorCount;
@@ -220,8 +224,7 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 		}
 
 		for ( unsigned char track = m_TOC.FirstTrack; track <= m_TOC.LastTrack; track++ ) {
-			const long trackBytes = GetTrackLength( track );
-			if ( trackBytes > 0 ) {
+			if ( const long trackBytes = GetTrackLength( track ); trackBytes > 0 ) {
 				MediaInfo mediaInfo( GetCDDB() );
 				MediaInfo previousMediaInfo( mediaInfo );
 
@@ -272,6 +275,11 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 		}
 
 		success = ( m_Playlist->GetCount() > 0 );
+
+		if ( success && isNewMedia ) {
+			const auto [ discID, toc ] = GetMusicBrainzID();
+			m_MusicBrainz.Query( discID, toc, false /*forceDialog*/ );	
+		}
 	}
 	return success;
 }
@@ -457,4 +465,29 @@ void CDDAMedia::GetDataBlockText( const CDROM_TOC_CD_TEXT_DATA& data, const int 
 			}
 		}
 	}
+}
+
+std::pair<std::string /*discid*/, std::string /*toc*/> CDDAMedia::GetMusicBrainzID() const
+{
+	std::stringstream toc;
+	toc << static_cast<long>( m_TOC.FirstTrack ) << '+' << static_cast<long>( m_TOC.LastTrack ) << '+' << GetStartSector( 1 + m_TOC.LastTrack );
+
+	std::stringstream hash;
+	hash << std::hex << std::setfill( '0' ) << std::setw( 2 ) << std::uppercase << static_cast<long>( m_TOC.FirstTrack );
+	hash << std::hex << std::setfill( '0' ) << std::setw( 2 ) << std::uppercase << static_cast<long>( m_TOC.LastTrack );
+	hash << std::hex << std::setfill( '0' ) << std::setw( 8 ) << std::uppercase << GetStartSector( 1 + m_TOC.LastTrack );
+
+	for ( long track = m_TOC.FirstTrack; track <= m_TOC.LastTrack; track++ ) {
+		toc << '+' << GetStartSector( track );
+		hash << std::hex << std::setfill( '0' ) << std::setw( 8 ) << std::uppercase << GetStartSector( track );
+	}
+	for ( long track = 1 + m_TOC.LastTrack - m_TOC.FirstTrack; track < MAXIMUM_NUMBER_TRACKS - 1; track++ ) {
+		hash << std::setfill( '0' ) << std::setw( 8 ) << 0l;
+	}
+	auto discid = CalculateHash( hash.str(), CALG_SHA1, true /*base64encode*/ );
+	std::replace( discid.begin(), discid.end(), '+', '.' );
+	std::replace( discid.begin(), discid.end(), '/', '_' );
+	std::replace( discid.begin(), discid.end(), '=', '-' );
+
+	return { discid, toc.str() };
 }

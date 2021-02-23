@@ -138,6 +138,26 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 	return CallWindowProc( wndTree->GetDefaultWndProc(), hwnd, message, wParam, lParam );
 }
 
+LRESULT CALLBACK WndTree::EditControlProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+{
+	WndTree* wndTree = reinterpret_cast<WndTree*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
+	if ( nullptr != wndTree ) {
+		switch( message ) {
+			case WM_DESTROY : {
+				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndTree->GetEditControlWndProc() ) );
+				break;
+			}
+			case WM_GETDLGCODE : {
+				return DLGC_WANTALLKEYS;
+			}
+			default : {
+				break;
+			}
+		}
+	}
+	return CallWindowProc( wndTree->GetEditControlWndProc(), hwnd, message, wParam, lParam );
+}
+
 DWORD WINAPI WndTree::ScratchListUpdateProc( LPVOID lpParam )
 {
 	ScratchListUpdateInfo* info = static_cast<ScratchListUpdateInfo*>( lpParam );
@@ -290,6 +310,27 @@ HTREEITEM WndTree::GetStartupItem()
 				break;
 			}
 		}
+
+		if ( nullptr == selectedItem ) {
+			if ( const UINT driveType = GetDriveType( startupPlaylist.c_str() ); ( DRIVE_CDROM == driveType ) ) {
+				const std::wstring startupFilename = m_Settings.GetStartupFilename();
+				for ( const auto& cddaDrive : m_CDDAMap ) {
+					if ( cddaDrive.second ) {
+						const auto playlistItems = cddaDrive.second->GetItems();
+						const auto foundItem = std::find_if( playlistItems.begin(), playlistItems.end(), [ startupFilename ] ( const Playlist::Item& item )
+						{
+							return startupFilename == item.Info.GetFilename();
+						} );
+						if ( playlistItems.end() != foundItem ) {
+							selectedItem = cddaDrive.first;
+							TreeView_SelectItem( m_hWnd, selectedItem );							
+							break;
+						}
+					}
+				}
+			}
+		}
+
 		if ( nullptr == selectedItem ) {
 			selectedItem = GetComputerFolderNode( startupPlaylist );
 			if ( nullptr == selectedItem ) {
@@ -387,6 +428,13 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 			}
 			case Playlist::Type::Folder : {
 				startupPlaylist = playlist->GetName();
+				break;
+			}
+			case Playlist::Type::CDDA : {
+				if ( const auto items = playlist->GetItems(); !items.empty() ) {
+					std::filesystem::path path( items.front().Info.GetFilename() );
+					startupPlaylist = path.root_path();
+				}
 				break;
 			}
 			default : {
@@ -499,6 +547,10 @@ void WndTree::OnContextMenu( const POINT& position )
 			const UINT enableExtract = ( playlist && playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( treemenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
+			VUPlayer* vuplayer = VUPlayer::Get();
+			const UINT musicbrainzEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
+			EnableMenuItem( treemenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
+
 			const UINT flags = TPM_RIGHTBUTTON;
 			TrackPopupMenu( treemenu, flags, position.x, position.y, 0 /*reserved*/, m_hWnd, NULL /*rect*/ );
 		}
@@ -513,7 +565,11 @@ LPARAM WndTree::OnBeginLabelEdit( WPARAM /*wParam*/, LPARAM lParam )
 	if ( nullptr != tvInfo ) {
 		const Playlist::Type type = GetItemType( tvInfo->item.hItem );
 		if ( Playlist::Type::User == type ) {
-			preventEditing = FALSE;
+			if ( const HWND editControl = TreeView_GetEditControl( m_hWnd ); nullptr != editControl ) {
+				SetWindowLongPtr( editControl, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
+				m_EditControlWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( editControl, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( EditControlProc ) ) );
+				preventEditing = FALSE;
+			}
 		}
 	}
 	return preventEditing;
@@ -521,18 +577,20 @@ LPARAM WndTree::OnBeginLabelEdit( WPARAM /*wParam*/, LPARAM lParam )
 
 void WndTree::OnEndLabelEdit( WPARAM /*wParam*/, LPARAM lParam )
 {
-	LPNMTVDISPINFO tvInfo = reinterpret_cast<LPNMTVDISPINFO>( lParam );
-	if ( ( nullptr != tvInfo ) && ( nullptr != tvInfo->item.pszText ) ) {
-		Playlist::Ptr playlist = GetPlaylist( tvInfo->item.hItem );
-		if ( playlist ) {
-			TVITEMEX tvItem = {};
-			tvItem.mask = TVIF_HANDLE | TVIF_TEXT;
-			tvItem.hItem = tvInfo->item.hItem;
-			tvItem.pszText = tvInfo->item.pszText;
-			TreeView_SetItem( m_hWnd, &tvItem );
-			playlist->SetName( tvInfo->item.pszText );
-			TreeView_SortChildren( m_hWnd, m_NodePlaylists, FALSE /*recurse*/ );
-			TreeView_SelectItem( m_hWnd, tvInfo->item.hItem );
+	if ( nullptr != TreeView_GetEditControl( m_hWnd ) ) {
+		LPNMTVDISPINFO tvInfo = reinterpret_cast<LPNMTVDISPINFO>( lParam );
+		if ( ( nullptr != tvInfo ) && ( nullptr != tvInfo->item.pszText ) ) {
+			Playlist::Ptr playlist = GetPlaylist( tvInfo->item.hItem );
+			if ( playlist ) {
+				TVITEMEX tvItem = {};
+				tvItem.mask = TVIF_HANDLE | TVIF_TEXT;
+				tvItem.hItem = tvInfo->item.hItem;
+				tvItem.pszText = tvInfo->item.pszText;
+				TreeView_SetItem( m_hWnd, &tvItem );
+				playlist->SetName( tvInfo->item.pszText );
+				TreeView_SortChildren( m_hWnd, m_NodePlaylists, FALSE /*recurse*/ );
+				TreeView_SelectItem( m_hWnd, tvInfo->item.hItem );
+			}
 		}
 	}
 }
@@ -3415,4 +3473,9 @@ Playlist::Ptr WndTree::SelectAudioCD( const wchar_t drive )
 		}
 	}
 	return cdPlaylist;
+}
+
+WNDPROC WndTree::GetEditControlWndProc()
+{
+	return m_EditControlWndProc;
 }

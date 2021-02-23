@@ -207,7 +207,7 @@ void Settings::UpdateHotkeysTable()
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		// Create the hotkeys table (if necessary).
-		const std::string hotkeyTableQuery = "CREATE TABLE IF NOT EXISTS Hotkeys(ID,Hotkey,Alt,Ctrl,Shift);";
+		const std::string hotkeyTableQuery = "CREATE TABLE IF NOT EXISTS Hotkeys(ID,Hotkey,Alt,Ctrl,Shift,Keyname);";
 		sqlite3_exec( database, hotkeyTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 
 		// Check the columns in the hotkeys table.
@@ -231,10 +231,14 @@ void Settings::UpdateHotkeysTable()
 			if ( ( columns.find( "ID" ) == columns.end() ) || ( columns.find( "Hotkey" ) == columns.end() ) ||
 					( columns.find( "Alt" ) == columns.end() ) || ( columns.find( "Ctrl" ) == columns.end() ) ||
 					( columns.find( "Shift" ) == columns.end() ) ) {
-				// Drop the table and recreate
+				// Drop the table and recreate.
 				const std::string dropTableQuery = "DROP TABLE Hotkeys;";
 				sqlite3_exec( database, dropTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 				sqlite3_exec( database, hotkeyTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+			} else if ( columns.find( "Keyname" ) == columns.end() ) {
+				// The 'Keyname' column was added in a later version, so update the old table.
+				const std::string addColumnQuery = "ALTER TABLE Hotkeys ADD COLUMN Keyname;";
+				sqlite3_exec( database, addColumnQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 			}
 		}
 	}
@@ -784,6 +788,43 @@ void Settings::SavePlaylist( Playlist& playlist )
 					sqlite3_finalize( stmt );
 				}
 			}
+		}
+	}
+}
+
+std::filesystem::path Settings::GetDefaultArtwork()
+{
+	std::filesystem::path artwork;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='DefaultArtwork';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
+				if ( nullptr != text ) {
+					artwork = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
+				}
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return artwork;
+}
+
+void Settings::SetDefaultArtwork( const std::filesystem::path& artwork )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "DefaultArtwork", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_text( stmt, 2, WideStringToUTF8( artwork ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
 		}
 	}
 }
@@ -1602,9 +1643,10 @@ void Settings::SetGainSettings( const GainMode gainMode, const LimitMode limitMo
 	}
 }
 
-void Settings::GetSystraySettings( bool& enable, SystrayCommand& singleClick, SystrayCommand& doubleClick )
+void Settings::GetSystraySettings( bool& enable, bool& minimise, SystrayCommand& singleClick, SystrayCommand& doubleClick )
 {
 	enable = false;
+	minimise = false;
 	singleClick = SystrayCommand::None;
 	doubleClick = SystrayCommand::None;
 	sqlite3* database = m_Database.GetDatabase();
@@ -1614,6 +1656,14 @@ void Settings::GetSystraySettings( bool& enable, SystrayCommand& singleClick, Sy
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				enable = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='SysTrayMinimise';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				minimise = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
 			}
 			sqlite3_finalize( stmt );
 		}
@@ -1642,7 +1692,7 @@ void Settings::GetSystraySettings( bool& enable, SystrayCommand& singleClick, Sy
 	}
 }
 
-void Settings::SetSystraySettings( const bool enable, const SystrayCommand singleClick, const SystrayCommand doubleClick )
+void Settings::SetSystraySettings( const bool enable, const bool minimise, const SystrayCommand singleClick, const SystrayCommand doubleClick )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -1651,6 +1701,11 @@ void Settings::SetSystraySettings( const bool enable, const SystrayCommand singl
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			sqlite3_bind_text( stmt, 1, "SysTrayEnable", -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_int( stmt, 2, enable );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "SysTrayMinimise", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, minimise );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
@@ -1779,16 +1834,21 @@ void Settings::GetHotkeySettings( bool& enable, HotkeyList& hotkeys )
 					if ( columnName == "ID" ) {
 						hotkey.ID = sqlite3_column_int( stmt, columnIndex );
 					} else if ( columnName == "Hotkey" ) {
-						hotkey.Key = sqlite3_column_int( stmt, columnIndex );
+						hotkey.Code = sqlite3_column_int( stmt, columnIndex );
 					} else if ( columnName == "Alt" ) {
 						hotkey.Alt = ( 0 != sqlite3_column_int( stmt, columnIndex ) );
 					} else if ( columnName == "Ctrl" ) {
 						hotkey.Ctrl = ( 0 != sqlite3_column_int( stmt, columnIndex ) );
 					} else if ( columnName == "Shift" ) {
 						hotkey.Shift = ( 0 != sqlite3_column_int( stmt, columnIndex ) );
+					} else if ( columnName == "Keyname" ) {
+						const unsigned char* text = sqlite3_column_text( stmt, columnIndex );
+						if ( nullptr != text ) {
+							hotkey.Name = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
+						}
 					}
 				}
-				if ( ( 0 != hotkey.ID ) && ( 0 != hotkey.Key ) ) {
+				if ( ( 0 != hotkey.ID ) && ( 0 != hotkey.Code ) ) {
 					hotkeys.push_back( hotkey );
 				}
 			}
@@ -1817,14 +1877,15 @@ void Settings::SetHotkeySettings( const bool enable, const HotkeyList& hotkeys )
 		
 		if ( !hotkeys.empty() ) {
 			stmt = nullptr;
-			query = "INSERT INTO Hotkeys (ID,Hotkey,Alt,Ctrl,Shift) VALUES (?1,?2,?3,?4,?5);";
+			query = "INSERT INTO Hotkeys (ID,Hotkey,Alt,Ctrl,Shift,Keyname) VALUES (?1,?2,?3,?4,?5,?6);";
 			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 				for ( const auto& hotkey : hotkeys ) {
 					sqlite3_bind_int( stmt, 1, hotkey.ID );
-					sqlite3_bind_int( stmt, 2, hotkey.Key );
+					sqlite3_bind_int( stmt, 2, hotkey.Code );
 					sqlite3_bind_int( stmt, 3, hotkey.Alt ? 1 : 0 );
 					sqlite3_bind_int( stmt, 4, hotkey.Ctrl ? 1 : 0 );
 					sqlite3_bind_int( stmt, 5, hotkey.Shift ? 1 : 0 );
+					sqlite3_bind_text( stmt, 6, WideStringToUTF8( hotkey.Name ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 					sqlite3_step( stmt );
 					sqlite3_reset( stmt );
 				}
@@ -2446,6 +2507,39 @@ void Settings::SetScrobblerKey( const std::string& key )
 			sqlite3_reset( stmt );
 			sqlite3_finalize( stmt );
 			stmt = nullptr;
+		}
+	}
+}
+
+bool Settings::GetMusicBrainzEnabled()
+{
+	bool enabled = true;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='MusicBrainzEnable';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return enabled;
+}
+
+void Settings::SetMusicBrainzEnabled( const bool enabled )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "MusicBrainzEnable", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, enabled );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
 		}
 	}
 }

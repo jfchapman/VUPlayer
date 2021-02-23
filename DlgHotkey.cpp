@@ -108,7 +108,7 @@ bool DlgHotkey::GetHotkey( Settings::Hotkey& hotkey ) const
 	return m_Valid;
 }
 
-bool DlgHotkey::OnKeyDown( WPARAM wParam, LPARAM /*lParam*/ )
+bool DlgHotkey::OnKeyDown( WPARAM wParam, LPARAM lParam )
 {
 	const int keycode = static_cast<int>( wParam );
 	bool alt = false;
@@ -121,10 +121,16 @@ bool DlgHotkey::OnKeyDown( WPARAM wParam, LPARAM /*lParam*/ )
 		m_Valid = ( m_ModifiedHotkeys.end() != m_ModifiedHotkeys.find( keycode ) );
 	}
 	if ( m_Valid ) {
-		m_Hotkey.Key = keycode;
+		m_Hotkey.Code = keycode;
 		m_Hotkey.Alt = alt;
 		m_Hotkey.Ctrl = control;
 		m_Hotkey.Shift = shift;
+
+		const int bufSize = 64;
+		WCHAR buffer[ bufSize ] = {};
+		if ( 0 != GetKeyNameText( static_cast<LONG>( lParam ), buffer, bufSize ) ) {
+			m_Hotkey.Name = buffer;
+		}
 	}
 	return m_Valid;
 }
@@ -135,6 +141,9 @@ void DlgHotkey::InitAllowedHotkeys()
 		m_UnmodifiedHotkeys.insert( key );
 	}
 	for ( int key = VK_F13; key <= VK_F24; key++ ) {
+		m_UnmodifiedHotkeys.insert( key );
+	}
+	for ( int key = VK_VOLUME_MUTE; key <= VK_MEDIA_PLAY_PAUSE; key++ ) {
 		m_UnmodifiedHotkeys.insert( key );
 	}
 	for ( int key = 0x30 /* 0 */; key <= 0x39 /* 9 */; key++ ) {

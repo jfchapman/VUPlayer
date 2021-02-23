@@ -94,6 +94,9 @@ public:
 	// Sets the rebar window handle to 'hwnd'.
 	void SetRebarWindowHandle( const HWND hwnd );
 
+	// Called when the placeholder artwork has changed.
+	void OnPlaceholderArtworkChanged();
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK VisualProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );

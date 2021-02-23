@@ -16,10 +16,6 @@ OptionsMod::OptionsMod( HINSTANCE instance, Settings& settings, Output& output )
 	GetSettings().GetMODSettings( m_MODSettings, m_MTMSettings, m_S3MSettings, m_XMSettings, m_ITSettings );
 }
 
-OptionsMod::~OptionsMod()
-{
-}
-
 void OptionsMod::OnInit( const HWND hwnd )
 {
 	m_hWnd = hwnd;

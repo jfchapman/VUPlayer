@@ -12,18 +12,14 @@
 #include <chrono>
 #include <iomanip>
 #include <locale>
-#include <random>
 #include <set>
 #include <sstream>
 
 // Maximum size when converting images.
 static const int sMaxConvertImageBytes = 0x1000000;
 
-// Random number seed.
-static const long long seed = std::chrono::system_clock::now().time_since_epoch().count();
-
 // Random number engine.
-static std::mt19937_64 engine( seed );
+static std::default_random_engine sRandomEngine { std::random_device {} () };
 
 std::wstring UTF8ToWideString( const std::string& text )
 {
@@ -491,8 +487,13 @@ float GetDPIScaling()
 long long GetRandomNumber( const long long minimum, const long long maximum )
 {
 	std::uniform_int_distribution<long long> dist( minimum, maximum );
-	const long long value = dist( engine );
+	const long long value = dist( sRandomEngine );
 	return value;
+}
+
+std::default_random_engine& GetRandomEngine()
+{
+	return sRandomEngine;
 }
 
 bool FolderExists( const std::wstring& folder )
@@ -620,4 +621,76 @@ void SetWindowAccessibleName( const HINSTANCE instance, const HWND hwnd, const U
 bool AreRoughlyEqual( const float value1, const float value2, const float tolerance )
 {
 	return ( fabsf( value1 - value2 ) < tolerance ) || ( std::isnan( value1 ) && std::isnan( value2 ) );
+}
+
+std::string CalculateHash( const std::string& value, const ALG_ID algorithm, const bool base64encode )
+{
+	std::string result;
+	if ( !value.empty() ) {
+		if ( HCRYPTPROV provider = 0; CryptAcquireContext( &provider, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT ) ) {
+			if ( HCRYPTHASH hash = 0; CryptCreateHash( provider, algorithm, 0, 0, &hash ) ) {
+				if ( CryptHashData( hash, reinterpret_cast<const unsigned char*>( value.data() ), static_cast<DWORD>( value.size() ), 0 ) ) {
+					if ( DWORD hashSize = 0; CryptGetHashParam( hash, HP_HASHVAL, nullptr, &hashSize, 0 ) && ( hashSize > 0 ) ) {
+						if ( std::vector<unsigned char> hashValue( hashSize ); CryptGetHashParam( hash, HP_HASHVAL, hashValue.data(), &hashSize, 0 ) ) {
+							if ( base64encode ) {
+								result = Base64Encode( hashValue.data(), static_cast<int>( hashValue.size() ) );
+							} else {
+								std::stringstream ss;
+								for ( const auto& i : hashValue ) {
+									ss << std::hex << std::setfill( '0' ) << std::setw( 2 ) << static_cast<int>( i );
+								}
+								result = ss.str();
+							}
+						}
+					}
+				}
+				CryptDestroyHash( hash );
+			}
+			CryptReleaseContext( provider, 0 );
+		}
+	}
+	return result;
+}
+
+std::filesystem::path ChooseArtwork( const HINSTANCE instance, const HWND hwnd, const std::filesystem::path& initialFolder )
+{
+	std::filesystem::path result;
+
+	WCHAR title[ MAX_PATH ] = {};
+	LoadString( instance, IDS_CHOOSEARTWORK_TITLE, title, MAX_PATH );
+	WCHAR filter[ MAX_PATH ] = {};
+	LoadString( instance, IDS_CHOOSEARTWORK_FILTERIMAGES, filter, MAX_PATH );
+	const std::wstring filter1( filter );
+	const std::wstring filter2( L"*.bmp;*.jpg;*.jpeg;*.png;*.gif;*.tiff;*.tif" );
+	LoadString( instance, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
+	const std::wstring filter3( filter );
+	const std::wstring filter4( L"*.*" );
+	std::vector<WCHAR> filterStr;
+	filterStr.reserve( MAX_PATH );
+	filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
+	filterStr.push_back( 0 );
+	filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
+	filterStr.push_back( 0 );
+	filterStr.insert( filterStr.end(), filter3.begin(), filter3.end() );
+	filterStr.push_back( 0 );
+	filterStr.insert( filterStr.end(), filter4.begin(), filter4.end() );
+	filterStr.push_back( 0 );
+	filterStr.push_back( 0 );
+
+	WCHAR buffer[ MAX_PATH ] = {};
+	OPENFILENAME ofn = {};
+	ofn.lStructSize = sizeof( OPENFILENAME );
+	ofn.hwndOwner = hwnd;
+	ofn.lpstrTitle = title;
+	ofn.lpstrFilter = filterStr.data();
+	ofn.nFilterIndex = 1;
+	ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
+	ofn.lpstrFile = buffer;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
+	if ( FALSE != GetOpenFileName( &ofn ) ) {
+		result = ofn.lpstrFile;
+	}
+
+	return result;
 }

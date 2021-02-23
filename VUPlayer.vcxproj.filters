@@ -321,6 +321,12 @@
     <ClInclude Include="HandlerMPC.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MusicBrainz.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OptionsArtwork.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -594,6 +600,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HandlerMPC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MusicBrainz.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OptionsArtwork.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

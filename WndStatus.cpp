@@ -51,12 +51,13 @@ WndStatus::WndStatus( HINSTANCE instance, HWND parent ) :
 	m_Playlist(),
 	m_GainStatusCount( -1 ),
 	m_LibraryStatusCount( -1 ),
+	m_MusicBrainzActive( false ),
 	m_IdleText()
 {
-	const int versionSize = 16;
-	WCHAR versionBuf[ versionSize ];
-	LoadString( m_hInst, IDS_VERSION, versionBuf, versionSize );
-	m_IdleText = versionBuf;
+	const int bufSize = 32;
+	WCHAR buf[ bufSize ] = {};
+	LoadString( m_hInst, IDS_IDLE, buf, bufSize );
+	m_IdleText = buf;
 
 	const DWORD style = WS_CHILD | WS_CLIPSIBLINGS| WS_VISIBLE | SBARS_SIZEGRIP;
 	const int x = 0;
@@ -114,13 +115,19 @@ void WndStatus::Update( Playlist* playlist )
 	}
 }
 
-void WndStatus::Update( const GainCalculator& gainCalculator, const LibraryMaintainer& libraryMaintainer )
+void WndStatus::Update( const GainCalculator& gainCalculator, const LibraryMaintainer& libraryMaintainer, const MusicBrainz& musicbrainz )
 {
 	const int pendingGain = gainCalculator.GetPendingCount();
 	const int pendingLibrary = libraryMaintainer.GetPendingCount();
-	if ( ( pendingGain != m_GainStatusCount ) || ( pendingLibrary != m_LibraryStatusCount ) ) {
+	const bool musicbrainzActive = musicbrainz.IsActive();
+	if ( ( pendingGain != m_GainStatusCount ) || ( pendingLibrary != m_LibraryStatusCount ) || ( musicbrainzActive != m_MusicBrainzActive ) ) {
 		std::wstring idleText = m_IdleText;
-		if ( 0 != pendingLibrary ) {
+		if ( musicbrainzActive ) {
+			const int bufSize = 64;
+			WCHAR buf[ bufSize ];
+			LoadString( m_hInst, IDS_MUSICBRAINZ_ACTIVE, buf, bufSize );
+			idleText = buf;
+		} else if ( 0 != pendingLibrary ) {
 			const int bufSize = 64;
 			WCHAR buf[ bufSize ];
 			LoadString( m_hInst, IDS_STATUS_LIBRARY, buf, bufSize );
@@ -142,6 +149,7 @@ void WndStatus::Update( const GainCalculator& gainCalculator, const LibraryMaint
 		SendMessage( m_hWnd, SB_SETTEXT, 0, reinterpret_cast<LPARAM>( idleText.c_str() ) );
 		m_GainStatusCount = pendingGain;
 		m_LibraryStatusCount = pendingLibrary;
+		m_MusicBrainzActive = musicbrainzActive;
 	}
 }
 

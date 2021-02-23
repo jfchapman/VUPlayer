@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LibraryMaintainer.h"
+#include "MusicBrainz.h"
 #include "Playlist.h"
 #include "GainCalculator.h"
 
@@ -28,8 +29,8 @@ public:
 	// Called when an 'playlist' is updated.
 	void Update( Playlist* playlist );
 
-	// Updates the status text based on the 'gainCalculator' & 'libraryMaintainer'.
-	void Update( const GainCalculator& gainCalculator, const LibraryMaintainer& libraryMaintainer );
+	// Updates the status text based on the 'gainCalculator', 'libraryMaintainer' & 'musicbrainz' state.
+	void Update( const GainCalculator& gainCalculator, const LibraryMaintainer& libraryMaintainer, const MusicBrainz& musicbrainz );
 
 	// Refreshes the status bar contents.
 	void Refresh();
@@ -55,6 +56,9 @@ private:
 
 	// Indicates the number of pending library maintenance items currently displayed.
 	int m_LibraryStatusCount;
+
+	// Indicates whether the MusicBrainz activity state is currently displayed.
+	bool m_MusicBrainzActive;
 
 	// The idle status text.
 	std::wstring m_IdleText;

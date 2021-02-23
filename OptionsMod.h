@@ -10,21 +10,19 @@ public:
 	// 'output' - output object.
 	OptionsMod( HINSTANCE instance, Settings& settings, Output& output );
 
-	virtual ~OptionsMod();
-
 	// Called when the options page should be initialised.
 	// 'hwnd' - dialog window handle.
-	virtual void OnInit( const HWND hwnd );
+	void OnInit( const HWND hwnd ) override;
 
 	// Called when the options page should be saved.
 	// 'hwnd' - dialog window handle.
-	virtual void OnSave( const HWND hwnd );
+	void OnSave( const HWND hwnd ) override;
 
 	// Called when a command on the options page should be handled.
 	// 'hwnd' - dialog window handle.
 	// 'wParam' - command parameter.
 	// 'lParam' - command parameter.
-	virtual void OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM lParam );
+	void OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM lParam ) override;
 
 private:
 	// Updates controls based on the currently selected format type.

@@ -17,6 +17,7 @@
 #include <commdlg.h>
 #include <rpc.h>
 #include <Wincrypt.h>
+#include <WinInet.h>
 #include <gdiplus.h>
 
 // C RunTime Header Files

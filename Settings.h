@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <list>
 
 #include "Database.h"
@@ -28,11 +29,12 @@ public:
 
 	// Hotkey information.
 	struct Hotkey {
-		int ID;						// ID.
-		int Key;					// Key code.
-		bool Alt;					// Alt key modifier.
-		bool Ctrl;				// Control key modifier.
-		bool Shift;				// Shift key modifier.
+		int ID;							// ID.
+		int Code;						// Key code.
+		bool Alt;						// Alt key modifier.
+		bool Ctrl;					// Control key modifier.
+		bool Shift;					// Shift key modifier.
+		std::wstring Name;	// Key name.
 	};
 
 	// Output mode.
@@ -185,6 +187,12 @@ public:
 
 	// Saves a playlist to the database.
 	void SavePlaylist( Playlist& playlist );
+
+	// Returns the default artwork.
+	std::filesystem::path GetDefaultArtwork();
+
+	// Sets the default artwork.
+	void SetDefaultArtwork( const std::filesystem::path& artwork );
 
 	// Gets the oscilloscope colour.
 	COLORREF GetOscilloscopeColour();
@@ -348,15 +356,17 @@ public:
 
 	// Gets notification area settings.
 	// 'enable' - out, whether the notification area icon is shown.
+	// 'minimise' - out, whether to minimise to the notification area.
 	// 'singleClick' - out, single click action.
 	// 'doubleClick' - out, double click action.
-	void GetSystraySettings( bool& enable, SystrayCommand& singleClick, SystrayCommand& doubleClick );
+	void GetSystraySettings( bool& enable, bool& minimise, SystrayCommand& singleClick, SystrayCommand& doubleClick );
 
 	// Sets notification area settings.
 	// 'enable' - whether the notification area icon is shown.
+	// 'minimise' - whether to minimise to the notification area.
 	// 'singleClick' - single click action.
 	// 'doubleClick' - double click action.
-	void SetSystraySettings( const bool enable, const SystrayCommand singleClick, const SystrayCommand doubleClick );
+	void SetSystraySettings( const bool enable, const bool minimise, const SystrayCommand singleClick, const SystrayCommand doubleClick );
 
 	// Gets playback settings.
 	// 'randomPlay' - whether random playback is enabled.
@@ -456,6 +466,12 @@ public:
 
 	// Sets the scrobbler session 'key'.
 	void SetScrobblerKey( const std::string& key );
+
+	// Returns whether MusicBrainz functionality is enabled.
+	bool GetMusicBrainzEnabled();
+
+	// Sets whether MusicBrainz functionality is enabled.
+	void SetMusicBrainzEnabled( const bool enabled );
 
 	// Exports the settings in JSON format to 'output'.
 	void ExportSettings( std::string& output );

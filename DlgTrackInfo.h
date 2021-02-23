@@ -17,10 +17,10 @@ public:
 
 private:
 	// Returns the artwork bitmap for 'mediaInfo', or a null pointer if there is no bitmap.
-	std::shared_ptr<Gdiplus::Bitmap> GetArtwork( const MediaInfo& mediaInfo );
+	std::unique_ptr<Gdiplus::Bitmap> GetArtwork( const MediaInfo& mediaInfo );
 
 	// Returns the artwork bitmap for 'image', or a null pointer if a bitmap could not be created.
-	std::shared_ptr<Gdiplus::Bitmap> GetArtwork( const std::vector<BYTE>& image );
+	std::unique_ptr<Gdiplus::Bitmap> GetArtwork( const std::vector<BYTE>& image );
 
 	// Dialog box procedure.
 	static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
@@ -93,7 +93,7 @@ private:
 	Playlist::ItemList m_Items;
 
 	// Currently displayed artwork bitmap.
-	std::shared_ptr<Gdiplus::Bitmap> m_Bitmap;
+	std::unique_ptr<Gdiplus::Bitmap> m_Bitmap;
 
 	// Information with which to initialise the dialog.
 	MediaInfo m_InitialInfo;

@@ -210,7 +210,7 @@ void Scrobbler::ScrobblerHandler()
 				nowPlaying = m_TrackNowPlaying;
 				m_TrackNowPlaying = {};
 			}
-			if ( !nowPlaying.Artist.empty() && !nowPlaying.Title.empty() ) {
+			if ( !nowPlaying.Artist.empty() && !nowPlaying.Title.empty() && ( nowPlaying.Duration > 0 ) ) {
 				const scrobbler_track track( nowPlaying.Artist.c_str(), nowPlaying.Title.c_str(), 0 /*timeStamp*/,
 					nowPlaying.Album.c_str(), nullptr /*albumArtist*/, nowPlaying.Tracknumber, nowPlaying.Duration );
 				const int32_t result = m_NowPlaying( sk.c_str(), &track );

@@ -17,7 +17,8 @@ public:
 	// 'hwnd' - application window handle.
 	// 'library' - media library.
 	// 'handlers' - available handlers.
-	CDDAManager( const HINSTANCE instance, const HWND hwnd, Library& library, Handlers& handlers );
+	// 'musicbrainz' - MusicBrainz manager.
+	CDDAManager( const HINSTANCE instance, const HWND hwnd, Library& library, Handlers& handlers, MusicBrainz& musicbrainz );
 
 	virtual ~CDDAManager();
 
@@ -49,6 +50,9 @@ private:
 
 	// Media library.
 	Library& m_Library;
+
+	// MusicBrainz manager.
+	MusicBrainz& m_MusicBrainz;
 
 	// Available CD audio media.
 	CDDAMediaMap m_Media;

@@ -213,6 +213,11 @@ public:
 	// Returns whether the playlist contains any items that can be converted (or extracted).
 	bool CanConvertAnyItems();
 
+	// Checks whether the playlist contains an item.
+	// 'item' - playlist item containing the ID of the item to check.
+	// Returns true if the item is in the playlist. 
+	bool ContainsItem( const Item& item );
+
 private:
 	// Pending file thread proc.
 	static DWORD WINAPI PendingThreadProc( LPVOID lpParam );
@@ -297,6 +302,12 @@ private:
 
 	// Whether duplicate items should be merged into a single playlist entry.
 	bool m_MergeDuplicates;
+
+	// A shuffled playlist.
+	ItemList m_ShuffledPlaylist;
+
+	// Shuffled playlist mutex.
+	std::mutex m_MutexShuffled;
 };
 
 // A list of playlists.

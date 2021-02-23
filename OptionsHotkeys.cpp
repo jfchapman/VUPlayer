@@ -5,6 +5,18 @@
 #include "resource.h"
 #include "windowsx.h"
 
+#include <sstream>
+
+const OptionsHotkeys::HotkeyNameMap OptionsHotkeys::s_KeyNames = {
+	{ VK_VOLUME_MUTE,				IDS_KEYNAME_VOLUMEMUTE },
+	{ VK_VOLUME_DOWN,				IDS_KEYNAME_VOLUMEDOWN },
+	{ VK_VOLUME_UP,					IDS_KEYNAME_VOLUMEUP },
+	{ VK_MEDIA_NEXT_TRACK,	IDS_KEYNAME_NEXTTRACK },
+	{ VK_MEDIA_PREV_TRACK,	IDS_KEYNAME_PREVIOUSTRACK },
+	{ VK_MEDIA_STOP,				IDS_KEYNAME_STOP },
+	{ VK_MEDIA_PLAY_PAUSE,	IDS_KEYNAME_PLAYPAUSE }
+};
+
 OptionsHotkeys::OptionsHotkeys( HINSTANCE instance, Settings& settings, Output& output ) :
 	Options( instance, settings, output ),
 	m_HotkeyMap()
@@ -15,10 +27,6 @@ OptionsHotkeys::OptionsHotkeys( HINSTANCE instance, Settings& settings, Output& 
 	for ( const auto& hotkey : hotkeys ) {
 		m_HotkeyMap.insert( HotkeyMap::value_type( static_cast<Hotkeys::ID>( hotkey.ID ), hotkey ) );
 	}
-}
-
-OptionsHotkeys::~OptionsHotkeys()
-{
 }
 
 void OptionsHotkeys::OnInit( const HWND hwnd )
@@ -113,7 +121,6 @@ void OptionsHotkeys::OnNotify( const HWND hwnd, const WPARAM /*wParam*/, const L
 std::wstring OptionsHotkeys::GetKeyDescription( const Settings::Hotkey& hotkey ) const
 {
 	std::wstring description;
-	const UINT scancode = MapVirtualKey( hotkey.Key, MAPVK_VK_TO_VSC );
 	const int bufSize = 64;
 	WCHAR buffer[ bufSize ] = {};
 	if ( hotkey.Alt ) {
@@ -131,10 +138,23 @@ std::wstring OptionsHotkeys::GetKeyDescription( const Settings::Hotkey& hotkey )
 		description += buffer;
 		description += L"+";
 	}
-	if ( 0 != GetKeyNameText( scancode << 16, buffer, bufSize ) ) {
-		description += buffer;
+	if ( hotkey.Name.empty() ) {
+		const auto nameIter = s_KeyNames.find( hotkey.Code );
+		if ( s_KeyNames.end() != nameIter ) {
+			LoadString( GetInstanceHandle(), nameIter->second, buffer, bufSize );
+			description += buffer;
+		} else {
+			const UINT scancode = MapVirtualKey( hotkey.Code, MAPVK_VK_TO_VSC );
+			if ( 0 != GetKeyNameText( scancode << 16, buffer, bufSize ) ) {
+				description += buffer;
+			} else {
+				std::wstringstream ss;
+				ss << L'[' << std::hex << std::showbase << hotkey.Code << L']';
+				description += ss.str();
+			}
+		}
 	} else {
-		description = std::wstring();
+		description += hotkey.Name;
 	}
 	return description;
 }

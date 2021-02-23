@@ -3,8 +3,10 @@
 #include "stdafx.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <list>
 #include <memory>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -87,6 +89,9 @@ float GetDPIScaling();
 // Returns a random number in the range ['minimum','maximum'].
 long long GetRandomNumber( const long long minimum, const long long maximum );
 
+// Gets the random number engine.
+std::default_random_engine& GetRandomEngine();
+
 // Returns whether the 'folder' exists.
 bool FolderExists( const std::wstring& folder );
 
@@ -129,3 +134,14 @@ void SetWindowAccessibleName( const HINSTANCE instance, const HWND hwnd, const U
 
 // Returns whether 'value1' and 'value2' are equal within the 'tolerance'.
 bool AreRoughlyEqual( const float value1, const float value2, const float tolerance );
+
+// Calculates a hash for a 'value' using the 'algorithm'.
+// Returns a base64 encoded string if 'base64encode' is true, else the hex-encoded hash value.
+std::string CalculateHash( const std::string& value, const ALG_ID algorithm, const bool base64encode );
+
+// Launches a file chooser for the selection of an artwork image.
+// 'instance' - module instance handle.
+// 'hwnd' - parent window handle.
+// 'initialFolder' - initial folder location.
+// Returns the file path on success, an empty path on failure.
+std::filesystem::path ChooseArtwork( const HINSTANCE instance, const HWND hwnd, const std::filesystem::path& initialFolder );

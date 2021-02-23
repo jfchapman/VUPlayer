@@ -162,6 +162,9 @@ public:
 	// Selects all list control items.
 	void SelectAllItems();
 
+	// Selects, if present, the 'itemID'.
+	void SelectPlaylistItem( const long itemID );
+
 private:
 	// Column format information.
 	struct ColumnFormat {
@@ -284,9 +287,6 @@ private:
 
 	// The font resulting from the font selection dialog.
 	HFONT m_ChosenFont;
-
-	// Edit control when label editing.
-	HWND m_EditControl;
 
 	// Indicates the item index being edited.
 	int m_EditItem;

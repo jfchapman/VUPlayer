@@ -128,3 +128,13 @@ void Decoder::SkipSilence()
 		}
 	}
 }
+
+bool Decoder::SupportsStreamTitles() const
+{
+	return false;
+}
+
+std::pair<float /*seconds*/, std::wstring /*title*/> Decoder::GetStreamTitle()
+{
+	return {};
+}

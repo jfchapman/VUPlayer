@@ -178,7 +178,8 @@ DWORD WINAPI Output::PreloadDecoderProc( LPVOID lpParam )
 	return 0;
 }
 
-Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, const float initialVolume ) :
+Output::Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handlers, Settings& settings, const float initialVolume ) :
+	m_hInst( instance ),
 	m_Parent( hwnd ),
 	m_Handlers( handlers ),
 	m_Settings( settings ),
@@ -238,7 +239,9 @@ Output::Output( const HWND hwnd, const Handlers& handlers, Settings& settings, c
 	m_OutputStreamFinished( false ),
 	m_LeadInSeconds( 0 ),
 	m_PreloadedDecoder( {} ),
-	m_PreloadedDecoderMutex()
+	m_PreloadedDecoderMutex(),
+	m_StreamTitleQueue(),
+	m_StreamTitleMutex()
 {
 	InitialiseBass();
 	SetVolume( initialVolume );
@@ -393,7 +396,7 @@ void Output::Stop()
 	m_CurrentItemCrossfading = {};
 	m_SoftClipStateCrossfading.clear();
 	m_RestartItemID = 0;
-	SetOutputQueue( Queue() );
+	SetOutputQueue( {} );
 	m_FadeOut = false;
 	m_FadeToNext = false;
 	m_SwitchToNext = false;
@@ -406,6 +409,7 @@ void Output::Stop()
 	StopLoudnessPrecalcThread();
 	std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
 	m_PreloadedDecoder = {};
+	SetStreamTitleQueue( {} );
 }
 
 void Output::Pause()
@@ -451,7 +455,12 @@ void Output::Previous( const bool forcePrevious, const float seek )
 			if ( forcePrevious || ( outputItem.Position < s_PreviousTrackCutoff ) ) {
 				Playlist::Item previousItem = {};
 				if ( GetRandomPlay() ) {
-					previousItem = m_Playlist->GetRandomItem( currentItem );
+					std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
+					if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_PreloadedDecoder.item.ID != currentItem.ID ) && m_Playlist->ContainsItem( { m_PreloadedDecoder.item } ) ) {
+						previousItem = m_PreloadedDecoder.item;
+					} else {
+						previousItem = m_Playlist->GetRandomItem( currentItem );
+					}
 				} else {
 					m_Playlist->GetPreviousItem( currentItem, previousItem );
 				}
@@ -473,7 +482,12 @@ void Output::Next()
 		const Playlist::Item currentItem = outputItem.PlaylistItem;
 		Playlist::Item nextItem = {};
 		if ( GetRandomPlay() ) {
-			nextItem = m_Playlist->GetRandomItem( currentItem );
+			std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
+			if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_PreloadedDecoder.item.ID != currentItem.ID ) && m_Playlist->ContainsItem( { m_PreloadedDecoder.item } ) ) {
+				nextItem = m_PreloadedDecoder.item;
+			} else {
+				nextItem = m_Playlist->GetRandomItem( currentItem );
+			}
 		} else {
 			m_Playlist->GetNextItem( currentItem, nextItem );
 		}
@@ -568,6 +582,14 @@ Output::Item Output::GetCurrentPlaying()
 				break;
 			}
 		}
+		const auto streamTitleQueue = GetStreamTitleQueue();
+		for ( auto iter = streamTitleQueue.rbegin(); iter != streamTitleQueue.rend(); iter++ ) {
+			const auto& [ titlePosition, title ] = *iter;
+			if ( titlePosition <= seconds ) {
+				currentItem.StreamTitle = title;
+				break;
+			}
+		}
 	}
 	return currentItem;
 }
@@ -623,6 +645,15 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 
 			bytesRead = static_cast<DWORD>( m_DecoderStream->Read( buffer, samplesToRead ) * channels * 4 );
 		}
+
+		if ( m_DecoderStream->SupportsStreamTitles() ) {
+			auto streamTitleQueue = GetStreamTitleQueue();
+			const auto [ seconds, displayTitle ] = m_DecoderStream->GetStreamTitle();
+			if ( m_StreamTitleQueue.empty() || ( seconds != m_StreamTitleQueue.back().first ) ) {
+				streamTitleQueue.push_back( { seconds, displayTitle } );
+				SetStreamTitleQueue( streamTitleQueue );
+			}
+		}
 	}
 
 	// Check if we need to switch to the next decoder stream.
@@ -634,11 +665,11 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 			// Set a sync on the output stream, so that the states can be toggled when playback actually finishes.
 			m_RestartItemID = {};
 			BASS_ChannelSetSync( handle, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
-		} else if ( ( 0 != BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE ) ) && m_DecoderStream ) {
-			// Create a stream from the next playlist item, but only if there has not been an error starting playback.
+		} else if ( m_DecoderStream && ( 0 != BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE ) ) && !IsURL( m_CurrentItemDecoding.Info.GetFilename() ) ) {
+			// Create a stream from the next playlist item, but not if there has been an error starting playback, or if the previous or next stream is a URL.
 			Playlist::Item nextItem = m_CurrentItemDecoding;
 			Decoder::Ptr nextDecoder = GetNextDecoder( nextItem );
-			if ( nextDecoder ) {
+			if ( nextDecoder && !IsURL( nextItem.Info.GetFilename() ) ) {
 				EstimateGain( nextItem );
 				const long channels = m_DecoderStream->GetChannels();
 				const long sampleRate = m_DecoderStream->GetSampleRate();
@@ -1174,6 +1205,14 @@ void Output::InitialiseBass()
 			success = BASS_Init( deviceNum, 48000 /*freq*/, 0 /*flags*/, m_Parent /*hwnd*/, NULL /*dsGUID*/ );
 		}
 	}
+
+	if ( success ) {
+		const int bufSize = 32;
+		WCHAR buffer[ bufSize ] = {};
+		LoadString( m_hInst, IDS_USERAGENT, buffer, bufSize );
+		const std::wstring userAgent( buffer );
+		BASS_SetConfigPtr( BASS_CONFIG_NET_AGENT, userAgent.c_str() );
+	}
 }
 
 void Output::EstimateGain( Playlist::Item& item )
@@ -1405,8 +1444,7 @@ void Output::ApplyGain( float* buffer, const long sampleCount, const Playlist::I
 Output::Queue Output::GetOutputQueue()
 {
 	std::lock_guard<std::mutex> lock( m_QueueMutex );
-	Queue queue = m_OutputQueue;
-	return queue;
+	return m_OutputQueue;
 }
 
 void Output::SetOutputQueue( const Queue& queue )
@@ -1949,8 +1987,7 @@ Decoder::Ptr Output::GetNextDecoder( Playlist::Item& item )
 		while ( !nextDecoder && ( nextItem.ID > 0 ) && ( skip++ < s_MaxSkipItems ) ) {
 			if ( GetRandomPlay() ) {
 				std::lock_guard<std::mutex> preloadLock( m_PreloadedDecoderMutex );
-				Playlist::Item preloadItem = m_PreloadedDecoder.item;
-				if ( m_PreloadedDecoder.decoder && ( preloadItem.ID > 0 ) && ( m_Playlist->GetItem( preloadItem ) ) ) {
+				if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_Playlist->ContainsItem( m_PreloadedDecoder.item ) ) ) {
 					nextItem = m_PreloadedDecoder.item;
 				} else {
 					nextItem = m_Playlist->GetRandomItem( nextItem );
@@ -2026,4 +2063,16 @@ void Output::PreloadNextDecoder( const Playlist::Item& item )
 		m_PreloadedDecoder.itemToPreload = preloadItem;
 		SetEvent( m_PreloadDecoderWakeEvent );
 	}
+}
+
+std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>> Output::GetStreamTitleQueue()
+{
+	std::lock_guard<std::mutex> lock( m_StreamTitleMutex );
+	return m_StreamTitleQueue;
+}
+
+void Output::SetStreamTitleQueue( const std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>>& queue )
+{
+	std::lock_guard<std::mutex> lock( m_StreamTitleMutex );
+	m_StreamTitleQueue = queue;
 }

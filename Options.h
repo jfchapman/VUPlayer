@@ -36,6 +36,12 @@ public:
 	// 'lParam' - notification parameter.
 	virtual void OnNotify( const HWND hwnd, const WPARAM wParam, const LPARAM lParam );
 
+	// Called when a draw item message should be handled.
+	// 'hwnd' - dialog window handle.
+	// 'wParam' - draw item parameter.
+	// 'lParam' - draw item parameter.
+	virtual void OnDrawItem( const HWND, const WPARAM wParam, const LPARAM lParam );
+
 	// Returns the module instance handle.
 	HINSTANCE GetInstanceHandle() const;
 

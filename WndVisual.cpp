@@ -582,3 +582,10 @@ void WndVisual::SetRebarWindowHandle( const HWND hwnd )
 {
 	m_hWndRebar = hwnd;
 }
+
+void WndVisual::OnPlaceholderArtworkChanged()
+{
+	if ( const auto visual = m_Visuals.find( ID_VISUAL_ARTWORK ); m_Visuals.end() != visual ) {
+		visual->second->OnSettingsChanged();
+	}
+}

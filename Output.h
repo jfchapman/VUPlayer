@@ -1,5 +1,7 @@
 #pragma once
 
+#include "stdafx.h"
+
 #include "bass.h"
 #include "Handlers.h"
 #include "Playlist.h"
@@ -14,11 +16,12 @@ static const UINT MSG_RESTARTPLAYBACK = WM_APP + 191;
 class Output
 {
 public:
+	// 'instance' - module instance handle.
 	// 'hwnd' - main window handle.
 	// 'handlers' - the available handlers.
 	// 'settings' - application settings.
 	// 'initialVolume' - initial volume level.
-	Output( const HWND hwnd, const Handlers& handlers, Settings& settings, const float initialVolume );
+	Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handlers, Settings& settings, const float initialVolume );
 
 	virtual ~Output();
 
@@ -34,6 +37,7 @@ public:
 		Playlist::Item PlaylistItem;	// Playlist item.
 		float Position;								// Position in seconds.
 		float InitialSeek;						// Initial seek time for the item.
+		std::wstring StreamTitle;			// Current stream title.
 	};
 
 	// Maps a device ID to its description.
@@ -339,8 +343,17 @@ private:
 	// Preloads the next decoder on from the current 'item'.
 	void PreloadNextDecoder( const Playlist::Item& item );
 
+	// Gets the stream title queue.
+	std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>> GetStreamTitleQueue();
+
+	// Sets the stream title 'queue'.
+	void SetStreamTitleQueue( const std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>>& queue );
+
+	// Module instance handle.
+	const HINSTANCE m_hInst;
+
 	// Parent window handle.
-	HWND m_Parent;
+	const HWND m_Parent;
 
 	// The available handlers.
 	const Handlers& m_Handlers;
@@ -381,7 +394,7 @@ private:
 	// Pitch adjustment factor, with the default being 1.0 (no adjustment).
 	float m_Pitch;
 
-	// The list of output items with their start times in the output stream.
+	// The queue of output items, with their start times, in the output stream.
 	Queue m_OutputQueue;
 
 	// Playlist item ID to restart playback from, if stream playback has ended.
@@ -518,4 +531,10 @@ private:
 
 	// A mutex for the preloaded decoder.
 	std::mutex m_PreloadedDecoderMutex;
+
+	// The queue of stream titles, associated with their start times.
+	std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>> m_StreamTitleQueue;
+
+	// Stream title queue mutex.
+	std::mutex m_StreamTitleMutex;
 };

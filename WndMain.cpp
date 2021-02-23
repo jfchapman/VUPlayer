@@ -389,6 +389,17 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
+		case MSG_MUSICBRAINZQUERYRESULT : {
+			if ( nullptr != vuplayer ) {
+				const MusicBrainz::Result* result = reinterpret_cast<const MusicBrainz::Result*>( wParam );
+				if ( nullptr != result ) {
+					vuplayer->OnMusicBrainzResult( *result, lParam );
+					delete result;
+					result = nullptr;
+				}
+			}
+			break;
+		}
 		case MSG_TRAYNOTIFY : {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnTrayNotify( wParam, lParam );
@@ -427,6 +438,10 @@ INT_PTR CALLBACK About( HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam )
 						}
 						case IDC_SYSLINK_BASS : {
 							ShellExecute( NULL, L"open", L"http://www.un4seen.com", NULL, NULL, SW_SHOWNORMAL );
+							break;
+						}
+						case IDC_SYSLINK_MUSICBRAINZ : {
+							ShellExecute( NULL, L"open", L"https://musicbrainz.org/", NULL, NULL, SW_SHOWNORMAL );
 							break;
 						}
 						default : {

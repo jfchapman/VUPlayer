@@ -18,10 +18,6 @@ OptionsGeneral::OptionsGeneral( HINSTANCE instance, Settings& settings, Output& 
 {
 }
 
-OptionsGeneral::~OptionsGeneral()
-{
-}
-
 void OptionsGeneral::OnInit( const HWND hwnd )
 {
 	// Output settings
@@ -63,6 +59,13 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		Button_SetCheck( hwndMergeDuplicates, ( mergeDuplicates ? BST_CHECKED : BST_UNCHECKED ) );
 	}
 
+	if ( const HWND hwndMusicBrainz = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MUSICBRAINZ_ENABLE ); nullptr != hwndMusicBrainz ) {
+		const bool musicbrainzAvailable = ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzAvailable();
+		const bool musicbrainzEnabled = GetSettings().GetMusicBrainzEnabled();
+		Button_SetCheck( hwndMusicBrainz, ( musicbrainzEnabled ? BST_CHECKED : BST_UNCHECKED ) );
+		EnableWindow( hwndMusicBrainz, musicbrainzAvailable ? TRUE : FALSE );
+	}
+
 	const bool scrobblerAvailable = ( nullptr != vuplayer ) && vuplayer->IsScrobblerAvailable();
 	const HWND hwndScrobblerEnable = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SCROBBLER_ENABLE );
 	if ( nullptr != hwndScrobblerEnable ) {
@@ -77,12 +80,15 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 
 	// Notification area settings
 	bool systrayEnable = false;
+	bool systrayMinimise = false;
 	Settings::SystrayCommand systraySingleClick = Settings::SystrayCommand::None;
 	Settings::SystrayCommand systrayDoubleClick = Settings::SystrayCommand::None;
-	GetSettings().GetSystraySettings( systrayEnable, systraySingleClick, systrayDoubleClick );
-	HWND hwndEnable = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_ENABLE );
-	if ( nullptr != hwndEnable ) {
+	GetSettings().GetSystraySettings( systrayEnable, systrayMinimise, systraySingleClick, systrayDoubleClick );
+	if ( HWND hwndEnable = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_ENABLE ); nullptr != hwndEnable ) {
 		Button_SetCheck( hwndEnable, ( systrayEnable ? BST_CHECKED : BST_UNCHECKED ) );
+	}
+	if ( HWND hwndMinimise = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_MINIMISE ); nullptr != hwndMinimise ) {
+		Button_SetCheck( hwndMinimise, ( systrayMinimise ? BST_CHECKED : BST_UNCHECKED ) );
 	}
 
 	HWND hwndSingleClick = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_SINGLECLICK );
@@ -113,6 +119,7 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		ComboBox_SetCurSel( hwndSingleClick, static_cast<int>( systraySingleClick ) );
 		ComboBox_SetCurSel( hwndDoubleClick, static_cast<int>( systrayDoubleClick ) );
 	}
+	EnableSystrayControls( hwnd );
 }
 
 void OptionsGeneral::OnSave( const HWND hwnd )
@@ -126,14 +133,18 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 	const bool mergeDuplicates = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_HIDEDUPLICATES ) ) );
 	GetSettings().SetMergeDuplicates( mergeDuplicates );
 
+	const bool musicbrainzEnabled = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MUSICBRAINZ_ENABLE ) ) );
+	GetSettings().SetMusicBrainzEnabled( musicbrainzEnabled );
+
 	const bool enableScrobbler = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SCROBBLER_ENABLE ) ) );
 	GetSettings().SetScrobblerEnabled( enableScrobbler );
 
 	// Notification area settings
 	const bool enable = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_ENABLE ) ) );
+	const bool minimise = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_MINIMISE ) ) );
 	const Settings::SystrayCommand singleClick = static_cast<Settings::SystrayCommand>( ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_SINGLECLICK ) ) );
 	const Settings::SystrayCommand doubleClick = static_cast<Settings::SystrayCommand>( ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_DOUBLECLICK ) ) );
-	GetSettings().SetSystraySettings( enable, singleClick, doubleClick );
+	GetSettings().SetSystraySettings( enable, minimise, singleClick, doubleClick );
 }
 
 void OptionsGeneral::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /*lParam*/ )
@@ -144,17 +155,21 @@ void OptionsGeneral::OnCommand( const HWND hwnd, const WPARAM wParam, const LPAR
 		if ( IDC_OPTIONS_GENERAL_MODE == controlID ) {
 			RefreshOutputDeviceList( hwnd );
 		}
-	} else if ( ( BN_CLICKED == notificationCode ) && ( IDC_OPTIONS_MODE_ADVANCED == controlID ) ) {
-		const Settings::OutputMode mode = GetSelectedMode( hwnd );
-		switch ( mode ) {
-			case Settings::OutputMode::WASAPIExclusive : {
-				DlgAdvancedWasapi dialog( GetInstanceHandle(), hwnd, GetSettings() );
-				break;
+	} else if ( BN_CLICKED == notificationCode ) {
+		if ( IDC_OPTIONS_MODE_ADVANCED == controlID ) {
+			const Settings::OutputMode mode = GetSelectedMode( hwnd );
+			switch ( mode ) {
+				case Settings::OutputMode::WASAPIExclusive : {
+					DlgAdvancedWasapi dialog( GetInstanceHandle(), hwnd, GetSettings() );
+					break;
+				}
+				case Settings::OutputMode::ASIO : {
+					DlgAdvancedASIO dialog( GetInstanceHandle(), hwnd, GetSettings() );
+					break;
+				}
 			}
-			case Settings::OutputMode::ASIO : {
-				DlgAdvancedASIO dialog( GetInstanceHandle(), hwnd, GetSettings() );
-				break;
-			}
+		} else if ( IDC_OPTIONS_GENERAL_SYSTRAY_ENABLE == controlID ) {
+			EnableSystrayControls( hwnd );
 		}
 	}
 }
@@ -254,4 +269,14 @@ std::wstring OptionsGeneral::GetSelectedDeviceName( const HWND hwnd ) const
 		}
 	}
 	return device;
+}
+
+void OptionsGeneral::EnableSystrayControls( const HWND hwnd )
+{
+	const BOOL enable = IsDlgButtonChecked( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_ENABLE );
+	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_MINIMISE ), enable );
+	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_SINGLELABEL ), enable );
+	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_SINGLECLICK ), enable );
+	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_DOUBLELABEL ), enable );
+	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_DOUBLECLICK ), enable );
 }

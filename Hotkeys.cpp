@@ -77,7 +77,7 @@ void Hotkeys::Update()
 	m_Settings.GetHotkeySettings( enable, hotkeys );
 	if ( enable ) {
 		for ( const auto& hotkey : hotkeys ) {
-			if ( ( 0 != hotkey.ID ) && ( 0 != hotkey.Key ) ) {
+			if ( ( 0 != hotkey.ID ) && ( 0 != hotkey.Code ) ) {
 				UINT modifiers = 0;
 				if ( hotkey.Alt ) {
 					modifiers |= MOD_ALT;
@@ -88,7 +88,7 @@ void Hotkeys::Update()
 				if ( hotkey.Shift ) {
 					modifiers |= MOD_SHIFT;
 				}
-				if ( FALSE != RegisterHotKey( m_hWnd, hotkey.ID, modifiers, static_cast<UINT>( hotkey.Key ) ) ) {
+				if ( FALSE != RegisterHotKey( m_hWnd, hotkey.ID, modifiers, static_cast<UINT>( hotkey.Code ) ) ) {
 					m_RegisteredHotkeys.insert( hotkey.ID );
 				}
 			}

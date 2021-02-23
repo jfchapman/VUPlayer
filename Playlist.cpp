@@ -39,7 +39,9 @@ Playlist::Playlist( Library& library, const std::string& id, const Type& type ) 
 	m_SortColumn( ( Type::Folder == type ) ? Column::Filename : Column::_Undefined ),
 	m_SortAscending( ( Type::Folder == type ) ? true : false ),
 	m_Type( type ),
-	m_MergeDuplicates( false )
+	m_MergeDuplicates( false ),
+	m_ShuffledPlaylist(),
+	m_MutexShuffled()
 {
 }
 
@@ -173,25 +175,37 @@ bool Playlist::GetPreviousItem( const Item& currentItem, Item& previousItem, con
 
 Playlist::Item Playlist::GetRandomItem( const Item& currentItem )
 {
-	std::vector<Item> pickItems;
-	{
-		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-		pickItems.reserve( m_Playlist.size() );
-		for ( const auto& item : m_Playlist ) {
-			if ( currentItem.ID != item.ID ) {
-				pickItems.emplace_back( item );
-			}
+	Item result = {};
+
+	std::lock_guard<std::mutex> shuffleLock( m_MutexShuffled );
+	while ( !m_ShuffledPlaylist.empty() ) {
+		const Item nextItem = m_ShuffledPlaylist.front();
+		m_ShuffledPlaylist.pop_front();
+		if ( ( currentItem.ID != nextItem.ID ) && ContainsItem( nextItem ) ) {
+			result = nextItem;
+			break;
 		}
 	}
 
-	Item item = currentItem;
-	if ( !pickItems.empty() ) {
-		const size_t pos = static_cast<size_t>( GetRandomNumber( 0 /*minimum*/, pickItems.size() - 1 /*maximum*/ ) );
-		if ( pos < pickItems.size() ) {
-			item = pickItems[ pos ];
+	if ( 0 == result.ID ) {
+		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+		std::vector<Item> allItems( m_Playlist.begin(), m_Playlist.end() );
+		std::shuffle( allItems.begin(), allItems.end(), GetRandomEngine() );
+		m_ShuffledPlaylist = { allItems.begin(), allItems.end() };
+		for ( auto item = m_ShuffledPlaylist.begin(); item != m_ShuffledPlaylist.end(); item++ ) {
+			if ( item->ID == currentItem.ID ) {
+				m_ShuffledPlaylist.erase( item );
+				break;
+			}
+		}
+
+		if ( !m_ShuffledPlaylist.empty() ) {
+			result = m_ShuffledPlaylist.front();
+			m_ShuffledPlaylist.pop_front();
 		}
 	}
-	return item;
+
+	return result;
 }
 
 Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo )
@@ -928,8 +942,15 @@ bool Playlist::CanConvertAnyItems()
 	const auto items = GetItems();
 	auto item = items.begin();
 	while ( !canConvert && ( items.end() != item ) ) {
-		canConvert = ( item->Info.GetDuration() > 0 );
+		canConvert = !IsURL( item->Info.GetFilename() );
 		++item;
 	}
 	return canConvert;
+}
+
+bool Playlist::ContainsItem( const Item& item )
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	const auto foundItem = std::find_if( m_Playlist.begin(), m_Playlist.end(), [ id = item.ID ] ( const Item& item ) { return id == item.ID; } );
+	return m_Playlist.end() != foundItem;
 }

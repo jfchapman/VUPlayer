@@ -10,6 +10,7 @@
 #include "Hotkeys.h"
 #include "Library.h"
 #include "LibraryMaintainer.h"
+#include "MusicBrainz.h"
 #include "Output.h"
 #include "Scrobbler.h"
 #include "Settings.h"
@@ -52,6 +53,11 @@ static const UINT MSG_LIBRARYREFRESHED = WM_APP + 78;
 // 'wParam' : unused.
 // 'lParam' : unused.
 static const UINT MSG_CDDAREFRESHED = WM_APP + 79;
+
+// Message ID for signalling that a MusicBrainz result has arrived.
+// 'wParam' : pointer to MusicBrainz::Result, to be deleted by the message handler.
+// 'lParam' : non-zero to force a dialog to be shown even for a single match.
+static const UINT MSG_MUSICBRAINZQUERYRESULT = WM_APP + 80;
 
 // Main application singleton
 class VUPlayer
@@ -131,7 +137,8 @@ public:
 	COLORREF* GetCustomColours();
 
 	// Returns the placeholder image.
-	std::shared_ptr<Gdiplus::Bitmap> GetPlaceholderImage();
+	// 'useSettings' - returns the image specified in the application settings, if possible.
+	std::unique_ptr<Gdiplus::Bitmap> GetPlaceholderImage( const bool useSettings = true );
 
 	// Returns the application settings.
 	Settings& GetApplicationSettings();
@@ -184,6 +191,20 @@ public:
 	// Returns the EQ modeless dialog window handle.
 	HWND GetEQ() const;
 
+	// Performs a MusicBrainz query for the current Audio CD.
+	void OnMusicBrainzQuery();
+
+	// Called when a MusicBrainz query is received.
+	// 'result' - the query result.
+	// 'forceDialog' - whether a dialog should be shown even for a single match.
+	void OnMusicBrainzResult( const MusicBrainz::Result& result, const bool forceDialog );
+
+	// Returns whether MusicBrainz functionality is available.
+	bool IsMusicBrainzAvailable() const;
+
+	// Returns whether MusicBrainz functionality is enabled.
+	bool IsMusicBrainzEnabled();
+
 private:
 	// Main application instance.
 	static VUPlayer* s_VUPlayer;
@@ -227,9 +248,13 @@ private:
 	// Called when the convert tracks command is received.
 	void OnConvert();
 
+	// Loads the default artwork, defined in the application settings, and returns a bitmap.
+	// Returns null if the artwork was not loaded.
+	std::unique_ptr<Gdiplus::Bitmap> LoadDefaultArtwork();
+
 	// Loads a PNG resource and returns a bitmap.
 	// Returns null if the resource was not loaded.
-	std::shared_ptr<Gdiplus::Bitmap> LoadResourcePNG( const WORD resourceID );
+	std::unique_ptr<Gdiplus::Bitmap> LoadResourcePNG( const WORD resourceID );
 
 	// Sets the application title bar text according to the 'item'.
 	void SetTitlebarText( const Output::Item& item );
@@ -242,8 +267,8 @@ private:
 	// Saves various applications settings.
 	void SaveSettings();
 
-	// Recreates the rebar when the toolbar 'size' changes.
-	void RecreateRebar( const Settings::ToolbarSize& size );
+	// Recreates the rebar when the toolbar size changes.
+	void RecreateRebar();
 
 	// Initialises the rebar controls.
 	void InitialiseRebar();
@@ -280,6 +305,9 @@ private:
 
 	// Scrobbler manager.
 	Scrobbler m_Scrobbler;
+
+	// MusicBrainz manager.
+	MusicBrainz m_MusicBrainz;
 
 	// CD audio manager.
 	CDDAManager m_CDDAManager;
@@ -367,4 +395,13 @@ private:
 
 	// Maps a menu command ID to a playlist for the Add to Playlist sub menu.
 	PlaylistMenuMap m_AddToPlaylistMenuMap;
+
+	// The current title bar text.
+	std::wstring m_TitlebarText;
+
+	// The idle title bar text.
+	std::wstring m_IdleText;
+
+	// Indicates whether the rebar should be recreated (for instance, when launching the application in a minimised state).
+	bool m_RecreateRebar = false;
 };

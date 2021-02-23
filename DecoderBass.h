@@ -4,6 +4,7 @@
 
 #include "bass.h"
 
+#include <mutex>
 #include <string>
 
 // Bass decoder
@@ -30,7 +31,20 @@ public:
 	// 'canContinue' - callback which returns whether the calculation can continue.
 	// 'secondslimit' - number of seconds to devote to calculating an estimate, or 0 to perform a complete calculation.
 	float CalculateTrackGain( CanContinue canContinue, const float secondsLimit = 0 ) override;
+
+	// Returns whether stream titles are supported.
+	bool SupportsStreamTitles() const override;
+
+	// Returns the current stream title, and the position (in seconds) at which the title last changed.
+	std::pair<float /*seconds*/, std::wstring /*title*/> GetStreamTitle() override;
+
 private:
+	// URL stream metadata callback.
+	static void CALLBACK MetadataSyncProc( HSYNC handle, DWORD channel, DWORD data, void *user );
+
+	// Called when metadata is received for a 'channel'.
+	void OnMetadata( const DWORD channel );
+
 	// Stream handle
 	DWORD m_Handle;
 
@@ -48,5 +62,11 @@ private:
 
 	// Current number of silence samples that have been returned for URL streams.
 	long m_CurrentSilenceSamples;
+
+	// Current stream title, and the position (in seconds) at which the title last changed.
+	std::pair<float /*seconds*/, std::wstring /*title*/> m_StreamTitle;
+
+	// Stream title mutex.
+	std::mutex m_StreamTitleMutex;
 };
 

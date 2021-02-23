@@ -181,6 +181,9 @@ private:
 	// Window procedure
 	static LRESULT CALLBACK TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
+	// Edit control window procedure
+	static LRESULT CALLBACK EditControlProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
 	// Thread for updating media information in the scratch list.
 	static DWORD WINAPI ScratchListUpdateProc( LPVOID lpParam );
 
@@ -457,6 +460,9 @@ private:
 	// Returns whether to ignore a file monitor event for the 'filename'.
 	bool IgnoreFileMonitorEvent( const std::wstring& filename ) const;
 
+	// Returns the default edit control window procedure.
+	WNDPROC GetEditControlWndProc();
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -594,6 +600,9 @@ private:
 
 	// All file extensions supported by the (decoder) handlers.
 	const std::set<std::wstring> m_SupportedFileExtensions;
+
+	// Default edit control window procedure.
+	WNDPROC m_EditControlWndProc = nullptr;
 
 	// Root item ordering.
 	static OrderMap s_RootOrder;

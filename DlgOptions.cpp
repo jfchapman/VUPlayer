@@ -1,5 +1,6 @@
 #include "DlgOptions.h"
 
+#include "OptionsArtwork.h"
 #include "OptionsGeneral.h"
 #include "OptionsHotkeys.h"
 #include "OptionsMod.h"
@@ -55,6 +56,13 @@ INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam
 			}				
 			break;
 		}
+		case WM_DRAWITEM : {
+			Options* options = reinterpret_cast<Options*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
+			if ( nullptr != options ) {
+				options->OnDrawItem( hwnd, wParam, lParam );
+			}				
+			break;
+		}
 	}
 	return FALSE;
 }
@@ -64,13 +72,14 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	m_Settings( settings ),
 	m_Output( output )
 {
-	const UINT pageCount = 4;
+	const UINT pageCount = 5;
 	std::vector<HPROPSHEETPAGE> pages( pageCount );
 
 	OptionsGeneral optionsGeneral( instance, settings, output );
 	OptionsHotkeys optionsHotkeys( instance, settings, output );
 	OptionsMod optionsMod( instance, settings, output );
 	OptionsLoudness optionsLoudness( instance, settings, output );
+	OptionsArtwork optionsArtwork( instance, settings, output );
 
 	// General property page
 	PROPSHEETPAGE propPageGeneral = {};
@@ -112,6 +121,16 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propPageLoudness.lParam = reinterpret_cast<LPARAM>( &optionsLoudness );
 	pages.at( 3 ) = CreatePropertySheetPage( &propPageLoudness );
 
+	// Artwork property page
+	PROPSHEETPAGE propPageArtwork = {};
+	propPageArtwork.dwSize = sizeof( PROPSHEETPAGE );
+	propPageArtwork.dwFlags = PSP_DEFAULT;
+	propPageArtwork.hInstance = instance;
+	propPageArtwork.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_ARTWORK );
+	propPageArtwork.pfnDlgProc = OptionsProc;
+	propPageArtwork.lParam = reinterpret_cast<LPARAM>( &optionsArtwork );
+	pages.at( 4 ) = CreatePropertySheetPage( &propPageArtwork );
+
 	PROPSHEETHEADER propSheetHeader = {};
 	propSheetHeader.dwSize = sizeof( PROPSHEETHEADER );
 	propSheetHeader.dwFlags = PSH_NOAPPLYNOW | PSH_NOCONTEXTHELP;
@@ -120,7 +139,7 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propSheetHeader.pszCaption = MAKEINTRESOURCE( IDS_OPTIONS_TITLE );
 	propSheetHeader.nPages = pageCount;
 	propSheetHeader.nStartPage = 0;
-	propSheetHeader.phpage = &pages[ 0 ];
+	propSheetHeader.phpage = pages.data();
 
 	if ( PropertySheet( &propSheetHeader ) > 0 ) {
 		m_Output.SettingsChanged();

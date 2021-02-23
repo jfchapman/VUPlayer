@@ -102,24 +102,33 @@ void WndTray::Update( const Output::Item& item )
 		bool modified = false;
 		if ( item.PlaylistItem.ID > 0 ) {
 			const std::wstring position = DurationToString( m_hInst, item.Position, true /*colonDelimited*/ );
-			const std::wstring duration = DurationToString( m_hInst, item.PlaylistItem.Info.GetDuration(), true /*colonDelimited*/ );
-			const std::wstring counter = position + L"/" + duration;
-			std::wstring artist = item.PlaylistItem.Info.GetArtist();
-			WideStringReplace( artist, L"&", L"&&&" );
-			std::wstring title = item.PlaylistItem.Info.GetTitle( true /*filenameAsTitle*/ );
-			WideStringReplace( title, L"&", L"&&&" );
+			const std::wstring counter = ( item.PlaylistItem.Info.GetDuration() > 0 ) ?
+				( position + L"/" + DurationToString( m_hInst, item.PlaylistItem.Info.GetDuration(), true /*colonDelimited*/ ) ) : position;
 			std::wstring tooltip;
-			if ( artist.empty() ) {
+			if ( !item.StreamTitle.empty() ) {
+				std::wstring title = item.StreamTitle;
+				WideStringReplace( title, L"&", L"&&&" );
 				tooltip = counter + L"\r\n" + title;
 				if ( tooltip.size() > sMaxTooltip ) {
 					tooltip = tooltip.substr( 0, sMaxTooltip - 3 ) + L"...";
 				}
 			} else {
-				tooltip = counter + L"\r\n" + artist + L"\r\n" + title;
-				if ( tooltip.size() > sMaxTooltip ) {
+				std::wstring artist = item.PlaylistItem.Info.GetArtist();
+				WideStringReplace( artist, L"&", L"&&&" );
+				std::wstring title = item.PlaylistItem.Info.GetTitle( true /*filenameAsTitle*/ );
+				WideStringReplace( title, L"&", L"&&&" );
+				if ( artist.empty() ) {
 					tooltip = counter + L"\r\n" + title;
 					if ( tooltip.size() > sMaxTooltip ) {
 						tooltip = tooltip.substr( 0, sMaxTooltip - 3 ) + L"...";
+					}
+				} else {
+					tooltip = counter + L"\r\n" + artist + L"\r\n" + title;
+					if ( tooltip.size() > sMaxTooltip ) {
+						tooltip = counter + L"\r\n" + title;
+						if ( tooltip.size() > sMaxTooltip ) {
+							tooltip = tooltip.substr( 0, sMaxTooltip - 3 ) + L"...";
+						}
 					}
 				}
 			}
@@ -402,18 +411,20 @@ HMENU WndTray::CreatePlaylistMenu( const Playlist::Ptr playlist )
 void WndTray::OnSingleClick()
 {
 	bool enable = false;
+	bool minimise = false;
 	Settings::SystrayCommand singleClick = Settings::SystrayCommand::None;
 	Settings::SystrayCommand doubleClick = Settings::SystrayCommand::None;
-	m_Settings.GetSystraySettings( enable, singleClick, doubleClick );
+	m_Settings.GetSystraySettings( enable, minimise, singleClick, doubleClick );
 	DoCommand( singleClick );
 }
 
 void WndTray::OnDoubleClick()
 {
 	bool enable = false;
+	bool minimise = false;
 	Settings::SystrayCommand singleClick = Settings::SystrayCommand::None;
 	Settings::SystrayCommand doubleClick = Settings::SystrayCommand::None;
-	m_Settings.GetSystraySettings( enable, singleClick, doubleClick );
+	m_Settings.GetSystraySettings( enable, minimise, singleClick, doubleClick );
 	DoCommand( doubleClick );
 }
 

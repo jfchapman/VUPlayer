@@ -186,6 +186,9 @@ LRESULT CALLBACK WndList::EditControlProc( HWND hwnd, UINT message, WPARAM wPara
 				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndList->GetEditControlWndProc() ) );
 				break;
 			}
+			case WM_GETDLGCODE : {
+				return DLGC_WANTALLKEYS;
+			}
 			default : {
 				break;
 			}
@@ -203,7 +206,6 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	m_Output( output ),
 	m_ColourHighlight( GetSysColor( COLOR_HIGHLIGHT ) ),
 	m_ChosenFont( NULL ),
-	m_EditControl( NULL ),
 	m_EditItem( -1 ),
 	m_EditSubItem( -1 ),
 	m_EditControlWndProc( NULL ),
@@ -701,6 +703,10 @@ void WndList::OnContextMenu( const POINT& position )
 			EnableMenuItem( listmenu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | enableGainCalculator );
 
 			VUPlayer* vuplayer = VUPlayer::Get();
+
+			const UINT musicbrainzEnabled = ( m_Playlist && ( Playlist::Type::CDDA == m_Playlist->GetType() ) && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
+			EnableMenuItem( listmenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
+
 			if ( nullptr != vuplayer ) {
 				vuplayer->InsertAddToPlaylists( listmenu, ID_FILE_ADDTOFAVOURITES, false /*addPrefix*/ );
 			}
@@ -1162,16 +1168,15 @@ BOOL WndList::OnBeginLabelEdit( const LVITEM& item )
 			const auto columnIter = s_ColumnFormats.find( columnID );
 			const bool denyTrackNumberEdit = ( Playlist::Column::Track == columnID ) && m_Playlist && ( Playlist::Type::CDDA == m_Playlist->GetType() );
 			if ( ( s_ColumnFormats.end() != columnIter ) && ( columnIter->second.CanEdit ) && !denyTrackNumberEdit ) {
-				m_EditControl = ListView_GetEditControl( m_hWnd );
-				if ( nullptr != m_EditControl ) {
+				if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr != editControl ) {
 					const int bufSize = 1024;
 					WCHAR buf[ bufSize ] = {};
 					ListView_GetItemText( m_hWnd, lvh.iItem, lvh.iSubItem, buf, bufSize );
-					SetWindowText( m_EditControl, buf );
+					SetWindowText( editControl, buf );
 					m_EditItem = lvh.iItem;
 					m_EditSubItem = lvh.iSubItem;
-					SetWindowLongPtr( m_EditControl, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
-					m_EditControlWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_EditControl, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( EditControlProc ) ) );
+					SetWindowLongPtr( editControl, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
+					m_EditControlWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( editControl, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( EditControlProc ) ) );
 					denyEdit = FALSE;
 				}
 			}
@@ -1182,7 +1187,7 @@ BOOL WndList::OnBeginLabelEdit( const LVITEM& item )
 
 void WndList::OnEndLabelEdit( const LVITEM& item )
 {
-	if ( nullptr != m_EditControl )	{
+	if ( nullptr != ListView_GetEditControl( m_hWnd ) )	{
 		if ( nullptr != item.pszText ) {
 			if ( m_Playlist ) {
 				Playlist::Item playlistItem = {	static_cast<long>( item.lParam ), MediaInfo() };
@@ -1253,8 +1258,6 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 				}
 			}
 		}
-		m_EditControl = nullptr;
-		m_EditControlWndProc = nullptr;
 		m_EditItem = -1;
 		m_EditSubItem = -1;
 	}
@@ -1823,6 +1826,28 @@ void WndList::GetColumnVisibility( std::set<UINT>& shown, std::set<UINT>& hidden
 					hidden.erase( cmdShowID );
 					shown.insert( cmdShowID );
 				}		
+			}
+		}
+	}
+}
+
+void WndList::SelectPlaylistItem( const long itemID )
+{
+	int selectedIndex = -1;
+	const int itemCount = ListView_GetItemCount( m_hWnd );
+	for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+		if ( itemID == GetPlaylistItemID( itemIndex ) ) {
+			selectedIndex = itemIndex;
+			break;
+		}
+	}
+	if ( selectedIndex >= 0 ) {
+		for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+			if ( itemIndex == selectedIndex ) {
+				ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+				ListView_EnsureVisible( m_hWnd, itemIndex, FALSE /*partialOK*/ );
+			} else {
+				ListView_SetItemState( m_hWnd, itemIndex, 0, LVIS_SELECTED | LVIS_FOCUSED );
 			}
 		}
 	}

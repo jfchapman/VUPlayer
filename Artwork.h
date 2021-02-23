@@ -33,7 +33,7 @@ private:
 	void FreeArtwork();
 
 	// Returns the artwork bitmap from 'mediaInfo', or null if a bitmap could not be loaded.
-	std::shared_ptr<Gdiplus::Bitmap> GetArtworkBitmap( const MediaInfo& mediaInfo );
+	std::unique_ptr<Gdiplus::Bitmap> GetArtworkBitmap( const MediaInfo& mediaInfo );
 
 	// Background brush.
 	ID2D1SolidColorBrush* m_Brush;

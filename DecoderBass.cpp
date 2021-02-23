@@ -19,12 +19,18 @@ DecoderBass::DecoderBass( const std::wstring& filename ) :
 	m_FadeEndPosition( 0 ),
 	m_CurrentPosition( 0 ),
 	m_IsURL( IsURL( filename ) ),
-	m_CurrentSilenceSamples( 0 )
+	m_CurrentSilenceSamples( 0 ),
+	m_StreamTitle( {} ),
+	m_StreamTitleMutex()
 {
 	DWORD flags = BASS_UNICODE | BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE;
 	
 	if ( m_IsURL ) {
-		m_Handle = BASS_StreamCreateURL( filename.c_str(), 0 /*offset*/, flags, 0 /*downloadProc*/, 0 /*user*/ );
+		m_Handle = BASS_StreamCreateURL( filename.c_str(), 0 /*offset*/, flags, nullptr /*downloadProc*/, nullptr /*user*/ );
+		if ( 0 != m_Handle ) {
+			OnMetadata( m_Handle );
+			BASS_ChannelSetSync( m_Handle, BASS_SYNC_META, 0 /*param*/, MetadataSyncProc, this );
+		}
 	} else {
 		// Try loading a stream.
 		m_Handle = BASS_StreamCreateFile( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, flags );
@@ -188,4 +194,39 @@ float DecoderBass::Seek( const float position )
 float DecoderBass::CalculateTrackGain( CanContinue canContinue, const float secondsLimit )
 {
 	return m_IsURL ? NAN : Decoder::CalculateTrackGain( canContinue, secondsLimit );
+}
+
+void DecoderBass::OnMetadata( const DWORD channel )
+{
+	if ( const char* tags = BASS_ChannelGetTags( channel, BASS_TAG_META ); nullptr != tags ) {
+		std::lock_guard<std::mutex> lock( m_StreamTitleMutex );
+		auto& [ position, title ] = m_StreamTitle;
+		position = static_cast<float>( BASS_ChannelBytes2Seconds( channel, BASS_ChannelGetPosition( channel, BASS_POS_BYTE ) ) );
+		title.clear();
+		
+		std::wstring metadata = UTF8ToWideString( tags );
+		static const std::wstring titleTag( L"StreamTitle='" );
+		if ( const size_t startPos = metadata.find( titleTag ); std::wstring::npos != startPos ) {
+			if ( const size_t endPos = metadata.find( L"';", startPos + titleTag.size() ); std::wstring::npos != endPos ) {
+				title = metadata.substr( startPos + titleTag.size(), endPos - startPos - titleTag.size() );
+			}
+		}
+	}
+}
+
+bool DecoderBass::SupportsStreamTitles() const
+{
+	return m_IsURL;
+}
+
+std::pair<float /*seconds*/, std::wstring /*title*/> DecoderBass::GetStreamTitle()
+{
+	return m_StreamTitle;	
+}
+
+void CALLBACK DecoderBass::MetadataSyncProc( HSYNC /*handle*/, DWORD channel, DWORD /*data*/, void *user )
+{
+	if ( DecoderBass* decoder = static_cast<DecoderBass*>( user ); nullptr != decoder ) {
+		decoder->OnMetadata( channel );
+	}
 }

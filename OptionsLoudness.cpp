@@ -31,10 +31,6 @@ OptionsLoudness::OptionsLoudness( HINSTANCE instance, Settings& settings, Output
 {
 }
 
-OptionsLoudness::~OptionsLoudness()
-{
-}
-
 void OptionsLoudness::OnInit( const HWND hwnd )
 {
 	Settings::GainMode gainMode = Settings::GainMode::Disabled;

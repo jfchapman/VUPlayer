@@ -29,3 +29,7 @@ Output& Options::GetOutput()
 void Options::OnNotify( const HWND /*hwnd*/, const WPARAM /*wParam*/, const LPARAM /*lParam*/ )
 {
 }
+
+void Options::OnDrawItem( const HWND /*hwnd*/, const WPARAM /*wParam*/, const LPARAM /*lParam*/ )
+{
+}

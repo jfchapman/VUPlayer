@@ -87,6 +87,9 @@ void Artwork::OnPaint()
 
 void Artwork::OnSettingsChanged()
 {
+	if ( m_ArtworkID.empty() ) {
+		m_ArtworkID = L"Init";
+	}
 }
 
 void Artwork::LoadArtwork( const MediaInfo& mediaInfo, ID2D1DeviceContext* deviceContext )
@@ -120,9 +123,9 @@ void Artwork::FreeArtwork()
 	m_ArtworkID = std::wstring();
 }
 
-std::shared_ptr<Gdiplus::Bitmap> Artwork::GetArtworkBitmap( const MediaInfo& mediaInfo )
+std::unique_ptr<Gdiplus::Bitmap> Artwork::GetArtworkBitmap( const MediaInfo& mediaInfo )
 {
-	std::shared_ptr<Gdiplus::Bitmap> bitmapPtr;
+	std::unique_ptr<Gdiplus::Bitmap> bitmap;
 	Library& library = GetLibrary();
 	const std::vector<BYTE> imageBytes = library.GetMediaArtwork( mediaInfo );
 	if ( !imageBytes.empty() ) {
@@ -130,7 +133,7 @@ std::shared_ptr<Gdiplus::Bitmap> Artwork::GetArtworkBitmap( const MediaInfo& med
 		if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
 			if ( SUCCEEDED( stream->Write( &imageBytes[ 0 ], static_cast<ULONG>( imageBytes.size() ), NULL /*bytesWritten*/ ) ) ) {
 				try {
-					bitmapPtr = std::shared_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap( stream ) );
+					bitmap = std::make_unique<Gdiplus::Bitmap>( stream );
 				} catch ( ... ) {
 				}
 			}
@@ -138,21 +141,21 @@ std::shared_ptr<Gdiplus::Bitmap> Artwork::GetArtworkBitmap( const MediaInfo& med
 		}
 	}
 
-	if ( !bitmapPtr || ( bitmapPtr->GetWidth() == 0 ) || ( bitmapPtr->GetHeight() == 0 ) ) {
+	if ( !bitmap || ( bitmap->GetWidth() == 0 ) || ( bitmap->GetHeight() == 0 ) ) {
 		const std::wstring artworkID = mediaInfo.GetArtworkID( true /*checkFolder*/ );
 		if ( !artworkID.empty() && ( artworkID != mediaInfo.GetArtworkID( false /*checkFolder*/ ) ) ) {
 			try {
-				bitmapPtr = std::make_shared<Gdiplus::Bitmap>( artworkID.c_str() );
+				bitmap = std::make_unique<Gdiplus::Bitmap>( artworkID.c_str() );
 			} catch ( ... ) {
 			}
 		}
 	}
 
-  if ( !bitmapPtr || ( bitmapPtr->GetWidth() == 0 ) || ( bitmapPtr->GetHeight() == 0 ) ) {
+  if ( !bitmap || ( bitmap->GetWidth() == 0 ) || ( bitmap->GetHeight() == 0 ) ) {
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {
-			bitmapPtr = vuplayer->GetPlaceholderImage();
+			bitmap = vuplayer->GetPlaceholderImage();
 		}
 	}
-	return bitmapPtr;
+	return bitmap;
 }

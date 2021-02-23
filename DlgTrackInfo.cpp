@@ -337,9 +337,9 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 	}
 }
 
-std::shared_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const MediaInfo& mediaInfo )
+std::unique_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const MediaInfo& mediaInfo )
 {
-	std::shared_ptr<Gdiplus::Bitmap> bitmap;
+	std::unique_ptr<Gdiplus::Bitmap> bitmap;
 	const std::wstring& artworkID = mediaInfo.GetArtworkID();
 	if ( !artworkID.empty() ) {
 		std::vector<BYTE> artwork = m_Library.GetMediaArtwork( mediaInfo );
@@ -348,7 +348,7 @@ std::shared_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const MediaInfo& medi
 			if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
 				if ( SUCCEEDED( stream->Write( &artwork[ 0 ], static_cast<ULONG>( artwork.size() ), NULL /*bytesWritten*/ ) ) ) {
 					try {
-						bitmap = std::shared_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap( stream ) );
+						bitmap = std::make_unique<Gdiplus::Bitmap>( stream );
 					} catch ( ... ) {
 					}
 				}
@@ -365,16 +365,16 @@ std::shared_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const MediaInfo& medi
 	return bitmap;
 }
 
-std::shared_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const std::vector<BYTE>& image )
+std::unique_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const std::vector<BYTE>& image )
 {
-	std::shared_ptr<Gdiplus::Bitmap> bitmap;
+	std::unique_ptr<Gdiplus::Bitmap> bitmap;
 	const ULONG imageSize = static_cast<ULONG>( image.size() );
 	if ( imageSize > 0 ) {
 		IStream* stream = nullptr;
 		if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
 			if ( SUCCEEDED( stream->Write( &image[ 0 ], imageSize, NULL /*bytesWritten*/ ) ) ) {
 				try {
-					bitmap = std::shared_ptr<Gdiplus::Bitmap>( new Gdiplus::Bitmap( stream ) );
+					bitmap = std::make_unique<Gdiplus::Bitmap>( stream );
 				} catch ( ... ) {
 				}
 			}	
@@ -393,69 +393,36 @@ std::shared_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const std::vector<BYT
 void DlgTrackInfo::OnOwnerDraw( DRAWITEMSTRUCT* drawItemStruct )
 {
 	if ( ( nullptr != drawItemStruct ) && ( IDC_TRACKINFO_ARTWORK == drawItemStruct->CtlID ) ) {
+		const int clientWidth = drawItemStruct->rcItem.right - drawItemStruct->rcItem.left;
+		const int clientHeight = drawItemStruct->rcItem.bottom - drawItemStruct->rcItem.top;
+		Gdiplus::Rect clientRect( 0, 0, clientWidth, clientHeight );
 		Gdiplus::Graphics graphics( drawItemStruct->hDC );
-		graphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::Gray ) );
+		graphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::White ) );
 		if ( m_Bitmap ) {
-			const int clientWidth = drawItemStruct->rcItem.right - drawItemStruct->rcItem.left - 2;
-			const int clientHeight = drawItemStruct->rcItem.bottom - drawItemStruct->rcItem.top - 2;
-			Gdiplus::Rect destRect( 1, 1, clientWidth, clientHeight );
 			const UINT bitmapWidth = m_Bitmap->GetWidth();
 			const UINT bitmapHeight = m_Bitmap->GetHeight();
-			if ( ( bitmapWidth != bitmapHeight ) && ( bitmapHeight > 0 ) && ( bitmapWidth > 0 ) ) {
-				const float aspect = static_cast<float>( bitmapWidth ) / bitmapHeight;
-				if ( aspect < 1 ) {
-					// Portrait
-					destRect.Width = static_cast<INT>( clientHeight * aspect );
-					destRect.X = static_cast<INT>( 1 + ( clientWidth - destRect.Width ) / 2 );
+			if ( ( clientWidth > 0 ) && ( clientHeight > 0 ) && ( bitmapHeight > 0 ) && ( bitmapWidth > 0 ) ) {
+				const float clientAspect = static_cast<float>( clientWidth ) / clientHeight;
+				const float bitmapAspect = static_cast<float>( bitmapWidth ) / bitmapHeight;
+				if ( bitmapAspect < clientAspect ) {
+					clientRect.Width = static_cast<INT>( clientHeight * bitmapAspect );
+					clientRect.X = static_cast<INT>( ( clientWidth - clientRect.Width ) / 2 );
 				} else {
-					// Landscape
-					destRect.Height = static_cast<INT>( clientWidth / aspect );
-					destRect.Y = static_cast<INT>( 1 + ( clientHeight - destRect.Height ) / 2 );
+					clientRect.Height = static_cast<INT>( clientWidth / bitmapAspect );
+					clientRect.Y = static_cast<INT>( ( clientHeight - clientRect.Height ) / 2 );
 				}
 			}
-			graphics.DrawImage( m_Bitmap.get(), destRect );
+			graphics.SetInterpolationMode( Gdiplus::InterpolationModeHighQualityBilinear );
+			graphics.DrawImage( m_Bitmap.get(), clientRect );
 		}
+		Gdiplus::Pen pen( static_cast<Gdiplus::ARGB>( Gdiplus::Color::Gray ) );
+		graphics.DrawRectangle( &pen, 0, 0, clientWidth - 1, clientHeight - 1 );
 	}
 }
 
 void DlgTrackInfo::OnChooseArtwork( HWND hwnd )
 {
-	WCHAR title[ MAX_PATH ] = {};
-	LoadString( m_hInst, IDS_CHOOSEARTWORK_TITLE, title, MAX_PATH );
-	WCHAR filter[ MAX_PATH ] = {};
-	LoadString( m_hInst, IDS_CHOOSEARTWORK_FILTERIMAGES, filter, MAX_PATH );
-	const std::wstring filter1( filter );
-	const std::wstring filter2( L"*.bmp;*.jpg;*.jpeg;*.png;*.gif;*.tiff;*.tif" );
-	LoadString( m_hInst, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
-	const std::wstring filter3( filter );
-	const std::wstring filter4( L"*.*" );
-	std::vector<WCHAR> filterStr;
-	filterStr.reserve( MAX_PATH );
-	filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter3.begin(), filter3.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter4.begin(), filter4.end() );
-	filterStr.push_back( 0 );
-	filterStr.push_back( 0 );
-
-	const std::wstring initialFolder = m_Settings.GetLastFolder( s_ArtworkFolderSetting );
-
-	WCHAR buffer[ MAX_PATH ] = {};
-	OPENFILENAME ofn = {};
-	ofn.lStructSize = sizeof( OPENFILENAME );
-	ofn.hwndOwner = hwnd;
-	ofn.lpstrTitle = title;
-	ofn.lpstrFilter = &filterStr[ 0 ];
-	ofn.nFilterIndex = 1;
-	ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
-	ofn.lpstrFile = buffer;
-	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
-	if ( FALSE != GetOpenFileName( &ofn ) ) {
-		const std::wstring filename = ofn.lpstrFile;
+	if ( const auto filename = ChooseArtwork( m_hInst, hwnd, m_Settings.GetLastFolder( s_ArtworkFolderSetting ) ); !filename.empty() ) {
 		try {
 			std::ifstream fileStream;
 			fileStream.open( filename, std::ios::binary | std::ios::in );
@@ -465,7 +432,7 @@ void DlgTrackInfo::OnChooseArtwork( HWND hwnd )
 				fileStream.seekg( 0, fileStream.beg );
 				if ( streamSize > 0 ) {
 					std::vector<BYTE> imageBytes( streamSize );
-					char* imageBuffer = reinterpret_cast<char*>( &imageBytes[ 0 ] );
+					char* imageBuffer = reinterpret_cast<char*>( imageBytes.data() );
 					fileStream.read( imageBuffer, streamSize );
 					const std::string encodedImage = ConvertImage( imageBytes );
 					const std::vector<BYTE> image = Base64Decode( encodedImage );
@@ -479,7 +446,9 @@ void DlgTrackInfo::OnChooseArtwork( HWND hwnd )
 		} catch ( ... ) {
 		}
 
-		m_Settings.SetLastFolder( s_ArtworkFolderSetting, filename.substr( 0, ofn.nFileOffset ) );
+		const std::filesystem::path path( filename );
+		m_Settings.SetLastFolder( s_ArtworkFolderSetting, path.parent_path() );
+
 		m_Bitmap = GetArtwork( m_ChosenArtworkImage );
 		InvalidateRect( GetDlgItem( hwnd, IDC_TRACKINFO_ARTWORK ), NULL /*rect*/, TRUE /*erase*/ );
 		EnableControls( hwnd );

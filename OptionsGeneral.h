@@ -10,29 +10,30 @@ public:
 	// 'output' - output object.
 	OptionsGeneral( HINSTANCE instance, Settings& settings, Output& output );
 
-	virtual ~OptionsGeneral();
-
 	// Called when the options page should be initialised.
 	// 'hwnd' - dialog window handle.
-	virtual void OnInit( const HWND hwnd );
+	void OnInit( const HWND hwnd ) override;
 
 	// Called when the options page should be saved.
 	// 'hwnd' - dialog window handle.
-	virtual void OnSave( const HWND hwnd );
+	void OnSave( const HWND hwnd ) override;
 
 	// Called when a command on the options page should be handled.
 	// 'hwnd' - dialog window handle.
 	// 'wParam' - command parameter.
 	// 'lParam' - command parameter.
-	virtual void OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM lParam );
+	void OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM lParam ) override;
 
 	// Called when a notification message should be handled.
 	// 'hwnd' - dialog window handle.
 	// 'wParam' - notification parameter.
 	// 'lParam' - notification parameter.
-	virtual void OnNotify( const HWND hwnd, const WPARAM wParam, const LPARAM lParam );
+	void OnNotify( const HWND hwnd, const WPARAM wParam, const LPARAM lParam ) override;
 
 private:
+	// Available output modes, paired with the resource ID of the description.
+	static std::vector<std::pair<Settings::OutputMode,int>> s_OutputModes;
+
 	// Refreshes the output device list based on the currently selected output mode.
 	// 'hwnd' - dialog window handle.
 	void RefreshOutputDeviceList( const HWND hwnd );
@@ -43,6 +44,7 @@ private:
 	// Returns the currently selected device name.
 	std::wstring GetSelectedDeviceName( const HWND hwnd ) const;
 
-	// Available output modes, paired with the resource ID of the description.
-	static std::vector<std::pair<Settings::OutputMode,int>> s_OutputModes;
+	// Enables the systray controls based on whether the systray is enabled.
+	// 'hwnd' - dialog window handle.
+	void EnableSystrayControls( const HWND hwnd );
 };

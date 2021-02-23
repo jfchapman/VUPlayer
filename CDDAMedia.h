@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 
+#include "MusicBrainz.h"
 #include "Playlist.h"
 
 #include <winioctl.h>
@@ -15,8 +16,9 @@ class CDDAMedia
 public:
 	// 'drive' - CD-ROM drive letter.
 	// 'library' - media library.
+	// 'musicbrainz' - MusicBrainz manager.
 	// Throws a std::runtime_error exception if there are no audio tracks available.
-	CDDAMedia( const wchar_t drive, Library& library );
+	CDDAMedia( const wchar_t drive, Library& library, MusicBrainz& musicbrainz );
 
 	virtual ~CDDAMedia();
 
@@ -70,11 +72,14 @@ public:
 	// Returns the start sector of the CD audio 'track'.
 	long GetStartSector( const long track ) const;
 
-	// Returns the sector count of the CD audio 'track'.
+	// Returns the sector count of the CD audio 'track' (returns zero for data tracks).
 	long GetSectorCount( const long track ) const;
 
-	// Returns the 'track' length, in bytes.
+	// Returns the 'track' length, in bytes (returns zero for data tracks).
 	long GetTrackLength( const long track ) const;
+
+	// Returns the MusicBrainz ID for disc queries.
+	std::pair<std::string /*discid*/, std::string /*toc*/> GetMusicBrainzID() const;
 
 private:
 	// Data cache.
@@ -149,6 +154,9 @@ private:
 
 	// Media library.
 	Library& m_Library;
+
+	// MusicBrainz manager.
+	MusicBrainz& m_MusicBrainz;
 
 	// Disk geometry.
 	DISK_GEOMETRY m_DiskGeometry;

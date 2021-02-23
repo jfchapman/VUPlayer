@@ -1,4 +1,4 @@
-VUPlayer 4.11
+VUPlayer 4.12
 Copyright (c) 2021 James Chapman
 ------------------------------------------------------------------------------
 website: http://www.vuplayer.com
@@ -8,6 +8,7 @@ email:   james@vuplayer.com
 Overview
 --------
 VUPlayer is an open-source multi-format audio player for Windows 7 SP1 or later.
+MusicBrainz functionality requires an internet connection.
 Audioscrobbler functionality requires an internet connection and a Last.fm account.
 
 
@@ -20,36 +21,39 @@ To run in 'portable' mode, leaving no database footprint, the application can be
 
 The optional [settings file] parameter specifies the location of an application settings file to use.
 The 'Export Settings' function in the main application can be used to save the current settings in the correct format.
-Please note that Audioscrobbler functionality is disabled when running in 'portable' mode.
+Please note that MusicBrainz & Audioscrobbler functionality is disabled when running in 'portable' mode.
 
 
 Credits
 -------
-Main application is Copyright (c) 2021 James Chapman
+Main application is copyright (c) 2021 James Chapman
 http://www.vuplayer.com
 
-BASS library is Copyright (c) 1999-2021 Un4seen Developments Ltd.
+BASS library is copyright (c) 1999-2021 Un4seen Developments Ltd.
 http://www.un4seen.com
 
-Ogg Vorbis is Copyright (c) 1994-2021 Xiph.Org
+Ogg Vorbis is copyright (c) 1994-2021 Xiph.Org
 http://xiph.org/vorbis/
 
-Opus is Copyright (c) 2011-2021 Xiph.Org
+Opus is copyright (c) 2011-2021 Xiph.Org
 https://opus-codec.org/
 
-FLAC is Copyright (c) 2000-2009 Josh Coalson, 2011-2021 Xiph.Org
+FLAC is copyright (c) 2000-2009 Josh Coalson, 2011-2021 Xiph.Org
 http://xiph.org/flac/
 
-WavPack is Copyright (c) 1998-2021 David Bryant
+WavPack is copyright (c) 1998-2021 David Bryant
 http://www.wavpack.com
 
-Monkey's Audio is Copyright (c) 2000-2021 Matt Ashland
+Monkey's Audio is copyright (c) 2000-2021 Matt Ashland
 https://monkeysaudio.com
 
-Musepack is Copyright (c) The Musepack Development Team
+Musepack is copyright (c) The Musepack Development Team
 https://www.musepack.net
 
-Audioscrobbler is Copyright (c) 2021 Last.fm Ltd.
+MusicBrainz is copyright (c) The MetaBrainz Foundation
+https://musicbrainz.org/
+
+Audioscrobbler is copyright (c) 2021 Last.fm Ltd.
 http://www.last.fm
 
 
