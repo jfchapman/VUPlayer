@@ -20,6 +20,7 @@
 #include "WndCounter.h"
 #include "WndList.h"
 #include "WndRebar.h"
+#include "WndRebarItem.h"
 #include "WndSplit.h"
 #include "WndStatus.h"
 #include "WndToolbarConvert.h"
@@ -33,6 +34,7 @@
 #include "WndToolbarPlayback.h"
 #include "WndToolbarPlaylist.h"
 #include "WndToolbarTrackEnd.h"
+#include "WndToolbarVolume.h"
 #include "WndTrackbarSeek.h"
 #include "WndTrackbarVolume.h"
 #include "WndTray.h"
@@ -42,22 +44,20 @@
 // Message ID for signalling that media information has been updated.
 // 'wParam' : pointer to previous MediaInfo, to be deleted by the message handler.
 // 'lParam' : pointer to updated MediaInfo, to be deleted by the message handler.
-static const UINT MSG_MEDIAUPDATED = WM_APP + 77;
-
-// Message ID for signalling that the media library has been refreshed.
-// 'wParam' : unused.
-// 'lParam' : unused.
-static const UINT MSG_LIBRARYREFRESHED = WM_APP + 78;
+static constexpr UINT MSG_MEDIAUPDATED = WM_APP + 77;
 
 // Message ID for signalling that the available CD audio discs has been refreshed.
 // 'wParam' : unused.
 // 'lParam' : unused.
-static const UINT MSG_CDDAREFRESHED = WM_APP + 79;
+static constexpr UINT MSG_CDDAREFRESHED = WM_APP + 79;
 
 // Message ID for signalling that a MusicBrainz result has arrived.
 // 'wParam' : pointer to MusicBrainz::Result, to be deleted by the message handler.
 // 'lParam' : non-zero to force a dialog to be shown even for a single match.
-static const UINT MSG_MUSICBRAINZQUERYRESULT = WM_APP + 80;
+static constexpr UINT MSG_MUSICBRAINZQUERYRESULT = WM_APP + 80;
+
+// Default icon colour.
+static constexpr COLORREF DEFAULT_ICONCOLOUR = RGB( 0, 122, 217 );
 
 // Main application singleton
 class VUPlayer
@@ -118,14 +118,8 @@ public:
 	// 'updatedMediaInfo' - the updated media information.
 	void OnMediaUpdated( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo );
 
-	// Called when the media library has been refreshed.
-	void OnLibraryRefreshed();
-
 	// Handles the update of 'previousMediaInfo' to 'updatedMediaInfo', from the main thread.
 	void OnHandleMediaUpdate( const MediaInfo* previousMediaInfo, const MediaInfo* updatedMediaInfo );
-
-	// Handles a media library refresh, from the main thread.
-	void OnHandleLibraryRefreshed();
 
 	// Handles the refreshing of available CD audio discs.
 	void OnHandleCDDARefreshed();
@@ -205,12 +199,21 @@ public:
 	// Returns whether MusicBrainz functionality is enabled.
 	bool IsMusicBrainzEnabled();
 
+	// Displays the context menu for the volume/pitch control at the specified 'position', in screen coordinates.
+	void ShowVolumeControlContextMenu( const POINT& position );
+
+	// Called on a system colour change event.
+	void OnSysColorChange();
+
+	// Called when the window needs painting with the 'ps'.
+	void OnPaint( const PAINTSTRUCT& ps );
+
 private:
 	// Main application instance.
 	static VUPlayer* s_VUPlayer;
 
 	// Maps a menu command ID to a playlist.
-	typedef std::map<UINT,Playlist::Ptr> PlaylistMenuMap;
+	using PlaylistMenuMap = std::map<UINT,Playlist::Ptr>;
 
 	// Reads and applies windows position from settings.
 	void ReadWindowSettings();
@@ -267,8 +270,8 @@ private:
 	// Saves various applications settings.
 	void SaveSettings();
 
-	// Recreates the rebar when the toolbar size changes.
-	void RecreateRebar();
+	// Resizes the rebar when the toolbar size changes.
+	void ResizeRebar();
 
 	// Initialises the rebar controls.
 	void InitialiseRebar();
@@ -313,7 +316,7 @@ private:
 	CDDAManager m_CDDAManager;
 
 	// Rebar control.
-	std::unique_ptr<WndRebar> m_Rebar;
+	WndRebar m_Rebar;
 
 	// Status bar control.
 	WndStatus m_Status;
@@ -328,46 +331,49 @@ private:
 	WndList m_List;
 
 	// Seek control.
-	std::unique_ptr<WndTrackbarSeek> m_SeekControl;
+	WndTrackbarSeek m_SeekControl;
 
 	// Volume control.
-	std::unique_ptr<WndTrackbarVolume> m_VolumeControl;
+	WndTrackbarVolume m_VolumeControl;
 
 	// Toolbar (crossfade).
-	std::unique_ptr<WndToolbarCrossfade> m_ToolbarCrossfade;
+	WndToolbarCrossfade m_ToolbarCrossfade;
 
 	// Toolbar (file).
-	std::unique_ptr<WndToolbarFile> m_ToolbarFile;
+	WndToolbarFile m_ToolbarFile;
 
 	// Toolbar (random/repeat).
-	std::unique_ptr<WndToolbarFlow> m_ToolbarFlow;
+	WndToolbarFlow m_ToolbarFlow;
 
 	// Toolbar (track information).
-	std::unique_ptr<WndToolbarInfo> m_ToolbarInfo;
+	WndToolbarInfo m_ToolbarInfo;
 
 	// Toolbar (options).
-	std::unique_ptr<WndToolbarOptions> m_ToolbarOptions;
+	WndToolbarOptions m_ToolbarOptions;
 
 	// Toolbar (playback).
-	std::unique_ptr<WndToolbarPlayback> m_ToolbarPlayback;
+	WndToolbarPlayback m_ToolbarPlayback;
 
 	// Toolbar (playlist).
-	std::unique_ptr<WndToolbarPlaylist> m_ToolbarPlaylist;
+	WndToolbarPlaylist m_ToolbarPlaylist;
 
 	// Toolbar (favourites).
-	std::unique_ptr<WndToolbarFavourites> m_ToolbarFavourites;
+	WndToolbarFavourites m_ToolbarFavourites;
 
 	// Toolbar (EQ).
-	std::unique_ptr<WndToolbarEQ> m_ToolbarEQ;
+	WndToolbarEQ m_ToolbarEQ;
 
 	// Toolbar (convert).
-	std::unique_ptr<WndToolbarConvert> m_ToolbarConvert;
+	WndToolbarConvert m_ToolbarConvert;
 
 	// Toolbar (track end).
-	std::unique_ptr<WndToolbarTrackEnd> m_ToolbarTrackEnd;
+	WndToolbarTrackEnd m_ToolbarTrackEnd;
+
+	// Toolbar (volume/pitch).
+	WndToolbarVolume m_ToolbarVolume;
 
 	// Counter control.
-	std::unique_ptr<WndCounter> m_Counter;
+	WndCounter m_Counter;
 
 	// Splitter control.
 	WndSplit m_Splitter;
@@ -402,6 +408,12 @@ private:
 	// The idle title bar text.
 	std::wstring m_IdleText;
 
-	// Indicates whether the rebar should be recreated (for instance, when launching the application in a minimised state).
-	bool m_RecreateRebar = false;
+	// Whether high contrast mode is active.
+	bool m_IsHighContrast;
+
+	// Whether the application is running in portable mode.
+	bool m_IsPortableMode;
+
+	// Whether a tree item label is being edited.
+	bool m_IsTreeLabelEdit;
 };

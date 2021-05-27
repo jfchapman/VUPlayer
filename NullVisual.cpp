@@ -26,6 +26,10 @@ void NullVisual::OnPaint()
 {
 }
 
-void NullVisual::OnSettingsChanged()
+void NullVisual::OnSettingsChange()
+{
+}
+
+void NullVisual::OnSysColorChange()
 {
 }

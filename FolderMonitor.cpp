@@ -102,8 +102,9 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 				}
 			}
 
-			CancelIoEx( monitorInfo->DirectoryHandle, &overlapped );
-			GetOverlappedResult( monitorInfo->DirectoryHandle, &overlapped, &bytesReturned, TRUE /*wait*/ );
+			if ( CancelIoEx( monitorInfo->DirectoryHandle, &overlapped ) ) {
+				GetOverlappedResult( monitorInfo->DirectoryHandle, &overlapped, &bytesReturned, TRUE /*wait*/ );
+			}
 
 			CloseHandle( overlapped.hEvent );
 		}

@@ -380,8 +380,8 @@ bool CDDAMedia::ReadCDText( BlockMap& blocks ) const
 			const int textSize = ( static_cast<int>( textData.Length[ 0 ] ) << 8 ) + textData.Length[ 1 ];
 			const int blockSize = sizeof( CDROM_TOC_CD_TEXT_DATA_BLOCK );
 			if ( ( textSize > 0 ) && ( 2 == ( textSize % blockSize ) ) ) {
-				unsigned char* textbuffer = new unsigned char[ textSize ];
-				PCDROM_TOC_CD_TEXT_DATA cdText = reinterpret_cast<PCDROM_TOC_CD_TEXT_DATA>( textbuffer );
+				std::vector<unsigned char> textbuffer( textSize, 0 );
+				PCDROM_TOC_CD_TEXT_DATA cdText = reinterpret_cast<PCDROM_TOC_CD_TEXT_DATA>( textbuffer.data() );
 				if ( DeviceIoControl( handle, IOCTL_CDROM_READ_TOC_EX, &toc, sizeof( CDROM_READ_TOC_EX ), cdText, textSize, &result, 0 ) ) {
 					const int descriptorCount = textSize / blockSize;
 					for ( int descriptorIndex = 0; descriptorIndex < descriptorCount; descriptorIndex++ ) {
@@ -431,7 +431,6 @@ bool CDDAMedia::ReadCDText( BlockMap& blocks ) const
 						}
 					}
 				}
-				delete [] textbuffer;
 			}
 		}
 		Close( handle );

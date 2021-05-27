@@ -16,10 +16,10 @@ public:
 	// 'filename' - (in) output file name without file extension, (out) output file name with file extension.
 	// 'sampleRate' - sample rate.
 	// 'channels' - channel count.
-	// 'bitsPerSample' - bits per sample if applicable, zero if not.
+	// 'bitsPerSample' - bits per sample, if applicable.
 	// 'settings' - encoder settings.
 	// Returns whether the encoder was opened.
-	bool Open( std::wstring& filename, const long sampleRate, const long channels, const long bitsPerSample, const std::string& settings ) override;
+	bool Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> bitsPerSample, const std::string& settings ) override;
 
 	// Writes sample data.
 	// 'samples' - input samples (floating point format scaled to +/-1.0f).

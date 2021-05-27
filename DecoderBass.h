@@ -27,10 +27,10 @@ public:
 	// Returns the new position in seconds.
 	float Seek( const float position ) override;
 
-	// Returns the track gain, in dB.
+	// Returns the track gain, in dB, or nullopt if the calculation failed.
 	// 'canContinue' - callback which returns whether the calculation can continue.
 	// 'secondslimit' - number of seconds to devote to calculating an estimate, or 0 to perform a complete calculation.
-	float CalculateTrackGain( CanContinue canContinue, const float secondsLimit = 0 ) override;
+	std::optional<float> CalculateTrackGain( CanContinue canContinue, const float secondsLimit = 0 ) override;
 
 	// Returns whether stream titles are supported.
 	bool SupportsStreamTitles() const override;

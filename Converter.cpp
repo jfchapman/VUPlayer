@@ -248,7 +248,7 @@ void Converter::EncodeHandler()
 					if ( decoder ) {
 						const long sampleRate = decoder->GetSampleRate();
 						const long channels = decoder->GetChannels();
-						const long bps = decoder->GetBPS();
+						const auto bps = decoder->GetBPS();
 
 						conversionOK = extractJoin ? ( ( sampleRate == joinSampleRate ) && ( channels == joinChannels ) ) :
 							m_Encoder->Open( filename, sampleRate, channels, bps, m_EncoderSettings );
@@ -354,7 +354,7 @@ void Converter::EncodeHandler()
 					}
 
 					if ( writeAlbumGain ) {
-						float albumGain = NAN;
+						std::optional<float> albumGain;
 						if ( !r128States.empty() ) {
 							double loudness = 0;
 							if ( EBUR128_SUCCESS == ebur128_loudness_global_multiple( &r128States[ 0 ], r128States.size(), &loudness ) ) {
@@ -362,7 +362,7 @@ void Converter::EncodeHandler()
 							}
 						}
 
-						if ( !std::isnan( albumGain ) ) {
+						if ( albumGain.has_value() ) {
 							for ( auto& encodedMedia : encodedMediaList ) {
 								encodedMedia.SetGainAlbum( albumGain );
 								WriteAlbumTags( encodedMedia.GetFilename(), encodedMedia );
@@ -398,9 +398,9 @@ std::wstring Converter::GetOutputFilename( const MediaInfo& mediaInfo ) const
 	bool extractJoin = false;
 	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 
-	WCHAR buffer[ 2 + MAX_PATH ] = {};
-	const std::wstring emptyArtist = LoadString( m_hInst, IDS_EMPTYARTIST, buffer, 32 ) ? buffer : std::wstring();
-	const std::wstring emptyAlbum = LoadString( m_hInst, IDS_EMPTYALBUM, buffer, 32 ) ? buffer : std::wstring();
+	WCHAR buffer[ 64 ] = {};
+	const std::wstring emptyArtist = LoadString( m_hInst, IDS_EMPTYARTIST, buffer, 64 ) ? buffer : std::wstring();
+	const std::wstring emptyAlbum = LoadString( m_hInst, IDS_EMPTYALBUM, buffer, 64 ) ? buffer : std::wstring();
 
 	std::wstring title = mediaInfo.GetTitle( true /*filenameAsTitle*/ );
 	WideStringReplaceInvalidFilenameCharacters( title, L"_", true /*replaceFolderDelimiters*/ );
@@ -410,6 +410,8 @@ std::wstring Converter::GetOutputFilename( const MediaInfo& mediaInfo ) const
 
 	std::wstring album = mediaInfo.GetAlbum().empty() ? emptyAlbum : mediaInfo.GetAlbum();
 	WideStringReplaceInvalidFilenameCharacters( album, L"_", true /*replaceFolderDelimiters*/ );
+
+	const std::wstring sourceFilename = std::filesystem::path( mediaInfo.GetFilename() ).stem();
 
 	std::wstringstream ss;
 	ss << std::setfill( static_cast<wchar_t>( '0' ) ) << std::setw( 2 ) << mediaInfo.GetTrack();
@@ -445,6 +447,12 @@ std::wstring Converter::GetOutputFilename( const MediaInfo& mediaInfo ) const
 						case 'T' :
 						case 't' : {
 							outputFilename += title;
+							++currentChar;
+							break;
+						}
+						case 'F' :
+						case 'f' : {
+							outputFilename += sourceFilename;
 							++currentChar;
 							break;
 						}

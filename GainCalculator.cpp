@@ -241,9 +241,9 @@ Decoder::Ptr GainCalculator::OpenDecoder( const Playlist::Item& item ) const
 	return decoder;
 }
 
-float GainCalculator::CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, Decoder::CanContinue canContinue )
+std::optional<float> GainCalculator::CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, Decoder::CanContinue canContinue )
 {
-	float gain = NAN;
+	std::optional<float> gain;
 	if ( ( nullptr != canContinue ) && !IsURL( filename ) ) {
 		const Decoder::Ptr decoder = handlers.OpenDecoder( filename );
 		if ( decoder ) {

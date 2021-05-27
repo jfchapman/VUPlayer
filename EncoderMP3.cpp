@@ -18,7 +18,7 @@ EncoderMP3::~EncoderMP3()
 {
 }
 
-bool EncoderMP3::Open( std::wstring& filename, const long sampleRate, const long channels, const long /*bitsPerSample*/, const std::string& settings )
+bool EncoderMP3::Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> /*bitsPerSample*/, const std::string& settings )
 {
 	bool success = false;
 

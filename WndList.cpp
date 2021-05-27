@@ -9,12 +9,11 @@
 #include "Utility.h"
 #include "VUPlayer.h"
 
-#include <fstream>
 #include <iomanip>
 #include <sstream>
 #include <vector>
 
-// Column information
+// Column information.
 WndList::ColumnFormats WndList::s_ColumnFormats = {
 	{ Playlist::Column::Filename, ColumnFormat( {				ID_SHOWCOLUMNS_FILENAME,			ID_SORTPLAYLIST_FILENAME,				IDS_COLUMN_FILENAME,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
 	{ Playlist::Column::Filetime, ColumnFormat( {				ID_SHOWCOLUMNS_FILETIME,			ID_SORTPLAYLIST_FILETIME,				IDS_COLUMN_FILETIME,			LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
@@ -138,6 +137,12 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 						wndList->DeleteSelectedItems();
 						return 0;
 					}
+					case VK_SPACE : {
+						if ( Output::State::Stopped != wndList->m_Output.GetState() ) {
+							wndList->m_Output.Pause();
+							return 0;
+						}
+					}
 				}
 				break;
 			}
@@ -204,7 +209,10 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	m_Playlist(),
 	m_Settings( settings ),
 	m_Output( output ),
+	m_ColourFont( GetSysColor( COLOR_WINDOWTEXT ) ),
+	m_ColourBackground( GetSysColor( COLOR_WINDOW ) ),
 	m_ColourHighlight( GetSysColor( COLOR_HIGHLIGHT ) ),
+	m_ColourStatusIcon( DEFAULT_ICONCOLOUR ),
 	m_ChosenFont( NULL ),
 	m_EditItem( -1 ),
 	m_EditSubItem( -1 ),
@@ -212,8 +220,12 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	m_IsDragging( false ),
 	m_DragImage( NULL ),
 	m_OldCursor( NULL ),
-	m_ItemFilenames(),
-	m_FilenameToSelect()
+	m_FilenameToIDs(),
+	m_FilenameToSelect(),
+	m_IconMap(),
+	m_IconStatus( { -1, Output::State::Stopped } ),
+	m_EnableStatusIcon( false ),
+	m_IsHighContrast( IsHighContrastActive() )
 {
 	const DWORD exStyle = WS_EX_ACCEPTFILES;
 	LPCTSTR className = WC_LISTVIEW;
@@ -231,7 +243,7 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( ListProc ) ) );
 	SetWindowAccessibleName( instance, m_hWnd, IDS_ACCNAME_LISTVIEW );
 
-	// Insert a dummy column.
+	// Insert the main column, which will contain the search text and status icon.
 	LVCOLUMN lvc = {};
 	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_SUBITEM;
 	lvc.fmt = LVCFMT_FIXED_WIDTH;
@@ -261,11 +273,7 @@ void WndList::ApplySettings()
 {
 	Settings::PlaylistColumns columns;
 	LOGFONT logFont = GetFont();
-	COLORREF fontColour = ListView_GetTextColor( m_hWnd );
-	COLORREF backgroundColour = ListView_GetBkColor( m_hWnd );
-	COLORREF highlightColour = GetHighlightColour();
-
-	m_Settings.GetPlaylistSettings( columns, logFont, fontColour, backgroundColour, highlightColour );
+	m_Settings.GetPlaylistSettings( columns, m_EnableStatusIcon, logFont, m_ColourFont, m_ColourBackground, m_ColourHighlight, m_ColourStatusIcon );
 
 	if ( columns.empty() ) {
 		columns = {
@@ -286,10 +294,7 @@ void WndList::ApplySettings()
 		ShowColumn( static_cast<Playlist::Column>( iter.ID ), iter.Width, true /*visible*/ );
 	}
 
-	ListView_SetTextColor( m_hWnd, fontColour );
-	ListView_SetTextBkColor( m_hWnd, backgroundColour );
-	ListView_SetBkColor( m_hWnd, backgroundColour );
-	m_ColourHighlight = highlightColour;
+	SetColours();
 	SetFont( logFont );
 }
 
@@ -312,11 +317,13 @@ void WndList::SaveSettings()
 		}
 	}
 
-	LOGFONT logFont = GetFont();
-	COLORREF fontColour = ListView_GetTextColor( m_hWnd );
-	COLORREF backgroundColour = ListView_GetBkColor( m_hWnd );
-	COLORREF highlightColour = GetHighlightColour();
-	m_Settings.SetPlaylistSettings( columnSettings, logFont, fontColour, backgroundColour, highlightColour );
+	const LOGFONT logFont = GetFont();
+	const COLORREF fontColour = GetFontColour();
+	const COLORREF backgroundColour = GetBackgroundColour();
+	const COLORREF highlightColour = GetHighlightColour();
+	const COLORREF statusIconColour = GetStatusIconColour();
+	const bool showStatusIcon = GetStatusIconEnabled();
+	m_Settings.SetPlaylistSettings( columnSettings, showStatusIcon, logFont, fontColour, backgroundColour, highlightColour, statusIconColour );
 }
 
 void WndList::ShowColumn( const Playlist::Column column, const int width, const bool show )
@@ -442,20 +449,22 @@ void WndList::AddFolderToPlaylist( const std::wstring& folder )
 void WndList::InsertListViewItem( const Playlist::Item& playlistItem, const int position )
 {
 	LVITEM item = {};
-	item.mask = LVIF_PARAM;
+	item.mask = LVIF_PARAM | LVIF_IMAGE;
 	item.iItem = ( position < 0 ) ? ListView_GetItemCount( m_hWnd ) : position;
 	item.iSubItem = 0;
+	item.iImage = -1;
 	item.lParam = static_cast<LPARAM>( playlistItem.ID );
 	item.iItem = ListView_InsertItem( m_hWnd, &item );
 	if ( item.iItem >= 0 ) {
-		m_ItemFilenames.insert( ItemFilenames::value_type( playlistItem.ID, playlistItem.Info.GetFilename() ) );
+		if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( playlistItem.Info.GetFilename(), {} ) ).first; m_FilenameToIDs.end() != filename ) {
+			filename->second.insert( playlistItem.ID );
+		}
 		SetListViewItemText( item.iItem, playlistItem );
 	}
 }
 
 void WndList::DeleteListViewItem( const int itemIndex )
 {
-	m_ItemFilenames.erase( GetPlaylistItemID( itemIndex ) );
 	ListView_DeleteItem( m_hWnd, itemIndex );
 }
 
@@ -480,12 +489,12 @@ void WndList::SetListViewItemText( int itemIndex, const Playlist::Item& playlist
 			}
 			case Playlist::Column::Bitrate : {
 				std::wstringstream ss;
-				const float bitrate = mediaInfo.GetBitrate( true /*calculate*/ );
-				if ( bitrate > 0 ) {
+				const auto bitrate = mediaInfo.GetBitrate( true /*calculate*/ );
+				if ( bitrate.has_value() ) {
 					const int bufSize = 16;
 					WCHAR buf[ bufSize ] = {};
 					if ( 0 != LoadString( m_hInst, IDS_UNITS_BITRATE, buf, bufSize ) ) {
-						ss << std::to_wstring( std::lroundf( bitrate ) ) << L" " << buf;
+						ss << std::to_wstring( std::lroundf( bitrate.value() ) ) << L" " << buf;
 					}
 				}
 				const std::wstring str = ss.str();
@@ -493,7 +502,7 @@ void WndList::SetListViewItemText( int itemIndex, const Playlist::Item& playlist
 				break;
 			}
 			case Playlist::Column::BitsPerSample : {
-				const long bitsPerSample = mediaInfo.GetBitsPerSample();
+				const long bitsPerSample = mediaInfo.GetBitsPerSample().value_or( 0 );
 				const std::wstring str = ( bitsPerSample > 0 ) ? std::to_wstring( bitsPerSample ) : std::wstring();
 				ListView_SetItemText( m_hWnd, itemIndex, columnIndex, const_cast<LPWSTR>( str.c_str() ) );
 				break;
@@ -554,12 +563,12 @@ void WndList::SetListViewItemText( int itemIndex, const Playlist::Item& playlist
 			case Playlist::Column::GainAlbum :
 			case Playlist::Column::GainTrack : {
 				std::wstringstream ss;
-				const float gain = ( Playlist::Column::GainAlbum == columnID ) ? mediaInfo.GetGainAlbum() : mediaInfo.GetGainTrack();
-				if ( !std::isnan( gain ) ) {
+				const auto gain = ( Playlist::Column::GainAlbum == columnID ) ? mediaInfo.GetGainAlbum() : mediaInfo.GetGainTrack();
+				if ( gain.has_value() ) {
 					const int bufSize = 16;
 					WCHAR buf[ bufSize ] = {};
 					if ( 0 != LoadString( m_hInst, IDS_UNITS_DB, buf, bufSize ) ) {
-						ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain << L" " << buf;
+						ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain.value() << L" " << buf;
 					}
 				}
 				const std::wstring str = ss.str();
@@ -625,7 +634,8 @@ void WndList::SetListViewItemText( int itemIndex, const Playlist::Item& playlist
 		}
 		++columnIndex;
 	}
-	ListView_SetItemText( m_hWnd, itemIndex, 0 /*subItem*/, const_cast<LPWSTR>( mediaInfo.GetTitle( true /*filenameAsTitle*/ ).c_str() ) );
+	const std::wstring str = mediaInfo.GetTitle( true /*filenameAsTitle*/ );
+	ListView_SetItemText( m_hWnd, itemIndex, 0 /*subItem*/, const_cast<LPWSTR>( str.c_str() ) );
 }
 
 void WndList::OnPlay( const long itemID )
@@ -656,6 +666,8 @@ void WndList::OnContextMenu( const POINT& position )
 			for ( const auto& shownColumn : shownColumns ) {
 				CheckMenuItem( listmenu, shownColumn, MF_BYCOMMAND | MF_CHECKED );
 			}
+			const UINT statusIconEnabled = GetStatusIconEnabled() ? MF_CHECKED : MF_UNCHECKED;
+			CheckMenuItem( listmenu, ID_SHOWCOLUMNS_STATUS, MF_BYCOMMAND | statusIconEnabled );
 
 			const bool hasItems = ( ListView_GetItemCount( m_hWnd ) > 0 );
 			const bool hasSelectedItems = ( ListView_GetSelectedCount( m_hWnd ) > 0 );
@@ -707,6 +719,12 @@ void WndList::OnContextMenu( const POINT& position )
 			const UINT musicbrainzEnabled = ( m_Playlist && ( Playlist::Type::CDDA == m_Playlist->GetType() ) && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
+			const UINT enableColourChoice = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;
+			EnableMenuItem( menu, ID_LISTMENU_FONTCOLOUR, MF_BYCOMMAND | enableColourChoice );
+			EnableMenuItem( menu, ID_LISTMENU_BACKGROUNDCOLOUR, MF_BYCOMMAND | enableColourChoice );
+			EnableMenuItem( menu, ID_LISTMENU_HIGHLIGHTCOLOUR, MF_BYCOMMAND | enableColourChoice );
+			EnableMenuItem( menu, ID_LISTMENU_STATUSICONCOLOUR, MF_BYCOMMAND | enableColourChoice );
+
 			if ( nullptr != vuplayer ) {
 				vuplayer->InsertAddToPlaylists( listmenu, ID_FILE_ADDTOFAVOURITES, false /*addPrefix*/ );
 			}
@@ -737,7 +755,8 @@ void WndList::OnCommand( const UINT command )
 		case ID_SHOWCOLUMNS_FILENAME :
 		case ID_SHOWCOLUMNS_FILETIME :
 		case ID_SHOWCOLUMNS_TRACKGAIN :
-		case ID_SHOWCOLUMNS_ALBUMGAIN : {
+		case ID_SHOWCOLUMNS_ALBUMGAIN : 
+		case ID_SHOWCOLUMNS_STATUS : {
 			OnShowColumn( command );
 			break;
 		}
@@ -767,12 +786,13 @@ void WndList::OnCommand( const UINT command )
 		}
 		case ID_LISTMENU_FONTCOLOUR : 
 		case ID_LISTMENU_BACKGROUNDCOLOUR :
-		case ID_LISTMENU_HIGHLIGHTCOLOUR : {
+		case ID_LISTMENU_HIGHLIGHTCOLOUR : 
+		case ID_LISTMENU_STATUSICONCOLOUR : {
 			OnSelectColour( command );
 			break;
 		}
 		case ID_FILE_SELECTALL : {
-			SelectAllItems();
+			OnSelectAll();
 			break;
 		}
 		case ID_FILE_PLAYLISTADDSTREAM : {
@@ -862,6 +882,12 @@ void WndList::DeleteSelectedItems()
 					deletedMedia.push_back( mediaInfo );
 				}
 				m_Playlist->RemoveItem( playlistItem );
+				if ( auto filename = m_FilenameToIDs.find( playlistItem.Info.GetFilename() ); m_FilenameToIDs.end() != filename ) {
+					filename->second.erase( playlistItem.ID );
+					if ( filename->second.empty() ) {
+						m_FilenameToIDs.erase( filename );
+					}
+				}
 			}
 			DeleteListViewItem( itemIndex );
 			itemIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
@@ -893,7 +919,8 @@ void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelectio
 {
 	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
 	ListView_DeleteAllItems( m_hWnd );
-	m_ItemFilenames.clear();
+	m_FilenameToIDs.clear();
+	m_IconStatus = {};
 	m_FilenameToSelect = filename;
 	if ( m_Playlist != playlist ) {
 		m_Playlist = playlist;
@@ -934,6 +961,7 @@ void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelectio
 	RedrawWindow( m_hWnd, NULL /*rect*/, NULL /*rgn*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN );
 
 	UpdateSortIndicator();
+	UpdateStatusIcon();
 }
 
 void WndList::UpdateSortIndicator()
@@ -1009,13 +1037,8 @@ void WndList::OnFileRemoved( Playlist* playlist, const Playlist::Item& item )
 
 void WndList::RemoveFileHandler( const long removedItemID )
 {
-	const int itemCount = ListView_GetItemCount( m_hWnd );
-	for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-		const long itemID = GetPlaylistItemID( itemIndex );
-		if ( itemID == removedItemID ) {
-			DeleteListViewItem( itemIndex );
-			break;
-		}
+	if ( const int itemIndex = FindItemIndex( removedItemID ); itemIndex >= 0 ) {
+		DeleteListViewItem( itemIndex );
 	}
 }
 
@@ -1030,13 +1053,8 @@ void WndList::OnItemUpdated( Playlist* playlist, const Playlist::Item& item )
 void WndList::ItemUpdatedHandler( const Playlist::Item* item )
 {
 	if ( nullptr != item ) {
-		const int itemCount = ListView_GetItemCount( m_hWnd );
-		for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-			const long itemID = GetPlaylistItemID( itemIndex );
-			if ( itemID == item->ID ) {
+		if ( const int itemIndex = FindItemIndex( item->ID ); itemIndex >= 0 ) {
 				SetListViewItemText( itemIndex, *item );
-				break;
-			}
 		}
 	}
 }
@@ -1049,9 +1067,29 @@ void WndList::SortPlaylist( const Playlist::Column column )
 	}
 }
 
+COLORREF WndList::GetFontColour() const
+{
+	return m_ColourFont;
+}
+
+COLORREF WndList::GetBackgroundColour() const
+{
+	return m_ColourBackground;
+}
+
 COLORREF WndList::GetHighlightColour() const
 {
 	return m_ColourHighlight;
+}
+
+COLORREF WndList::GetStatusIconColour() const
+{
+	return m_ColourStatusIcon;
+}
+
+bool WndList::GetStatusIconEnabled() const
+{
+	return m_EnableStatusIcon;
 }
 
 void WndList::OnSelectFont()
@@ -1062,7 +1100,7 @@ void WndList::OnSelectFont()
 	chooseFont.lStructSize = sizeof( CHOOSEFONT );
 	chooseFont.hwndOwner = m_hWnd;
 	chooseFont.Flags = CF_FORCEFONTEXIST | CF_NOVERTFONTS | CF_LIMITSIZE | CF_INITTOLOGFONTSTRUCT;
-	chooseFont.nSizeMax = 32;
+	chooseFont.nSizeMax = 36;
 	chooseFont.lpLogFont = &logFont;
 
 	if ( ( TRUE == ChooseFont( &chooseFont ) ) && ( nullptr != chooseFont.lpLogFont ) ) {
@@ -1072,26 +1110,22 @@ void WndList::OnSelectFont()
 
 void WndList::OnSelectColour( const UINT commandID )
 {
-	CHOOSECOLOR chooseColor = {};
-	chooseColor.lStructSize = sizeof( CHOOSECOLOR );
-	chooseColor.hwndOwner = m_hWnd;
-	VUPlayer* vuplayer = VUPlayer::Get();
-	if ( nullptr != vuplayer ) {
-		chooseColor.lpCustColors = vuplayer->GetCustomColours();
-	}
-	chooseColor.Flags = CC_ANYCOLOR | CC_FULLOPEN | CC_RGBINIT;
-
+	COLORREF initialColour = 0;
 	switch ( commandID ) {
 		case ID_LISTMENU_FONTCOLOUR : {
-			chooseColor.rgbResult = ListView_GetTextColor( m_hWnd );
+			initialColour = GetFontColour();
 			break;
 		}
 		case ID_LISTMENU_BACKGROUNDCOLOUR : {
-			chooseColor.rgbResult = ListView_GetTextBkColor( m_hWnd );
+			initialColour = GetBackgroundColour();
 			break;
 		}
 		case ID_LISTMENU_HIGHLIGHTCOLOUR : {
-			chooseColor.rgbResult = GetHighlightColour();
+			initialColour = GetHighlightColour();
+			break;
+		}
+		case ID_LISTMENU_STATUSICONCOLOUR : {
+			initialColour = GetStatusIconColour();
 			break;
 		}
 		default : {
@@ -1099,25 +1133,34 @@ void WndList::OnSelectColour( const UINT commandID )
 		}
 	}
 
-	if ( TRUE == ChooseColor( &chooseColor ) ) {
+	VUPlayer* vuplayer = VUPlayer::Get();
+	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
+	if ( const auto colour = ChooseColour( m_hWnd, initialColour, customColours ); colour.has_value() ) {
 		switch ( commandID ) {
 			case ID_LISTMENU_FONTCOLOUR : {
-				ListView_SetTextColor( m_hWnd, chooseColor.rgbResult );
+				m_ColourFont = colour.value();
+				SetColours();
 				break;
 			}
 			case ID_LISTMENU_BACKGROUNDCOLOUR : {
-				ListView_SetTextBkColor( m_hWnd, chooseColor.rgbResult );
-				ListView_SetBkColor( m_hWnd, chooseColor.rgbResult );
+				m_ColourBackground = colour.value();
+				SetColours();
 				break;
 			}
 			case ID_LISTMENU_HIGHLIGHTCOLOUR : {
-				m_ColourHighlight = chooseColor.rgbResult;
+				m_ColourHighlight = colour.value();
+				break;
+			}
+			case ID_LISTMENU_STATUSICONCOLOUR : {
+				m_ColourStatusIcon = colour.value();
+				CreateImageList();
 				break;
 			}
 			default : {
 				break;
 			}
 		}
+		SaveSettings();
 		RedrawWindow( m_hWnd, NULL /*rect*/, NULL /*rgn*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN );
 	}
 }
@@ -1129,14 +1172,13 @@ LOGFONT WndList::GetFont()
 	if ( nullptr != hFont ) {
 		const int bufSize = GetObject( hFont, 0, NULL );
 		if ( bufSize > 0 ) {
-			unsigned char* buf = new unsigned char[ bufSize ];
-			if ( bufSize == GetObject( hFont, bufSize, buf ) ) {
-				LOGFONT* currentLogFont = reinterpret_cast<LOGFONT*>( buf );
+			std::vector<unsigned char> buf( bufSize );
+			if ( bufSize == GetObject( hFont, bufSize, buf.data() ) ) {
+				LOGFONT* currentLogFont = reinterpret_cast<LOGFONT*>( buf.data() );
 				if ( nullptr != currentLogFont ) {
 					logFont = *currentLogFont;
 				}
 			}
-			delete [] buf;
 		}
 	}
 	return logFont;
@@ -1151,6 +1193,7 @@ void WndList::SetFont( const LOGFONT& logFont )
 		DeleteObject( m_ChosenFont );
 	}
 	m_ChosenFont = hNewFont;
+	CreateImageList();
 }
 
 BOOL WndList::OnBeginLabelEdit( const LVITEM& item )
@@ -1306,13 +1349,17 @@ void WndList::RepositionEditControl( WINDOWPOS* position )
 
 void WndList::OnUpdatedMedia( const MediaInfo& mediaInfo )
 {
-	const int itemCount = ListView_GetItemCount( m_hWnd );
-	for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-		const long playlistItemID = GetPlaylistItemID( itemIndex );
-		const auto itemFilename = m_ItemFilenames.find( playlistItemID );
-		if ( ( m_ItemFilenames.end() != itemFilename ) && ( itemFilename->second == mediaInfo.GetFilename() ) ) {
-			const Playlist::Item playlistItem = { playlistItemID, mediaInfo };
-			SetListViewItemText( itemIndex, playlistItem );
+	if ( m_Playlist ) {
+		if ( const auto itemFilename = m_FilenameToIDs.find( mediaInfo.GetFilename() ); m_FilenameToIDs.end() != itemFilename ) {
+			const auto& itemIDs = itemFilename->second;
+			for ( const auto itemID : itemIDs ) {
+				if ( Playlist::Item item = { itemID }; m_Playlist->GetItem( item ) && ( item.Info.GetFilename() == itemFilename->first ) ) {
+					if ( const int itemIndex = FindItemIndex( itemID ); itemIndex >= 0 ) {
+						const Playlist::Item playlistItem = { itemID, mediaInfo };
+						SetListViewItemText( itemIndex, playlistItem );
+					}
+				}
+			}
 		}
 	}
 }
@@ -1487,14 +1534,9 @@ void WndList::SelectPreviousItem()
 				selectedItem = ListView_GetNextItem( m_hWnd, selectedItem, LVNI_SELECTED );
 			}
 			// Select previous item.
-			const int itemCount = ListView_GetItemCount( m_hWnd );
-			for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-				const long itemID = GetPlaylistItemID( itemIndex );
-				if ( itemID == previousItem.ID ) {
-					ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
-					ListView_EnsureVisible( m_hWnd, itemIndex, FALSE /*partialOK*/ );
-					break;
-				}
+			if ( const int itemIndex = FindItemIndex( previousItem.ID ); itemIndex >= 0 ) {
+				ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+				ListView_EnsureVisible( m_hWnd, itemIndex, FALSE /*partialOK*/ );
 			}
 		}
 	}
@@ -1513,14 +1555,9 @@ void WndList::SelectNextItem()
 				selectedItem = ListView_GetNextItem( m_hWnd, selectedItem, LVNI_SELECTED );
 			}
 			// Select next item.
-			const int itemCount = ListView_GetItemCount( m_hWnd );
-			for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-				const long itemID = GetPlaylistItemID( itemIndex );
-				if ( itemID == nextItem.ID ) {
-					ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
-					ListView_EnsureVisible( m_hWnd, itemIndex, FALSE /*partialOK*/ );
-					break;
-				}
+			if ( const int itemIndex = FindItemIndex( nextItem.ID ); itemIndex >= 0 ) {
+				ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+				ListView_EnsureVisible( m_hWnd, itemIndex, FALSE /*partialOK*/ );
 			}
 		}
 	}
@@ -1528,20 +1565,15 @@ void WndList::SelectNextItem()
 
 void WndList::EnsureVisible( const Playlist::Item& item, const bool select )
 {
-	const int itemCount = ListView_GetItemCount( m_hWnd );
-	for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-		const long itemID = GetPlaylistItemID( itemIndex );
-		if ( itemID == item.ID ) {
-			ListView_EnsureVisible( m_hWnd, itemIndex, FALSE /*partialOK*/ );
-			if ( select ) {
-				int selectedItem = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
-				while ( selectedItem >= 0 ) {
-					ListView_SetItemState( m_hWnd, selectedItem, 0, LVIS_SELECTED | LVIS_FOCUSED );
-					selectedItem = ListView_GetNextItem( m_hWnd, selectedItem, LVNI_SELECTED );
-				}
-				ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+	if ( const int itemIndex = FindItemIndex( item.ID ); itemIndex >= 0 ) {
+		ListView_EnsureVisible( m_hWnd, itemIndex, FALSE /*partialOK*/ );
+		if ( select ) {
+			int selectedItem = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
+			while ( selectedItem >= 0 ) {
+				ListView_SetItemState( m_hWnd, selectedItem, 0, LVIS_SELECTED | LVIS_FOCUSED );
+				selectedItem = ListView_GetNextItem( m_hWnd, selectedItem, LVNI_SELECTED );
 			}
-			break;
+			ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 		}
 	}
 }
@@ -1573,14 +1605,18 @@ int WndList::GetCount() const
 	return count;
 }
 
-void WndList::SelectAllItems()
+void WndList::OnSelectAll()
 {
-	const int itemCount = ListView_GetItemCount( m_hWnd );
-	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
-	for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-		ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED, LVIS_SELECTED );
+	if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr != editControl ) {
+		Edit_SetSel( editControl, 0, -1 );
+	} else {
+		const int itemCount = ListView_GetItemCount( m_hWnd );
+		SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
+		for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+			ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED, LVIS_SELECTED );
+		}
+		SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 	}
-	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 }
 
 void WndList::OnCommandAddFolder()
@@ -1713,18 +1749,43 @@ void WndList::OnCommandAddStream()
 
 void WndList::OnCutCopy( const bool cut )
 {
-	const Playlist::ItemList items = GetSelectedPlaylistItems();
-	if ( !items.empty() ) {
-		if ( FALSE != OpenClipboard( m_hWnd ) ) {
+	std::wstring clipboardText;
+	bool haveClipboardText = false;
+	if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr != editControl ) {
+		const int textLength = Edit_GetTextLength( editControl );
+		if ( textLength > 0 ) {
+			std::vector<WCHAR> text( 1 + textLength, 0 );
+			if ( Edit_GetText( editControl, text.data(), 1 + textLength ) >= textLength ) {
+				DWORD startSel = 0;
+				DWORD endSel = 0;
+				if ( ( SendMessage( editControl, EM_GETSEL, WPARAM( &startSel ), LPARAM ( &endSel ) ) > 0 ) && ( endSel > startSel ) && ( startSel < text.size() ) && ( endSel < text.size() ) ) {
+					clipboardText = std::wstring( text.begin() + startSel, text.begin() + endSel );
+					haveClipboardText = true;
+					if ( cut ) {
+						Edit_ReplaceSel( editControl, L"" );
+					}
+				}
+			}
+		}
+	} else {
+		const Playlist::ItemList items = GetSelectedPlaylistItems();
+		if ( !items.empty() ) {
 			std::wstringstream stream;
 			for ( const auto& item : items ) {
 				stream << item.Info.GetFilename() << L"\r\n";
 			}
-			const std::wstring clipboardText = stream.str();
-			const HGLOBAL mem = GlobalAlloc( GMEM_MOVEABLE, ( clipboardText.size() + 1 ) * sizeof( WCHAR ) );
-			if ( nullptr != mem ) {
-				LPWSTR destString = static_cast<LPWSTR>( GlobalLock( mem ) );
-				if ( nullptr != destString ) {
+			clipboardText = stream.str();
+			haveClipboardText = true;
+			if ( cut ) {
+				DeleteSelectedItems();
+			}
+		}
+	}
+
+	if ( haveClipboardText ) {
+		if ( OpenClipboard( m_hWnd ) ) {
+			if ( const HGLOBAL mem = GlobalAlloc( GMEM_MOVEABLE, ( clipboardText.size() + 1 ) * sizeof( WCHAR ) ); nullptr != mem ) {
+				if ( LPWSTR destString = static_cast<LPWSTR>( GlobalLock( mem ) ); nullptr != destString ) {
 					wcscpy_s( destString, clipboardText.size() + 1, clipboardText.c_str() );			
 					GlobalUnlock( mem );
 					EmptyClipboard();
@@ -1735,15 +1796,14 @@ void WndList::OnCutCopy( const bool cut )
 			}
 			CloseClipboard();
 		}
-		if ( cut ) {
-			DeleteSelectedItems();
-		}
 	}
+
 }
 
 void WndList::OnPaste()
 {
-	if ( FALSE != OpenClipboard( m_hWnd ) ) {
+	if ( OpenClipboard( m_hWnd ) ) {
+		bool clipboardHasText = false;
 		std::wstring clipboardText;
 		HANDLE handle = GetClipboardData( CF_UNICODETEXT );
 		if ( nullptr != handle ) {
@@ -1751,6 +1811,7 @@ void WndList::OnPaste()
 			if ( nullptr != str ) {
 				clipboardText = str;
 				GlobalUnlock( handle );
+				clipboardHasText = true;
 			}	
 		} else {
 			handle = GetClipboardData( CF_TEXT );
@@ -1759,36 +1820,48 @@ void WndList::OnPaste()
 				if ( nullptr != str ) {
 					clipboardText = AnsiCodePageToWideString( str );
 					GlobalUnlock( handle );
+					clipboardHasText = true;
 				}	
 			}
 		}
 		CloseClipboard();
 
-		try {
-			std::wstringstream stream( clipboardText );
-			do {
-				std::wstring filename;
-				std::getline( stream, filename );
-				if ( !filename.empty() ) {
-					if ( filename.back() == '\r' ) {
-						filename.pop_back();
-					}
-					AddFileToPlaylist( filename );				
+		if ( clipboardHasText ) {
+			if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr != editControl ) {
+				Edit_ReplaceSel( editControl, clipboardText.c_str() );
+			} else {
+				try {
+					std::wstringstream stream( clipboardText );
+					do {
+						std::wstring filename;
+						std::getline( stream, filename );
+						if ( !filename.empty() ) {
+							if ( filename.back() == '\r' ) {
+								filename.pop_back();
+							}
+							AddFileToPlaylist( filename );				
+						}
+					} while ( !stream.eof() );
+				} catch ( ... ) {
 				}
-			} while ( !stream.eof() );
-		} catch ( ... ) {
+			}
 		}
 	}
 }
 
 void WndList::OnShowColumn( const UINT command )
 {
-	for ( const auto& iter : s_ColumnFormats ) {
-		const ColumnFormat& columnFormat = iter.second;
-		if ( columnFormat.ShowID == command ) {
-			const Playlist::Column columnID = iter.first;
-			ShowColumn( columnID, columnFormat.Width, !IsColumnShown( columnID ) );
-			break;
+	if ( ID_SHOWCOLUMNS_STATUS == command ) {
+		m_EnableStatusIcon = !m_EnableStatusIcon;
+		ShowStatusIconColumn();
+	} else {
+		for ( const auto& iter : s_ColumnFormats ) {
+			const ColumnFormat& columnFormat = iter.second;
+			if ( columnFormat.ShowID == command ) {
+				const Playlist::Column columnID = iter.first;
+				ShowColumn( columnID, columnFormat.Width, !IsColumnShown( columnID ) );
+				break;
+			}
 		}
 	}
 }
@@ -1833,15 +1906,8 @@ void WndList::GetColumnVisibility( std::set<UINT>& shown, std::set<UINT>& hidden
 
 void WndList::SelectPlaylistItem( const long itemID )
 {
-	int selectedIndex = -1;
-	const int itemCount = ListView_GetItemCount( m_hWnd );
-	for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-		if ( itemID == GetPlaylistItemID( itemIndex ) ) {
-			selectedIndex = itemIndex;
-			break;
-		}
-	}
-	if ( selectedIndex >= 0 ) {
+	if ( const int selectedIndex = FindItemIndex( itemID ); selectedIndex >= 0 ) {
+		const int itemCount = ListView_GetItemCount( m_hWnd );
 		for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
 			if ( itemIndex == selectedIndex ) {
 				ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
@@ -1851,4 +1917,115 @@ void WndList::SelectPlaylistItem( const long itemID )
 			}
 		}
 	}
+}
+
+void WndList::CreateImageList()
+{
+	const int iconSize = GetStatusIconSize();
+	const int imageCount = 1;
+	if ( HIMAGELIST imageList = ImageList_Create( iconSize, iconSize, ILC_COLOR32, 0 /*initial*/, imageCount /*grow*/ ); nullptr != imageList ) {
+		const COLORREF colour = m_IsHighContrast ? GetSysColor( COLOR_HIGHLIGHT ) : GetStatusIconColour();
+		if ( const HBITMAP hBitmap = CreateColourBitmap( m_hInst, IDI_VOLUME, iconSize, colour ); nullptr != hBitmap ) {
+			m_IconMap.insert( IconMap::value_type( Output::State::Playing, ImageList_Add( imageList, hBitmap, nullptr /*mask*/ ) ) );
+			DeleteObject( hBitmap );
+		}
+		if ( const HBITMAP hBitmap = CreateColourBitmap( m_hInst, IDI_PAUSE, iconSize, colour ); nullptr != hBitmap ) {
+			m_IconMap.insert( IconMap::value_type( Output::State::Paused, ImageList_Add( imageList, hBitmap, nullptr /*mask*/ ) ) );
+			DeleteObject( hBitmap );
+		}
+		if ( const HIMAGELIST previousImageList = ListView_SetImageList( m_hWnd, imageList, LVSIL_SMALL ); nullptr != previousImageList ) {
+			ImageList_Destroy( previousImageList );
+		}
+		ShowStatusIconColumn();
+	}
+}
+
+void WndList::UpdateStatusIcon()
+{
+	const auto [ outputItemID, outputItemState ] = std::make_pair( m_Output.GetCurrentPlaying().PlaylistItem.ID, m_Output.GetState() );
+	auto& [ iconItemID, iconItemState ] = m_IconStatus;
+	if ( ( iconItemState != outputItemState ) || ( iconItemID != outputItemID ) ) {
+		if ( iconItemID != outputItemID ) {
+			if ( const int itemIndex = FindItemIndex( iconItemID ); itemIndex >= 0 ) {
+				LVITEM item = {};
+				item.mask = LVIF_IMAGE;
+				item.iItem = itemIndex;
+				item.iImage = -1;
+				ListView_SetItem( m_hWnd, &item );
+			}
+		}
+
+		const auto iconIter = m_IconMap.find( outputItemState );
+		const int imageIndex = ( m_IconMap.end() != iconIter ) ? iconIter->second : -1;
+		if ( const int itemIndex = FindItemIndex( outputItemID ); itemIndex >= 0 ) {
+			LVITEM item = {};
+			item.mask = LVIF_IMAGE;
+			item.iItem = itemIndex;
+			item.iImage = imageIndex;
+			ListView_SetItem( m_hWnd, &item );
+		}
+
+		iconItemID = outputItemID;
+		iconItemState = outputItemState;
+	}
+}
+
+void WndList::ShowStatusIconColumn()
+{
+	const int iconBorder = static_cast<int>( 4 * GetDPIScaling() );
+	const int width = GetStatusIconEnabled() ? ( GetStatusIconSize() + iconBorder ) : 0;
+	const int currentWidth = ListView_GetColumnWidth( m_hWnd, 0 );
+	if ( currentWidth != width ) {
+		ListView_SetColumnWidth( m_hWnd, 0, width );
+	}
+}
+
+int WndList::GetStatusIconSize() const
+{
+	int iconSize = static_cast<int>( 16 * GetDPIScaling() );
+	constexpr int iconModulus = 4;
+	if ( HDC dc = GetDC( m_hWnd ); nullptr != dc ) {
+		const Gdiplus::Font font( dc, m_ChosenFont );
+		const Gdiplus::Graphics graphics( dc );
+		const Gdiplus::PointF origin;
+		Gdiplus::RectF bounds;
+		if ( Gdiplus::Ok == graphics.MeasureString( L"Ay96", -1, &font, origin, &bounds ) ) {
+			iconSize = max( 16, iconModulus * ( static_cast<int>( bounds.Height ) / iconModulus ) );
+		}
+		ReleaseDC( m_hWnd, dc );
+	}
+	return iconSize;
+}
+
+int WndList::FindItemIndex( const long itemID )
+{
+	int itemIndex = -1;
+	const int itemCount = ListView_GetItemCount( m_hWnd );
+	for ( int i = 0; i < itemCount; i++ ) {
+		if ( itemID == GetPlaylistItemID( i ) ) {
+			itemIndex = i;
+			break;
+		}
+	}
+	return itemIndex;
+}
+
+void WndList::SetColours()
+{
+	if ( m_IsHighContrast ) {
+		ListView_SetTextColor( m_hWnd, GetSysColor( COLOR_WINDOWTEXT ) );
+		ListView_SetTextBkColor( m_hWnd, GetSysColor( COLOR_WINDOW ) );
+		ListView_SetBkColor( m_hWnd, GetSysColor( COLOR_WINDOW ) );	
+	} else {
+		ListView_SetTextColor( m_hWnd, m_ColourFont );
+		ListView_SetTextBkColor( m_hWnd, m_ColourBackground );
+		ListView_SetBkColor( m_hWnd, m_ColourBackground );
+	}
+}
+
+void WndList::OnSysColorChange( const bool isHighContrast )
+{
+	m_IsHighContrast = isHighContrast;
+	CreateImageList();
+	SetColours();
 }

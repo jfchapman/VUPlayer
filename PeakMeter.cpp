@@ -129,10 +129,13 @@ void PeakMeter::OnPaint()
 	}
 }
 
-void PeakMeter::OnSettingsChanged()
+void PeakMeter::OnSettingsChange()
 {
 	FreeResources();
-	DoRender();
+}
+
+void PeakMeter::OnSysColorChange()
+{
 }
 
 void PeakMeter::LoadResources( ID2D1DeviceContext* deviceContext )

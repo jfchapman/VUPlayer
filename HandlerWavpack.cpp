@@ -5,6 +5,9 @@
 #include "DecoderWavpack.h"
 #include "Utility.h"
 
+#include <array>
+#include <fstream>
+
 // Supported tags and their WavPack equivalents.
 static const std::map<Tag,std::string> s_SupportedTags = {
 	{ Tag::Album,				"ALBUM" },
@@ -41,63 +44,71 @@ std::set<std::wstring> HandlerWavpack::GetSupportedFileExtensions() const
 bool HandlerWavpack::GetTags( const std::wstring& filename, Tags& tags ) const
 {
 	bool success = false;
-	char* error = nullptr;
-	const int flags = OPEN_TAGS | OPEN_WVC | OPEN_NORMALIZE | OPEN_DSD_AS_PCM | OPEN_FILE_UTF8;
-	const int offset = 0;
-	WavpackContext* context = WavpackOpenFileInput( WideStringToUTF8( filename ).c_str(), error, flags, offset );
-	if ( nullptr != context ) {
-		const int tagCount = WavpackGetNumTagItems( context );
-		for ( const auto& tagIter : s_SupportedTags ) {
-			const std::string& tagField = tagIter.second;
-			const int tagLength = WavpackGetTagItem( context, tagField.c_str(), nullptr /*buffer*/, 0 /*bufferSize*/ );
-			if ( tagLength > 0 ) {
-				char* buffer = new char[ tagLength + 1 ];
-				memset( buffer, 0 /*value*/, tagLength + 1 );
-				if ( tagLength == WavpackGetTagItem( context, tagField.c_str(), buffer, tagLength + 1 ) ) {
-					tags.insert( Tags::value_type( tagIter.first, buffer ) );
+	
+	bool foundHeader = false;
+	if ( std::ifstream testStream( filename, std::ios::binary | std::ios::in ); testStream.is_open() ) {
+		std::array<char, 4> header = {};
+		testStream.read( header.data(), 4 );
+		foundHeader = ( 'w' == header[ 0 ] ) && ( 'v' == header[ 1 ] ) && ( 'p' == header[ 2 ] ) && ( 'k' == header[ 3 ] );
+	}
+
+	if ( foundHeader ) {
+		char* error = nullptr;
+		const int flags = OPEN_TAGS | OPEN_WVC | OPEN_NORMALIZE | OPEN_DSD_AS_PCM | OPEN_FILE_UTF8;
+		const int offset = 0;
+		WavpackContext* context = WavpackOpenFileInput( WideStringToUTF8( filename ).c_str(), error, flags, offset );
+		if ( nullptr != context ) {
+			const int tagCount = WavpackGetNumTagItems( context );
+			for ( const auto& tagIter : s_SupportedTags ) {
+				const std::string& tagField = tagIter.second;
+				const int tagLength = WavpackGetTagItem( context, tagField.c_str(), nullptr /*buffer*/, 0 /*bufferSize*/ );
+				if ( tagLength > 0 ) {
+					std::vector<char> buffer( tagLength + 1, 0 );
+					if ( tagLength == WavpackGetTagItem( context, tagField.c_str(), buffer.data(), tagLength + 1 ) ) {
+						tags.insert( Tags::value_type( tagIter.first, buffer.data() ) );
+					}
 				}
-				delete [] buffer;
 			}
-		}
 
-		const unsigned char format = WavpackGetFileFormat( context );
-		UINT stringID = 0;
-		switch ( format ) {
-			case WP_FORMAT_WAV : {
-				const int mode = WavpackGetMode( context );
-				stringID = ( mode & MODE_LOSSLESS ) ? ( ( mode & MODE_HYBRID ) ? IDS_WAVPACK_HYBRID : IDS_WAVPACK_LOSSLESS ) : IDS_WAVPACK_LOSSY;
-				break;
+			const unsigned char format = WavpackGetFileFormat( context );
+			UINT stringID = 0;
+			switch ( format ) {
+				case WP_FORMAT_WAV : {
+					const int mode = WavpackGetMode( context );
+					stringID = ( mode & MODE_LOSSLESS ) ? ( ( mode & MODE_HYBRID ) ? IDS_WAVPACK_HYBRID : IDS_WAVPACK_LOSSLESS ) : IDS_WAVPACK_LOSSY;
+					break;
+				}
+				case WP_FORMAT_W64 : {
+					stringID = IDS_WAVPACK_W64;
+					break;
+				}
+				case WP_FORMAT_CAF : {
+					stringID = IDS_WAVPACK_CAF;
+					break;
+				}
+				case WP_FORMAT_DFF : {
+					stringID = IDS_WAVPACK_DFF;
+					break;
+				}
+				case WP_FORMAT_DSF : {
+					stringID = IDS_WAVPACK_DSD;
+					break;
+				}
+				default : {
+					break;
+				}
 			}
-			case WP_FORMAT_W64 : {
-				stringID = IDS_WAVPACK_W64;
-				break;
+			if ( 0 != stringID ) {
+				const int bufferSize = 32;
+				char buffer[ bufferSize ] = {};
+				if ( 0 != LoadStringA( GetModuleHandle( NULL ), stringID, buffer, bufferSize ) ) {
+					tags.insert( Tags::value_type( Tag::Version, buffer ) );
+				}
 			}
-			case WP_FORMAT_CAF : {
-				stringID = IDS_WAVPACK_CAF;
-				break;
-			}
-			case WP_FORMAT_DFF : {
-				stringID = IDS_WAVPACK_DFF;
-				break;
-			}
-			case WP_FORMAT_DSF : {
-				stringID = IDS_WAVPACK_DSD;
-				break;
-			}
-			default : {
-				break;
-			}
-		}
-		if ( 0 != stringID ) {
-			const int bufferSize = 32;
-			char buffer[ bufferSize ] = {};
-			if ( 0 != LoadStringA( GetModuleHandle( NULL ), stringID, buffer, bufferSize ) ) {
-				tags.insert( Tags::value_type( Tag::Version, buffer ) );
-			}
-		}
 
-		WavpackCloseFile( context );
-		success = true;
+			WavpackCloseFile( context );
+			success = true;
+		}
 	}
 	return success;
 }

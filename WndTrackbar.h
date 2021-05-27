@@ -3,8 +3,9 @@
 #include "stdafx.h"
 
 #include "Output.h"
+#include "WndRebarItem.h"
 
-class WndTrackbar
+class WndTrackbar : public WndRebarItem
 {
 public:
 	// Trackbar type
@@ -27,9 +28,6 @@ public:
 
 	// Returns the default window procedure.
 	WNDPROC GetDefaultWndProc();
-
-	// Returns the trackbar window handle.
-	HWND GetWindowHandle();
 
 	// Returns whether the trackbar is enabled.
 	bool GetEnabled() const;
@@ -55,8 +53,39 @@ public:
 	// Called when the user drags the trackbar thumb to a 'position'.
 	virtual void OnDrag( const int position ) = 0;
 
-	// Displays the context menu at the specified 'position', in screen coordinates.
-	virtual void OnContextMenu( const POINT& position );
+	// Returns the rebar item ID.
+	int GetID() const override;
+
+	// Returns the rebar item window handle.
+	HWND GetWindowHandle() const override;
+
+	// Gets the rebar item fixed width.
+	std::optional<int> GetWidth() const override;
+
+	// Gets the rebar item fixed height.
+	std::optional<int> GetHeight() const override;
+
+	// Returns whether the rebar item has a vertical divider.
+	bool HasDivider() const override;
+
+	// Returns whether the rebar item can be hidden.
+	bool CanHide() const override;
+
+	// Called when the rebar item 'settings' have been changed.
+	void OnChangeRebarItemSettings( Settings& settings ) override;
+
+	// Rebar item custom draw callback, using the 'nmcd' structure.
+	// Return the appropriate value for the draw stage, or nullopt if the rebar item does not handle custom draw.
+	std::optional<LRESULT> OnCustomDraw( LPNMCUSTOMDRAW nmcd ) override;
+
+	// Displays the context menu for the rebar item at the specified 'position', in screen coordinates.
+	// Return true if the rebar item handled the context menu, or false to display the rebar context menu.
+	bool ShowContextMenu( const POINT& position ) override;
+
+	// Called on a system colour change event.
+	// 'isHighContrast' - indicates whether high contrast mode is active.
+	// 'isClassicTheme' - indicates whether the Windows classic theme is active.
+	void OnSysColorChange( const bool isHighContrast, const bool isClassicTheme ) override;
 
 protected:
 	// Returns the output object.
@@ -69,7 +98,7 @@ protected:
 	Settings& GetSettings();
 
 	// Returns the module instance handle.
-	HINSTANCE GetInstanceHandle();
+	HINSTANCE GetInstanceHandle() const;
 
 	// Returns the trackbar thumb position.
 	int GetPosition() const;
@@ -81,19 +110,41 @@ protected:
 	int GetRange() const;
 
 private:
-	// Window procedure
+	// Window procedure for the window that hosts the trackbar.
+	static LRESULT CALLBACK TrackbarHostProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
+	// Window procedure for the trackbar.
 	static LRESULT CALLBACK TrackbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
 	// Next available child window ID.
 	static UINT_PTR s_WndTrackbarID;
 
+	// Called when the host window is resized.
+	void OnSize();
+
+	// Called when the window needs painting with the 'ps'.
+	void OnPaint( const PAINTSTRUCT& ps );
+
+	// Called when the trackbar window background needs erasing.
+	void OnEraseTrackbarBackground( const HDC dc );
+
+	// Returns the background colour to use for painting/erasing.
+	COLORREF GetBackgroundColour() const;
+
+	// Returns the colour to use to draw the thumb.
+	// 'thumbRect' - thumb location, in client coordinates.
+	COLORREF GetThumbColour( const RECT& thumbRect ) const;
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
-	// Window handle.
-	HWND m_hWnd;
+	// Host window handle.
+	HWND m_hHostWnd;
 
-	// Default window procedure.
+	// Trackbar window handle.
+	HWND m_hTrackbarWnd;
+
+	// Default trackbar window procedure.
 	WNDPROC m_DefaultWndProc;
 
 	// Output object.
@@ -104,5 +155,20 @@ private:
 
 	// Trackbar type.
 	Type m_Type;
+
+	// Thumb colour.
+	COLORREF m_ThumbColour;
+
+	// Background colour.
+	COLORREF m_BackgroundColour;
+
+	// Indicates whether high contrast mode is active.
+	bool m_IsHighContrast;
+
+	// Indicates whether the Windows classic theme is active.
+	bool m_IsClassicTheme;
+
+	// Indicates whether the OS is Windows 10 (or later).
+	const bool m_IsWindows10;
 };
 

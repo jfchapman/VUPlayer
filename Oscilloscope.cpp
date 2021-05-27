@@ -132,10 +132,13 @@ void Oscilloscope::OnPaint()
 	}
 }
 
-void Oscilloscope::OnSettingsChanged()
+void Oscilloscope::OnSettingsChange()
 {
 	FreeResources();
-	DoRender();
+}
+
+void Oscilloscope::OnSysColorChange()
+{
 }
 
 void Oscilloscope::LoadResources( ID2D1DeviceContext* deviceContext )

@@ -6,11 +6,6 @@ WndToolbarPlaylist::WndToolbarPlaylist( HINSTANCE instance, HWND parent, Setting
 	WndToolbar( instance, parent, ID_TOOLBAR_PLAYLIST, settings, { IDI_ADD_STREAM, IDI_ADD_FOLDER, IDI_ADD_FILES, IDI_REMOVE_FILES } )
 {
 	CreateButtons();
-
-	RECT rect = {};
-	SendMessage( GetWindowHandle(), TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>( &rect ) );
-	const int buttonCount = static_cast<int>( SendMessage( GetWindowHandle(), TB_BUTTONCOUNT, 0, 0 ) );
-	MoveWindow( GetWindowHandle(), 0 /*x*/, 0 /*y*/, ( rect.right - rect.left ) * buttonCount, rect.bottom - rect.top, TRUE /*repaint*/ );
 }
 
 void WndToolbarPlaylist::Update( Output& /*output*/, const Playlist::Ptr playlist, const Playlist::Item& selectedItem )

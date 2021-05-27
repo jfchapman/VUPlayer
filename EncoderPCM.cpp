@@ -20,7 +20,7 @@ EncoderPCM::~EncoderPCM()
 {
 }
 
-bool EncoderPCM::Open( std::wstring& filename, const long sampleRate, const long channels, const long bitsPerSample, const std::string& /*settings*/ )
+bool EncoderPCM::Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> bitsPerSample, const std::string& /*settings*/ )
 {
 	bool success = false;
 	if ( ( 1 == channels ) || ( 2 == channels ) ) {
@@ -33,7 +33,7 @@ bool EncoderPCM::Open( std::wstring& filename, const long sampleRate, const long
 		m_header.wFormatTag = WAVE_FORMAT_PCM;
 		m_header.nChannels = static_cast<WORD>( channels );
 		m_header.nSamplesPerSec = static_cast<DWORD>( sampleRate );
-		m_header.wBitsPerSample = ( 8 == bitsPerSample ) ? 8 : 16;
+		m_header.wBitsPerSample = ( 8 == bitsPerSample.value_or( 0 ) ) ? 8 : 16;
 		m_header.nBlockAlign = m_header.nChannels * m_header.wBitsPerSample / 8;
 		m_header.nAvgBytesPerSec = m_header.nSamplesPerSec * m_header.nBlockAlign;
 		filename += L".wav";

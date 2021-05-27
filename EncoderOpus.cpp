@@ -41,7 +41,7 @@ int EncoderOpus::CloseCallback( void *user_data )
 }
 
 
-bool EncoderOpus::Open( std::wstring& filename, const long sampleRate, const long channels, const long /*bitsPerSample*/, const std::string& settings )
+bool EncoderOpus::Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> /*bitsPerSample*/, const std::string& settings )
 {
 	m_Channels = channels;
 	OggOpusComments* opusComments = ope_comments_create();

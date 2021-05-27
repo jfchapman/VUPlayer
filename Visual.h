@@ -23,7 +23,10 @@ public:
 	virtual void OnPaint() = 0;
 
 	// Called when the visual settings have changed.
-	virtual void OnSettingsChanged() = 0;
+	virtual void OnSettingsChange() = 0;
+
+	// Called when the system colours have changed.
+	virtual void OnSysColorChange() = 0;
 
 	// Returns the output object.
 	Output& GetOutput();
@@ -42,6 +45,9 @@ public:
 
 	// Requests a re-render.
 	void DoRender();
+
+	// Returns whether hardware acceleration is enabled.
+	bool IsHardwareAccelerationEnabled() const;
 
 private:
 	// Visual container window.

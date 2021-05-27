@@ -9,14 +9,11 @@ DecoderFlac::DecoderFlac( const std::wstring& filename ) :
 	m_FLACFramePos( 0 ),
 	m_Valid( false )
 {
-	try {
-		m_FileStream.open( filename, std::ios::binary | std::ios::in );
-		if ( m_FileStream.is_open() ) {
-			if ( init() == FLAC__STREAM_DECODER_INIT_STATUS_OK )	{
-				process_until_end_of_metadata();
-			}
+	m_FileStream.open( filename, std::ios::binary | std::ios::in );
+	if ( m_FileStream.is_open() ) {
+		if ( init() == FLAC__STREAM_DECODER_INIT_STATUS_OK )	{
+			process_until_end_of_metadata();
 		}
-	} catch ( ... ) {
 	}
 
 	if ( m_Valid ) {
@@ -70,9 +67,9 @@ float DecoderFlac::Seek( const float position )
 	return seekPosition;
 }
 
-float DecoderFlac::CalculateBitrate()
+std::optional<float> DecoderFlac::CalculateBitrate()
 {
-	float bitrate = NAN;
+	std::optional<float> bitrate;
 	if ( const float duration = GetDuration(); ( duration > 0 ) && m_FileStream.good() ) {
 		const auto initial = m_FileStream.tellg();
 

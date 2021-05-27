@@ -5,6 +5,7 @@
 #include "CDDAManager.h"
 #include "FolderMonitor.h"
 #include "Library.h"
+#include "Output.h"
 #include "Settings.h"
 
 class WndTree
@@ -15,7 +16,8 @@ public:
 	// 'library' - media library.
 	// 'settings' - application settings.
 	// 'cddaManager' - CD audio manager.
-	WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings, CDDAManager& cddaManager );
+	// 'output' - output object.
+	WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings, CDDAManager& cddaManager, Output& output );
 
 	virtual ~WndTree();
 
@@ -42,7 +44,8 @@ public:
 	LPARAM OnBeginLabelEdit( WPARAM wParam, LPARAM lParam );
 
 	// Called when item label editing ends.
-	void OnEndLabelEdit( WPARAM wParam, LPARAM lParam );
+	// Returns TRUE to accept the new item label, FALSE to revert to the original label.
+	BOOL OnEndLabelEdit( WPARAM wParam, LPARAM lParam );
 
 	// Called when the window is destroyed.
 	void OnDestroy();
@@ -93,9 +96,6 @@ public:
 	// Called when the 'mediaList' has been removed from the media library.
 	void OnRemovedMedia( const MediaInfo::List& mediaList );
 
-	// Called when media library has been refreshed.
-	void OnMediaLibraryRefreshed();
-
 	// Called when the available CD audio discs have been refreshed.
 	void OnCDDARefreshed();
 
@@ -126,8 +126,11 @@ public:
 	// Saves the startup 'playlist' to application settings.
 	void SaveStartupPlaylist( const Playlist::Ptr playlist );
 
-	// Returns the highlight colour.
+	// Returns the highlight colour (which is applied when not in high contrast mode).
 	COLORREF GetHighlightColour() const;
+
+	// Returns the icon colour (which is applied when not in high contrast mode).
+	COLORREF GetIconColour() const;
 
 	// Returns the Favourites playlist.
 	Playlist::Ptr GetPlaylistFavourites() const;
@@ -177,6 +180,26 @@ public:
 	// Returns the playlist if the Audio CD was selected, or nullptr if not.
 	Playlist::Ptr SelectAudioCD( const wchar_t drive );
 
+	// Called on a system colour change event.
+	// 'isHighContrast' - indicates whether high contrast mode is active.
+	void OnSysColorChange( const bool isHighContrast );
+
+	// Called when the current output 'playlist' changes.
+	void OnOutputPlaylistChange( const Playlist::Ptr playlist );
+
+	// Updates the icon the for current output playlist node.
+	void UpdateOutputIcon();
+
+	// Cuts or copies text to the clipboard (only when a tree item label is being edited).
+	// 'cut' - true to cut the files, false to copy the files.
+	void OnCutCopy( const bool cut );
+
+	// Pastes text from the clipboard (only when a tree item label is being edited).
+	void OnPaste();
+
+	// Selects all text (only when a tree item label is being edited).
+	void OnSelectAll();
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
@@ -206,13 +229,13 @@ private:
 	};
 
 	// Maps a tree item to a playlist.
-	typedef std::map<HTREEITEM,Playlist::Ptr> PlaylistMap;
+	using PlaylistMap = std::map<HTREEITEM,Playlist::Ptr>;
 
 	// Maps a playlist type to an icon index.
-	typedef std::map<Playlist::Type,int> IconMap;
+	using IconMap = std::map<Playlist::Type,int>;
 
 	// Maps a playlist type to an item order value.
-	typedef std::map<Playlist::Type,LPARAM> OrderMap;
+	using OrderMap = std::map<Playlist::Type,int>;
 
 	// Root folder type.
 	enum class RootFolderType { UserFolder, Drive };
@@ -236,13 +259,23 @@ private:
 	};
 
 	// A folder information list.
-	typedef std::list<RootFolderInfo> RootFolderInfoList;
+	using RootFolderInfoList = std::list<RootFolderInfo>;
 
 	// Maps a tree item to folder information.
-	typedef std::map<HTREEITEM,RootFolderInfo> RootFolderInfoMap;
+	using RootFolderInfoMap = std::map<HTREEITEM,RootFolderInfo>;
 
 	// Maps a string to a set of tree item nodes.
-	typedef std::map<std::wstring,std::set<HTREEITEM>> StringToNodesMap;
+	using StringToNodesMap = std::map<std::wstring,std::set<HTREEITEM>>;
+
+	// Maps a menu command ID to a playlist.
+	using PlaylistMenuMap = std::map<UINT,Playlist::Ptr>;
+
+	// Searches the 'playlistMap' for the 'playlist'.
+	// Returns the corresponding tree item, or nullptr if the playlist was not found.
+	static HTREEITEM FindPlaylist( const PlaylistMap& playlistMap, const Playlist::Ptr& playlist );
+
+	// Creates a tree item parameter value from 'playlistType', 'originalIconIndex' & 'itemOrder'.
+	static LPARAM CreateItemData( const Playlist::Type playlistType, const int originalIconIndex, const int itemOrder = 0 );
 
 	// Loads playlists
 	void LoadPlaylists();
@@ -319,6 +352,12 @@ private:
 	// Gets the tree 'item' type.
 	Playlist::Type GetItemType( const HTREEITEM item ) const;
 
+	// Returns the item order for the root 'item'.
+	int GetItemOrder( const HTREEITEM item ) const;
+
+	// Returns the original icon index for the 'item'.
+	int GetOriginalIconIndex( const HTREEITEM item ) const;
+
 	// Gets the tree 'item' label.
 	std::wstring GetItemLabel( const HTREEITEM item ) const;
 
@@ -386,9 +425,6 @@ private:
 
 	// Loads the 'Streams' playlist.
 	void LoadStreams();
-
-	// Returns the item order for the root 'item'
-	LPARAM WndTree::GetItemOrder( const HTREEITEM item ) const;
 
 	// Returns the tree insertion position for a root item corresponding to a playlist 'type'.
 	HTREEITEM GetInsertAfter( const Playlist::Type type ) const;
@@ -463,6 +499,32 @@ private:
 	// Returns the default edit control window procedure.
 	WNDPROC GetEditControlWndProc();
 
+	// Returns the icon size for the image list.
+	int GetIconSize() const;
+
+	// Sets the tree control colours.
+	void SetColours();
+
+	// Returns the font colour (which is applied when not in high contrast mode).
+	COLORREF GetFontColour() const;
+
+	// Returns the background colour (which is applied when not in high contrast mode).
+	COLORREF GetBackgroundColour() const;
+
+	// Updates the 'item' icon, based on the output 'state'.
+	void UpdateIcon( const HTREEITEM item, const Output::State state );
+
+	// Returns the playlist type, original icon index & item order values for the 'item'.
+	std::tuple<Playlist::Type, int /*originalIconIndex*/, int /*itemOrder*/> GetItemData( const HTREEITEM item ) const;
+
+	// Inserts the Add to Playlists context sub menu into the 'menu'.
+	// 'insertAfterItemID' - the menu item ID after which to add the sub menu.
+	// 'insertSeparator' - whether to insert a separator to the 'menu' before adding the sub menu.
+	void InsertAddToPlaylists( const HMENU menu, const UINT insertAfterItemID, const bool insertSeparator );
+
+	// Called when the Add to Playlist 'command' is received.
+	void OnAddToPlaylist( const UINT command );
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -499,6 +561,9 @@ private:
 	// Computer node.
 	HTREEITEM m_NodeComputer;
 
+	// Current output playlist node.
+	HTREEITEM m_NodeCurrentOutput;
+
 	// Media library.
 	Library& m_Library;
 
@@ -507,6 +572,9 @@ private:
 
 	// CD audio manager.
 	CDDAManager& m_CDDAManager;
+
+	// Output object.
+	Output& m_Output;
 
 	// Playlists.
 	PlaylistMap m_PlaylistMap;
@@ -541,8 +609,17 @@ private:
 	// The font resulting from the font selection dialog.
 	HFONT m_ChosenFont;
 
+	// Font colour.
+	COLORREF m_ColourFont;
+
+	// Background colour.
+	COLORREF m_ColourBackground;
+
 	// Highlight colour.
 	COLORREF m_ColourHighlight;
+
+	// Icon colour.
+	COLORREF m_ColourIcon;
 
 	// Image list.
 	HIMAGELIST m_ImageList;
@@ -558,6 +635,12 @@ private:
 
 	// Icon index for the drive icon.
 	int m_IconIndexDrive;
+
+	// Icon index for the currently playing icon.
+	int m_IconIndexPlaying;
+
+	// Icon index for the currently paused icon.
+	int m_IconIndexPaused;
 
 	// The root computer folders.
 	RootFolderInfoMap m_RootComputerFolders;
@@ -602,7 +685,13 @@ private:
 	const std::set<std::wstring> m_SupportedFileExtensions;
 
 	// Default edit control window procedure.
-	WNDPROC m_EditControlWndProc = nullptr;
+	WNDPROC m_EditControlWndProc;
+
+	// Indicates whether high contrast mode is active.
+	bool m_IsHighContrast;
+
+	// Maps a menu command ID to a playlist for the Add to Playlist context sub menu.
+	PlaylistMenuMap m_AddToPlaylistMenuMap;
 
 	// Root item ordering.
 	static OrderMap s_RootOrder;

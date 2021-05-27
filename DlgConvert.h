@@ -69,6 +69,12 @@ private:
 	// Returns the filename to use when joining files into a single track, or an empty string if a filename was not chosen.
 	std::wstring ChooseJoinFilename() const;
 
+	// Returns whether list control notifications are suppressed.
+	bool GetSuppressNotifications() const;
+
+	// Sets whether to 'suppress' list control notifications.
+	void SetSuppressNotifications( const bool suppress );
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -90,8 +96,8 @@ private:
 	// The set of checked items.
 	std::set<long> m_CheckedItems;
 
-	// Indicates whether the dialog has been initialised.
-	bool m_Initialised;
+	// Indicates whether list control notifications are suppressed.
+	bool m_SuppressNotifications;
 
 	// The encoder handler to use for conversion.
 	Handler::Ptr m_SelectedEncoder;

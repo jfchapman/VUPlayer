@@ -79,16 +79,13 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 					if ( settingsFileName.size() > 4 ) {
 						const std::wstring ext = WideStringToUpper( settingsFileName.substr( settingsFileName.size() - 4 ) );
 						if ( L".INI" == ext ) {
-							try {
-								std::ifstream filestream;
-								std::ostringstream stringstream;
-								filestream.open( settingsFileName );
-								if ( filestream.is_open() ) {
-									stringstream << filestream.rdbuf();
-									portableSettings = stringstream.str();
-									filestream.close();
-								}
-							} catch ( ... ) {
+							std::ifstream filestream;
+							std::ostringstream stringstream;
+							filestream.open( settingsFileName );
+							if ( filestream.is_open() ) {
+								stringstream << filestream.rdbuf();
+								portableSettings = stringstream.str();
+								filestream.close();
 							}
 						}
 					}
@@ -143,16 +140,15 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 					copyData.cbData += static_cast<DWORD>( 1 + filename.size() );
 				}
 				copyData.cbData += 1;
-				WCHAR* buffer = new WCHAR[ copyData.cbData ]();
+				std::vector<WCHAR> buffer( copyData.cbData, 0 );
 				copyData.cbData *= sizeof( WCHAR );
-				copyData.lpData = buffer;
-				WCHAR* destFilename = buffer;
+				copyData.lpData = buffer.data();
+				WCHAR* destFilename = buffer.data();
 				for ( const auto& srcFilename : cmdLineFiles ) {
 					wcscpy_s( destFilename, 1 + srcFilename.size(), srcFilename.c_str() );
 					destFilename += ( 1 + srcFilename.size() );
 				}
 				SendMessage( existingWnd, WM_COPYDATA, 0 /*wParam*/, reinterpret_cast<LPARAM>( &copyData ) );
-				delete [] buffer;
 			}
 		}
 		return FALSE;
@@ -215,7 +211,6 @@ ATOM MyRegisterClass( HINSTANCE hInstance )
     wcex.hCursor        = LoadCursor( nullptr, IDC_ARROW );
     wcex.lpszMenuName   = MAKEINTRESOURCEW( IDC_VUPLAYER );
     wcex.lpszClassName  = g_szWindowClass;
-		wcex.hbrBackground	= reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 );
 
 		LoadIconMetric( hInstance, MAKEINTRESOURCE( IDI_VUPLAYER ), LIM_SMALL, &wcex.hIconSm );
 
@@ -227,7 +222,7 @@ BOOL InitInstance( HINSTANCE hInstance, int /*nCmdShow*/ )
 {
 	g_hInst = hInstance; // Store instance handle in our global variable
 
-	const DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
+	const DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS;
 	const int x = 0;
 	const int y = 0;
 	const int width = static_cast<int>( 900 * GetDPIScaling() );
@@ -267,9 +262,17 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
+		case WM_ERASEBKGND : {
+			return TRUE;
+		}
 		case WM_PAINT : {
-			PAINTSTRUCT ps;
+			PAINTSTRUCT ps = {};
 			BeginPaint( hWnd, &ps );
+			if ( nullptr != vuplayer ) {
+				vuplayer->OnPaint( ps );
+			} else {
+				FillRect( ps.hdc, &ps.rcPaint, reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 ) );
+			}
 			EndPaint( hWnd, &ps );
 			break;
 		}
@@ -328,6 +331,12 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
+		case WM_SYSCOLORCHANGE : {
+			if ( nullptr != vuplayer ) {
+				vuplayer->OnSysColorChange();
+			}
+			break;
+		}
 		case WM_COPYDATA : {
 			if ( nullptr != vuplayer ) {
 				COPYDATASTRUCT* copyData = reinterpret_cast<COPYDATASTRUCT*>( lParam );
@@ -335,10 +344,10 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 					// Ensure that the string array ends with a double null-terminator.
 					const WCHAR* srcBuffer = reinterpret_cast<WCHAR*>( copyData->lpData );
 					const int srcBufferSize = copyData->cbData / sizeof( WCHAR );
-					WCHAR* destBuffer = new WCHAR[ 2 + srcBufferSize ]();
-					wmemcpy_s( destBuffer, srcBufferSize, srcBuffer, srcBufferSize );
+					std::vector<WCHAR> destBuffer( 2 + srcBufferSize, 0 );
+					wmemcpy_s( destBuffer.data(), srcBufferSize, srcBuffer, srcBufferSize );
 					std::list<std::wstring> filenames;
-					WCHAR* filename = destBuffer;
+					WCHAR* filename = destBuffer.data();
 					while ( 0 != *filename ) {
 						const DWORD attributes = GetFileAttributes( filename );
 						if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
@@ -352,7 +361,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 						}
 						filename += ( 1 + wcslen( filename ) );
 					}
-					delete [] destBuffer;
 					vuplayer->OnCommandLineFiles( filenames );
 				}
 			}
@@ -374,12 +382,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 				previousMediaInfo = nullptr;
 				delete updatedMediaInfo;
 				updatedMediaInfo = nullptr;
-			}
-			break;
-		}
-		case MSG_LIBRARYREFRESHED : {
-			if ( nullptr != vuplayer ) {
-				vuplayer->OnHandleLibraryRefreshed();
 			}
 			break;
 		}

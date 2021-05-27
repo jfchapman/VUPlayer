@@ -12,7 +12,7 @@ static const wchar_t s_SplitClass[] = L"VUSplitClass";
 static const int s_MinSplit = static_cast<int>( 200 * GetDPIScaling() );
 
 // Maximum split width
-static const int s_MaxSplit = static_cast<int>( 500 * GetDPIScaling() );
+static const int s_MaxSplit = static_cast<int>( 600 * GetDPIScaling() );
 
 // Default split width
 static const int s_DefaultSplit = static_cast<int>( 303 * GetDPIScaling() );
@@ -23,8 +23,9 @@ LRESULT CALLBACK WndSplit::SplitProc( HWND hwnd, UINT message, WPARAM wParam, LP
 	if ( nullptr != wndSplit ) {
 		switch ( message ) {
 			case WM_PAINT : {
-				PAINTSTRUCT ps;
+				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
+				FillRect( ps.hdc, &ps.rcPaint, HBRUSH( COLOR_3DFACE + 1 ) );
 				EndPaint( hwnd, &ps );
 				break;
 			}
@@ -100,7 +101,6 @@ WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStat
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof( WNDCLASSEX );
 	wc.hCursor = LoadCursor( 0, IDC_SIZEWE );
-	wc.hbrBackground = reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 );
 	wc.hInstance = instance;
 	wc.lpfnWndProc = SplitProc;
 	wc.lpszClassName = s_SplitClass;
@@ -265,15 +265,9 @@ void WndSplit::Resize()
 		}
 
 		RedrawWindow( m_hWnd, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW );
+		RedrawWindow( m_hParent, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW );
 		RedrawWindow( m_hTree, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW );
 		RedrawWindow( m_hList, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW );
 		RedrawWindow( m_hVisual, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW );
-
-		InvalidateRect( m_hParent, &invalidParentRect, TRUE /*erase*/ );
 	}
-}
-
-void WndSplit::SetRebarWindowHandle( const HWND hwnd )
-{
-	m_hRebar = hwnd;
 }

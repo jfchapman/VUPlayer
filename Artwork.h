@@ -8,22 +8,25 @@ public:
 	// 'wndVisual' - Visual container window.
 	Artwork( WndVisual& wndVisual );
 
-	virtual ~Artwork();
+	~Artwork() override;
 
 	// Returns the required visual height, based on a given width.
-	virtual int GetHeight( const int width );
+	int GetHeight( const int width ) override;
 
 	// Shows the visual.
-	virtual void Show();
+	void Show() override;
 
 	// Hides the visual.
-	virtual void Hide();
+	void Hide() override;
 
 	// Called when the visual needs repainting.
-	virtual void OnPaint();
+	void OnPaint() override;
 
 	// Called when the visual settings have changed.
-	virtual void OnSettingsChanged();
+	void OnSettingsChange() override;
+
+	// Called when the system colours have changed.
+	void OnSysColorChange() override;
 
 private:
 	// Loads the artwork resource from 'mediaInfo', using the 'deviceContext'.
@@ -35,13 +38,13 @@ private:
 	// Returns the artwork bitmap from 'mediaInfo', or null if a bitmap could not be loaded.
 	std::unique_ptr<Gdiplus::Bitmap> GetArtworkBitmap( const MediaInfo& mediaInfo );
 
-	// Background brush.
-	ID2D1SolidColorBrush* m_Brush;
-
 	// Currently displayed bitmap.
 	ID2D1Bitmap* m_Bitmap;
 
 	// Currently displayed artwork ID.
 	std::wstring m_ArtworkID;
+
+	// The previous drawan size.
+	D2D1_SIZE_F m_PreviousSize;
 };
 

@@ -13,7 +13,7 @@ EncoderFlac::~EncoderFlac()
 {
 }
 
-bool EncoderFlac::Open( std::wstring& filename, const long sampleRate, const long channels, const long bitsPerSample, const std::string& /*settings*/ )
+bool EncoderFlac::Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> bitsPerSample, const std::string& /*settings*/ )
 {
 	bool success = false;
 	filename += L".flac";
@@ -25,11 +25,12 @@ bool EncoderFlac::Open( std::wstring& filename, const long sampleRate, const lon
 		set_verify( true );
 		set_total_samples_estimate( 0 );
 
-		switch ( bitsPerSample ) {
+		const long bps = bitsPerSample.value_or( 0 );
+		switch ( bps ) {
 			case 8 :
 			case 16 :
 			case 24 : {
-				set_bits_per_sample( bitsPerSample );
+				set_bits_per_sample( bps );
 				break;
 			}
 			default : {

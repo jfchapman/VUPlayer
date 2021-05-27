@@ -38,3 +38,8 @@ void Visual::DoRender()
 {
 	m_WndVisual.DoRender();
 }
+
+bool Visual::IsHardwareAccelerationEnabled() const
+{
+	return m_WndVisual.IsHardwareAccelerationEnabled();
+}

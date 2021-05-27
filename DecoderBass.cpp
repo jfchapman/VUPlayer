@@ -12,6 +12,129 @@ static const float sFadeOutLength = 15.0f;
 // Maximum length of silence to return when a URL stream stalls, in seconds.
 static const float sMaxSilenceURL = 10.0f;
 
+#include <array>
+#include <fstream>
+#include <optional>
+
+// A class to weed out problematic Impulse Tracker files for BASS v2.4.15.0 (resolved in the next release).
+class CheckIT
+{
+public:
+	// Returns true if 'path' is an Impulse Tracker file where the last sample is compressed & truncated.
+	static bool IsLastSampleCompressedAndTruncated( const std::filesystem::path& path )
+	{
+		bool lastSampleTruncated = false;
+		if ( std::ifstream stream( path, std::ios::binary | std::ios::in ); stream.is_open() ) {
+			if ( const auto impm = ReadString( stream, 4 ); impm.has_value() && ( "IMPM" == impm.value() ) ) {
+				stream.seekg( 0, std::ios_base::end );
+				const unsigned long long filesize = unsigned long long( stream.tellg() );
+				stream.seekg( 0, std::ios_base::beg );
+
+				stream.seekg( 0x20, std::ios_base::beg );
+				const auto ordNum = ReadWord( stream );
+				const auto insNum = ReadWord( stream );
+				const auto smpNum = ReadWord( stream );
+				if ( ordNum.has_value() && insNum.has_value() && smpNum.has_value() ) {
+					unsigned long offset = 0xc0 + ordNum.value() + insNum.value() * 4;
+					stream.seekg( offset, std::ios_base::beg );
+					std::set<unsigned long> sampleHeaders;
+					for ( unsigned long smpIdx = 0; smpIdx < smpNum; smpIdx++ ) {
+						if ( const auto sampleHeader = ReadLong( stream ); sampleHeader.has_value() ) {
+							sampleHeaders.insert( sampleHeader.value() );
+						}
+					}
+
+					using SampleInfo = std::tuple<unsigned long /*samplePointer*/, unsigned long /*sampleCount*/, bool /*16-bit*/, bool /*stereo*/, bool /*compressed*/>; 
+					std::set<SampleInfo> samples;
+					for ( const auto sampleHeader : sampleHeaders ) {
+						stream.seekg( sampleHeader, std::ios_base::beg );
+						if ( const auto imps = ReadString( stream, 4 ); imps.has_value() && ( "IMPS" == imps.value() ) ) {
+							stream.seekg( 0x12 + sampleHeader, std::ios_base::beg );
+							if ( const auto flags = ReadByte( stream ); flags.has_value() ) {
+								stream.seekg( 0x30 + sampleHeader, std::ios_base::beg );
+								if ( const auto sampleCount = ReadLong( stream ); sampleCount.has_value() && sampleCount.value() > 0 ) {
+									stream.seekg( 0x48 + sampleHeader, std::ios_base::beg );
+									if ( const auto samplePointer = ReadLong( stream ); samplePointer.has_value() ) {
+										samples.insert( std::make_tuple( samplePointer.value(), sampleCount.value(), 0x02 & flags.value(), 0x04 & flags.value(), 0x08 & flags.value() ) );
+									}
+								}
+							}
+						}
+					}
+
+					if ( !samples.empty() ) {
+						const auto& [ samplePointer, sampleCount, is16Bit, stereo, compressed ] = *samples.rbegin();
+						if ( compressed ) {
+							const unsigned long samplesPerBlock = is16Bit ? 0x4000 : 0x8000;
+							const unsigned long totalSamples = stereo ? ( 2 * sampleCount ) : sampleCount;
+							unsigned long samplesRead = 0;
+							stream.seekg( samplePointer, std::ios_base::beg );
+							while ( !lastSampleTruncated && ( samplesRead < totalSamples ) ) {
+								if ( const auto blockSize = ReadWord( stream ); blockSize.has_value() ) {
+									const unsigned long long streamPos = unsigned long long( stream.tellg() );
+									lastSampleTruncated = streamPos + blockSize.value() > filesize;
+									if ( !lastSampleTruncated ) {
+										samplesRead += samplesPerBlock;
+										stream.seekg( blockSize.value(), std::ios_base::cur );
+									}               
+								} else {
+									lastSampleTruncated = true;
+								}                
+							}
+						}
+					}
+				}
+			}
+		}
+		return lastSampleTruncated;
+	}
+
+private:
+	static std::optional<unsigned char> ReadByte( std::ifstream& stream )
+	{
+		std::optional<unsigned char> result;
+		char b;
+		stream.read( &b, 1 );
+		if ( stream.good() ) {
+			result = unsigned char( b );    
+		}
+		return result;
+	}
+
+	static std::optional<unsigned long> ReadWord( std::ifstream& stream )
+	{
+		std::optional<unsigned long> result;
+		std::array<char, 2> b;
+		stream.read( b.data(), 2 );
+		if ( stream.good() ) {
+			result = unsigned long( unsigned char( b[ 1 ] ) << 8 | unsigned char( b[ 0 ] ) );    
+		}
+		return result;
+	}
+
+	static std::optional<unsigned long> ReadLong( std::ifstream& stream )
+	{
+		std::optional<unsigned long> result;
+		std::array<char, 4> b;
+		stream.read( b.data(), 4 );
+		if ( stream.good() ) {
+			result = unsigned long( unsigned char( b[ 3 ] ) << 24 | unsigned char( b[ 2 ] ) << 16 | unsigned char( b[ 1 ] ) << 8 | unsigned char( b[ 0 ] ) );
+		}
+		return result;
+	}
+
+	static std::optional<std::string> ReadString( std::ifstream& stream, const unsigned long length )
+	{
+		std::optional<std::string> result;
+		std::vector<char> b( length );
+		stream.read( b.data(), length );
+		if ( stream.good() ) {
+			result = std::string( b.begin(), b.end() );
+		}
+		return result;
+	}
+};
+
 DecoderBass::DecoderBass( const std::wstring& filename ) :
 	Decoder(),
 	m_Handle( 0 ),
@@ -34,7 +157,7 @@ DecoderBass::DecoderBass( const std::wstring& filename ) :
 	} else {
 		// Try loading a stream.
 		m_Handle = BASS_StreamCreateFile( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, flags );
-		if ( 0 == m_Handle ) {
+		if ( ( 0 == m_Handle ) && !CheckIT::IsLastSampleCompressedAndTruncated( filename ) ) {
 			// Try loading a music file.
 			flags = BASS_UNICODE | BASS_SAMPLE_FLOAT | BASS_MUSIC_DECODE | BASS_MUSIC_NOSAMPLE;
 			m_Handle = BASS_MusicLoad( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, flags, 1 /*freq*/ );
@@ -191,9 +314,9 @@ float DecoderBass::Seek( const float position )
 	return seconds;
 }
 
-float DecoderBass::CalculateTrackGain( CanContinue canContinue, const float secondsLimit )
+std::optional<float> DecoderBass::CalculateTrackGain( CanContinue canContinue, const float secondsLimit )
 {
-	return m_IsURL ? NAN : Decoder::CalculateTrackGain( canContinue, secondsLimit );
+	return m_IsURL ? std::nullopt : Decoder::CalculateTrackGain( canContinue, secondsLimit );
 }
 
 void DecoderBass::OnMetadata( const DWORD channel )

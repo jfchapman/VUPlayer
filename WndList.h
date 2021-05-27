@@ -64,8 +64,14 @@ public:
 	// Called when an 'item' is updated in the 'playlist'.
 	void OnItemUpdated( Playlist* playlist, const Playlist::Item& item );
 
-	// Returns the highlight colour.
+	// Returns the highlight colour (which is applied when not in high contrast mode).
 	COLORREF GetHighlightColour() const;
+
+	// Returns the status icon colour (which is applied when not in high contrast mode).
+	COLORREF GetStatusIconColour() const;
+
+	// Return whether the status icon is enabled.
+	bool GetStatusIconEnabled() const;
 
 	// Called when label editing begins on an 'item'.
 	// Returns TRUE if label editing is allowed, FALSE if not.
@@ -152,18 +158,25 @@ public:
 	// 'commandID' - command ID indicating which colour to change.
 	void OnSelectColour( const UINT commandID );
 
-	// Cuts or copies selected files from the playlist into the clipboard.
+	// Cuts or copies selected files from the playlist into the clipboard (if a list item label is not being edited).
 	// 'cut' - true to cut the files, false to copy the files.
 	void OnCutCopy( const bool cut );
 
-	// Pastes files into the playlist from the clipboard.
+	// Pastes files into the playlist from the clipboard (if a list item label is not being edited).
 	void OnPaste();
 
-	// Selects all list control items.
-	void SelectAllItems();
+	// Selects all list control items (if a list item label is not being edited).
+	void OnSelectAll();
 
 	// Selects, if present, the 'itemID'.
 	void SelectPlaylistItem( const long itemID );
+
+	// Updates the status icon.
+	void UpdateStatusIcon();
+
+	// Called on a system colour change event.
+	// 'isHighContrast' - indicates whether high contrast mode is active.
+	void OnSysColorChange( const bool isHighContrast );
 
 private:
 	// Column format information.
@@ -190,10 +203,13 @@ private:
 	static LRESULT CALLBACK EditControlProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
 	// Maps a column type to the column format.
-	typedef std::map<Playlist::Column,ColumnFormat> ColumnFormats;
+	using ColumnFormats = std::map<Playlist::Column,ColumnFormat>;
 
-	// Maps an item ID to a file name.
-	typedef std::map<long,std::wstring> ItemFilenames;
+	// Maps a filename to an item ID collection.
+	using FilenameToIDs = std::map<std::wstring, std::set<long>>;
+
+	// Maps an output state to an icon index.
+	using IconMap = std::map<Output::State, int>;
 
 	// Returns the default edit control window procedure.
 	WNDPROC GetEditControlWndProc();
@@ -258,6 +274,27 @@ private:
 	// 'item' - updated playlist item.
 	void ItemUpdatedHandler( const Playlist::Item* item );
 
+	// Creates the image list for the status icon.
+	void CreateImageList();
+
+	// Returns the list control index of the playlist 'itemID', or -1 if the item was not found.
+	int FindItemIndex( const long itemID );
+
+	// Updates the visibility of the status icon column.
+	void ShowStatusIconColumn();
+
+	// Returns the size of the status icon.
+	int GetStatusIconSize() const;
+
+	// Sets the list control colours.
+	void SetColours();
+
+	// Returns the font colour (which is applied when not in high contrast mode).
+	COLORREF GetFontColour() const;
+
+	// Returns the background colour (which is applied when not in high contrast mode).
+	COLORREF GetBackgroundColour() const;
+
 	// Column format information.
 	static ColumnFormats s_ColumnFormats;
 
@@ -282,8 +319,17 @@ private:
 	// Output object.
 	Output& m_Output;
 
+	// Font colour.
+	COLORREF m_ColourFont;
+
+	// Background colour.
+	COLORREF m_ColourBackground;
+
 	// Highlight colour.
 	COLORREF m_ColourHighlight;
+
+	// Status icon colour.
+	COLORREF m_ColourStatusIcon;
 
 	// The font resulting from the font selection dialog.
 	HFONT m_ChosenFont;
@@ -306,9 +352,21 @@ private:
 	// Cursor to set back when a drag operation finishes.
 	HCURSOR m_OldCursor;
 
-	// Maps an item ID to a filename.
-	ItemFilenames m_ItemFilenames;
+	// Maps a filename to an item ID collection.
+	FilenameToIDs m_FilenameToIDs;
 
 	// The filename to select when setting the playlist.
 	std::wstring m_FilenameToSelect;
+
+	// Maps an output state to an icon index.
+	IconMap m_IconMap;
+
+	// Indicates the item ID that currently has a status icon, and the state.
+	std::pair<int, Output::State> m_IconStatus;
+
+	// Indicates whether the status icon is enabled.
+	bool m_EnableStatusIcon;
+
+	// Indicates whether high contrast mode is active.
+	bool m_IsHighContrast;
 };

@@ -8,6 +8,7 @@
 #include "Settings.h"
 
 #include <atomic>
+#include <functional>
 
 // Message ID for signalling that playback needs to be restarted from a playlist item ID (wParam).
 static const UINT MSG_RESTARTPLAYBACK = WM_APP + 191;
@@ -41,7 +42,10 @@ public:
 	};
 
 	// Maps a device ID to its description.
-	typedef std::map<int,std::wstring> Devices;
+	using Devices = std::map<int,std::wstring>;
+
+	// Callback function for when the output 'playlist' changes.
+	using PlaylistChangeCallback = std::function<void( Playlist::Ptr playlist )>;
 
 	// Starts playback.
 	// 'startID' - Playlist ID at which to start playback (or zero to start playback at the first playlist item).
@@ -185,12 +189,15 @@ public:
 	// Returns the available handlers.
 	const Handlers& GetHandlers() const;
 
+	// Sets the 'callback' function for when the output playlist changes.
+	void SetPlaylistChangeCallback( PlaylistChangeCallback callback );
+
 private:
 	// Output queue.
 	typedef std::vector<Item> Queue;
 
 	// Maps a playlist item ID to a gain estimate.
-	typedef std::map<long,float> GainEstimateMap;
+	typedef std::map<long, std::optional<float>> GainEstimateMap;
 
 	// Maps an ID to a stream handle.
 	typedef std::map<int,HSTREAM> StreamMap;
@@ -537,4 +544,7 @@ private:
 
 	// Stream title queue mutex.
 	std::mutex m_StreamTitleMutex;
+
+	// Callback function for when the output playlist changes.
+	PlaylistChangeCallback m_OnPlaylistChangeCallback;
 };

@@ -38,8 +38,8 @@ protected:
 	void error_callback( FLAC__StreamDecoderErrorStatus ) override;
 
 private:
-	// Calculates the bitrate of the FLAC stream.
-	float CalculateBitrate();
+	// Calculates the bitrate of the FLAC stream (returns nullopt if the bitrate was not calculated).
+	std::optional<float> CalculateBitrate();
 
 	// Input file stream.
 	std::ifstream m_FileStream;

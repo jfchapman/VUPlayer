@@ -14,22 +14,29 @@ public:
 	virtual ~WndTrackbarVolume();
 
 	// Returns the tooltip text for the control.
-	virtual const std::wstring& GetTooltipText();
+	const std::wstring& GetTooltipText() override;
 
 	// Called when the trackbar position has finished changing.
-	virtual void OnPositionChanged( const int position );
+	void OnPositionChanged( const int position ) override;
 
 	// Called when the user drags the trackbar thumb.
-	virtual void OnDrag( const int position );
+	void OnDrag( const int position ) override;
 
 	// Sets the trackbar type.
-	virtual void SetType( const Type type );
-
-	// Displays the context menu at the specified 'position', in screen coordinates.
-	virtual void OnContextMenu( const POINT& position );
+	void SetType( const Type type ) override;
 
 	// Updates the trackbar to reflect the current output state.
 	void Update();
+
+	// Displays the context menu for the rebar item at the specified 'position', in screen coordinates.
+	// Return true if the rebar item handled the context menu, or false to display the rebar context menu.
+	bool ShowContextMenu( const POINT& position ) override;
+
+	// Gets the rebar item fixed width.
+	std::optional<int> GetWidth() const override;
+
+	// Called when the rebar item 'settings' have been changed.
+	void OnChangeRebarItemSettings( Settings& settings ) override;
 
 private:
 	// Returns the control type specified by 'settings'.
@@ -53,6 +60,12 @@ private:
 	// Returns the trackbar position corresponding to the pitch adjustment.
 	int GetPositionFromPitch( const float pitch ) const;
 
+	// Sets the control width, based on the 'settings'.
+	void SetWidth( Settings& settings );
+
 	// Tooltip text.
 	std::wstring m_Tooltip;
+
+	// Control width.
+	std::optional<int> m_Width;
 };

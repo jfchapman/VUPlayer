@@ -240,7 +240,7 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 	if ( ( m_Items.size() > 1 ) || ( !m_Items.empty() && !m_Items.front().Duplicates.empty() ) ) {
 		const int bufSize = 64;
 		WCHAR buffer[ bufSize ] = {};
-		LoadString( m_hInst, IDS_MULTIPLE_TRACKS, buffer, bufSize );
+		LoadString( m_hInst, IDS_MULTIPLE_SOURCES, buffer, bufSize );
 		SetDlgItemText( hwnd, IDC_TRACKINFO_FILENAME, buffer );
 
 		auto iter = m_Items.begin();
@@ -423,28 +423,25 @@ void DlgTrackInfo::OnOwnerDraw( DRAWITEMSTRUCT* drawItemStruct )
 void DlgTrackInfo::OnChooseArtwork( HWND hwnd )
 {
 	if ( const auto filename = ChooseArtwork( m_hInst, hwnd, m_Settings.GetLastFolder( s_ArtworkFolderSetting ) ); !filename.empty() ) {
-		try {
-			std::ifstream fileStream;
-			fileStream.open( filename, std::ios::binary | std::ios::in );
-			if ( fileStream.is_open() ) {
-				fileStream.seekg( 0, fileStream.end );
-				const int streamSize = static_cast<int>( fileStream.tellg() );
-				fileStream.seekg( 0, fileStream.beg );
-				if ( streamSize > 0 ) {
-					std::vector<BYTE> imageBytes( streamSize );
-					char* imageBuffer = reinterpret_cast<char*>( imageBytes.data() );
-					fileStream.read( imageBuffer, streamSize );
-					const std::string encodedImage = ConvertImage( imageBytes );
-					const std::vector<BYTE> image = Base64Decode( encodedImage );
-					if ( !image.empty() ) {
-						m_ChosenArtworkImage = image;
-						m_ClosingInfo.SetArtworkID( std::wstring() );
-					}
+		std::ifstream fileStream;
+		fileStream.open( filename, std::ios::binary | std::ios::in );
+		if ( fileStream.is_open() ) {
+			fileStream.seekg( 0, fileStream.end );
+			const int streamSize = static_cast<int>( fileStream.tellg() );
+			fileStream.seekg( 0, fileStream.beg );
+			if ( streamSize > 0 ) {
+				std::vector<BYTE> imageBytes( streamSize );
+				char* imageBuffer = reinterpret_cast<char*>( imageBytes.data() );
+				fileStream.read( imageBuffer, streamSize );
+				const std::string encodedImage = ConvertImage( imageBytes );
+				const std::vector<BYTE> image = Base64Decode( encodedImage );
+				if ( !image.empty() ) {
+					m_ChosenArtworkImage = image;
+					m_ClosingInfo.SetArtworkID( std::wstring() );
 				}
-				fileStream.close();
-			}			
-		} catch ( ... ) {
-		}
+			}
+			fileStream.close();
+		}			
 
 		const std::filesystem::path path( filename );
 		m_Settings.SetLastFolder( s_ArtworkFolderSetting, path.parent_path() );
@@ -517,15 +514,12 @@ void DlgTrackInfo::OnExportArtwork( HWND hwnd )
 			ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
 			if ( FALSE != GetSaveFileName( &ofn ) ) {
 				const std::wstring filename = ofn.lpstrFile;
-				try {
-					std::ofstream fileStream;
-					fileStream.open( filename, std::ios::binary | std::ios::out | std::ios::trunc );
-					if ( fileStream.is_open() ) {
-						const char* image = reinterpret_cast<const char*>( &imageBytes[ 0 ] );
-						fileStream.write( image, imageSize );
-						fileStream.close();
-					}
-				} catch ( ... ) {
+				std::ofstream fileStream;
+				fileStream.open( filename, std::ios::binary | std::ios::out | std::ios::trunc );
+				if ( fileStream.is_open() ) {
+					const char* image = reinterpret_cast<const char*>( &imageBytes[ 0 ] );
+					fileStream.write( image, imageSize );
+					fileStream.close();
 				}
 				m_Settings.SetLastFolder( s_ArtworkFolderSetting, filename.substr( 0, ofn.nFileOffset ) );
 			}
@@ -591,7 +585,7 @@ void DlgTrackInfo::OnCutCopyArtwork( HWND hwnd, const bool cut )
 					BITMAPINFO* bitmapInfo = reinterpret_cast<BITMAPINFO*>( &dibSection.dsBmih );
 					HBITMAP dibBitmap = CreateDIBitmap( dc, &bitmapInfoHeader, CBM_INIT, bits, bitmapInfo, DIB_RGB_COLORS );
 					if ( nullptr != dibBitmap ) {
-						if ( FALSE != OpenClipboard( hwnd ) ) {
+						if ( OpenClipboard( hwnd ) ) {
 							EmptyClipboard();
 							if ( ( nullptr != SetClipboardData( CF_BITMAP, dibBitmap ) ) && cut ) {
 								OnClearArtwork( hwnd );
@@ -610,7 +604,7 @@ void DlgTrackInfo::OnCutCopyArtwork( HWND hwnd, const bool cut )
 
 void DlgTrackInfo::OnPasteArtwork( HWND hwnd )
 {
-	if ( FALSE != OpenClipboard( hwnd ) ) {
+	if ( OpenClipboard( hwnd ) ) {
 		HANDLE handle = GetClipboardData( CF_BITMAP );
 		if ( nullptr != handle ) {
 			HBITMAP hBitmap = reinterpret_cast<HBITMAP>( handle );
@@ -622,8 +616,8 @@ void DlgTrackInfo::OnPasteArtwork( HWND hwnd )
 					UINT numEncoders = 0;
 					UINT bufferSize = 0;
 					if ( ( Gdiplus::Ok == Gdiplus::GetImageEncodersSize( &numEncoders, &bufferSize ) ) && ( bufferSize > 0 ) ) {
-						char* buffer = new char[ bufferSize ];
-						Gdiplus::ImageCodecInfo* imageCodecInfo = reinterpret_cast<Gdiplus::ImageCodecInfo*>( buffer );
+						std::vector<char> buffer( bufferSize, 0 );
+						Gdiplus::ImageCodecInfo* imageCodecInfo = reinterpret_cast<Gdiplus::ImageCodecInfo*>( buffer.data() );
 						if ( Gdiplus::Ok == Gdiplus::GetImageEncoders( numEncoders, bufferSize, imageCodecInfo ) ) {
 							for ( UINT index = 0; index < numEncoders; index++ ) {
 								if ( Gdiplus::ImageFormatPNG == imageCodecInfo[ index ].FormatID ) {
@@ -632,7 +626,6 @@ void DlgTrackInfo::OnPasteArtwork( HWND hwnd )
 								}
 							}
 						}
-						delete [] buffer;
 					}
 
 					IStream* stream = nullptr;

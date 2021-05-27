@@ -6,11 +6,6 @@ WndToolbarFavourites::WndToolbarFavourites( HINSTANCE instance, HWND parent, Set
 	WndToolbar( instance, parent, ID_TOOLBAR_FAVOURITES, settings, { IDI_FAVOURITES } )
 {
 	CreateButtons();
-
-	RECT rect = {};
-	SendMessage( GetWindowHandle(), TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>( &rect ) );
-	const int buttonCount = static_cast<int>( SendMessage( GetWindowHandle(), TB_BUTTONCOUNT, 0, 0 ) );
-	MoveWindow( GetWindowHandle(), 0 /*x*/, 0 /*y*/, ( rect.right - rect.left ) * buttonCount, rect.bottom - rect.top, TRUE /*repaint*/ );
 }
 
 void WndToolbarFavourites::Update( Output& /*output*/, const Playlist::Ptr playlist, const Playlist::Item& selectedItem )

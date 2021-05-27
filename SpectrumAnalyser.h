@@ -8,22 +8,25 @@ public:
 	// 'wndVisual' - Visual container window.
 	SpectrumAnalyser( WndVisual& wndVisual );
 
-	virtual ~SpectrumAnalyser();
+	~SpectrumAnalyser() override;
 
 	// Returns the required visual height, based on a given width.
-	virtual int GetHeight( const int width );
+	int GetHeight( const int width ) override;
 
 	// Shows the visual.
-	virtual void Show();
+	void Show() override;
 
 	// Hides the visual.
-	virtual void Hide();
+	void Hide() override;
 
 	// Called when the visual needs repainting.
-	virtual void OnPaint();
+	void OnPaint() override;
 
 	// Called when the visual settings have changed.
-	virtual void OnSettingsChanged();
+	void OnSettingsChange() override;
+
+	// Called when the system colours have changed.
+	void OnSysColorChange() override;
 
 private:
 	// Render thread procedure.

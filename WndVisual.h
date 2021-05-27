@@ -30,7 +30,7 @@ public:
 	// Gets the visual window handle.
 	HWND GetWindowHandle();
 
-	// Called when the control needs repainting.
+	// Called when the host window needs painting with the 'ps'.
 	void OnPaint( const PAINTSTRUCT& ps );
 
 	// Called when the control is resized.
@@ -91,11 +91,17 @@ public:
 	// Returns the command ID mappings for VUMeter decay rates.
 	std::map<UINT,float> GetVUMeterDecayRates() const;
 
-	// Sets the rebar window handle to 'hwnd'.
-	void SetRebarWindowHandle( const HWND hwnd );
-
 	// Called when the placeholder artwork has changed.
 	void OnPlaceholderArtworkChanged();
+
+	// Toggles hardware acceleration on/off.
+	void ToggleHardwareAccelerationEnabled();
+
+	// Returns whether hardware acceleration is enabled.
+	bool IsHardwareAccelerationEnabled() const;
+
+	// Called on a system colour change event.
+	void OnSysColorChange();
 
 private:
 	// Window procedure
@@ -110,9 +116,11 @@ private:
 	// Creates, if necessary, the Direct2D device context.
 	void CreateD2DDeviceContext();
 
-	// Resizes the Direct2D swap chain, if necessary.
-	// 'windowPos' - specific window size to use, otherwise resize to the client area.
-	HRESULT ResizeD2DSwapChain( const WINDOWPOS* windowPos = nullptr );
+	// Resizes the Direct2D swap chain to the 'width & 'height', if necessary.
+	HRESULT ResizeD2DSwapChain( const UINT width, const UINT height );
+
+	// Initialises the Direct2D device context.
+	HRESULT InitialiseDeviceContext();
 
 	// Frees Direct2D resources.
 	void ReleaseD2D();
@@ -158,5 +166,8 @@ private:
 
 	// Current visual ID.
 	long m_CurrentVisual;
+
+	// Whether hardware acceleration is enabled in the application settings.
+	bool m_HardwareAccelerationEnabled;
 };
 

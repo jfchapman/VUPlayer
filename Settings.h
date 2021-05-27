@@ -130,27 +130,32 @@ public:
 
 	// Returns the playlist control settings.
 	// 'columns' - out, column settings.
+	// 'showStatusIcon' - out, whether to show the list control status icon.
 	// 'font' - out, list control font.
 	// 'fontColour' - out, list control font colour.
 	// 'backgroundColour' - out, list control background colour.
 	// 'highlightColour' - out, list control highlight colour.
-	void GetPlaylistSettings( PlaylistColumns& columns, LOGFONT& font,
-			COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour );
+	// 'statusIconColour' - out, - list control status icon colour.
+	void GetPlaylistSettings( PlaylistColumns& columns, bool& showStatusIcon, LOGFONT& font,
+		COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& statusIconColour );
 
 	// Sets the playlist control settings.
 	// 'columns' - column settings.
+	// 'showStatusIcon' - whether to show the list control status icon.
 	// 'font' - list control font.
 	// 'fontColour' - list control font colour.
 	// 'backgroundColour' - list control background colour.
 	// 'highlightColour' - list control highlight colour.
-	void SetPlaylistSettings( const PlaylistColumns& columns, const LOGFONT& font,
-			const COLORREF& fontColour, const COLORREF& backgroundColour, const COLORREF& highlightColour );
+	// 'statusIconColour' - list control status icon colour.
+	void SetPlaylistSettings( const PlaylistColumns& columns, const bool showStatusIcon, const LOGFONT& font,
+		const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF statusIconColour );
 
 	// Returns the tree control settings.
 	// 'font' - out, tree control font.
 	// 'fontColour' - out, tree control font colour.
 	// 'backgroundColour' - out, tree control background colour.
 	// 'highlightColour' - out, tree control highlight colour.
+	// 'iconColour' - out, tree control icon colour.
 	// 'showFavourites' - out, whether Favourites is shown.
 	// 'showStreams' - out, whether Streams is shown.
 	// 'showAllTracks' - out, whether All Tracks is shown.
@@ -158,14 +163,15 @@ public:
 	// 'showAlbums' - out, whether Albums are shown.
 	// 'showGenres' - out, whether Genres are shown.
 	// 'showYears' - out, whether Years are shown.
-	void GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour,
-			bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears );
+	void GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour,
+		bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears );
 
 	// Sets the tree control settings.
 	// 'font' - tree control font.
 	// 'fontColour' - tree control font colour.
 	// 'backgroundColour' - tree control background colour.
 	// 'highlightColour' - tree control highlight colour.
+	// 'icocColour' - treee control icon colour.
 	// 'showFavourites' - whether Favourites is shown.
 	// 'showStreams' - whether Streams is shown.
 	// 'showAllTracks' - whether All Tracks is shown.
@@ -173,8 +179,8 @@ public:
 	// 'showAlbums' - whether Albums are shown.
 	// 'showGenres' - whether Genres are shown.
 	// 'showYears' - whether Years are shown.
-	void SetTreeSettings( const LOGFONT& font, const COLORREF& fontColour, const COLORREF& backgroundColour, const COLORREF& highlightColour,
-			const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears );
+	void SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF iconColour,
+		const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears );
 
 	// Gets the playlists.
 	Playlists GetPlaylists();
@@ -292,15 +298,15 @@ public:
 
 	// Gets the counter settings.
 	// 'font' - out, counter font.
-	// 'fontColour' - out, counter colour.
+	// 'fontColour' - out, font colour.
 	// 'showRemaining' - out, true to display remaining time, false for elapsed time.
-	void GetCounterSettings( LOGFONT& font,	COLORREF& colour, bool& showRemaining );
+	void GetCounterSettings( LOGFONT& font,	COLORREF& fontColour, bool& showRemaining );
 
 	// Sets the counter settings.
 	// 'font' - counter font.
-	// 'fontColour' - counter colour.
+	// 'fontColour' - font colour.
 	// 'showRemaining' - true to display remaining time, false for elapsed time.
-	void SetCounterSettings( const LOGFONT& font, const COLORREF colour, const bool showRemaining );
+	void SetCounterSettings( const LOGFONT& font, const COLORREF fontColour, const bool showRemaining );
 
 	// Gets the output settings.
 	// 'deviceName' - out, device name (or an empty string for the default device).
@@ -359,14 +365,18 @@ public:
 	// 'minimise' - out, whether to minimise to the notification area.
 	// 'singleClick' - out, single click action.
 	// 'doubleClick' - out, double click action.
-	void GetSystraySettings( bool& enable, bool& minimise, SystrayCommand& singleClick, SystrayCommand& doubleClick );
+	// 'tripleClick' - out, triple click action.
+	// 'quadClick' - out, quadruple click action.
+	void GetSystraySettings( bool& enable, bool& minimise, SystrayCommand& singleClick, SystrayCommand& doubleClick, SystrayCommand& tripleClick, SystrayCommand& quadClick );
 
 	// Sets notification area settings.
 	// 'enable' - whether the notification area icon is shown.
 	// 'minimise' - whether to minimise to the notification area.
 	// 'singleClick' - single click action.
 	// 'doubleClick' - double click action.
-	void SetSystraySettings( const bool enable, const bool minimise, const SystrayCommand singleClick, const SystrayCommand doubleClick );
+	// 'tripleClick' - triple click action.
+	// 'quadClick' - quadruple click action.
+	void SetSystraySettings( const bool enable, const bool minimise, const SystrayCommand singleClick, const SystrayCommand doubleClick, const SystrayCommand tripleClick, const SystrayCommand quadClick );
 
 	// Gets playback settings.
 	// 'randomPlay' - whether random playback is enabled.
@@ -524,6 +534,18 @@ public:
 
 	// Gets the button size which corresponds to the toolbar 'size'.
 	static int GetToolbarButtonSize( const ToolbarSize size );
+
+	// Gets the toolbar 'buttonColour' & 'backgroundColour'.
+	void GetToolbarColours( COLORREF& buttonColour, COLORREF& backgroundColour );
+
+	// Sets the toolbar 'buttonColour' & 'backgroundColour'.
+	void SetToolbarColours( const COLORREF buttonColour, const COLORREF backgroundColour );
+
+	// Returns whether hardware acceleration (for the visuals) is enabled.
+	bool GetHardwareAccelerationEnabled();
+
+	// Sets whether hardware acceleration (for the visuals) is enabled.
+	void SetHardwareAccelerationEnabled( const bool enabled );
 
 private:
 	// Updates the database to the current version if necessary.

@@ -1,15 +1,25 @@
 #include "WndTrackbarVolume.h"
 
 #include "resource.h"
+#include "Utility.h"
 #include "VUPlayer.h"
 
 #include <iomanip>
 #include <sstream>
 
+// Trackbar widths
+static const std::map<Settings::ToolbarSize, int> s_TrackbarWidths = {
+	{ Settings::ToolbarSize::Small, 130 },
+	{ Settings::ToolbarSize::Medium, 145 },
+	{ Settings::ToolbarSize::Large, 160 }
+};
+
 WndTrackbarVolume::WndTrackbarVolume( HINSTANCE instance, HWND parent, Output& output, Settings& settings ) :
 	WndTrackbar( instance, parent, output, settings, 0 /*minValue*/, 200 /*maxValue*/, GetControlType( settings ) ),
-	m_Tooltip()
+	m_Tooltip(),
+	m_Width()
 {
+	SetWidth( settings );
 	Update();
 }
 
@@ -169,7 +179,7 @@ void WndTrackbarVolume::SetType( const Type type )
 	}
 }
 
-void WndTrackbarVolume::OnContextMenu( const POINT& position )
+bool WndTrackbarVolume::ShowContextMenu( const POINT& position )
 {
 	HMENU menu = LoadMenu( GetInstanceHandle(), MAKEINTRESOURCE( IDR_MENU_TRACKBAR ) );
 	if ( NULL != menu ) {
@@ -214,6 +224,7 @@ void WndTrackbarVolume::OnContextMenu( const POINT& position )
 		}
 		DestroyMenu( menu );
 	}
+	return true;
 }
 
 WndTrackbar::Type WndTrackbarVolume::GetControlType( Settings& settings )
@@ -223,4 +234,24 @@ WndTrackbar::Type WndTrackbarVolume::GetControlType( Settings& settings )
 		type = Type::Pitch;
 	}
 	return type;
+}
+
+void WndTrackbarVolume::SetWidth( Settings& settings )
+{
+	m_Width = std::nullopt;
+	const auto toolbarSize = settings.GetToolbarSize();
+	if ( const auto iter = s_TrackbarWidths.find( toolbarSize ); s_TrackbarWidths.end() != iter ) {
+		m_Width = int( iter->second * GetDPIScaling() );
+	}
+}
+
+std::optional<int> WndTrackbarVolume::GetWidth() const
+{
+	return m_Width;
+}
+
+void WndTrackbarVolume::OnChangeRebarItemSettings( Settings& settings )
+{
+	SetWidth( settings );
+	WndTrackbar::OnChangeRebarItemSettings( settings );
 }

@@ -8,17 +8,14 @@ static const int s_MinHeight = static_cast<int>( 100 * GetDPIScaling() );
 
 Artwork::Artwork( WndVisual& wndVisual ) :
 	Visual( wndVisual ),
-	m_Brush( nullptr ),
 	m_Bitmap( nullptr ),
-	m_ArtworkID( L"Init" )
+	m_ArtworkID( L"Init" ),
+	m_PreviousSize( {} )
 {
 }
 
 Artwork::~Artwork()
 {
-	if ( nullptr != m_Brush ) {
-		m_Brush->Release();
-	}
 	if ( nullptr != m_Bitmap ) {
 		m_Bitmap->Release();
 	}
@@ -61,23 +58,17 @@ void Artwork::OnPaint()
 		LoadArtwork( mediaInfo, deviceContext );
 
 		const D2D1_SIZE_F targetSize = deviceContext->GetSize();
-
-		if ( nullptr == m_Brush ) {
-			deviceContext->CreateSolidColorBrush( D2D1::ColorF( GetSysColor( COLOR_3DFACE ) ), &m_Brush );
-		}
-		if ( nullptr != m_Brush ) {
-			const D2D1_RECT_F rect = D2D1::RectF( 0 /*left*/, 0 /*top*/, targetSize.width, targetSize.height );
-			deviceContext->FillRectangle( rect, m_Brush );
-		}
-
 		if ( nullptr != m_Bitmap ) {
 			const D2D1_SIZE_F bitmapSize = m_Bitmap->GetSize();
 			if ( ( bitmapSize.height > 0 ) && ( bitmapSize.width > 0 ) ) {
 				const D2D1_RECT_F srcRect = D2D1::RectF( 0.0f /*left*/, 0.0f /*top*/, bitmapSize.width /*right*/, bitmapSize.height /*bottom*/ );
-
 				const D2D1_RECT_F destRect = { 0, 0, targetSize.width, targetSize.height };
 				const FLOAT opacity = 1.0;
-				const D2D1_INTERPOLATION_MODE interpolationMode = D2D1_INTERPOLATION_MODE_HIGH_QUALITY_CUBIC;
+				
+				const D2D1_INTERPOLATION_MODE interpolationMode = ( ( m_PreviousSize.width == targetSize.width ) && ( m_PreviousSize.height == targetSize.height ) ) ?
+					D2D1_INTERPOLATION_MODE_HIGH_QUALITY_CUBIC : D2D1_INTERPOLATION_MODE_LINEAR;
+				m_PreviousSize = targetSize;
+
 				deviceContext->DrawBitmap( m_Bitmap, destRect, opacity, interpolationMode, NULL /*srcRect*/, NULL /*transform*/ );
 			}
 		}
@@ -85,11 +76,13 @@ void Artwork::OnPaint()
 	}
 }
 
-void Artwork::OnSettingsChanged()
+void Artwork::OnSettingsChange()
 {
-	if ( m_ArtworkID.empty() ) {
-		m_ArtworkID = L"Init";
-	}
+	FreeArtwork();
+}
+
+void Artwork::OnSysColorChange()
+{
 }
 
 void Artwork::LoadArtwork( const MediaInfo& mediaInfo, ID2D1DeviceContext* deviceContext )
@@ -120,7 +113,7 @@ void Artwork::FreeArtwork()
 		m_Bitmap->Release();
 		m_Bitmap = nullptr;
 	}
-	m_ArtworkID = std::wstring();
+	m_ArtworkID = L"Init";
 }
 
 std::unique_ptr<Gdiplus::Bitmap> Artwork::GetArtworkBitmap( const MediaInfo& mediaInfo )

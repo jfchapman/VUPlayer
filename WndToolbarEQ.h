@@ -12,10 +12,10 @@ public:
 
 	// Updates the toolbar state.
 	// 'eqVisible' - indicates whether the EQ dialog is visible.
-	virtual void Update( const bool eqVisible );
+	void Update( const bool eqVisible );
 
 	// Returns the tooltip resource ID corresponding to a 'commandID'.
-	virtual UINT GetTooltip( const UINT commandID ) const;
+	UINT GetTooltip( const UINT commandID ) const override;
 
 private:
 	// Creates the buttons.

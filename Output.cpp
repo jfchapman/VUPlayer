@@ -16,8 +16,8 @@
 // Output buffer length, in seconds.
 static const float s_BufferLength = 1.5f;
 
-// Cutoff point, in seconds, within which previous track replays the current track from the beginning.
-static const float s_PreviousTrackCutoff = 2.0f;
+// Cutoff point, in seconds, after which previous track replays the current track from the beginning.
+static const float s_PreviousTrackCutoff = 5.0f;
 
 // Amount of time to devote to estimating a gain value, in seconds.
 static const float s_GainPrecalcTime = 0.25f;
@@ -241,7 +241,8 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handl
 	m_PreloadedDecoder( {} ),
 	m_PreloadedDecoderMutex(),
 	m_StreamTitleQueue(),
-	m_StreamTitleMutex()
+	m_StreamTitleMutex(),
+	m_OnPlaylistChangeCallback( nullptr )
 {
 	InitialiseBass();
 	SetVolume( initialVolume );
@@ -502,6 +503,9 @@ void Output::Play( const Playlist::Ptr playlist, const long startID, const float
 	Stop();
 	if ( m_Playlist != playlist ) {
 		m_Playlist = playlist;
+		if ( nullptr != m_OnPlaylistChangeCallback ) {
+			m_OnPlaylistChangeCallback( m_Playlist );
+		}
 	}
 	Play( startID, seek );
 }
@@ -1218,21 +1222,20 @@ void Output::InitialiseBass()
 void Output::EstimateGain( Playlist::Item& item )
 {
 	if ( ( Settings::GainMode::Disabled != m_GainMode ) && !IsURL( item.Info.GetFilename() ) ) {
-		float gain = item.Info.GetGainAlbum();
-		if ( std::isnan( gain ) || ( Settings::GainMode::Track == m_GainMode ) ) {
-			const float trackGain = item.Info.GetGainTrack();
-			if ( !std::isnan( trackGain ) ) {
+		auto gain = item.Info.GetGainAlbum();
+		if ( !gain.has_value() || ( Settings::GainMode::Track == m_GainMode ) ) {
+			if ( const auto trackGain = item.Info.GetGainTrack(); trackGain.has_value() ) {
 				gain = trackGain;
 			}
 		}
-		if ( std::isnan( gain ) ) {
+		if ( !gain.has_value() ) {
 			const auto estimateIter = m_GainEstimateMap.find( item.ID );
 			if ( m_GainEstimateMap.end() != estimateIter ) {
 				item.Info.SetGainTrack( estimateIter->second );
 			} else {
 				Decoder::Ptr tempDecoder = OpenDecoder( item );
 				if ( tempDecoder ) {
-					const float trackGain = tempDecoder->CalculateTrackGain( [] () { return true; }, s_GainPrecalcTime );
+					const auto trackGain = tempDecoder->CalculateTrackGain( [] () { return true; }, s_GainPrecalcTime );
 					item.Info.SetGainTrack( trackGain );
 					m_GainEstimateMap.insert( GainEstimateMap::value_type( item.ID, trackGain ) );
 				}
@@ -1394,18 +1397,20 @@ void Output::ApplyGain( float* buffer, const long sampleCount, const Playlist::I
 		float preamp = eqEnabled ? m_EQPreamp : 0;
 
 		if ( Settings::GainMode::Disabled != m_GainMode ) {
-			float gain = item.Info.GetGainAlbum();
-			if ( std::isnan( gain ) || ( Settings::GainMode::Track == m_GainMode ) ) {
-				gain = item.Info.GetGainTrack();
+			auto gain = item.Info.GetGainAlbum();
+			if ( !gain.has_value() || ( Settings::GainMode::Track == m_GainMode ) ) {
+				if ( const auto trackGain = item.Info.GetGainTrack(); trackGain.has_value() ) {
+					gain = trackGain;
+				}
 			}
-			if ( !std::isnan( gain ) ) {
-				if ( gain < s_GainMin ) {
+			if ( gain.has_value() ) {
+				if ( gain.value() < s_GainMin ) {
 					gain = s_GainMin;
-				} else if ( gain > s_GainMax ) {
+				} else if ( gain.value() > s_GainMax ) {
 					gain = s_GainMax;
 				}
 				preamp += m_GainPreamp;
-				preamp += gain;
+				preamp += gain.value();
 			}
 		}
 
@@ -1917,11 +1922,13 @@ void Output::LoudnessPrecalcHandler()
 		}
 		auto item = items.begin();
 		while ( ( items.end() != item ) && canContinue() ) {
-			if ( std::isnan( item->Info.GetGainTrack() ) ) {
+			auto gain = item->Info.GetGainTrack();
+			if ( !gain.has_value() ) {
 				m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
-				if ( std::isnan( item->Info.GetGainTrack() ) ) {
-					const float gain = GainCalculator::CalculateTrackGain( item->Info.GetFilename(), m_Handlers, canContinue );
-					if ( !std::isnan( gain ) ) {
+				gain = item->Info.GetGainTrack();
+				if ( !gain.has_value() ) {
+					gain = GainCalculator::CalculateTrackGain( item->Info.GetFilename(), m_Handlers, canContinue );
+					if ( gain.has_value() ) {
 						const MediaInfo previousMediaInfo( item->Info );
 						item->Info.SetGainTrack( gain );
 						std::lock_guard<std::mutex> lock( m_PlaylistMutex );
@@ -2075,4 +2082,9 @@ void Output::SetStreamTitleQueue( const std::vector<std::pair<float /*seconds*/,
 {
 	std::lock_guard<std::mutex> lock( m_StreamTitleMutex );
 	m_StreamTitleQueue = queue;
+}
+
+void Output::SetPlaylistChangeCallback( PlaylistChangeCallback callback )
+{
+	m_OnPlaylistChangeCallback = callback;
 }

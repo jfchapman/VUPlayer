@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 
 // Decoder interface.
@@ -13,10 +14,10 @@ public:
 	virtual ~Decoder();
 
 	// Decoder shared pointer type.
-	typedef std::shared_ptr<Decoder> Ptr;
+	using Ptr = std::shared_ptr<Decoder>;
 
 	// A callback which returns true to continue.
-	typedef std::function< bool() > CanContinue;
+	using CanContinue = std::function<bool()>;
 
 	// Reads sample data.
 	// 'buffer' - output buffer (floating point format scaled to +/-1.0f).
@@ -37,16 +38,16 @@ public:
 	// Returns the number of channels.
 	long GetChannels() const;
 
-	// Returns the number of bits per sample.
-	long GetBPS() const;
+	// Returns the number of bits per sample (if relevant).
+	std::optional<long> GetBPS() const;
 
-	// Returns the bitrate in kbps.
-	float GetBitrate() const;
+	// Returns the bitrate in kbps (if relevant).
+	std::optional<float> GetBitrate() const;
 
-	// Returns the track gain, in dB.
+	// Returns the track gain, in dB, or nullopt if the calculation failed.
 	// 'canContinue' - callback which returns whether the calculation can continue.
 	// 'secondslimit' - number of seconds to devote to calculating an estimate, or 0 to perform a complete calculation.
-	virtual float CalculateTrackGain( CanContinue canContinue, const float secondsLimit = 0 );
+	virtual std::optional<float> CalculateTrackGain( CanContinue canContinue, const float secondsLimit = 0 );
 
 	// Skips any leading silence.
 	void SkipSilence();
@@ -68,10 +69,10 @@ protected:
 	void SetChannels( const long channels );
 
 	// Sets the number of 'bitsPerSample'.
-	void SetBPS( const long bitsPerSample );
+	void SetBPS( const std::optional<long> bitsPerSample );
 
 	// Sets the 'bitrate' in kbps.
-	void SetBitrate( const float bitrate );
+	void SetBitrate( const std::optional<float> bitrate );
 
 private:
 	// Duration in seconds.
@@ -84,8 +85,8 @@ private:
 	long m_Channels;
 
 	// Bits per sample (if relevant).
-	long m_BPS;
+	std::optional<long> m_BPS;
 
-	// Bitrate in kbps.
-	float m_Bitrate;
+	// Bitrate in kbps (if relevant).
+	std::optional<float> m_Bitrate;
 };

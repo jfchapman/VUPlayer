@@ -7,6 +7,8 @@
 #include "DlgAdvancedASIO.h"
 #include "DlgAdvancedWasapi.h"
 
+#include <array>
+
 std::vector<std::pair<Settings::OutputMode,int>> OptionsGeneral::s_OutputModes = {
 	std::make_pair( Settings::OutputMode::Standard, IDS_OPTIONS_MODE_STANDARD ),
 	std::make_pair( Settings::OutputMode::WASAPIExclusive, IDS_OPTIONS_MODE_WASAPI_EXCLUSIVE ),
@@ -81,9 +83,13 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 	// Notification area settings
 	bool systrayEnable = false;
 	bool systrayMinimise = false;
-	Settings::SystrayCommand systraySingleClick = Settings::SystrayCommand::None;
-	Settings::SystrayCommand systrayDoubleClick = Settings::SystrayCommand::None;
-	GetSettings().GetSystraySettings( systrayEnable, systrayMinimise, systraySingleClick, systrayDoubleClick );
+	std::array clickActions { 
+		Settings::SystrayCommand::None, 
+		Settings::SystrayCommand::None, 
+		Settings::SystrayCommand::None, 
+		Settings::SystrayCommand::None
+	};
+	GetSettings().GetSystraySettings( systrayEnable, systrayMinimise, clickActions[ 0 ], clickActions[ 1 ], clickActions[ 2 ], clickActions[ 3 ] );
 	if ( HWND hwndEnable = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_ENABLE ); nullptr != hwndEnable ) {
 		Button_SetCheck( hwndEnable, ( systrayEnable ? BST_CHECKED : BST_UNCHECKED ) );
 	}
@@ -91,34 +97,33 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		Button_SetCheck( hwndMinimise, ( systrayMinimise ? BST_CHECKED : BST_UNCHECKED ) );
 	}
 
-	HWND hwndSingleClick = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_SINGLECLICK );
-	HWND hwndDoubleClick = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_DOUBLECLICK );
-	if ( ( nullptr != hwndSingleClick ) && ( nullptr != hwndDoubleClick ) ) {
-		const int bufferSize = MAX_PATH;
-		WCHAR buffer[ bufferSize ];
-		const HINSTANCE instance = GetInstanceHandle();
-		LoadString( instance, IDS_OPTIONS_SYSTRAY_NOACTION, buffer, bufferSize );
-		ComboBox_AddString( hwndSingleClick, buffer );
-		ComboBox_AddString( hwndDoubleClick, buffer );
-		LoadString( instance, IDS_OPTIONS_SYSTRAY_PLAYPAUSE, buffer, bufferSize );
-		ComboBox_AddString( hwndSingleClick, buffer );
-		ComboBox_AddString( hwndDoubleClick, buffer );
-		LoadString( instance, IDS_OPTIONS_SYSTRAY_STOP, buffer, bufferSize );
-		ComboBox_AddString( hwndSingleClick, buffer );
-		ComboBox_AddString( hwndDoubleClick, buffer );
-		LoadString( instance, IDS_OPTIONS_SYSTRAY_PREVIOUS, buffer, bufferSize );
-		ComboBox_AddString( hwndSingleClick, buffer );
-		ComboBox_AddString( hwndDoubleClick, buffer );
-		LoadString( instance, IDS_OPTIONS_SYSTRAY_NEXT, buffer, bufferSize );
-		ComboBox_AddString( hwndSingleClick, buffer );
-		ComboBox_AddString( hwndDoubleClick, buffer );
-		LoadString( instance, IDS_OPTIONS_SYSTRAY_SHOWHIDE, buffer, bufferSize );
-		ComboBox_AddString( hwndSingleClick, buffer );
-		ComboBox_AddString( hwndDoubleClick, buffer );
-
-		ComboBox_SetCurSel( hwndSingleClick, static_cast<int>( systraySingleClick ) );
-		ComboBox_SetCurSel( hwndDoubleClick, static_cast<int>( systrayDoubleClick ) );
+	std::array clickIDs {
+		std::make_pair( IDC_OPTIONS_GENERAL_SYSTRAY_SINGLECLICK, clickActions[ 0 ] ),
+		std::make_pair( IDC_OPTIONS_GENERAL_SYSTRAY_DOUBLECLICK, clickActions[ 1 ] ),
+		std::make_pair( IDC_OPTIONS_GENERAL_SYSTRAY_TRIPLECLICK, clickActions[ 2 ] ),
+		std::make_pair( IDC_OPTIONS_GENERAL_SYSTRAY_QUADCLICK, clickActions[ 3 ] )
+	};
+	const int bufferSize = MAX_PATH;
+	WCHAR buffer[ bufferSize ];
+	const HINSTANCE instance = GetInstanceHandle();
+	for ( const auto [ clickID, clickAction ] : clickIDs ) {
+		if ( const auto hwndClick = GetDlgItem( hwnd, clickID ); nullptr != hwndClick ) {
+			LoadString( instance, IDS_OPTIONS_SYSTRAY_NOACTION, buffer, bufferSize );
+			ComboBox_AddString( hwndClick, buffer );
+			LoadString( instance, IDS_OPTIONS_SYSTRAY_PLAYPAUSE, buffer, bufferSize );
+			ComboBox_AddString( hwndClick, buffer );
+			LoadString( instance, IDS_OPTIONS_SYSTRAY_STOP, buffer, bufferSize );
+			ComboBox_AddString( hwndClick, buffer );
+			LoadString( instance, IDS_OPTIONS_SYSTRAY_PREVIOUS, buffer, bufferSize );
+			ComboBox_AddString( hwndClick, buffer );
+			LoadString( instance, IDS_OPTIONS_SYSTRAY_NEXT, buffer, bufferSize );
+			ComboBox_AddString( hwndClick, buffer );
+			LoadString( instance, IDS_OPTIONS_SYSTRAY_SHOWHIDE, buffer, bufferSize );
+			ComboBox_AddString( hwndClick, buffer );
+			ComboBox_SetCurSel( hwndClick, static_cast<int>( clickAction ) );
+		}	
 	}
+
 	EnableSystrayControls( hwnd );
 }
 
@@ -144,7 +149,9 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 	const bool minimise = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_MINIMISE ) ) );
 	const Settings::SystrayCommand singleClick = static_cast<Settings::SystrayCommand>( ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_SINGLECLICK ) ) );
 	const Settings::SystrayCommand doubleClick = static_cast<Settings::SystrayCommand>( ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_DOUBLECLICK ) ) );
-	GetSettings().SetSystraySettings( enable, minimise, singleClick, doubleClick );
+	const Settings::SystrayCommand tripleClick = static_cast<Settings::SystrayCommand>( ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_TRIPLECLICK ) ) );
+	const Settings::SystrayCommand quadClick = static_cast<Settings::SystrayCommand>( ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_QUADCLICK ) ) );
+	GetSettings().SetSystraySettings( enable, minimise, singleClick, doubleClick, tripleClick, quadClick );
 }
 
 void OptionsGeneral::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /*lParam*/ )
@@ -279,4 +286,8 @@ void OptionsGeneral::EnableSystrayControls( const HWND hwnd )
 	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_SINGLECLICK ), enable );
 	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_DOUBLELABEL ), enable );
 	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_DOUBLECLICK ), enable );
+	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_TRIPLELABEL ), enable );
+	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_TRIPLECLICK ), enable );
+	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_QUADLABEL ), enable );
+	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SYSTRAY_QUADCLICK ), enable );
 }

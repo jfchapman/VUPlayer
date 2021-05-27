@@ -88,9 +88,11 @@ INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 			if ( ( nullptr != nmhdr ) && ( nmhdr->code == LVN_ITEMCHANGED ) ) {
 				LPNMLISTVIEW nmListView = reinterpret_cast<LPNMLISTVIEW>( lParam );
 				DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
-				if ( nullptr != dialog ) {
+				if ( ( nullptr != dialog ) && !dialog->GetSuppressNotifications() ) {
+					dialog->SetSuppressNotifications( true );
 					dialog->UpdateCheckedItems( nmListView->iItem );
 					dialog->UpdateDestinationControls();
+					dialog->SetSuppressNotifications( false );
 				}
 			}
 			break;
@@ -118,7 +120,7 @@ DlgConvert::DlgConvert( const HINSTANCE instance, const HWND parent, Settings& s
 	m_Tracks( tracks ),
 	m_SelectedTracks( selectedTracks ),
 	m_CheckedItems(),
-	m_Initialised( false ),
+	m_SuppressNotifications( true ),
 	m_SelectedEncoder(),
 	m_Encoders(),
 	m_JoinFilename()
@@ -253,9 +255,8 @@ void DlgConvert::OnInitDialog( const HWND hwnd )
 	CheckDlgButton( m_hWnd, IDC_CONVERT_JOIN, extractJoin ? BST_CHECKED : BST_UNCHECKED );
 	CheckDlgButton( m_hWnd, IDC_CONVERT_INDIVIDUAL, !extractJoin ? BST_CHECKED : BST_UNCHECKED );
 
+	SetSuppressNotifications( false );
 	UpdateDestinationControls();
-
-	m_Initialised = true;
 }
 
 void DlgConvert::ChooseFolder()
@@ -324,55 +325,53 @@ void DlgConvert::UpdateSelectedEncoder()
 
 void DlgConvert::UpdateCheckedItems( const int itemIndex )
 {
-	if ( m_Initialised ) {
-		const HWND listWnd = GetDlgItem( m_hWnd, IDC_CONVERT_TRACKLIST );
-		if ( nullptr != listWnd ) {
-			const bool isChecked = ( FALSE != ListView_GetCheckState( listWnd, itemIndex ) );
+	const HWND listWnd = GetDlgItem( m_hWnd, IDC_CONVERT_TRACKLIST );
+	if ( nullptr != listWnd ) {
+		const bool isChecked = ( FALSE != ListView_GetCheckState( listWnd, itemIndex ) );
 
-			LVITEM item = {};
-			item.iItem = itemIndex;
-			item.mask = LVIF_PARAM;
-			const long itemID = ( TRUE == ListView_GetItem( listWnd, &item ) ) ? static_cast<long>( item.lParam ) : 0;
-			const bool wasChecked = ( m_CheckedItems.end() != m_CheckedItems.find( itemID ) );
+		LVITEM item = {};
+		item.iItem = itemIndex;
+		item.mask = LVIF_PARAM;
+		const long itemID = ( TRUE == ListView_GetItem( listWnd, &item ) ) ? static_cast<long>( item.lParam ) : 0;
+		const bool wasChecked = ( m_CheckedItems.end() != m_CheckedItems.find( itemID ) );
 
-			if ( isChecked != wasChecked ) {
-				if ( s_AllTracksID == itemID ) {
-					// Check or uncheck all tracks, as necessary
-					if ( isChecked ) {
-						m_CheckedItems.insert( s_AllTracksID );
-						for ( const auto& track : m_Tracks ) {
-							m_CheckedItems.insert( track.ID );
-						}
-					} else {
-						m_CheckedItems.clear();
+		if ( isChecked != wasChecked ) {
+			if ( s_AllTracksID == itemID ) {
+				// Check or uncheck all tracks, as necessary
+				if ( isChecked ) {
+					m_CheckedItems.insert( s_AllTracksID );
+					for ( const auto& track : m_Tracks ) {
+						m_CheckedItems.insert( track.ID );
 					}
-					
-					const int itemCount = ListView_GetItemCount( listWnd );
-					for ( int index = 0; index < itemCount; index++ ) {
-						ListView_SetCheckState( listWnd, index, isChecked );
-					}
-
 				} else {
-					if ( isChecked ) {
-						m_CheckedItems.insert( itemID );
-						if ( m_CheckedItems.size() == m_Tracks.size() ) {
-							m_CheckedItems.insert( s_AllTracksID );
-							ListView_SetCheckState( listWnd, s_AllTracksID, TRUE );
-						}
-					} else {
-						m_CheckedItems.erase( itemID );
-						if ( m_CheckedItems.erase( s_AllTracksID ) > 0 ) {
-							ListView_SetCheckState( listWnd, s_AllTracksID, FALSE );
-						}
-					}
+					m_CheckedItems.clear();
+				}
+					
+				const int itemCount = ListView_GetItemCount( listWnd );
+				for ( int index = 0; index < itemCount; index++ ) {
+					ListView_SetCheckState( listWnd, index, isChecked );
 				}
 
-				const HWND okWnd = GetDlgItem( m_hWnd, IDOK );
-				const BOOL wasOKEnabled = IsWindowEnabled( okWnd );
-				const BOOL isOKEnabled = m_CheckedItems.empty() ? FALSE : TRUE;
-				if ( wasOKEnabled != isOKEnabled ) {
-					EnableWindow( okWnd, isOKEnabled );
+			} else {
+				if ( isChecked ) {
+					m_CheckedItems.insert( itemID );
+					if ( m_CheckedItems.size() == m_Tracks.size() ) {
+						m_CheckedItems.insert( s_AllTracksID );
+						ListView_SetCheckState( listWnd, s_AllTracksID, TRUE );
+					}
+				} else {
+					m_CheckedItems.erase( itemID );
+					if ( m_CheckedItems.erase( s_AllTracksID ) > 0 ) {
+						ListView_SetCheckState( listWnd, s_AllTracksID, FALSE );
+					}
 				}
+			}
+
+			const HWND okWnd = GetDlgItem( m_hWnd, IDOK );
+			const BOOL wasOKEnabled = IsWindowEnabled( okWnd );
+			const BOOL isOKEnabled = m_CheckedItems.empty() ? FALSE : TRUE;
+			if ( wasOKEnabled != isOKEnabled ) {
+				EnableWindow( okWnd, isOKEnabled );
 			}
 		}
 	}
@@ -547,4 +546,14 @@ std::wstring DlgConvert::ChooseJoinFilename() const
 const std::wstring& DlgConvert::GetJoinFilename() const
 {
 	return m_JoinFilename;
+}
+
+bool DlgConvert::GetSuppressNotifications() const
+{
+	return m_SuppressNotifications;
+}
+
+void DlgConvert::SetSuppressNotifications( const bool suppress )
+{
+	m_SuppressNotifications = suppress;
 }

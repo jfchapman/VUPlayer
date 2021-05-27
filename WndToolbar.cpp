@@ -1,6 +1,8 @@
 #include "WndToolbar.h"
 
+#include "resource.h"
 #include "Utility.h"
+#include "VUPlayer.h"
 
 LRESULT CALLBACK WndToolbar::ToolbarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -8,8 +10,7 @@ LRESULT CALLBACK WndToolbar::ToolbarProc( HWND hwnd, UINT message, WPARAM wParam
 	if ( nullptr != wndToolbar ) {
 		switch ( message ) {
 			case WM_NOTIFY: {
-				LPNMHDR hdr = reinterpret_cast<LPNMHDR>( lParam );
-				if ( ( nullptr != hdr ) && ( TTN_GETDISPINFO == hdr->code ) ) {
+				if ( LPNMHDR hdr = reinterpret_cast<LPNMHDR>( lParam ); ( nullptr != hdr ) && ( TTN_GETDISPINFO == hdr->code ) ) {
 					LPNMTTDISPINFO info = reinterpret_cast<LPNMTTDISPINFO>( lParam );
 					const UINT resourceID = wndToolbar->GetTooltip( static_cast<UINT>( info->hdr.idFrom ) );
 					if ( resourceID > 0 ) {
@@ -22,12 +23,6 @@ LRESULT CALLBACK WndToolbar::ToolbarProc( HWND hwnd, UINT message, WPARAM wParam
 			case WM_DESTROY : {
 				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndToolbar->GetDefaultWndProc() ) );
 				SetWindowLongPtr( hwnd, GWLP_USERDATA, 0 );
-				break;
-			}
-			case WM_SIZE : {
-        UINT width = LOWORD( lParam );
-        UINT height = HIWORD( lParam );
-				height = width;
 				break;
 			}
 			default : {
@@ -44,9 +39,16 @@ WndToolbar::WndToolbar( HINSTANCE instance, HWND parent, const long long id, Set
 	m_DefaultWndProc( NULL ),
 	m_Settings( settings ),
 	m_IconList( iconList ),
-	m_ImageList( CreateImageList() )
+	m_ButtonColour( DEFAULT_ICONCOLOUR ),
+	m_BackgroundColour( GetSysColor( COLOR_WINDOW ) ),
+	m_ImageList( nullptr ),
+	m_IsHighContrast( IsHighContrastActive() ),
+	m_IsClassicTheme( IsClassicThemeActive() )
 {
-	const DWORD style = WS_CHILD | WS_VISIBLE | TBSTYLE_FLAT | CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NODIVIDER | TBSTYLE_TOOLTIPS;
+	m_Settings.GetToolbarColours( m_ButtonColour, m_BackgroundColour );
+	CreateImageList();
+
+	const DWORD style = WS_CHILD | WS_VISIBLE | CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NODIVIDER | TBSTYLE_TOOLTIPS | TBSTYLE_CUSTOMERASE | TBSTYLE_FLAT;
 	const int x = 0;
 	const int y = 0;
 	const int width = 0;
@@ -68,22 +70,9 @@ WNDPROC WndToolbar::GetDefaultWndProc()
 	return m_DefaultWndProc;
 }
 
-HWND WndToolbar::GetWindowHandle() const
-{
-	return m_hWnd;
-}
-
 HINSTANCE WndToolbar::GetInstanceHandle() const
 {
 	return m_hInst;
-}
-
-int WndToolbar::GetHeight() const
-{
-	RECT rect = {};
-	GetWindowRect( m_hWnd, &rect );
-	const int height = rect.bottom - rect.top;
-	return height;
 }
 
 bool WndToolbar::IsButtonEnabled( const UINT commandID ) const
@@ -130,21 +119,31 @@ int WndToolbar::GetButtonSize() const
 	return Settings::GetToolbarButtonSize( m_Settings.GetToolbarSize() );
 }
 
-HIMAGELIST WndToolbar::CreateImageList() const
+void WndToolbar::CreateImageList()
 {
 	const int buttonSize = GetButtonSize();
-	const int cx = buttonSize;
-	const int cy = buttonSize;
-
 	const int imageCount = static_cast<int>( m_IconList.size() );
-	HIMAGELIST imageList = ImageList_Create( cx, cy, ILC_COLOR32, 0 /*initial*/, imageCount /*grow*/ );
+	HIMAGELIST imageList = ImageList_Create( buttonSize, buttonSize, ILC_COLOR32, 0 /*initial*/, imageCount /*grow*/ );
+	const COLORREF colour = m_IsHighContrast ? GetSysColor( COLOR_HIGHLIGHT ) : m_ButtonColour;
 	for ( const auto& iconID : m_IconList ) {
-		HICON hIcon = static_cast<HICON>( LoadImage( GetInstanceHandle(), MAKEINTRESOURCE( iconID ), IMAGE_ICON, cx, cy, LR_DEFAULTCOLOR | LR_SHARED ) );
-		if ( NULL != hIcon ) {
-			ImageList_ReplaceIcon( imageList, -1, hIcon );
+		if ( const HBITMAP bitmap = CreateColourBitmap( m_hInst, iconID, buttonSize, colour ); nullptr != bitmap ) {
+			ImageList_Add( imageList, bitmap, nullptr );
 		}
 	}
-	return imageList;
+
+	SendMessage( m_hWnd, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>( imageList ) );
+	if ( nullptr != m_ImageList ) {
+		ImageList_Destroy( m_ImageList );
+	}
+	m_ImageList = imageList;
+
+	const DWORD previousSize = static_cast<DWORD>( SendMessage( m_hWnd, TB_GETBUTTONSIZE, 0, 0 ) );
+	const int previousWidth = LOWORD( previousSize );
+	const int previousHeight = HIWORD( previousSize );
+	if ( ( buttonSize != previousWidth ) || ( buttonSize != previousHeight ) ) {
+		SendMessage( m_hWnd, TB_SETBUTTONSIZE, 0, MAKELPARAM( buttonSize, buttonSize ) );
+		SendMessage( m_hWnd, TB_AUTOSIZE, 0, 0 );
+	}
 }
 
 HIMAGELIST WndToolbar::GetImageList() const
@@ -152,16 +151,65 @@ HIMAGELIST WndToolbar::GetImageList() const
 	return m_ImageList;
 }
 
-void WndToolbar::OnChangeToolbarSize()
+HWND WndToolbar::GetWindowHandle() const
 {
-	const HIMAGELIST imageList = CreateImageList();
-	SendMessage( m_hWnd, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>( imageList ) );
+	return m_hWnd;
+}
 
-	const DWORD previousSize = static_cast<DWORD>( SendMessage( m_hWnd, TB_GETBUTTONSIZE, 0, 0 ) );
-	const int previousWidth = LOWORD( previousSize );
-	const int previousHeight = HIWORD( previousSize );
+std::optional<int> WndToolbar::GetWidth() const
+{
+	RECT rect = {};
+	SendMessage( GetWindowHandle(), TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>( &rect ) );
+	const int buttonCount = static_cast<int>( SendMessage( GetWindowHandle(), TB_BUTTONCOUNT, 0, 0 ) );
+	return buttonCount * ( rect.right - rect.left );
+}
 
-	SendMessage( m_hWnd, TB_SETBUTTONSIZE, 0, MAKELPARAM( GetButtonSize(), GetButtonSize() ) );
-	ImageList_Destroy( m_ImageList );
-	m_ImageList = imageList;
+std::optional<int> WndToolbar::GetHeight() const
+{
+	RECT rect = {};
+	SendMessage( GetWindowHandle(), TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>( &rect ) );
+	return rect.bottom - rect.top;
+}
+
+bool WndToolbar::HasDivider() const
+{
+	return true;
+}
+
+bool WndToolbar::CanHide() const
+{
+	return true;
+}
+
+void WndToolbar::OnChangeRebarItemSettings( Settings& settings )
+{
+	settings.GetToolbarColours( m_ButtonColour, m_BackgroundColour );
+	CreateImageList();
+}
+
+std::optional<LRESULT> WndToolbar::OnCustomDraw( LPNMCUSTOMDRAW nmcd )
+{
+	std::optional<LRESULT> result;
+	if ( !m_IsHighContrast && !m_IsClassicTheme ) {
+		if ( CDDS_PREERASE == nmcd->dwDrawStage ) {
+			Gdiplus::Graphics graphics( nmcd->hdc );
+			Gdiplus::Color colour;
+			colour.SetFromCOLORREF( m_BackgroundColour );
+			graphics.Clear( colour );
+			result = CDRF_SKIPDEFAULT;
+		}
+	}
+	return result;
+}
+
+bool WndToolbar::ShowContextMenu( const POINT& /*position*/ )
+{
+	return false;
+}
+
+void WndToolbar::OnSysColorChange( const bool isHighContrast, const bool isClassicTheme )
+{
+	m_IsHighContrast = isHighContrast;
+	m_IsClassicTheme = isClassicTheme;
+	CreateImageList();
 }

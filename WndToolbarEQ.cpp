@@ -6,11 +6,6 @@ WndToolbarEQ::WndToolbarEQ( HINSTANCE instance, HWND parent, Settings& settings 
 	WndToolbar( instance, parent, ID_TOOLBAR_EQ, settings, { IDI_EQ } )
 {
 	CreateButtons();
-
-	RECT rect = {};
-	SendMessage( GetWindowHandle(), TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>( &rect ) );
-	const int buttonCount = static_cast<int>( SendMessage( GetWindowHandle(), TB_BUTTONCOUNT, 0, 0 ) );
-	MoveWindow( GetWindowHandle(), 0 /*x*/, 0 /*y*/, ( rect.right - rect.left ) * buttonCount, rect.bottom - rect.top, TRUE /*repaint*/ );
 }
 
 void WndToolbarEQ::Update( const bool eqVisible )

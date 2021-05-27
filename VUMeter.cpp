@@ -2,9 +2,6 @@
 
 #include "VUMeterData.h"
 
-#include <fstream>
-#include <iomanip>
-
 // Render thread millisecond interval.
 static const DWORD s_RenderThreadInterval = 15;
 
@@ -27,17 +24,19 @@ VUMeter::VUMeter( WndVisual& wndVisual, const bool stereo ) :
 	Visual( wndVisual ),
 	m_RenderThread( NULL ),
 	m_RenderStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
-	m_MeterImage( new BYTE[ VU_WIDTH * VU_HEIGHT * 4 ] ),
+	m_MeterImage( VU_WIDTH * VU_HEIGHT * 4 ),
 	m_MeterPin( nullptr ),
 	m_BitmapLeft( nullptr ),
 	m_BitmapRight( nullptr ),
 	m_Brush( nullptr ),
-	m_LeftLevel( 0 ),
-	m_RightLevel( 0 ),
+	m_OutputLevel( {} ),
+	m_LeftDisplayLevel( 0 ),
+	m_RightDisplayLevel( 0 ),
+	m_MeterPosition( {} ),
 	m_Decay( GetSettings().GetVUMeterDecay() ),
 	m_IsStereo( stereo )
 {
-	memcpy( m_MeterImage, VU_BASE, VU_WIDTH * VU_HEIGHT * 4 );
+	memcpy( m_MeterImage.data(), VU_BASE, VU_WIDTH * VU_HEIGHT * 4 );
 }
 
 VUMeter::~VUMeter()
@@ -46,7 +45,6 @@ VUMeter::~VUMeter()
 	CloseHandle( m_RenderStopEvent );
 	CloseHandle( m_RenderThread );
 	FreeResources();
-	delete [] m_MeterImage;
 }
 
 int VUMeter::GetHeight( const int width )
@@ -80,8 +78,10 @@ void VUMeter::StopRenderThread()
 		WaitForSingleObject( m_RenderThread, INFINITE );
 		CloseHandle( m_RenderThread );
 		m_RenderThread = nullptr;
-		m_LeftLevel = 0;
-		m_RightLevel = 0;
+		m_OutputLevel = {};
+		m_LeftDisplayLevel = 0;
+		m_RightDisplayLevel = 0;
+		m_MeterPosition = {};
 	}
 }
 
@@ -98,68 +98,43 @@ void VUMeter::RenderThreadHandler()
 
 bool VUMeter::GetLevels()
 {
-	bool levelsChanged = false;
-
-	const int previousLeftPos = static_cast<int>( m_LeftLevel * VU_PINCOUNT + 0.5f );
-	const int previousRightPos = static_cast<int>( m_RightLevel * VU_PINCOUNT + 0.5f );
-
-	float left = 0.0f;
-	float right = 0.0f;
-	GetOutput().GetLevels( left, right );
+	auto& [ leftOutput, rightOutput ] = m_OutputLevel;
+	GetOutput().GetLevels( leftOutput, rightOutput );
 	if ( !m_IsStereo ) {
-		if ( left > right ) {
-			right = left;
+		if ( leftOutput > rightOutput ) {
+			rightOutput = leftOutput;
 		} else {
-			left = right;
+			leftOutput = rightOutput;
 		}
 	}
+	leftOutput = std::clamp( leftOutput, 0.0f, 1.0f );
+	rightOutput = std::clamp( rightOutput, 0.0f, 1.0f );
 
-	if ( left < 0.0f ) {
-		left = 0.0f;
-	} else if ( left > 1.0f ) {
-		left = 1.0f;
-	}
-	if ( right < 0.0f ) {
-		right = 0.0f;
-	} else if ( right > 1.0f ) {
-		right = 1.0f;
-	}
+	float leftDisplay = m_LeftDisplayLevel;
+	float rightDisplay = m_RightDisplayLevel;
 
-	if ( m_LeftLevel < left ) {
-		m_LeftLevel += ( left - m_LeftLevel ) * s_RiseFactor;
+	if ( leftDisplay < leftOutput ) {
+		leftDisplay += ( leftOutput - leftDisplay ) * s_RiseFactor;
 	} else {
-		m_LeftLevel -= m_Decay;
-		if ( m_LeftLevel < left ) {
-			m_LeftLevel = left;
+		leftDisplay -= m_Decay;
+		if ( leftDisplay < leftOutput ) {
+			leftDisplay = leftOutput;
 		}
 	}
 
-	if ( m_RightLevel < right ) {
-		m_RightLevel += ( right - m_RightLevel ) * s_RiseFactor;
+	if ( rightDisplay < rightOutput ) {
+		rightDisplay += ( rightOutput - rightDisplay ) * s_RiseFactor;
 	} else {
-		m_RightLevel -= m_Decay;
-		if ( m_RightLevel < right ) {
-			m_RightLevel = right;
+		rightDisplay -= m_Decay;
+		if ( rightDisplay < rightOutput ) {
+			rightDisplay = rightOutput;
 		}
 	}
 
-	const int currentLeftPos = static_cast<int>( m_LeftLevel * VU_PINCOUNT + 0.5f );
-	const int currentRightPos = static_cast<int>( m_RightLevel * VU_PINCOUNT + 0.5f );
-
-	if ( ( currentLeftPos != previousLeftPos ) && ( nullptr != m_BitmapLeft ) ) {
-		DrawPin( currentLeftPos );
-		const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, VU_WIDTH /*right*/, VU_HEIGHT /*bottom*/ );
-		const UINT32 pitch = VU_WIDTH * 4;
-		m_BitmapLeft->CopyFromMemory( &destRect, m_MeterImage, pitch );
-		levelsChanged = true;
-	} 
-
-	if ( ( currentRightPos != previousRightPos ) && ( nullptr != m_BitmapRight ) ) {
-		DrawPin( currentRightPos );
-		const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, VU_WIDTH /*right*/, VU_HEIGHT /*bottom*/ );
-		const UINT32 pitch = VU_WIDTH * 4;
-		m_BitmapRight->CopyFromMemory( &destRect, m_MeterImage, pitch );
-		levelsChanged = true;
+	const bool levelsChanged = ( leftDisplay != m_LeftDisplayLevel ) || ( rightDisplay != m_RightDisplayLevel );
+	if ( levelsChanged ) {
+		m_LeftDisplayLevel = leftDisplay;
+		m_RightDisplayLevel = rightDisplay;
 	}
 
 	return levelsChanged;
@@ -177,7 +152,7 @@ void VUMeter::DrawPin( const int position )
 	const DWORD* pinBuffer = VU_PIN[ pos ];
 	if ( m_MeterPin != pinBuffer ) {
 		// Blank out the previous pin position.
-		memcpy( m_MeterImage, VU_BASE, VU_WIDTH * VU_HEIGHT * 4 );
+		memcpy( m_MeterImage.data(), VU_BASE, VU_WIDTH * VU_HEIGHT * 4 );
 
 		// Draw the current pin.
 		int index = 0;
@@ -190,6 +165,30 @@ void VUMeter::DrawPin( const int position )
 	}
 }
 
+void VUMeter::UpdateBitmaps( const float leftLevel, const float rightLevel )
+{
+	auto& [ leftMeter, rightMeter ] = m_MeterPosition;
+
+	const int leftPosition = GetPinPosition( leftLevel );
+	const int rightPosition = GetPinPosition( rightLevel );
+
+	if ( ( leftMeter != leftPosition ) && ( nullptr != m_BitmapLeft ) ) {
+		leftMeter = leftPosition;
+		DrawPin( leftMeter );
+		const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, VU_WIDTH /*right*/, VU_HEIGHT /*bottom*/ );
+		const UINT32 pitch = VU_WIDTH * 4;
+		m_BitmapLeft->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
+	} 
+
+	if ( ( rightMeter != rightPosition ) && ( nullptr != m_BitmapRight ) ) {
+		rightMeter = rightPosition;
+		DrawPin( rightMeter );
+		const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, VU_WIDTH /*right*/, VU_HEIGHT /*bottom*/ );
+		const UINT32 pitch = VU_WIDTH * 4;
+		m_BitmapRight->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
+	}
+}
+
 void VUMeter::OnPaint()
 {
 	ID2D1DeviceContext* deviceContext = BeginDrawing();
@@ -197,11 +196,12 @@ void VUMeter::OnPaint()
 		LoadResources( deviceContext );
 		const D2D1_SIZE_F targetSize = deviceContext->GetSize();
 		if ( ( targetSize.height > 0 ) && ( targetSize.height > 0 ) ) {
+			UpdateBitmaps( m_LeftDisplayLevel, m_RightDisplayLevel );
 			const float halfHeight = targetSize.height / ( m_IsStereo ? 2.0f : 1.0f );
 			const D2D1_RECT_F leftRect = D2D1::RectF( 0, 0, targetSize.width, halfHeight );
 			const D2D1_RECT_F rightRect = D2D1::RectF( 0, leftRect.bottom, targetSize.width, leftRect.bottom + halfHeight );
 			const FLOAT opacity = 1.0;
-			const D2D1_INTERPOLATION_MODE interpolationMode = D2D1_INTERPOLATION_MODE_HIGH_QUALITY_CUBIC;
+			const D2D1_INTERPOLATION_MODE interpolationMode = IsHardwareAccelerationEnabled() ? D2D1_INTERPOLATION_MODE_HIGH_QUALITY_CUBIC : D2D1_INTERPOLATION_MODE_LINEAR;
 			if ( nullptr != m_BitmapLeft ) {
 				deviceContext->DrawBitmap( m_BitmapLeft, &leftRect, opacity, interpolationMode, NULL /*srcRect*/, NULL /*transform*/ );
 			}
@@ -221,9 +221,15 @@ void VUMeter::OnPaint()
 	}
 }
 
-void VUMeter::OnSettingsChanged()
+void VUMeter::OnSettingsChange()
 {
 	m_Decay = GetSettings().GetVUMeterDecay();
+	FreeResources();
+}
+
+void VUMeter::OnSysColorChange()
+{
+	FreeResources();
 }
 
 void VUMeter::LoadResources( ID2D1DeviceContext* deviceContext )
@@ -253,10 +259,10 @@ void VUMeter::LoadResources( ID2D1DeviceContext* deviceContext )
 			const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, VU_WIDTH /*right*/, VU_HEIGHT /*bottom*/ );
 			const UINT32 pitch = VU_WIDTH * 4;
 			if ( nullptr != m_BitmapLeft ) {
-				m_BitmapLeft->CopyFromMemory( &destRect, m_MeterImage, pitch );
+				m_BitmapLeft->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
 			}
 			if ( nullptr != m_BitmapRight ) {
-				m_BitmapRight->CopyFromMemory( &destRect, m_MeterImage, pitch );
+				m_BitmapRight->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
 			}
 		}
 	}
@@ -276,4 +282,9 @@ void VUMeter::FreeResources()
 		m_Brush->Release();
 		m_Brush = nullptr;
 	}
+}
+
+int VUMeter::GetPinPosition( const float level )
+{
+	return int( level * VU_PINCOUNT + 0.5f );
 }

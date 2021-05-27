@@ -5,8 +5,10 @@
 #include "Gdiplusimaging.h"
 
 #include <initguid.h> 
+#include <Uxtheme.h>
+#include <VersionHelpers.h>
 #include "objbase.h"
-#include "uiautomation.h" 
+#include "uiautomation.h"
 
 #include <array>
 #include <chrono>
@@ -321,12 +323,11 @@ void GetImageInformation( const std::string& image, std::string& mimeType, int& 
 
 					const INT paletteSize = bitmap.GetPaletteSize();
 					if ( paletteSize > 0 ) {
-						char* buffer = new char[ paletteSize ];
-						Gdiplus::ColorPalette* palette = reinterpret_cast<Gdiplus::ColorPalette*>( buffer );
+						std::vector<char> buffer( paletteSize, 0 );
+						Gdiplus::ColorPalette* palette = reinterpret_cast<Gdiplus::ColorPalette*>( buffer.data() );
 						if ( Gdiplus::Ok == bitmap.GetPalette( palette, paletteSize ) ) {
 							colours = static_cast<int>( palette->Count );
 						}
-						delete [] buffer;
 					}
 
 					GUID format = {};
@@ -393,8 +394,8 @@ std::string ConvertImage( const std::vector<BYTE>& imageBytes )
 							UINT numEncoders = 0;
 							UINT bufferSize = 0;
 							if ( ( Gdiplus::Ok == Gdiplus::GetImageEncodersSize( &numEncoders, &bufferSize ) ) && ( bufferSize > 0 ) ) {
-								char* buffer = new char[ bufferSize ];
-								Gdiplus::ImageCodecInfo* imageCodecInfo = reinterpret_cast<Gdiplus::ImageCodecInfo*>( buffer );
+								std::vector<char> buffer( bufferSize, 0 );
+								Gdiplus::ImageCodecInfo* imageCodecInfo = reinterpret_cast<Gdiplus::ImageCodecInfo*>( buffer.data() );
 								if ( Gdiplus::Ok == Gdiplus::GetImageEncoders( numEncoders, bufferSize, imageCodecInfo ) ) {
 									for ( UINT index = 0; index < numEncoders; index++ ) {
 										if ( Gdiplus::ImageFormatPNG == imageCodecInfo[ index ].FormatID ) {
@@ -403,7 +404,6 @@ std::string ConvertImage( const std::vector<BYTE>& imageBytes )
 										}
 									}
 								}
-								delete [] buffer;
 							}
 							IStream* encoderStream = nullptr;
 							if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &encoderStream ) ) ) {
@@ -517,20 +517,11 @@ void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const s
 	filename = output;
 }
 
-std::wstring GainToWideString( const float gain )
-{
-	std::wstringstream ss;
-	if ( !std::isnan( gain ) ) {
-		ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain << L" dB";
-	}
-	return ss.str();
-}
-
-std::string GainToString( const float gain )
+std::string GainToString( const std::optional<float> gain )
 {
 	std::stringstream ss;
-	if ( !std::isnan( gain ) ) {
-		ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain << " dB";
+	if ( gain.has_value() && std::isfinite( gain.value() ) ) {
+		ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain.value() << " dB";
 	}
 	return ss.str();
 }
@@ -587,7 +578,7 @@ unsigned char FloatToUnsigned8( const float value )
 	return result;
 }
 
-std::wstring GetFileExtension( const std::wstring filename )
+std::wstring GetFileExtension( const std::wstring& filename )
 {
 	const size_t pos = filename.rfind( '.' );
 	const std::wstring ext = ( std::wstring::npos != pos ) ? WideStringToLower( filename.substr( pos + 1 ) ) : std::wstring();
@@ -693,4 +684,82 @@ std::filesystem::path ChooseArtwork( const HINSTANCE instance, const HWND hwnd, 
 	}
 
 	return result;
+}
+
+std::optional<COLORREF> ChooseColour( const HWND hwnd, const COLORREF initialColour, COLORREF* customColours )
+{
+	std::optional<COLORREF> result;
+	CHOOSECOLOR chooseColor = {};
+	chooseColor.lStructSize = sizeof( CHOOSECOLOR );
+	chooseColor.hwndOwner = hwnd;
+	chooseColor.rgbResult = initialColour;
+	chooseColor.lpCustColors = customColours;
+	chooseColor.Flags = CC_ANYCOLOR | CC_FULLOPEN | CC_RGBINIT;
+	if ( TRUE == ChooseColor( &chooseColor ) && ( initialColour != chooseColor.rgbResult ) ) {
+		result = chooseColor.rgbResult;
+	}
+	return result;
+}
+
+HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int size, const COLORREF colour )
+{
+	HBITMAP hBitmap = nullptr;
+	if ( const HICON hIcon = static_cast<HICON>( LoadImage( instance, MAKEINTRESOURCE( iconID ), IMAGE_ICON, size, size, LR_DEFAULTCOLOR | LR_SHARED ) ); nullptr != hIcon ) {
+		if ( ICONINFO iconInfo = {}; ( nullptr != hIcon ) && GetIconInfo( hIcon, &iconInfo ) ) {
+			if ( BITMAP bm = {}; GetObject( iconInfo.hbmColor, sizeof( BITMAP ), &bm ) ) {
+				if ( const HDC dc = GetDC( nullptr ); nullptr != dc ) {
+					BITMAPINFO bitmapInfo = {};
+					bitmapInfo.bmiHeader.biSize = sizeof( BITMAPINFOHEADER );
+					bitmapInfo.bmiHeader.biWidth = bm.bmWidth;
+					bitmapInfo.bmiHeader.biHeight = bm.bmHeight;
+					bitmapInfo.bmiHeader.biPlanes = 1;
+					bitmapInfo.bmiHeader.biBitCount = 32;
+					bitmapInfo.bmiHeader.biCompression = BI_RGB;
+					std::vector<unsigned char> bits( bm.bmHeight * bm.bmWidth * 4 );				
+					if ( GetDIBits( dc, iconInfo.hbmColor, 0, bm.bmHeight, bits.data(), &bitmapInfo, DIB_RGB_COLORS ) ) {
+						const unsigned char r = GetRValue( colour );
+						const unsigned char g = GetGValue( colour );
+						const unsigned char b = GetBValue( colour );
+						for ( int i = 0; i < bm.bmWidth * bm.bmHeight * 4; i += 4 ) {
+							if ( 0 != bits[ i + 3 ] ) {
+								bits[ i ] = b;
+								bits[ i + 1 ] = g;
+								bits[ i + 2 ] = r;
+							}
+						}
+						if ( SetDIBits( dc, iconInfo.hbmColor, 0, bm.bmHeight, bits.data(), &bitmapInfo, DIB_RGB_COLORS ) ) {
+							hBitmap = iconInfo.hbmColor;
+						}
+					}
+					ReleaseDC( nullptr, dc );
+				}
+			}
+			if ( iconInfo.hbmColor != hBitmap ) {
+				DeleteObject( iconInfo.hbmColor );
+			}
+			DeleteObject( iconInfo.hbmMask );
+		}
+	}
+	return hBitmap;
+}
+
+bool IsHighContrastActive()
+{
+	bool isActive = false;
+	HIGHCONTRAST highContrast = {};
+	highContrast.cbSize = sizeof( HIGHCONTRAST );
+	if ( SystemParametersInfo( SPI_GETHIGHCONTRAST, sizeof( HIGHCONTRAST ), &highContrast, 0 ) ) {
+		isActive = ( HCF_HIGHCONTRASTON & highContrast.dwFlags );
+	}
+	return isActive;
+}
+
+bool IsClassicThemeActive()
+{
+	return !IsAppThemed();
+}
+
+bool IsWindows10()
+{
+	return IsWindows10OrGreater();
 }

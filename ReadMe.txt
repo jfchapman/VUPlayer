@@ -1,4 +1,4 @@
-VUPlayer 4.12
+VUPlayer 4.13
 Copyright (c) 2021 James Chapman
 ------------------------------------------------------------------------------
 website: http://www.vuplayer.com

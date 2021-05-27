@@ -9,49 +9,26 @@
 #include <tuple>
 
 MediaInfo::MediaInfo( const std::wstring& filename ) :
-	m_Filename( filename ),
-	m_Filetime( 0 ),
-	m_Filesize( 0 ),
-	m_Duration( 0 ),
-	m_SampleRate( 0 ),
-	m_BitsPerSample( 0 ),
-	m_Channels( 0 ),
-	m_Artist(),
-	m_Title(),
-	m_Album(),
-	m_Genre(),
-	m_Year( 0 ),
-	m_Comment(),
-	m_Track( 0 ),
-	m_Version(),
-	m_GainTrack( NAN ),
-	m_GainAlbum( NAN ),
-	m_ArtworkID(),
-	m_Source( Source::File ),
-	m_CDDB( 0 ),
-	m_Bitrate( NAN )
+	m_Filename( filename )
 {
 }
 
 MediaInfo::MediaInfo( const long cddbID ) :
-	MediaInfo()
-{
-	m_Source = Source::CDDA;
-	m_CDDB = cddbID;
-}
-
-MediaInfo::~MediaInfo()
+	m_Source( Source::CDDA ),
+	m_CDDB( cddbID )
 {
 }
 
-bool MediaInfo::operator<( const MediaInfo& other ) const
+bool MediaInfo::operator<( const MediaInfo& o ) const
 {
-	const bool lessThan = std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate,
-		m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_GainTrack, m_GainAlbum, m_ArtworkID, m_Source, m_CDDB ) <
+	const bool lessThan = 
+		std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate, 
+			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, 
+			m_Source, m_CDDB, m_GainTrack, m_GainAlbum ) <
 
-		std::tie( other.m_Filename, other.m_Filetime, other.m_Filesize, other.m_Duration, other.m_SampleRate, other.m_BitsPerSample, other.m_Channels, other.m_Bitrate,
-		other.m_Artist, other.m_Title, other.m_Album, other.m_Genre, other.m_Year, other.m_Comment, other.m_Track, other.m_Version, other.m_GainTrack,
-		other.m_GainAlbum, other.m_ArtworkID, other.m_Source, other.m_CDDB );
+		std::tie( o.m_Filename, o.m_Filetime, o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_BitsPerSample, o.m_Channels, o.m_Bitrate,
+			o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year, o.m_Comment, o.m_Track, o.m_Version, o.m_ArtworkID,
+			o.m_Source, o.m_CDDB, o.m_GainTrack, o.m_GainAlbum );
 
 	return lessThan;
 }
@@ -141,12 +118,12 @@ void MediaInfo::SetSampleRate( const long sampleRate )
 	m_SampleRate = sampleRate;
 }
 
-long MediaInfo::GetBitsPerSample() const
+std::optional<long> MediaInfo::GetBitsPerSample() const
 {
 	return m_BitsPerSample;
 }
 
-void MediaInfo::SetBitsPerSample( const long bitsPerSample )
+void MediaInfo::SetBitsPerSample( const std::optional<long> bitsPerSample )
 {
 	m_BitsPerSample = bitsPerSample;
 }
@@ -240,24 +217,24 @@ void MediaInfo::SetVersion( const std::wstring& version )
 	m_Version = version;
 }
 
-float MediaInfo::GetGainTrack() const
+std::optional<float> MediaInfo::GetGainTrack() const
 {
 	return m_GainTrack;
 }
 
-void MediaInfo::SetGainTrack( const float gain )
+void MediaInfo::SetGainTrack( const std::optional<float> gain )
 {
-	m_GainTrack = gain;
+	m_GainTrack = ( gain.has_value() && std::isfinite( gain.value() ) ) ? gain : std::nullopt;
 }
 
-float MediaInfo::GetGainAlbum() const
+std::optional<float> MediaInfo::GetGainAlbum() const
 {
 	return m_GainAlbum;
 }
 
-void MediaInfo::SetGainAlbum( const float gain )
+void MediaInfo::SetGainAlbum( const std::optional<float> gain )
 {
-	m_GainAlbum = gain;
+	m_GainAlbum = ( gain.has_value() && std::isfinite( gain.value() ) ) ? gain : std::nullopt;
 }
 
 std::wstring MediaInfo::GetTitle( const bool filenameAsTitle ) const
@@ -282,15 +259,18 @@ std::wstring MediaInfo::GetType() const
 	return type;
 }
 
-float MediaInfo::GetBitrate( const bool calculate ) const
+std::optional<float> MediaInfo::GetBitrate( const bool calculate ) const
 {
-	const float bitrate = ( calculate && !( m_Bitrate > 0 ) ) ? ( ( m_Filesize * 8 ) / ( m_Duration * 1000 ) ) : m_Bitrate;
+	std::optional<float> bitrate = m_Bitrate;
+	if ( calculate && !bitrate.has_value() && ( m_Duration > 0 ) ) {
+		bitrate = ( m_Filesize * 8 ) / ( m_Duration * 1000 );
+	}
 	return bitrate;
 }
 
-void MediaInfo::SetBitrate( const float bitrate )
+void MediaInfo::SetBitrate( const std::optional<float> bitrate )
 {
-	m_Bitrate = bitrate;
+	m_Bitrate = ( bitrate.has_value() && std::isfinite( bitrate.value() ) ) ? bitrate : std::nullopt;
 }
 
 std::wstring MediaInfo::GetArtworkID( const bool checkFolder ) const
@@ -332,10 +312,13 @@ long MediaInfo::GetCDDB() const
 bool MediaInfo::IsDuplicate( const MediaInfo& o ) const
 {
 	const bool isDuplicate = 
-		std::tie( m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate, m_Artist, m_Title, m_Album, m_Genre, m_Year,
-			m_Comment, m_Track, m_Version, m_GainTrack, m_GainAlbum, m_ArtworkID ) ==
-		std::tie( o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_BitsPerSample, o.m_Channels, o.m_Bitrate, o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year,
-			o.m_Comment, o.m_Track, o.m_Version, o.m_GainTrack, o.m_GainAlbum, o.m_ArtworkID );
+		std::tie( m_Filesize, m_Duration, m_SampleRate, m_Channels,
+			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID,
+			m_Source, m_CDDB, m_GainTrack, m_GainAlbum ) ==
+
+		std::tie( o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_Channels,
+			o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year, o.m_Comment, o.m_Track, o.m_Version, o.m_ArtworkID,
+			o.m_Source, o.m_CDDB, o.m_GainTrack, o.m_GainAlbum );
 	return isDuplicate;
 }
 

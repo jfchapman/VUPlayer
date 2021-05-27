@@ -18,26 +18,32 @@ public:
 	// 'stereo' - true for stereo meter, false for mono.
 	VUMeter( WndVisual& wndVisual, const bool stereo = true );
 
-	virtual ~VUMeter();
+	~VUMeter() override;
 
 	// Returns the required visual height, based on a given width.
-	virtual int GetHeight( const int width );
+	int GetHeight( const int width ) override;
 
 	// Shows the visual.
-	virtual void Show();
+	void Show() override;
 
 	// Hides the visual.
-	virtual void Hide();
+	void Hide() override;
 
 	// Called when the visual needs repainting.
-	virtual void OnPaint();
+	void OnPaint() override;
 
 	// Called when the visual settings have changed.
-	virtual void OnSettingsChanged();
+	void OnSettingsChange() override;
+
+	// Called when the system colours have changed.
+	void OnSysColorChange() override;
 
 private:
 	// Render thread procedure.
 	static DWORD WINAPI RenderThreadProc( LPVOID lpParam );
+
+	// Returns the pin position corresponding to the 'level'.
+	static int GetPinPosition( const float level );
 
 	// Render thread handler.
 	void RenderThreadHandler();
@@ -48,11 +54,14 @@ private:
 	// Stops the rendering thread.
 	void StopRenderThread();
 
-	// Gets the current levels, returning true if the levels have changed since last time around.
+	// Gets the output & display levels, returning true if the display levels have changed since last time around.
 	bool GetLevels();
 
 	// Draws a pin position onto the base meter image.
 	void DrawPin( const int position );
+
+	// Updates the meter bitmaps based on the current 'left' & 'right' display levels.
+	void UpdateBitmaps( const float left, const float right );
 
 	// Loads the resources using the 'deviceContext'.
 	void LoadResources( ID2D1DeviceContext* deviceContext );
@@ -67,7 +76,7 @@ private:
 	HANDLE m_RenderStopEvent;
 
 	// Meter image.
-	BYTE* m_MeterImage;
+	std::vector<BYTE> m_MeterImage;
 
 	// Current pin position buffer drawn on the meter image.
 	const DWORD* m_MeterPin;
@@ -81,11 +90,17 @@ private:
 	// Background brush.
 	ID2D1SolidColorBrush* m_Brush;
 
-	// Current left channel level.
-	float m_LeftLevel;
+	// Current left/right channel output level.
+	std::pair<float, float> m_OutputLevel;
 
-	// Current right channel level.
-	float m_RightLevel;
+	// Current left channel display level.
+	std::atomic<float> m_LeftDisplayLevel;
+
+	// Current right channel display level.
+	std::atomic<float> m_RightDisplayLevel;
+
+	// Current left/right meter position.
+	std::pair<int, int> m_MeterPosition;
 
 	// Decay rate.
 	float m_Decay;

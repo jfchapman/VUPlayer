@@ -13,8 +13,8 @@ Decoder::Decoder() :
 	m_Duration( 0 ),
 	m_SampleRate( 0 ),
 	m_Channels( 0 ),
-	m_BPS( 0 ),
-	m_Bitrate( NAN )
+	m_BPS(),
+	m_Bitrate()
 {
 }
 
@@ -52,29 +52,29 @@ void Decoder::SetChannels( const long channels )
 	m_Channels = channels;
 }
 
-long Decoder::GetBPS() const
+std::optional<long> Decoder::GetBPS() const
 {
 	return m_BPS;
 }
 
-void Decoder::SetBPS( const long bitsPerSample )
+void Decoder::SetBPS( const std::optional<long> bitsPerSample )
 {
 	m_BPS = bitsPerSample;
 }
 
-float Decoder::GetBitrate() const
+std::optional<float> Decoder::GetBitrate() const
 {
 	return m_Bitrate;
 }
 
-void Decoder::SetBitrate( const float bitrate )
+void Decoder::SetBitrate( const std::optional<float> bitrate )
 {
 	m_Bitrate = bitrate;
 }
 
-float Decoder::CalculateTrackGain( CanContinue canContinue, const float secondsLimit )
+std::optional<float> Decoder::CalculateTrackGain( CanContinue canContinue, const float secondsLimit )
 {
-	float trackGain = NAN;
+	std::optional<float> trackGain;
 	if ( ( m_SampleRate > 0 ) && ( m_Channels > 0 ) ) {
 
 		LARGE_INTEGER perfFreq, perfStart, perfEnd;

@@ -359,20 +359,16 @@ Library& Playlist::GetLibrary()
 
 void Playlist::SavePlaylist( const std::wstring& filename )
 {
-	try {
-		std::ofstream stream( filename );
-		if ( stream.is_open() ) {
-			for ( const auto& iter : m_Playlist ) {
-				const MediaInfo& mediaInfo = iter.Info;
-				const std::wstring& name = mediaInfo.GetFilename();
-				if ( !name.empty() ) {
-					stream << WideStringToUTF8( name ) << '\n';
-				}
+	std::ofstream stream( filename );
+	if ( stream.is_open() ) {
+		for ( const auto& iter : m_Playlist ) {
+			const MediaInfo& mediaInfo = iter.Info;
+			const std::wstring& name = mediaInfo.GetFilename();
+			if ( !name.empty() ) {
+				stream << WideStringToUTF8( name ) << '\n';
 			}
-			stream.close();
 		}
-	} catch ( ... ) {
-
+		stream.close();
 	}
 }
 
@@ -826,23 +822,20 @@ bool Playlist::AddPlaylist( const std::wstring& filename, const bool startPendin
 bool Playlist::AddVPL( const std::wstring& filename )
 {
 	bool added = false;
-	try {
-		std::ifstream stream;
-		stream.open( filename, std::ios::binary | std::ios::in );
-		if ( stream.is_open() ) {
-			do {
-				std::string line;
-				std::getline( stream, line );
-				const size_t delimiter = line.find_first_of( 0x01 );
-				if ( std::string::npos != delimiter ) {
-					const std::string name = line.substr( 0 /*offset*/, delimiter /*count*/ );			
-					AddPending( AnsiCodePageToWideString( name ), false /*startPendingThread*/ );
-					added = true;
-				}
-			} while ( !stream.eof() );
-			stream.close();
-		}
-	} catch ( ... ) {
+	std::ifstream stream;
+	stream.open( filename, std::ios::binary | std::ios::in );
+	if ( stream.is_open() ) {
+		do {
+			std::string line;
+			std::getline( stream, line );
+			const size_t delimiter = line.find_first_of( 0x01 );
+			if ( std::string::npos != delimiter ) {
+				const std::string name = line.substr( 0 /*offset*/, delimiter /*count*/ );			
+				AddPending( AnsiCodePageToWideString( name ), false /*startPendingThread*/ );
+				added = true;
+			}
+		} while ( !stream.eof() );
+		stream.close();
 	}
 	return added;
 }
@@ -850,37 +843,34 @@ bool Playlist::AddVPL( const std::wstring& filename )
 bool Playlist::AddM3U( const std::wstring& filename )
 {
 	bool added = false;
-	try {
-		std::ifstream stream;
-		stream.open( filename, std::ios::in );
-		if ( stream.is_open() ) {
-			std::filesystem::path playlistPath( filename );
-			playlistPath = playlistPath.parent_path();
-			do {
-				std::string line;
-				std::getline( stream, line );
-				if ( !line.empty() ) {
-					const std::wstring filenameEntry = UTF8ToWideString( line );
-					if ( ( filenameEntry.size() > 0 ) && ( '#' != filenameEntry.front() ) ) {
-						if ( IsURL( filenameEntry ) ) {
-							AddPending( filenameEntry, false /*startPendingThread*/ );
+	std::ifstream stream;
+	stream.open( filename, std::ios::in );
+	if ( stream.is_open() ) {
+		std::filesystem::path playlistPath( filename );
+		playlistPath = playlistPath.parent_path();
+		do {
+			std::string line;
+			std::getline( stream, line );
+			if ( !line.empty() ) {
+				const std::wstring filenameEntry = UTF8ToWideString( line );
+				if ( ( filenameEntry.size() > 0 ) && ( '#' != filenameEntry.front() ) ) {
+					if ( IsURL( filenameEntry ) ) {
+						AddPending( filenameEntry, false /*startPendingThread*/ );
+						added = true;
+					} else {
+						std::filesystem::path filePath = std::filesystem::path( filenameEntry ).lexically_normal();
+						if ( filePath.is_relative() ) {
+							filePath = playlistPath / filePath;
+						}
+						if ( std::filesystem::exists( filePath ) ) {
+							AddPending( filePath, false /*startPendingThread*/ );
 							added = true;
-						} else {
-							std::filesystem::path filePath = std::filesystem::path( filenameEntry ).lexically_normal();
-							if ( filePath.is_relative() ) {
-								filePath = playlistPath / filePath;
-							}
-							if ( std::filesystem::exists( filePath ) ) {
-								AddPending( filePath, false /*startPendingThread*/ );
-								added = true;
-							}
 						}
 					}
 				}
-			} while ( !stream.eof() );
-			stream.close();
-		}
-	} catch ( ... ) {
+			}
+		} while ( !stream.eof() );
+		stream.close();
 	}
 	return added;
 }
@@ -888,40 +878,37 @@ bool Playlist::AddM3U( const std::wstring& filename )
 bool Playlist::AddPLS( const std::wstring& filename )
 {
 	bool added = false;
-	try {
-		std::ifstream stream;
-		stream.open( filename, std::ios::in );
-		if ( stream.is_open() ) {
-			std::filesystem::path playlistPath( filename );
-			playlistPath = playlistPath.parent_path();
-			do {
-				std::string line;
-				std::getline( stream, line );
-				const size_t fileEntry = line.find( "File" );
-				const size_t delimiter = line.find_first_of( '=' );
-				if ( ( 0 == fileEntry ) && ( std::string::npos != delimiter ) ) {
-					const std::string name = line.substr( delimiter + 1 );
-					if ( !name.empty() ) {
-						const std::wstring filenameEntry = UTF8ToWideString( name );
-						if ( IsURL( filenameEntry ) ) {
-							AddPending( filenameEntry, false /*startPendingThread*/ );
+	std::ifstream stream;
+	stream.open( filename, std::ios::in );
+	if ( stream.is_open() ) {
+		std::filesystem::path playlistPath( filename );
+		playlistPath = playlistPath.parent_path();
+		do {
+			std::string line;
+			std::getline( stream, line );
+			const size_t fileEntry = line.find( "File" );
+			const size_t delimiter = line.find_first_of( '=' );
+			if ( ( 0 == fileEntry ) && ( std::string::npos != delimiter ) ) {
+				const std::string name = line.substr( delimiter + 1 );
+				if ( !name.empty() ) {
+					const std::wstring filenameEntry = UTF8ToWideString( name );
+					if ( IsURL( filenameEntry ) ) {
+						AddPending( filenameEntry, false /*startPendingThread*/ );
+						added = true;
+					} else {
+						std::filesystem::path filePath = std::filesystem::path( filenameEntry ).lexically_normal();
+						if ( filePath.is_relative() ) {
+							filePath = playlistPath / filePath;
+						}
+						if ( std::filesystem::exists( filePath ) ) {
+							AddPending( filePath, false /*startPendingThread*/ );
 							added = true;
-						} else {
-							std::filesystem::path filePath = std::filesystem::path( filenameEntry ).lexically_normal();
-							if ( filePath.is_relative() ) {
-								filePath = playlistPath / filePath;
-							}
-							if ( std::filesystem::exists( filePath ) ) {
-								AddPending( filePath, false /*startPendingThread*/ );
-								added = true;
-							}
 						}
 					}
 				}
-			} while ( !stream.eof() );
-			stream.close();
-		}
-	} catch ( ... ) {
+			}
+		} while ( !stream.eof() );
+		stream.close();
 	}
 	return added;
 }
@@ -939,11 +926,9 @@ bool Playlist::IsSupportedPlaylist( const std::wstring& filename )
 bool Playlist::CanConvertAnyItems()
 {
 	bool canConvert = false;
-	const auto items = GetItems();
-	auto item = items.begin();
-	while ( !canConvert && ( items.end() != item ) ) {
-		canConvert = !IsURL( item->Info.GetFilename() );
-		++item;
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	for ( auto item = m_Playlist.begin(); !canConvert && ( m_Playlist.end() != item ); ++item ) {
+		canConvert = !IsURL( item->Info.GetFilename() );	
 	}
 	return canConvert;
 }

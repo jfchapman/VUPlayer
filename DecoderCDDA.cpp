@@ -62,8 +62,8 @@ float DecoderCDDA::Seek( const float position )
 	return seekPosition;
 }
 
-float DecoderCDDA::CalculateTrackGain( CanContinue canContinue, const float secondsLimit )
+std::optional<float> DecoderCDDA::CalculateTrackGain( CanContinue canContinue, const float secondsLimit )
 {
 	// Reading a CD is too slow to provide an estimate.
-	return ( secondsLimit > 0 ) ? NAN : Decoder::CalculateTrackGain( canContinue, secondsLimit );
+	return ( secondsLimit > 0 ) ? std::nullopt : Decoder::CalculateTrackGain( canContinue, secondsLimit );
 }

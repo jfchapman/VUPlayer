@@ -9,7 +9,6 @@
 #include "document.h"
 
 #include <filesystem>
-#include <fstream>
 #include <sstream>
 
 // Match dialog icon size.

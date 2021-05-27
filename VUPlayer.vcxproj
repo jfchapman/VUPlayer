@@ -114,6 +114,7 @@ copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
+      <AdditionalManifestFiles>res\version.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -149,6 +150,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
+      <AdditionalManifestFiles>res\version.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -189,6 +191,7 @@ copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
+      <AdditionalManifestFiles>res\version.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -229,6 +232,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
+      <AdditionalManifestFiles>res\version.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -316,6 +320,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="WndCounter.h" />
     <ClInclude Include="WndList.h" />
     <ClInclude Include="WndRebar.h" />
+    <ClInclude Include="WndRebarItem.h" />
     <ClInclude Include="WndSplit.h" />
     <ClInclude Include="WndStatus.h" />
     <ClInclude Include="WndToolbar.h" />
@@ -330,6 +335,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="WndToolbarPlayback.h" />
     <ClInclude Include="WndToolbarPlaylist.h" />
     <ClInclude Include="WndToolbarTrackEnd.h" />
+    <ClInclude Include="WndToolbarVolume.h" />
     <ClInclude Include="WndTrackbar.h" />
     <ClInclude Include="WndTrackbarSeek.h" />
     <ClInclude Include="WndTrackbarVolume.h" />
@@ -465,6 +471,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClCompile Include="WndToolbarPlayback.cpp" />
     <ClCompile Include="WndToolbarPlaylist.cpp" />
     <ClCompile Include="WndToolbarTrackEnd.cpp" />
+    <ClCompile Include="WndToolbarVolume.cpp" />
     <ClCompile Include="WndTrackbar.cpp" />
     <ClCompile Include="WndTrackbarSeek.cpp" />
     <ClCompile Include="WndTrackbarVolume.cpp" />
@@ -524,6 +531,9 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <Image Include="res\volume_mute.ico" />
     <Image Include="res\VUPlayer.ico" />
     <Image Include="res\year.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="res\version.manifest" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

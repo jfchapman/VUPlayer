@@ -12,10 +12,10 @@ public:
 
 	// Updates the toolbar state.
 	// 'playlist' - currently displayed playlist.
-	virtual void Update( const Playlist::Ptr playlist );
+	void Update( const Playlist::Ptr playlist );
 
 	// Returns the tooltip resource ID corresponding to a 'commandID'.
-	virtual UINT GetTooltip( const UINT commandID ) const;
+	UINT GetTooltip( const UINT commandID ) const override;
 
 private:
 	// Creates the buttons.

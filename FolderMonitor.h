@@ -33,7 +33,7 @@ public:
 	// 'monitorEvent' - event type.
 	// 'oldFilename' - the old file or folder name.
 	// 'newFilename' - the new file or folder name (which will be identical to oldFilename for events other than FolderRenamed & FileRenamed).
-	typedef std::function< void( const Event monitorEvent, const std::wstring& oldFilename, const std::wstring& newFilename ) > EventCallback;
+	using EventCallback = std::function<void( const Event monitorEvent, const std::wstring& oldFilename, const std::wstring& newFilename )>;
 
 	// Adds the folder to be monitored.
 	// 'folder' - absolute folder file path.

@@ -9,6 +9,7 @@
 #include "Oscilloscope.h"
 #include "PeakMeter.h"
 #include "SpectrumAnalyser.h"
+#include "Utility.h"
 #include "VUMeter.h"
 #include "VUPlayer.h"
 
@@ -16,7 +17,7 @@
 static const UINT_PTR s_WndVisualID = 1678;
 
 // Minimum swap chain width/height
-static const int s_MinSwapChainSize = 4;
+static const UINT s_MinSwapChainSize = 4;
 
 // Visual window class name
 static const wchar_t s_VisualClass[] = L"VUVisualClass";
@@ -41,11 +42,14 @@ LRESULT CALLBACK WndVisual::VisualProc( HWND hwnd, UINT message, WPARAM wParam, 
 	if ( nullptr != wndVisual ) {
 		switch ( message ) {
 			case WM_PAINT : {
-				PAINTSTRUCT ps;
+				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
 				wndVisual->OnPaint( ps );
 				EndPaint( hwnd, &ps );
 				break;
+			}
+			case WM_ERASEBKGND : {
+				return TRUE;
 			}
 			case WM_WINDOWPOSCHANGING : {
 				WINDOWPOS* windowPos = reinterpret_cast<WINDOWPOS*>( lParam );
@@ -83,7 +87,8 @@ WndVisual::WndVisual( HINSTANCE instance, HWND parent, HWND rebarWnd, HWND statu
 	m_D2DDeviceContext(),
 	m_D2DSwapChain(),
 	m_Visuals(),
-	m_CurrentVisual()
+	m_CurrentVisual(),
+	m_HardwareAccelerationEnabled( m_Settings.GetHardwareAccelerationEnabled() )
 {
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof( WNDCLASSEX );
@@ -91,10 +96,9 @@ WndVisual::WndVisual( HINSTANCE instance, HWND parent, HWND rebarWnd, HWND statu
 	wc.lpfnWndProc = VisualProc;
 	wc.lpszClassName = s_VisualClass;
 	wc.hCursor = LoadCursor( 0, IDC_ARROW );
-	wc.hbrBackground = reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 );
 	RegisterClassEx( &wc );
 
-	const DWORD style = WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN;
+	const DWORD style = WS_CHILD | WS_VISIBLE;
 	const DWORD exStyle = 0;
 	const int x = 0;
 	const int y = 0;
@@ -177,12 +181,12 @@ void WndVisual::InitD2D()
 		const UINT sdkVersion = D3D11_SDK_VERSION;
 		Microsoft::WRL::ComPtr<ID3D11Device> d3dDevice;
 		D3D_DRIVER_TYPE driverType = D3D_DRIVER_TYPE_HARDWARE;
-		hr = D3D11CreateDevice( adapter, driverType, software, flags, featureLevel, featureLevels, sdkVersion, &d3dDevice, featureLevel, NULL /*d3dDeviceContext*/ );
+		hr = m_HardwareAccelerationEnabled ?
+			D3D11CreateDevice( adapter, driverType, software, flags, featureLevel, featureLevels, sdkVersion, &d3dDevice, featureLevel, NULL /*d3dDeviceContext*/ ) : E_FAIL;
 		if ( FAILED( hr ) ) {
 			driverType = D3D_DRIVER_TYPE_WARP;
 			hr = D3D11CreateDevice( adapter, driverType, software, flags, featureLevel, featureLevels, sdkVersion, &d3dDevice, featureLevel, NULL /*d3dDeviceContext*/ );
 		}
-
 		if ( SUCCEEDED( hr ) ) {
 			// Create Direct2D device context.
 			Microsoft::WRL::ComPtr<IDXGIDevice1> dxgiDevice;
@@ -201,7 +205,10 @@ void WndVisual::InitD2D()
 						swapChainDesc.BufferCount = 2;
 						swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 
-						if ( IsWindows8OrGreater() ) {
+						if ( IsWindows10OrGreater() ) {
+							swapChainDesc.Scaling = DXGI_SCALING_NONE;
+							swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+						} else if ( IsWindows8OrGreater() ) {
 							swapChainDesc.Scaling = DXGI_SCALING_NONE;
 							swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 						} else {
@@ -217,7 +224,10 @@ void WndVisual::InitD2D()
 							if ( SUCCEEDED( hr ) ) {
 								hr = dxgiFactory->CreateSwapChainForHwnd( d3dDevice.Get(), m_hWnd, &swapChainDesc, NULL /*fullscreenDesc*/, NULL /*restrictToOutput*/, &m_D2DSwapChain );
 								if ( SUCCEEDED( hr ) ) {
-									dxgiDevice->SetMaximumFrameLatency( 1 );
+									hr = InitialiseDeviceContext();
+									if ( SUCCEEDED( hr ) ) {
+										dxgiDevice->SetMaximumFrameLatency( 1 );
+									}
 								}
 							}
 						}
@@ -239,45 +249,24 @@ void WndVisual::CreateD2DDeviceContext()
 	}
 }
 
-HRESULT WndVisual::ResizeD2DSwapChain( const WINDOWPOS* windowPos )
+HRESULT WndVisual::ResizeD2DSwapChain( const UINT width, const UINT height )
 {
-	HRESULT hr = ( m_D2DFactory && m_D2DSwapChain && m_D2DDeviceContext ) ? S_OK : -1;
+	HRESULT hr = ( m_D2DFactory && m_D2DSwapChain && m_D2DDeviceContext ) ? S_OK : E_FAIL;
 	if ( SUCCEEDED( hr ) ) {
-		UINT clientWidth = 0;
-		UINT clientHeight = 0;
-		if ( nullptr != windowPos ) {
-			clientWidth = ( windowPos->cx < s_MinSwapChainSize ) ? static_cast<UINT>( s_MinSwapChainSize ) : static_cast<UINT>( windowPos->cx );
-			clientHeight = ( windowPos->cy < s_MinSwapChainSize ) ? static_cast<UINT>( s_MinSwapChainSize ) : static_cast<UINT>( windowPos->cy );
-			DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-			hr = m_D2DSwapChain->GetDesc1( &swapChainDesc );
-			if ( SUCCEEDED( hr ) ) {
-				if ( ( swapChainDesc.Width != clientWidth ) || ( swapChainDesc.Height != clientHeight ) ) {
-					m_D2DDeviceContext->SetTarget( nullptr );
-					hr = m_D2DSwapChain->ResizeBuffers( 0 /*bufferCount*/, clientWidth, clientHeight, DXGI_FORMAT_UNKNOWN, 0 /*flags*/ );
+		const UINT clientWidth = ( width < s_MinSwapChainSize ) ? s_MinSwapChainSize : width;
+		const UINT clientHeight = ( height < s_MinSwapChainSize ) ? s_MinSwapChainSize : height;
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+		hr = m_D2DSwapChain->GetDesc1( &swapChainDesc );
+		if ( SUCCEEDED( hr ) ) {
+			if ( ( swapChainDesc.Width != clientWidth ) || ( swapChainDesc.Height != clientHeight ) ) {
+				m_D2DDeviceContext->SetTarget( nullptr );
+				hr = m_D2DSwapChain->ResizeBuffers( 0 /*bufferCount*/, clientWidth, clientHeight, DXGI_FORMAT_UNKNOWN, 0 /*flags*/ );
+				if ( SUCCEEDED( hr ) ) {
+					hr = InitialiseDeviceContext();
 					if ( SUCCEEDED( hr ) ) {
-						Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
-						hr = m_D2DSwapChain->GetBuffer( 0, IID_PPV_ARGS( &backBuffer ) );
-						if ( SUCCEEDED( hr ) ) {
-							D2D1_BITMAP_PROPERTIES1 bitmapProperties = {};
-							bitmapProperties.bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW;
-							bitmapProperties.pixelFormat = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE };
-							Microsoft::WRL::ComPtr<IDXGISurface> dxgiBackBuffer;
-							hr = m_D2DSwapChain->GetBuffer( 0, IID_PPV_ARGS( &dxgiBackBuffer ) );
-							if ( SUCCEEDED( hr ) ) {
-								Microsoft::WRL::ComPtr<ID2D1Bitmap1> d2dBitmap;
-								hr = m_D2DDeviceContext->CreateBitmapFromDxgiSurface( dxgiBackBuffer.Get(), &bitmapProperties, &d2dBitmap );
-								if ( SUCCEEDED( hr ) ) {
-									m_D2DDeviceContext->SetTarget( d2dBitmap.Get() );
-									float dpiX = 96;
-									float dpiY = 96;
-									m_D2DFactory->GetDesktopDpi( &dpiX, &dpiY );
-									m_D2DDeviceContext->SetDpi( dpiX, dpiY );
-									Visual* visual = GetCurrentVisual();
-									if ( nullptr != visual ) {
-										visual->OnPaint();
-									}
-								}
-							}
+						Visual* visual = GetCurrentVisual();
+						if ( nullptr != visual ) {
+							visual->OnPaint();
 						}
 					}
 				}
@@ -286,6 +275,35 @@ HRESULT WndVisual::ResizeD2DSwapChain( const WINDOWPOS* windowPos )
 	}
 	if ( FAILED( hr ) ) {
 		InitD2D();
+	}
+	return hr;
+}
+
+HRESULT WndVisual::InitialiseDeviceContext()
+{
+	HRESULT hr = E_FAIL;
+	if ( m_D2DDeviceContext && m_D2DSwapChain ) {
+		m_D2DDeviceContext->SetTarget( nullptr );
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+		hr = m_D2DSwapChain->GetBuffer( 0, IID_PPV_ARGS( &backBuffer ) );
+		if ( SUCCEEDED( hr ) ) {
+			D2D1_BITMAP_PROPERTIES1 bitmapProperties = {};
+			bitmapProperties.bitmapOptions = D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW;
+			bitmapProperties.pixelFormat = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE };
+			Microsoft::WRL::ComPtr<IDXGISurface> dxgiBackBuffer;
+			hr = m_D2DSwapChain->GetBuffer( 0, IID_PPV_ARGS( &dxgiBackBuffer ) );
+			if ( SUCCEEDED( hr ) ) {
+				Microsoft::WRL::ComPtr<ID2D1Bitmap1> d2dBitmap;
+				hr = m_D2DDeviceContext->CreateBitmapFromDxgiSurface( dxgiBackBuffer.Get(), &bitmapProperties, &d2dBitmap );
+				if ( SUCCEEDED( hr ) ) {
+					m_D2DDeviceContext->SetTarget( d2dBitmap.Get() );
+					float dpiX = 96;
+					float dpiY = 96;
+					m_D2DFactory->GetDesktopDpi( &dpiX, &dpiY );
+					m_D2DDeviceContext->SetDpi( dpiX, dpiY );
+				}
+			}
+		}
 	}
 	return hr;
 }
@@ -318,7 +336,6 @@ void WndVisual::EndDrawing()
 {
 	if ( m_D2DDeviceContext ) {
 		m_D2DDeviceContext->EndDraw();
-		DXGI_PRESENT_PARAMETERS parameters = {};
 		const HRESULT hr = m_D2DSwapChain->Present( 1 /*syncInterval*/, 0 /*flags*/ );
 		if ( ( S_OK != hr ) && ( DXGI_STATUS_OCCLUDED != hr ) ) {
 			InitD2D();
@@ -326,11 +343,23 @@ void WndVisual::EndDrawing()
 	}
 }
 
+#undef DEBUG_PERFORMANCE
+
 void WndVisual::OnPaint( const PAINTSTRUCT& ps )
 {
-	Visual* visual = GetCurrentVisual();
-	if ( nullptr != visual ) {
+	if ( Visual* visual = GetCurrentVisual(); ( nullptr != visual ) && m_D2DDeviceContext ) {
+#ifdef DEBUG_PERFORMANCE
+		LARGE_INTEGER perfFreq, perf1, perf2;
+		QueryPerformanceFrequency( &perfFreq );
+		QueryPerformanceCounter( &perf1 );
+#endif
 		visual->OnPaint();
+#ifdef DEBUG_PERFORMANCE
+		QueryPerformanceCounter( &perf2 );
+		const float msec = 1000 * float( perf2.QuadPart - perf1.QuadPart ) / perfFreq.QuadPart;
+		const std::wstring debugStr = L"WndVisual::OnPaint - " + std::to_wstring( msec ) + L"ms\r\n";
+		OutputDebugString( debugStr.c_str() );
+#endif
 	} else {
 		FillRect( ps.hdc, &ps.rcPaint, reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 ) );
 	}
@@ -360,7 +389,16 @@ void WndVisual::Resize( WINDOWPOS* windowPos )
 					windowPos->cy = maxCY;
 				}
 			}
-			ResizeD2DSwapChain( windowPos );
+
+			if ( m_D2DSwapChain ) {
+				bool resizeSwapChain = true;
+				if ( DXGI_SWAP_CHAIN_DESC1 desc = {}; SUCCEEDED( m_D2DSwapChain->GetDesc1( &desc ) ) ) {
+					resizeSwapChain = ( desc.Width != UINT( windowPos->cx ) ) || ( desc.Height != UINT( windowPos->cy ) );
+				}
+				if ( resizeSwapChain ) {
+					ResizeD2DSwapChain( windowPos->cx, windowPos->cy );
+				}
+			}
 		}
 	}
 }
@@ -430,44 +468,28 @@ void WndVisual::DoRender()
 
 void WndVisual::OnOscilloscopeColour()
 {
-	COLORREF colour = m_Settings.GetOscilloscopeColour();
-	CHOOSECOLOR chooseColor = {};
-	chooseColor.lStructSize = sizeof( CHOOSECOLOR );
-	chooseColor.hwndOwner = m_hWnd;
-	chooseColor.rgbResult = colour;
+	COLORREF initialColour = m_Settings.GetOscilloscopeColour();
 	VUPlayer* vuplayer = VUPlayer::Get();
-	if ( nullptr != vuplayer ) {
-		chooseColor.lpCustColors = vuplayer->GetCustomColours();
-	}
-	chooseColor.Flags = CC_ANYCOLOR | CC_FULLOPEN | CC_RGBINIT;
-	if ( TRUE == ChooseColor( &chooseColor ) && ( colour != chooseColor.rgbResult ) ) {
-		colour = chooseColor.rgbResult;
-		m_Settings.SetOscilloscopeColour( colour );
+	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
+	if ( const auto colour = ChooseColour( m_hWnd, initialColour, customColours ); colour.has_value() ) {
+		m_Settings.SetOscilloscopeColour( colour.value() );
 		auto visual = m_Visuals.find( ID_VISUAL_OSCILLOSCOPE );
 		if ( m_Visuals.end() != visual ) {
-			visual->second->OnSettingsChanged();
+			visual->second->OnSettingsChange();
 		}
 	}
 }
 
 void WndVisual::OnOscilloscopeBackground()
 {
-	COLORREF colour = m_Settings.GetOscilloscopeBackground();
-	CHOOSECOLOR chooseColor = {};
-	chooseColor.lStructSize = sizeof( CHOOSECOLOR );
-	chooseColor.hwndOwner = m_hWnd;
-	chooseColor.rgbResult = colour;
+	COLORREF initialColour = m_Settings.GetOscilloscopeBackground();
 	VUPlayer* vuplayer = VUPlayer::Get();
-	if ( nullptr != vuplayer ) {
-		chooseColor.lpCustColors = vuplayer->GetCustomColours();
-	}
-	chooseColor.Flags = CC_ANYCOLOR | CC_FULLOPEN | CC_RGBINIT;
-	if ( TRUE == ChooseColor( &chooseColor ) && ( colour != chooseColor.rgbResult ) ) {
-		colour = chooseColor.rgbResult;
-		m_Settings.SetOscilloscopeBackground( colour );
+	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
+	if ( const auto colour = ChooseColour( m_hWnd, initialColour, customColours ); colour.has_value() ) {
+		m_Settings.SetOscilloscopeBackground( colour.value() );
 		auto visual = m_Visuals.find( ID_VISUAL_OSCILLOSCOPE );
 		if ( m_Visuals.end() != visual ) {
-			visual->second->OnSettingsChanged();
+			visual->second->OnSettingsChange();
 		}
 	}
 }
@@ -481,7 +503,7 @@ void WndVisual::OnOscilloscopeWeight( const UINT commandID )
 		m_Settings.SetOscilloscopeWeight( weight );
 		auto visual = m_Visuals.find( ID_VISUAL_OSCILLOSCOPE );
 		if ( m_Visuals.end() != visual ) {
-			visual->second->OnSettingsChanged();
+			visual->second->OnSettingsChange();
 		}
 	}
 }
@@ -493,27 +515,20 @@ void WndVisual::OnSpectrumAnalyserColour( const UINT commandID )
 	COLORREF background = 0;
 	m_Settings.GetSpectrumAnalyserSettings( base, peak, background );
 	const COLORREF initialColour = ( ID_SPECTRUMANALYSER_BASECOLOUR == commandID ) ? base : ( ( ID_SPECTRUMANALYSER_PEAKCOLOUR == commandID ) ? peak : background );
-	CHOOSECOLOR chooseColor = {};
-	chooseColor.lStructSize = sizeof( CHOOSECOLOR );
-	chooseColor.hwndOwner = m_hWnd;
-	chooseColor.rgbResult = initialColour;
 	VUPlayer* vuplayer = VUPlayer::Get();
-	if ( nullptr != vuplayer ) {
-		chooseColor.lpCustColors = vuplayer->GetCustomColours();
-	}
-	chooseColor.Flags = CC_ANYCOLOR | CC_FULLOPEN | CC_RGBINIT;
-	if ( TRUE == ChooseColor( &chooseColor ) && ( initialColour != chooseColor.rgbResult ) ) {
+	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
+	if ( const auto colour = ChooseColour( m_hWnd, initialColour, customColours ); colour.has_value() ) {
 		if ( ID_SPECTRUMANALYSER_BASECOLOUR == commandID ) {
-			base = chooseColor.rgbResult;
+			base = colour.value();
 		} else if ( ID_SPECTRUMANALYSER_PEAKCOLOUR == commandID ) {
-			peak = chooseColor.rgbResult;
+			peak = colour.value();
 		} else {
-			background = chooseColor.rgbResult;
+			background = colour.value();
 		}
 		m_Settings.SetSpectrumAnalyserSettings( base, peak, background );
 		auto visual = m_Visuals.find( ID_VISUAL_SPECTRUMANALYSER );
 		if ( m_Visuals.end() != visual ) {
-			visual->second->OnSettingsChanged();
+			visual->second->OnSettingsChange();
 		}
 	}
 }
@@ -525,27 +540,20 @@ void WndVisual::OnPeakMeterColour( const UINT commandID )
 	COLORREF background = 0;
 	m_Settings.GetPeakMeterSettings( base, peak, background );
 	const COLORREF initialColour = ( ID_PEAKMETER_BASECOLOUR == commandID ) ? base : ( ( ID_PEAKMETER_PEAKCOLOUR == commandID ) ? peak : background );
-	CHOOSECOLOR chooseColor = {};
-	chooseColor.lStructSize = sizeof( CHOOSECOLOR );
-	chooseColor.hwndOwner = m_hWnd;
-	chooseColor.rgbResult = initialColour;
 	VUPlayer* vuplayer = VUPlayer::Get();
-	if ( nullptr != vuplayer ) {
-		chooseColor.lpCustColors = vuplayer->GetCustomColours();
-	}
-	chooseColor.Flags = CC_ANYCOLOR | CC_FULLOPEN | CC_RGBINIT;
-	if ( TRUE == ChooseColor( &chooseColor ) && ( initialColour != chooseColor.rgbResult ) ) {
+	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
+	if ( const auto colour = ChooseColour( m_hWnd, initialColour, customColours ); colour.has_value() ) {
 		if ( ID_PEAKMETER_BASECOLOUR == commandID ) {
-			base = chooseColor.rgbResult;
+			base = colour.value();
 		} else if ( ID_PEAKMETER_PEAKCOLOUR == commandID ) {
-			peak = chooseColor.rgbResult;
+			peak = colour.value();
 		} else {
-			background = chooseColor.rgbResult;
+			background = colour.value();
 		}
 		m_Settings.SetPeakMeterSettings( base, peak, background );
 		auto visual = m_Visuals.find( ID_VISUAL_PEAKMETER );
 		if ( m_Visuals.end() != visual ) {
-			visual->second->OnSettingsChanged();
+			visual->second->OnSettingsChange();
 		}
 	}
 }
@@ -559,11 +567,11 @@ void WndVisual::OnVUMeterDecay( const UINT commandID )
 		m_Settings.SetVUMeterDecay( decay );
 		auto visual = m_Visuals.find( ID_VISUAL_VUMETER_STEREO );
 		if ( m_Visuals.end() != visual ) {
-			visual->second->OnSettingsChanged();
+			visual->second->OnSettingsChange();
 		}
 		visual = m_Visuals.find( ID_VISUAL_VUMETER_MONO );
 		if ( m_Visuals.end() != visual ) {
-			visual->second->OnSettingsChanged();
+			visual->second->OnSettingsChange();
 		}
 	}
 }
@@ -578,14 +586,35 @@ std::map<UINT,float> WndVisual::GetVUMeterDecayRates() const
 	return s_VUMeterDecay;
 }
 
-void WndVisual::SetRebarWindowHandle( const HWND hwnd )
-{
-	m_hWndRebar = hwnd;
-}
-
 void WndVisual::OnPlaceholderArtworkChanged()
 {
 	if ( const auto visual = m_Visuals.find( ID_VISUAL_ARTWORK ); m_Visuals.end() != visual ) {
-		visual->second->OnSettingsChanged();
+		visual->second->OnSettingsChange();
+	}
+}
+
+void WndVisual::ToggleHardwareAccelerationEnabled()
+{
+	m_HardwareAccelerationEnabled = !m_Settings.GetHardwareAccelerationEnabled();
+	m_Settings.SetHardwareAccelerationEnabled( m_HardwareAccelerationEnabled );
+	for ( const auto& [ id, visual ] : m_Visuals ) {
+		if ( nullptr != visual ) {
+			visual->OnSettingsChange();
+		}
+	}
+	InitD2D();
+}
+
+bool WndVisual::IsHardwareAccelerationEnabled() const
+{
+	return m_HardwareAccelerationEnabled;
+}
+
+void WndVisual::OnSysColorChange()
+{
+	for ( const auto& [ id, visual ] : m_Visuals ) {
+		if ( nullptr != visual ) {
+			visual->OnSysColorChange();
+		}
 	}
 }

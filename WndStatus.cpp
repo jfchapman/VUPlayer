@@ -50,16 +50,10 @@ WndStatus::WndStatus( HINSTANCE instance, HWND parent ) :
 	m_DefaultWndProc( NULL ),
 	m_Playlist(),
 	m_GainStatusCount( -1 ),
-	m_LibraryStatusCount( -1 ),
-	m_MusicBrainzActive( false ),
-	m_IdleText()
+	m_MaintainerStatus(),
+	m_MusicBrainzActive( false )
 {
-	const int bufSize = 32;
-	WCHAR buf[ bufSize ] = {};
-	LoadString( m_hInst, IDS_IDLE, buf, bufSize );
-	m_IdleText = buf;
-
-	const DWORD style = WS_CHILD | WS_CLIPSIBLINGS| WS_VISIBLE | SBARS_SIZEGRIP;
+	const DWORD style = WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE | SBARS_SIZEGRIP;
 	const int x = 0;
 	const int y = 0;
 	const int width = 0;
@@ -118,37 +112,30 @@ void WndStatus::Update( Playlist* playlist )
 void WndStatus::Update( const GainCalculator& gainCalculator, const LibraryMaintainer& libraryMaintainer, const MusicBrainz& musicbrainz )
 {
 	const int pendingGain = gainCalculator.GetPendingCount();
-	const int pendingLibrary = libraryMaintainer.GetPendingCount();
+	const std::wstring maintainerStatus = libraryMaintainer.GetStatus();
 	const bool musicbrainzActive = musicbrainz.IsActive();
-	if ( ( pendingGain != m_GainStatusCount ) || ( pendingLibrary != m_LibraryStatusCount ) || ( musicbrainzActive != m_MusicBrainzActive ) ) {
-		std::wstring idleText = m_IdleText;
+	if ( ( pendingGain != m_GainStatusCount ) || ( maintainerStatus != m_MaintainerStatus ) || ( musicbrainzActive != m_MusicBrainzActive ) ) {
+		std::wstring statusText;
 		if ( musicbrainzActive ) {
 			const int bufSize = 64;
 			WCHAR buf[ bufSize ];
 			LoadString( m_hInst, IDS_MUSICBRAINZ_ACTIVE, buf, bufSize );
-			idleText = buf;
-		} else if ( 0 != pendingLibrary ) {
-			const int bufSize = 64;
-			WCHAR buf[ bufSize ];
-			LoadString( m_hInst, IDS_STATUS_LIBRARY, buf, bufSize );
-			idleText = buf;
-			const size_t pos = idleText.find( '%' );
-			if ( std::wstring::npos != pos ) {
-				idleText.replace( pos, 1 /*len*/, std::to_wstring( pendingLibrary ) );
-			}
+			statusText = buf;
+		} else if ( !maintainerStatus.empty() ) {
+			statusText = maintainerStatus;
 		} else if ( 0 != pendingGain ) {
 			const int bufSize = 64;
 			WCHAR buf[ bufSize ];
 			LoadString( m_hInst, IDS_STATUS_GAIN, buf, bufSize );
-			idleText = buf;
-			const size_t pos = idleText.find( '%' );
+			statusText = buf;
+			const size_t pos = statusText.find( '%' );
 			if ( std::wstring::npos != pos ) {
-				idleText.replace( pos, 1 /*len*/, std::to_wstring( pendingGain ) );
+				statusText.replace( pos, 1 /*len*/, std::to_wstring( pendingGain ) );
 			}
 		}
-		SendMessage( m_hWnd, SB_SETTEXT, 0, reinterpret_cast<LPARAM>( idleText.c_str() ) );
+		SendMessage( m_hWnd, SB_SETTEXT, 0, reinterpret_cast<LPARAM>( statusText.c_str() ) );
 		m_GainStatusCount = pendingGain;
-		m_LibraryStatusCount = pendingLibrary;
+		m_MaintainerStatus = maintainerStatus;
 		m_MusicBrainzActive = musicbrainzActive;
 	}
 }
@@ -189,31 +176,27 @@ void WndStatus::Refresh()
 	std::wstring previous4;
 	const int part1Size = LOWORD( SendMessage( m_hWnd, SB_GETTEXTLENGTH, 0, 0 ) );
 	if ( part1Size > 0 ) {
-		WCHAR* buf = new WCHAR[ 1 + part1Size ];
-		SendMessage( m_hWnd, SB_GETTEXT, 0, reinterpret_cast<LPARAM>( buf ) );
-		previous1 = buf;
-		delete [] buf;
+		std::vector<WCHAR> buf( 1 + part1Size, 0 );
+		SendMessage( m_hWnd, SB_GETTEXT, 0, reinterpret_cast<LPARAM>( buf.data() ) );
+		previous1 = buf.data();
 	}
 	const int part2Size = LOWORD( SendMessage( m_hWnd, SB_GETTEXTLENGTH, 1, 0 ) );
 	if ( part2Size > 0 ) {
-		WCHAR* buf = new WCHAR[ 1 + part2Size ];
-		SendMessage( m_hWnd, SB_GETTEXT, 1, reinterpret_cast<LPARAM>( buf ) );
-		previous2 = buf;
-		delete [] buf;
+		std::vector<WCHAR> buf( 1 + part2Size, 0 );
+		SendMessage( m_hWnd, SB_GETTEXT, 1, reinterpret_cast<LPARAM>( buf.data() ) );
+		previous2 = buf.data();
 	}
 	const int part3Size = LOWORD( SendMessage( m_hWnd, SB_GETTEXTLENGTH, 2, 0 ) );
 	if ( part3Size > 0 ) {
-		WCHAR* buf = new WCHAR[ 1 + part3Size ];
-		SendMessage( m_hWnd, SB_GETTEXT, 2, reinterpret_cast<LPARAM>( buf ) );
-		previous3 = buf;
-		delete [] buf;
+		std::vector<WCHAR> buf( 1 + part3Size, 0 );
+		SendMessage( m_hWnd, SB_GETTEXT, 2, reinterpret_cast<LPARAM>( buf.data() ) );
+		previous3 = buf.data();
 	}
 	const int part4Size = LOWORD( SendMessage( m_hWnd, SB_GETTEXTLENGTH, 3, 0 ) );
 	if ( part4Size > 0 ) {
-		WCHAR* buf = new WCHAR[ 1 + part4Size ];
-		SendMessage( m_hWnd, SB_GETTEXT, 3, reinterpret_cast<LPARAM>( buf ) );
-		previous4 = buf;
-		delete [] buf;
+		std::vector<WCHAR> buf( 1 + part4Size, 0 );
+		SendMessage( m_hWnd, SB_GETTEXT, 3, reinterpret_cast<LPARAM>( buf.data() ) );
+		previous4 = buf.data();
 	}
 
 	if ( previous2 != part2 ) {

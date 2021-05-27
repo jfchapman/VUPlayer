@@ -24,7 +24,7 @@ LRESULT CALLBACK WndCounter::CounterProc( HWND hwnd, UINT message, WPARAM wParam
 	if ( nullptr != wndCounter ) {
 		switch ( message ) {
 			case WM_PAINT : {
-				PAINTSTRUCT ps;
+				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
 				wndCounter->OnPaint( ps );
 				EndPaint( hwnd, &ps );
@@ -33,11 +33,8 @@ LRESULT CALLBACK WndCounter::CounterProc( HWND hwnd, UINT message, WPARAM wParam
 			case WM_ERASEBKGND : {
 				return TRUE;
 			}
-			case WM_CONTEXTMENU : {
-				POINT pt = {};
-				pt.x = LOWORD( lParam );
-				pt.y = HIWORD( lParam );
-				wndCounter->OnContextMenu( pt );
+			case WM_SIZE : {
+				wndCounter->CentreFont();
 				break;
 			}
 			case WM_COMMAND : {
@@ -58,36 +55,37 @@ LRESULT CALLBACK WndCounter::CounterProc( HWND hwnd, UINT message, WPARAM wParam
 	return DefWindowProc( hwnd, message, wParam, lParam );
 }
 
-WndCounter::WndCounter( HINSTANCE instance, HWND parent, Settings& settings, Output& output, const int height ) :
+WndCounter::WndCounter( HINSTANCE instance, HWND parent, Settings& settings, Output& output ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_Settings( settings ),
 	m_Output( output ),
 	m_Text(),
 	m_Font(),
-	m_Colour( RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ ) ),
+	m_FontColour( DEFAULT_ICONCOLOUR ),
+	m_BackgroundColour( GetSysColor( COLOR_WINDOW ) ),
 	m_ShowRemaining( false ),
 	m_FontMidpoint( 0 ),
-	fBackgroundBitmap( nullptr )
+	m_Width(),
+	m_IsHighContrast( IsHighContrastActive() ),
+	m_IsClassicTheme( IsClassicThemeActive() )
 {
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof( WNDCLASSEX );
+	wc.hCursor = LoadCursor( 0, IDC_ARROW );
 	wc.hInstance = instance;
 	wc.lpfnWndProc = CounterProc;
 	wc.lpszClassName = s_CounterClass;
 	RegisterClassEx( &wc );
+	SetWidth( settings );
 
 	const DWORD style = WS_CHILD | WS_VISIBLE;
 	const int x = 0;
 	const int y = 0;
-	auto widthIter = s_CounterWidths.find( m_Settings.GetToolbarSize() );
-	if ( s_CounterWidths.end() == widthIter ) {
-		widthIter = s_CounterWidths.begin();
-	}
-	const int width = static_cast<int>( widthIter->second * GetDPIScaling() );
+	const int width = GetWidth().value_or( 0 );
 
 	LPVOID param = NULL;
-	m_hWnd = CreateWindowEx( 0, s_CounterClass, NULL, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndCounterID ), instance, param );
+	m_hWnd = CreateWindowEx( 0, s_CounterClass, NULL, style, x, y, width, 0 /*height*/, parent, reinterpret_cast<HMENU>( s_WndCounterID ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 
 	LOGFONT font;
@@ -96,9 +94,11 @@ WndCounter::WndCounter( HINSTANCE instance, HWND parent, Settings& settings, Out
 	if ( FALSE != SystemParametersInfo( SPI_GETNONCLIENTMETRICS, metrics.cbSize, &metrics, 0 /*winIni*/ ) ) {
 		font = metrics.lfStatusFont;
 		font.lfHeight *= 2;
-		font.lfWeight = FW_HEAVY;
+		font.lfWeight = FW_BOLD;
 	}
-	m_Settings.GetCounterSettings( font, m_Colour, m_ShowRemaining );
+	m_Settings.GetCounterSettings( font, m_FontColour, m_ShowRemaining );
+	COLORREF unusedColour = {};
+	m_Settings.GetToolbarColours( unusedColour, m_BackgroundColour );
 	SetCounterFont( font );
 }
 
@@ -136,11 +136,7 @@ void WndCounter::Refresh()
 
 void WndCounter::Redraw()
 {
-	const HWND parentWnd = GetParent( m_hWnd );
-	RECT rect = {};
-	GetClientRect( m_hWnd, &rect );
-	MapWindowPoints( m_hWnd, parentWnd, reinterpret_cast<LPPOINT>( &rect ), 2 /*numPoints*/ );
-	InvalidateRect( parentWnd, &rect, FALSE /*erase*/ );
+	InvalidateRect( m_hWnd, nullptr, FALSE );
 }
 
 void WndCounter::OnPaint( const PAINTSTRUCT& ps )
@@ -148,20 +144,16 @@ void WndCounter::OnPaint( const PAINTSTRUCT& ps )
 	RECT clientRect = {};
 	GetClientRect( m_hWnd, &clientRect );
 
-	// Draw text to an offscreen bitmap.
 	Gdiplus::Font font( ps.hdc, &m_Font );
 	Gdiplus::Bitmap bitmap( clientRect.right - clientRect.left, clientRect.bottom, PixelFormat32bppARGB );
 	Gdiplus::Graphics bitmapGraphics( &bitmap );
 
-	std::shared_ptr<Gdiplus::Bitmap> backgroundBitmap = GetBackgroundBitmap();
-	if ( backgroundBitmap ) {
-		bitmapGraphics.DrawImage( backgroundBitmap.get(), Gdiplus::Rect( 0 /*x*/, 0 /*y*/, bitmap.GetWidth(), bitmap.GetHeight() ) );
-	} else {
-		bitmapGraphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::White ) );
-	}
+	Gdiplus::Color backgroundColour;
+	backgroundColour.SetFromCOLORREF( m_IsHighContrast ? GetSysColor( COLOR_WINDOW ) : ( m_IsClassicTheme ? GetSysColor( COLOR_3DFACE ) : m_BackgroundColour ) );
+	bitmapGraphics.Clear( backgroundColour );
 
 	Gdiplus::Color textColour;
-	textColour.SetFromCOLORREF( m_Colour );
+	textColour.SetFromCOLORREF( m_IsHighContrast ? GetSysColor( COLOR_HIGHLIGHT ) : m_FontColour );
 	const Gdiplus::SolidBrush textBrush( textColour );
 	const Gdiplus::RectF rect( 0, 0, static_cast<Gdiplus::REAL>( bitmap.GetWidth() ), static_cast<Gdiplus::REAL>( bitmap.GetHeight() ) );
 	Gdiplus::StringFormat format( Gdiplus::StringFormat::GenericTypographic() );
@@ -173,66 +165,79 @@ void WndCounter::OnPaint( const PAINTSTRUCT& ps )
 	const Gdiplus::PointF origin( x, y );
 	bitmapGraphics.DrawString( m_Text.c_str(), -1 /*length*/, &font, origin, &format, &textBrush );
 
-	// Draw the counter from the bitmap (to avoid flicker).
-	Gdiplus::Graphics graphics( ps.hdc );
-	graphics.DrawImage( &bitmap, 0.0f /*x*/, 0.0f /*y*/ );
+	Gdiplus::Graphics displayGraphics( ps.hdc );
+	displayGraphics.DrawImage( &bitmap, 0.0f /*x*/, 0.0f /*y*/ );
 }
 
 void WndCounter::SetCounterFont( const LOGFONT& logfont )
 {
 	m_Font = logfont;
-	// Calculate the vertical extents of the font so that text can be effectively centered when drawing the counter.
-	RECT clientRect = {};
-	GetClientRect( m_hWnd, &clientRect );
-	Gdiplus::Bitmap bitmap( clientRect.right - clientRect.left, clientRect.right - clientRect.left, PixelFormat32bppARGB );
-	Gdiplus::Graphics graphics( &bitmap );
-	const Gdiplus::SolidBrush brush( static_cast<Gdiplus::ARGB>( Gdiplus::Color::Black ) );
-	HDC dc = GetDC( m_hWnd );
-	const Gdiplus::Font font( dc, &m_Font );
-	ReleaseDC( m_hWnd, dc );
-	Gdiplus::StringFormat format( Gdiplus::StringFormat::GenericTypographic() );
-	format.SetAlignment( Gdiplus::StringAlignment::StringAlignmentNear );
-	format.SetLineAlignment( Gdiplus::StringAlignment::StringAlignmentNear );
-	graphics.SetTextRenderingHint( Gdiplus::TextRenderingHint::TextRenderingHintAntiAlias );
-	graphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::White ) );
-	Gdiplus::PointF origin( 0, 0 );
-	graphics.DrawString( L":-0123456789", -1 /*length*/, &font, origin, &format, &brush );
-	Gdiplus::Rect rect( 0, 0, bitmap.GetWidth(), bitmap.GetHeight() );
-	Gdiplus::BitmapData bitmapData;
-	if ( Gdiplus::Ok == bitmap.LockBits( &rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bitmapData ) ) {
-		Gdiplus::ARGB* pixels = static_cast<Gdiplus::ARGB*>( bitmapData.Scan0 );
-		UINT minY = bitmap.GetHeight();
-		UINT maxY = 0;
-		for ( UINT row = 0; row < bitmapData.Height; row++ ) {
-			for ( UINT column = 0; column < bitmapData.Width; column++ ) {
-				if ( 0xffffffff != pixels[ row * bitmapData.Stride / 4 + column ] ) {
-					if ( row < minY ) {
-						minY = row;
-					}
-					if ( row > maxY ) {
-						maxY = row;
-					}
-					break;
-				}
-			}
-		}
-		bitmap.UnlockBits( &bitmapData );
-		m_FontMidpoint = static_cast<float>( minY + maxY ) / 2;
-	}
-	Redraw();
+	CentreFont();
 }
 
-void WndCounter::OnContextMenu( const POINT& position )
+void WndCounter::CentreFont()
+{
+	RECT clientRect = {};
+	GetClientRect( m_hWnd, &clientRect );
+	if ( clientRect.right - clientRect.left > 0 ) {
+		Gdiplus::Bitmap bitmap( clientRect.right - clientRect.left, clientRect.right - clientRect.left, PixelFormat32bppARGB );
+		Gdiplus::Graphics graphics( &bitmap );
+		const Gdiplus::SolidBrush brush( static_cast<Gdiplus::ARGB>( Gdiplus::Color::Black ) );
+		HDC dc = GetDC( m_hWnd );
+		const Gdiplus::Font font( dc, &m_Font );
+		ReleaseDC( m_hWnd, dc );
+		Gdiplus::StringFormat format( Gdiplus::StringFormat::GenericTypographic() );
+		format.SetAlignment( Gdiplus::StringAlignment::StringAlignmentNear );
+		format.SetLineAlignment( Gdiplus::StringAlignment::StringAlignmentNear );
+		graphics.SetTextRenderingHint( Gdiplus::TextRenderingHint::TextRenderingHintAntiAlias );
+		graphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::White ) );
+		Gdiplus::PointF origin( 0, 0 );
+		graphics.DrawString( L":-0123456789", -1 /*length*/, &font, origin, &format, &brush );
+		Gdiplus::Rect rect( 0, 0, bitmap.GetWidth(), bitmap.GetHeight() );
+		Gdiplus::BitmapData bitmapData;
+		if ( Gdiplus::Ok == bitmap.LockBits( &rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bitmapData ) ) {
+			Gdiplus::ARGB* pixels = static_cast<Gdiplus::ARGB*>( bitmapData.Scan0 );
+			UINT minY = bitmap.GetHeight();
+			UINT maxY = 0;
+			for ( UINT row = 0; row < bitmapData.Height; row++ ) {
+				for ( UINT column = 0; column < bitmapData.Width; column++ ) {
+					if ( 0xffffffff != pixels[ row * bitmapData.Stride / 4 + column ] ) {
+						if ( row < minY ) {
+							minY = row;
+						}
+						if ( row > maxY ) {
+							maxY = row;
+						}
+						break;
+					}
+				}
+			}
+			bitmap.UnlockBits( &bitmapData );
+			m_FontMidpoint = static_cast<float>( minY + maxY ) / 2;
+		}
+		Redraw();
+	}
+}
+
+bool WndCounter::ShowContextMenu( const POINT& position )
 {
 	HMENU menu = LoadMenu( m_hInst, MAKEINTRESOURCE( IDR_MENU_COUNTER ) );
 	if ( NULL != menu ) {
 		HMENU countermenu = GetSubMenu( menu, 0 /*pos*/ );
 		if ( NULL != countermenu ) {
 			CheckMenuItem( countermenu, m_ShowRemaining ? ID_VIEW_COUNTER_TRACKREMAINING : ID_VIEW_COUNTER_TRACKELAPSED, MF_BYCOMMAND | MF_CHECKED );
+
+			UINT enableColourChoice = m_IsHighContrast ? MF_DISABLED : MF_ENABLED;
+			EnableMenuItem( menu, ID_VIEW_COUNTER_FONTCOLOUR, MF_BYCOMMAND | enableColourChoice );
+
+			enableColourChoice = ( m_IsHighContrast || m_IsClassicTheme ) ? MF_DISABLED : MF_ENABLED;
+			EnableMenuItem( menu, ID_TOOLBAR_COLOUR_BACKGROUND, MF_BYCOMMAND | enableColourChoice );
+
 			TrackPopupMenu( countermenu, TPM_RIGHTBUTTON, position.x, position.y, 0 /*reserved*/, m_hWnd, NULL /*rect*/ );
 		}
 		DestroyMenu( menu );
 	}
+	return true;
 }
 
 void WndCounter::OnCommand( const UINT command )
@@ -251,6 +256,10 @@ void WndCounter::OnCommand( const UINT command )
 			OnSelectColour();
 			break;
 		}
+		case ID_TOOLBAR_COLOUR_BACKGROUND : {
+			SendMessage( GetParent( m_hWnd ), WM_COMMAND, command, 0 );
+			break;
+		}
 		default : {
 			break;
 		}
@@ -264,7 +273,7 @@ void WndCounter::OnSelectFont()
 	chooseFont.lStructSize = sizeof( CHOOSEFONT );
 	chooseFont.hwndOwner = m_hWnd;
 	chooseFont.Flags = CF_FORCEFONTEXIST | CF_NOVERTFONTS | CF_LIMITSIZE | CF_INITTOLOGFONTSTRUCT;
-	chooseFont.nSizeMax = 32;
+	chooseFont.nSizeMax = 36;
 	chooseFont.lpLogFont = &logFont;
 	if ( ( TRUE == ChooseFont( &chooseFont ) ) && ( nullptr != chooseFont.lpLogFont ) ) {
 		SetCounterFont( *chooseFont.lpLogFont );
@@ -273,17 +282,10 @@ void WndCounter::OnSelectFont()
 
 void WndCounter::OnSelectColour()
 {
-	CHOOSECOLOR chooseColor = {};
-	chooseColor.lStructSize = sizeof( CHOOSECOLOR );
-	chooseColor.hwndOwner = m_hWnd;
 	VUPlayer* vuplayer = VUPlayer::Get();
-	if ( nullptr != vuplayer ) {
-		chooseColor.lpCustColors = vuplayer->GetCustomColours();
-	}
-	chooseColor.Flags = CC_ANYCOLOR | CC_FULLOPEN | CC_RGBINIT;
-	chooseColor.rgbResult = m_Colour;
-	if ( TRUE == ChooseColor( &chooseColor ) ) {
-		m_Colour = chooseColor.rgbResult;
+	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
+	if ( const auto colour = ChooseColour( m_hWnd, m_FontColour, customColours ); colour.has_value() ) {
+		m_FontColour = colour.value();
 		Redraw();
 	}
 }
@@ -307,59 +309,64 @@ void WndCounter::Toggle()
 	Refresh();
 }
 
-std::shared_ptr<Gdiplus::Bitmap> WndCounter::GetBackgroundBitmap()
-{
-	if ( !fBackgroundBitmap ) {
-		// Take a screenshot of the control window.
-		HDC clientDC = GetDC( m_hWnd );
-		if ( nullptr != clientDC ) {
-			HDC memDC = CreateCompatibleDC( clientDC );
-			if ( nullptr != memDC ) {
-				RECT clientRect = {};
-				GetClientRect( m_hWnd, &clientRect );
-				const int width = clientRect.right - clientRect.left;
-				const int height = clientRect.bottom - clientRect.top;
-
-				BITMAPINFO bitmapInfo = {};
-				bitmapInfo.bmiHeader.biSize = sizeof( BITMAPINFOHEADER );
-				bitmapInfo.bmiHeader.biBitCount = 32;
-				bitmapInfo.bmiHeader.biCompression = BI_RGB;
-				bitmapInfo.bmiHeader.biPlanes = 1;
-				bitmapInfo.bmiHeader.biWidth = width;
-				bitmapInfo.bmiHeader.biHeight = height;
-
-				void* bits = nullptr;
-				HBITMAP hBitmap = CreateDIBSection( memDC, &bitmapInfo, DIB_RGB_COLORS, &bits, nullptr /*hSection*/, 0 /*offset*/ );
-				if ( nullptr != hBitmap ) {			
-					HANDLE oldBitmap = SelectObject( memDC, hBitmap );
-					if ( FALSE != BitBlt( memDC, 0 /*destX*/, 0 /*destY*/, width, height, clientDC, 0 /*srcX*/, 0 /*srcY*/, SRCCOPY ) ) {
-						fBackgroundBitmap.reset( new Gdiplus::Bitmap( width, height, PixelFormat32bppARGB ) );
-						Gdiplus::BitmapData bitmapData;
-						Gdiplus::Rect rect( 0 /*x*/, 0 /*y*/, width, height );
-						if ( Gdiplus::Ok == fBackgroundBitmap->LockBits( &rect, Gdiplus::ImageLockModeWrite, PixelFormat32bppRGB, &bitmapData ) ) {
-							// Flip image.
-							unsigned char* srcBits = static_cast<unsigned char*>( bits );
-							unsigned char* destBits = static_cast<unsigned char*>( bitmapData.Scan0 );
-							for ( int row = 0; row < height; row++ ) {
-								memcpy( destBits + ( height - row - 1 ) * width * 4, srcBits + row * width * 4, width * 4 );
-							}
-							fBackgroundBitmap->UnlockBits( &bitmapData );
-						}	else {
-							fBackgroundBitmap.reset();
-						}
-					}
-					SelectObject( memDC, oldBitmap );
-					DeleteObject( hBitmap );
-				}
-				DeleteDC( memDC );
-			}
-			ReleaseDC( m_hWnd, clientDC );
-		}
-	}
-	return fBackgroundBitmap;
-}
-
 void WndCounter::SaveSettings()
 {
-	m_Settings.SetCounterSettings( m_Font, m_Colour, m_ShowRemaining );
+	m_Settings.SetCounterSettings( m_Font, m_FontColour, m_ShowRemaining );
+}
+
+int WndCounter::GetID() const
+{
+	return 0;
+}
+
+HWND WndCounter::GetWindowHandle() const
+{
+	return m_hWnd;
+}
+
+void WndCounter::SetWidth( Settings& settings )
+{
+	m_Width = std::nullopt;
+	if ( const auto widthIter = s_CounterWidths.find( settings.GetToolbarSize() ); s_CounterWidths.end() != widthIter ) {
+		m_Width = int( widthIter->second * GetDPIScaling() );
+	}
+}
+
+std::optional<int> WndCounter::GetWidth() const
+{
+	return m_Width;
+}
+
+std::optional<int> WndCounter::GetHeight() const
+{
+	return std::nullopt;
+}
+
+bool WndCounter::HasDivider() const
+{
+	return true;
+}
+
+bool WndCounter::CanHide() const
+{
+	return false;
+}
+
+void WndCounter::OnChangeRebarItemSettings( Settings& settings )
+{
+	SetWidth( settings );
+	COLORREF unusedColour = 0;
+	settings.GetToolbarColours( unusedColour, m_BackgroundColour );
+}
+
+std::optional<LRESULT> WndCounter::OnCustomDraw( LPNMCUSTOMDRAW /*nmcd*/ )
+{
+	return std::nullopt;
+}
+
+void WndCounter::OnSysColorChange( const bool isHighContrast, const bool isClassicTheme )
+{
+	m_IsHighContrast = isHighContrast;
+	m_IsClassicTheme = isClassicTheme;
+	Redraw();
 }

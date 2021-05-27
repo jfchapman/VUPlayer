@@ -327,6 +327,12 @@
     <ClInclude Include="OptionsArtwork.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="WndRebarItem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WndToolbarVolume.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -608,6 +614,9 @@
     <ClCompile Include="OptionsArtwork.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="WndToolbarVolume.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="VUPlayer.rc">
@@ -729,5 +738,10 @@
     <Image Include="res\streams.ico">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="res\version.manifest">
+      <Filter>Resource Files</Filter>
+    </Manifest>
   </ItemGroup>
 </Project>

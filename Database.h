@@ -39,10 +39,10 @@ private:
 	sqlite3* m_Database;
 
 	// Disk database file name.
-	std::wstring m_Filename;
+	const std::wstring m_Filename;
 
 	// Database access mode.
-	Mode m_Mode;
+	const Mode m_Mode;
 
 	// Error log mutex.
 	std::mutex m_LogMutex;

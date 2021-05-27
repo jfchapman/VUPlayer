@@ -38,7 +38,7 @@ long DecoderMAC::Read( float* destBuffer, const long sampleCount )
 		if ( blocksRead > 0 ) {
 			samplesRead = static_cast<long>( blocksRead );
 			const long channels = GetChannels();
-			const long bps = GetBPS();
+			const long bps = GetBPS().value_or( 0 );
 			switch ( bps ) {
 				case 8 : {
 					unsigned char* uBuf = reinterpret_cast<unsigned char*>( srcBuffer.data() );

@@ -21,8 +21,8 @@ public:
 	// 'filename' - media filename.
 	// 'handlers' - media handlers.
 	// 'canContinue' - callback which returns whether the calculation can continue.
-	// Returns the track gain, or NaN if the calculation failed or was cancelled.
-	static float CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, Decoder::CanContinue canContinue );
+	// Returns the track gain, or nullopt if the calculation failed or was cancelled.
+	static std::optional<float> CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, Decoder::CanContinue canContinue );
 
 	// Calculates gain values for the playlist 'items'.
 	void Calculate( const Playlist::ItemList& items );

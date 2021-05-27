@@ -46,7 +46,9 @@ WndTray::WndTray( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_Tree( wndTree ),
 	m_List( wndList ),
 	m_PlaylistMenuItems(),
-	m_NextPlaylistMenuItemID( 0 )
+	m_NextPlaylistMenuItemID( 0 ),
+	m_ClickCommands(),
+	m_ClickCount( 0 )
 {
 	m_NotifyIconData.cbSize = sizeof( NOTIFYICONDATA );
 	m_NotifyIconData.hWnd = parent;
@@ -57,6 +59,10 @@ WndTray::WndTray( HINSTANCE instance, HWND parent, Library& library, Settings& s
 
 	LoadString( instance, IDS_APP_TITLE, m_NotifyIconData.szTip, sMaxTooltip );
 	m_DefaultTooltip = m_NotifyIconData.szTip;
+
+	bool enable = false;
+	bool minimise = false;
+	m_Settings.GetSystraySettings( enable, minimise, m_ClickCommands[ 0 ], m_ClickCommands[ 1 ], m_ClickCommands[ 2 ], m_ClickCommands[ 3 ] );
 }
 
 WndTray::~WndTray()
@@ -154,13 +160,29 @@ void WndTray::OnNotify( WPARAM /*wParam*/, LPARAM lParam )
 	const WORD message = LOWORD( lParam );
 	switch ( message ) {
 		case WM_LBUTTONDOWN : {
-			const UINT elapse = GetDoubleClickTime();
-			SetTimer( m_NotifyIconData.hWnd, TIMER_SYSTRAY, elapse, NULL /*timerProc*/ );
+			const auto [ singleClick, doubleClick, tripleClick, quadClick ] = m_ClickCommands;
+			if ( ( Settings::SystrayCommand::None == doubleClick ) && ( Settings::SystrayCommand::None == tripleClick ) && ( Settings::SystrayCommand::None == quadClick ) ) {
+				OnSingleClick();
+			} else {
+				++m_ClickCount;
+				if ( 1 == m_ClickCount ) {
+					UINT elapse = GetDoubleClickTime();
+					if ( ( Settings::SystrayCommand::None != tripleClick ) || ( Settings::SystrayCommand::None != quadClick ) ) {
+						elapse *= 2;
+					}
+					SetTimer( m_NotifyIconData.hWnd, TIMER_SYSTRAY, elapse, NULL /*timerProc*/ );
+				} else if ( Settings::SystrayCommand::None == quadClick ) {
+					OnTimerElapsed();
+				}
+			}
 			break;
 		}
 		case WM_LBUTTONDBLCLK : {
-			KillTimer( m_NotifyIconData.hWnd, TIMER_SYSTRAY );
-			OnDoubleClick();
+			++m_ClickCount;
+			const auto [ singleClick, doubleClick, tripleClick, quadClick ] = m_ClickCommands;
+			if ( ( 4 == m_ClickCount ) || ( ( Settings::SystrayCommand::None == tripleClick ) && ( Settings::SystrayCommand::None == quadClick ) ) ) {
+				OnTimerElapsed();				
+			}				
 			break;
 		}
 		case WM_CONTEXTMENU : {
@@ -410,22 +432,22 @@ HMENU WndTray::CreatePlaylistMenu( const Playlist::Ptr playlist )
 
 void WndTray::OnSingleClick()
 {
-	bool enable = false;
-	bool minimise = false;
-	Settings::SystrayCommand singleClick = Settings::SystrayCommand::None;
-	Settings::SystrayCommand doubleClick = Settings::SystrayCommand::None;
-	m_Settings.GetSystraySettings( enable, minimise, singleClick, doubleClick );
-	DoCommand( singleClick );
+	DoCommand( m_ClickCommands[ 0 ] );
 }
 
 void WndTray::OnDoubleClick()
 {
-	bool enable = false;
-	bool minimise = false;
-	Settings::SystrayCommand singleClick = Settings::SystrayCommand::None;
-	Settings::SystrayCommand doubleClick = Settings::SystrayCommand::None;
-	m_Settings.GetSystraySettings( enable, minimise, singleClick, doubleClick );
-	DoCommand( doubleClick );
+	DoCommand( m_ClickCommands[ 1 ] );
+}
+
+void WndTray::OnTripleClick()
+{
+	DoCommand( m_ClickCommands[ 2 ] );
+}
+
+void WndTray::OnQuadrupleClick()
+{
+	DoCommand( m_ClickCommands[ 3 ] );
 }
 
 void WndTray::DoCommand( const Settings::SystrayCommand command )
@@ -461,4 +483,31 @@ Playlist::Ptr WndTray::GetActivePlaylist() const
 {
 	const Playlist::Ptr activePlaylist = ( Output::State::Stopped == m_Output.GetState() ) ? m_List.GetPlaylist() : m_Output.GetPlaylist();
 	return activePlaylist;
+}
+
+void WndTray::OnChangeSettings()
+{
+	bool enable = false;
+	bool minimise = false;
+	m_Settings.GetSystraySettings( enable, minimise, m_ClickCommands[ 0 ], m_ClickCommands[ 1 ], m_ClickCommands[ 2 ], m_ClickCommands[ 3 ] );
+}
+
+void WndTray::OnTimerElapsed()
+{
+	KillTimer( m_NotifyIconData.hWnd, TIMER_SYSTRAY );
+	switch ( m_ClickCount ) {
+		case 1 :
+			OnSingleClick();
+			break;
+		case 2 :
+			OnDoubleClick();
+			break;
+		case 3 :
+			OnTripleClick();
+			break;
+		case 4 :
+			OnQuadrupleClick();
+			break;
+	}
+	m_ClickCount = 0;
 }

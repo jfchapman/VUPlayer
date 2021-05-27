@@ -322,8 +322,8 @@ void Settings::UpdateFontSettings()
 	}
 }
 
-void Settings::GetPlaylistSettings( PlaylistColumns& columns, LOGFONT& font,
-			COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour )
+void Settings::GetPlaylistSettings( PlaylistColumns& columns, bool& showStatusIcon, LOGFONT& font,
+			COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& statusIconColour )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -384,11 +384,29 @@ void Settings::GetPlaylistSettings( PlaylistColumns& columns, LOGFONT& font,
 			}
 			sqlite3_finalize( stmt );
 		}
+
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='ListStatusIconColour';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				statusIconColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='ListStatusIconEnable';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				showStatusIcon = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
 	}
 }
 
-void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const LOGFONT& font,
-			const COLORREF& fontColour, const COLORREF& backgroundColour, const COLORREF& highlightColour )
+void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const bool showStatusIcon, const LOGFONT& font,
+			const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF statusIconColour )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -430,13 +448,23 @@ void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const LOGFON
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
+			sqlite3_bind_text( stmt, 1, "ListStatusIconColour", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( statusIconColour ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "ListStatusIconEnable", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( showStatusIcon ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
 			sqlite3_finalize( stmt );
 			stmt = nullptr;
 		}
 	}
 }
 
-void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour,
+void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour,
 		bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears )
 {
 	sqlite3* database = m_Database.GetDatabase();
@@ -473,6 +501,14 @@ void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& b
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
 				highlightColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='TreeIconColour';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				iconColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
 			}
 			sqlite3_finalize( stmt );
 		}
@@ -535,7 +571,7 @@ void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& b
 	}
 }
 
-void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF& fontColour, const COLORREF& backgroundColour, const COLORREF& highlightColour,
+void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF iconColour,
 		const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears )
 {
 	sqlite3* database = m_Database.GetDatabase();
@@ -560,6 +596,11 @@ void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF& fontColour,
 
 			sqlite3_bind_text( stmt, 1, "TreeHighlightColour", -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_int( stmt, 2, static_cast<int>( highlightColour ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "TreeIconColour", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( iconColour ) );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
@@ -698,16 +739,10 @@ void Settings::ReadPlaylistFiles( Playlist& playlist )
 
 bool Settings::IsValidGUID( const std::string& guid )
 {
-	RPC_CSTR rpcStr = new unsigned char[ 1 + guid.size() ];
-	int pos = 0;
-	for ( const auto& iter : guid ) {
-		rpcStr[ pos++ ] = static_cast<unsigned char>( iter ); 
-	}
-	rpcStr[ pos ] = 0;
-	UUID uuid;
-	const bool valid = ( RPC_S_OK == UuidFromStringA( rpcStr, &uuid ) );
-	delete [] rpcStr;
-
+	std::vector<unsigned char> rpcStr( 1 + guid.size(), 0 );
+	std::copy( guid.begin(), guid.end(), rpcStr.begin() );
+	UUID uuid = {};
+	const bool valid = ( RPC_S_OK == UuidFromStringA( rpcStr.data(), &uuid ) );
 	return valid;
 }
 
@@ -1359,7 +1394,7 @@ void Settings::SetStartupFilename( const std::wstring& filename )
 	}
 }
 
-void Settings::GetCounterSettings( LOGFONT& font, COLORREF& colour, bool& showRemaining )
+void Settings::GetCounterSettings( LOGFONT& font, COLORREF& fontColour, bool& showRemaining )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -1379,7 +1414,7 @@ void Settings::GetCounterSettings( LOGFONT& font, COLORREF& colour, bool& showRe
 		query = "SELECT Value FROM Settings WHERE Setting='CounterFontColour';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				colour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+				fontColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
 			}
 			sqlite3_finalize( stmt );
 		}
@@ -1395,7 +1430,7 @@ void Settings::GetCounterSettings( LOGFONT& font, COLORREF& colour, bool& showRe
 	}
 }
 
-void Settings::SetCounterSettings( const LOGFONT& font, const COLORREF colour, const bool showRemaining )
+void Settings::SetCounterSettings( const LOGFONT& font, const COLORREF fontColour, const bool showRemaining )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -1408,7 +1443,7 @@ void Settings::SetCounterSettings( const LOGFONT& font, const COLORREF colour, c
 			sqlite3_reset( stmt );
 
 			sqlite3_bind_text( stmt, 1, "CounterFontColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( colour ) );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( fontColour ) );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
@@ -1643,12 +1678,14 @@ void Settings::SetGainSettings( const GainMode gainMode, const LimitMode limitMo
 	}
 }
 
-void Settings::GetSystraySettings( bool& enable, bool& minimise, SystrayCommand& singleClick, SystrayCommand& doubleClick )
+void Settings::GetSystraySettings( bool& enable, bool& minimise, SystrayCommand& singleClick, SystrayCommand& doubleClick, SystrayCommand& tripleClick, SystrayCommand& quadClick )
 {
 	enable = false;
 	minimise = false;
 	singleClick = SystrayCommand::None;
 	doubleClick = SystrayCommand::None;
+	tripleClick = SystrayCommand::None;
+	quadClick = SystrayCommand::None;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		sqlite3_stmt* stmt = nullptr;
@@ -1689,10 +1726,32 @@ void Settings::GetSystraySettings( bool& enable, bool& minimise, SystrayCommand&
 			}
 			sqlite3_finalize( stmt );
 		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='SysTrayTripleClick';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+				if ( ( value >= static_cast<int>( SystrayCommand::None ) ) && ( value <= static_cast<int>( SystrayCommand::ShowHide ) ) ) {
+					tripleClick = static_cast<SystrayCommand>( value );
+				}
+			}
+			sqlite3_finalize( stmt );
+		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='SysTrayQuadrupleClick';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+				if ( ( value >= static_cast<int>( SystrayCommand::None ) ) && ( value <= static_cast<int>( SystrayCommand::ShowHide ) ) ) {
+					quadClick = static_cast<SystrayCommand>( value );
+				}
+			}
+			sqlite3_finalize( stmt );
+		}
 	}
 }
 
-void Settings::SetSystraySettings( const bool enable, const bool minimise, const SystrayCommand singleClick, const SystrayCommand doubleClick )
+void Settings::SetSystraySettings( const bool enable, const bool minimise, const SystrayCommand singleClick, const SystrayCommand doubleClick, const SystrayCommand tripleClick, const SystrayCommand quadClick )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -1716,6 +1775,16 @@ void Settings::SetSystraySettings( const bool enable, const bool minimise, const
 
 			sqlite3_bind_text( stmt, 1, "SysTrayDoubleClick", -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_int( stmt, 2, static_cast<int>( doubleClick ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "SysTrayTripleClick", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( tripleClick ) );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "SysTrayQuadrupleClick", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( quadClick ) );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
@@ -3045,4 +3114,84 @@ int Settings::GetToolbarButtonSize( const ToolbarSize size )
 	}
 	const int buttonSize = static_cast<int>( iter->second * GetDPIScaling() );
 	return buttonSize;
+}
+
+void Settings::GetToolbarColours( COLORREF& buttonColour, COLORREF& backgroundColour )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		std::string query = "SELECT Value FROM Settings WHERE Setting='ToolbarButtonColour';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				buttonColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='ToolbarBackgroundColour';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
+				backgroundColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+void Settings::SetToolbarColours( const COLORREF buttonColour, const COLORREF backgroundColour )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "ToolbarButtonColour", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, buttonColour );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "ToolbarBackgroundColour", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, backgroundColour );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+}
+
+bool Settings::GetHardwareAccelerationEnabled()
+{
+	bool enabled = false;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='VisualHardwareAcceleration';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return enabled;
+}
+
+void Settings::SetHardwareAccelerationEnabled( const bool enabled )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "VisualHardwareAcceleration", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, enabled );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
 }

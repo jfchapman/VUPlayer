@@ -54,13 +54,10 @@ private:
 	// Indicates the number of pending gain calculations currently displayed.
 	int m_GainStatusCount;
 
-	// Indicates the number of pending library maintenance items currently displayed.
-	int m_LibraryStatusCount;
+	// Indicates the library maintenance status currently displayed.
+	std::wstring m_MaintainerStatus;
 
 	// Indicates whether the MusicBrainz activity state is currently displayed.
 	bool m_MusicBrainzActive;
-
-	// The idle status text.
-	std::wstring m_IdleText;
 };
 

@@ -76,9 +76,9 @@ public:
 
 	// Playlist item information.
 	struct Item {
-		long ID;
-		MediaInfo Info;
-		std::list<std::wstring> Duplicates;
+		long ID = 0;
+		MediaInfo Info = {};
+		std::list<std::wstring> Duplicates = {};
 	};
 
 	// List of playlist items.

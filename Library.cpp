@@ -5,7 +5,6 @@
 
 #include <iomanip>
 #include <list>
-#include <fstream>
 #include <sstream>
 
 Library::Library( Database& database, const Handlers& handlers ) :
@@ -357,7 +356,9 @@ void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 						break;
 					}
 					case Column::BitsPerSample : {						
-						mediaInfo.SetBitsPerSample( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
+						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
+							mediaInfo.SetBitsPerSample( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
+						}
 						break;
 					}
 					case Column::Channels : {						
@@ -479,7 +480,12 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						break;
 					}
 					case Column::BitsPerSample : {
-						sqlite3_bind_int( stmt, ++param, static_cast<int>( mediaInfo.GetBitsPerSample() ) );
+						const auto bps = mediaInfo.GetBitsPerSample();
+						if ( bps.has_value() ) {
+							sqlite3_bind_int( stmt, ++param, static_cast<int>( bps.value() ) );
+						} else {
+							sqlite3_bind_null( stmt, ++param );
+						}
 						break;
 					}
 					case Column::Channels : {
@@ -507,20 +513,20 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						break;
 					}
 					case Column::GainAlbum : {
-						const float gain = mediaInfo.GetGainAlbum();
-						if ( std::isnan( gain ) ) {
-							sqlite3_bind_null( stmt, ++param );
+						const auto gain = mediaInfo.GetGainAlbum();
+						if ( gain.has_value() ) {
+							sqlite3_bind_double( stmt, ++param, gain.value() );
 						} else {
-							sqlite3_bind_double( stmt, ++param, gain );
+							sqlite3_bind_null( stmt, ++param );
 						}
 						break;
 					}
 					case Column::GainTrack : {
-						const float gain = mediaInfo.GetGainTrack();
-						if ( std::isnan( gain ) ) {
-							sqlite3_bind_null( stmt, ++param );
+						const auto gain = mediaInfo.GetGainTrack();
+						if ( gain.has_value() ) {
+							sqlite3_bind_double( stmt, ++param, gain.value() );
 						} else {
-							sqlite3_bind_double( stmt, ++param, gain );
+							sqlite3_bind_null( stmt, ++param );
 						}
 						break;
 					}
@@ -557,11 +563,11 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						break;
 					}
 					case Column::Bitrate : {
-						const float bitrate = mediaInfo.GetBitrate();
-						if ( std::isnan( bitrate ) ) {
-							sqlite3_bind_null( stmt, ++param );
+						const auto bitrate = mediaInfo.GetBitrate();
+						if ( bitrate.has_value() ) {
+							sqlite3_bind_double( stmt, ++param, bitrate.value() );
 						} else {
-							sqlite3_bind_double( stmt, ++param, bitrate );
+							sqlite3_bind_null( stmt, ++param );
 						}
 						break;
 					}
@@ -604,27 +610,30 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 		const std::string yearStr = ( updatedMediaInfo.GetYear() > 0 ) ? std::to_string( updatedMediaInfo.GetYear() ) : std::string();
 		tags.insert( Tags::value_type( Tag::Year, yearStr ) );
 	}
-	if ( ( std::isfinite( previousMediaInfo.GetGainAlbum() ) || std::isfinite( updatedMediaInfo.GetGainAlbum() ) ) && ( previousMediaInfo.GetGainAlbum() != updatedMediaInfo.GetGainAlbum() ) ) {
-
-		if ( std::isnan( updatedMediaInfo.GetGainAlbum() ) ) {
-			tags.insert( Tags::value_type( Tag::GainAlbum, std::string() ) );
+	if ( previousMediaInfo.GetGainAlbum() != updatedMediaInfo.GetGainAlbum() ) {
+		const auto previousGain = previousMediaInfo.GetGainAlbum();
+		const auto updatedGain = updatedMediaInfo.GetGainAlbum();
+		if ( updatedGain.has_value() ) {
+			const std::string previousGainStr = GainToString( previousGain );
+			const std::string updatedGainStr = GainToString( updatedGain );
+			if ( previousGainStr != updatedGainStr ) {
+				tags.insert( Tags::value_type( Tag::GainAlbum, updatedGainStr ) );
+			}		
 		} else {
-			const std::string previousGain = GainToString( previousMediaInfo.GetGainAlbum() );
-			const std::string updatedGain = GainToString( updatedMediaInfo.GetGainAlbum() );
-			if ( previousGain != updatedGain ) {
-				tags.insert( Tags::value_type( Tag::GainAlbum, updatedGain ) );
-			}
+			tags.insert( Tags::value_type( Tag::GainAlbum, std::string() ) );
 		}
 	}
-	if ( ( std::isfinite( previousMediaInfo.GetGainTrack() ) || std::isfinite( updatedMediaInfo.GetGainTrack() ) ) && ( previousMediaInfo.GetGainTrack() != updatedMediaInfo.GetGainTrack() ) ) {
-		if ( std::isnan( updatedMediaInfo.GetGainTrack() ) ) {
-			tags.insert( Tags::value_type( Tag::GainTrack, std::string() ) );
-		} else {
-			const std::string previousGain = GainToString( previousMediaInfo.GetGainTrack() );
-			const std::string updatedGain = GainToString( updatedMediaInfo.GetGainTrack() );
-			if ( previousGain != updatedGain ) {
-				tags.insert( Tags::value_type( Tag::GainTrack, updatedGain ) );
+	if ( previousMediaInfo.GetGainTrack() != updatedMediaInfo.GetGainTrack() ) {
+		const auto previousGain = previousMediaInfo.GetGainTrack();
+		const auto updatedGain = updatedMediaInfo.GetGainTrack();
+		if ( updatedGain.has_value() ) {
+			const std::string previousGainStr = GainToString( previousGain );
+			const std::string updatedGainStr = GainToString( updatedGain );
+			if ( previousGainStr != updatedGainStr ) {
+				tags.insert( Tags::value_type( Tag::GainTrack, updatedGainStr ) );
 			}
+		} else {
+			tags.insert( Tags::value_type( Tag::GainTrack, std::string() ) );
 		}
 	}
 	if ( previousMediaInfo.GetArtworkID() != updatedMediaInfo.GetArtworkID() ) {
@@ -1271,7 +1280,7 @@ Tags Library::GetTags( const MediaInfo& mediaInfo )
 bool Library::UpdateTrackGain( const MediaInfo& previousInfo, const MediaInfo& updatedInfo, const bool sendNotification )
 {
 	bool updated = false;
-	if ( ( std::isfinite( previousInfo.GetGainTrack() ) || std::isfinite( updatedInfo.GetGainTrack() ) ) && ( previousInfo.GetGainTrack() != updatedInfo.GetGainTrack() ) ) {
+	if ( previousInfo.GetGainTrack() != updatedInfo.GetGainTrack() ) {
 		sqlite3* database = m_Database.GetDatabase();
 		if ( nullptr != database ) {
 			const std::string query = ( MediaInfo::Source::CDDA == updatedInfo.GetSource() ) ?
@@ -1280,8 +1289,8 @@ bool Library::UpdateTrackGain( const MediaInfo& previousInfo, const MediaInfo& u
 			sqlite3_stmt* stmt = nullptr;
 			updated = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) );
 			if ( updated ) {
-				const float gain = updatedInfo.GetGainTrack();
-				updated = std::isnan( gain ) ? ( SQLITE_OK == sqlite3_bind_null( stmt, 1 /*param*/ ) ) : ( SQLITE_OK == sqlite3_bind_double( stmt, 1 /*param*/, gain ) );
+				const auto gain = updatedInfo.GetGainTrack();
+				updated = gain.has_value() ? ( SQLITE_OK == sqlite3_bind_double( stmt, 1 /*param*/, gain.value() ) ) : ( SQLITE_OK == sqlite3_bind_null( stmt, 1 /*param*/ ) );
 				if ( updated ) {
 					if ( MediaInfo::Source::CDDA == updatedInfo.GetSource() ) {
 						updated = ( ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( updatedInfo.GetCDDB() ) ) ) &&
@@ -1317,11 +1326,11 @@ void Library::UpdateMediaInfoFromDecoder( MediaInfo& mediaInfo, const Decoder& d
 	mediaInfo.SetBitrate( decoder.GetBitrate() );
 
 	bool updated = 
-		mediaInfo.GetChannels() != originalInfo.GetChannels() || 
-		mediaInfo.GetBitsPerSample() != originalInfo.GetBitsPerSample() ||
-		mediaInfo.GetDuration() != originalInfo.GetDuration() ||
-		mediaInfo.GetSampleRate() != originalInfo.GetSampleRate() ||	
-		!AreRoughlyEqual( mediaInfo.GetBitrate(), originalInfo.GetBitrate(), 0.5f );
+		( mediaInfo.GetChannels() != originalInfo.GetChannels() ) || 
+		( mediaInfo.GetBitsPerSample().value_or( 0 ) != originalInfo.GetBitsPerSample().value_or( 0 ) ) ||
+		( mediaInfo.GetDuration() != originalInfo.GetDuration() ) ||
+		( mediaInfo.GetSampleRate() != originalInfo.GetSampleRate() ) ||	
+		!AreRoughlyEqual( mediaInfo.GetBitrate().value_or( 0 ), originalInfo.GetBitrate().value_or( 0 ), 0.5f );
 
 	if ( updated ) {
 		updated = UpdateMediaLibrary( mediaInfo );

@@ -426,7 +426,7 @@ void CDDAExtract::EncodeHandler()
 		if ( extractJoin ) {
 			const long sampleRate = m_Tracks.front().Info.GetSampleRate();
 			const long channels = m_Tracks.front().Info.GetChannels();
-			const long bps = m_Tracks.front().Info.GetBitsPerSample();
+			const auto bps = m_Tracks.front().Info.GetBitsPerSample();
 			encoderOK = m_Encoder->Open( m_JoinFilename, sampleRate, channels, bps, m_EncoderSettings );
 			r128State = ebur128_init( static_cast<unsigned int>( channels ), static_cast<unsigned int>( sampleRate ), EBUR128_MODE_I );
 			if ( nullptr != r128State ) {
@@ -454,7 +454,7 @@ void CDDAExtract::EncodeHandler()
 				if ( data ) {
 					const long sampleRate = mediaInfo.GetSampleRate();
 					const long channels = mediaInfo.GetChannels();
-					const long bps = mediaInfo.GetBitsPerSample();
+					const auto bps = mediaInfo.GetBitsPerSample();
 					long long samplesEncoded = 0;
 
 					if ( !extractJoin ) {
@@ -515,7 +515,7 @@ void CDDAExtract::EncodeHandler()
 								encodedMediaList.push_back( MediaInfo( filename ) );
 
 								if ( ++tracksEncoded == trackCount ) {
-									float albumGain = NAN;
+									std::optional<float> albumGain;
 									if ( !r128States.empty() ) {
 										double loudness = 0;
 										if ( EBUR128_SUCCESS == ebur128_loudness_global_multiple( &r128States[ 0 ], r128States.size(), &loudness ) ) {
@@ -596,9 +596,9 @@ std::wstring CDDAExtract::GetOutputFilename( const MediaInfo& mediaInfo ) const
 	bool extractJoin = false;
 	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
 
-	WCHAR buffer[ 2 + MAX_PATH ] = {};
-	const std::wstring emptyArtist = LoadString( m_hInst, IDS_EMPTYARTIST, buffer, 32 ) ? buffer : std::wstring();
-	const std::wstring emptyAlbum = LoadString( m_hInst, IDS_EMPTYALBUM, buffer, 32 ) ? buffer : std::wstring();
+	WCHAR buffer[ 64 ] = {};
+	const std::wstring emptyArtist = LoadString( m_hInst, IDS_EMPTYARTIST, buffer, 64 ) ? buffer : std::wstring();
+	const std::wstring emptyAlbum = LoadString( m_hInst, IDS_EMPTYALBUM, buffer, 64 ) ? buffer : std::wstring();
 
 	std::wstring title = mediaInfo.GetTitle( true /*filenameAsTitle*/ );
 	WideStringReplaceInvalidFilenameCharacters( title, L"_", true /*replaceFolderDelimiters*/ );
@@ -608,6 +608,8 @@ std::wstring CDDAExtract::GetOutputFilename( const MediaInfo& mediaInfo ) const
 
 	std::wstring album = mediaInfo.GetAlbum().empty() ? emptyAlbum : mediaInfo.GetAlbum();
 	WideStringReplaceInvalidFilenameCharacters( album, L"_", true /*replaceFolderDelimiters*/ );
+
+	const std::wstring sourceFilename = std::filesystem::path( mediaInfo.GetFilename() ).stem();
 
 	std::wstringstream ss;
 	ss << std::setfill( static_cast<wchar_t>( '0' ) ) << std::setw( 2 ) << mediaInfo.GetTrack();
@@ -643,6 +645,12 @@ std::wstring CDDAExtract::GetOutputFilename( const MediaInfo& mediaInfo ) const
 						case 'T' :
 						case 't' : {
 							outputFilename += title;
+							++currentChar;
+							break;
+						}
+						case 'F' :
+						case 'f' : {
+							outputFilename += sourceFilename;
 							++currentChar;
 							break;
 						}

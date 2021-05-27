@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <list>
 #include <memory>
+#include <optional>
 #include <random>
 #include <string>
 #include <vector>
@@ -100,10 +101,7 @@ bool FolderExists( const std::wstring& folder );
 void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const std::wstring& replacement, const bool replaceFolderDelimiters ); 
 
 // Converts a 'gain' value to a string (returns an empty string if the gain is not valid).
-std::wstring GainToWideString( const float gain );
-
-// Converts a 'gain' value to a string (returns an empty string if the gain is not valid).
-std::string GainToString( const float gain );
+std::string GainToString( const std::optional<float> gain );
 
 // Centres a 'dialog' with respect to its parent window, or the desktop window if the parent is not visible.
 void CentreDialog( const HWND dialog );
@@ -121,7 +119,7 @@ char FloatToSigned8( const float value );
 unsigned char FloatToUnsigned8( const float value );
 
 // Returns the 'filename' extension in lowercase.
-std::wstring GetFileExtension( const std::wstring filename );
+std::wstring GetFileExtension( const std::wstring& filename );
 
 // Returns whether the 'filename' represents a URI with a FTP, HTTP or HTTPS scheme.
 bool IsURL( const std::wstring filename );
@@ -145,3 +143,27 @@ std::string CalculateHash( const std::string& value, const ALG_ID algorithm, con
 // 'initialFolder' - initial folder location.
 // Returns the file path on success, an empty path on failure.
 std::filesystem::path ChooseArtwork( const HINSTANCE instance, const HWND hwnd, const std::filesystem::path& initialFolder );
+
+// Launches a colour chooser dialog.
+// 'hwnd' - parent window handle.
+// 'initialColour' - initial colour.
+// 'customColours' - custom colours.
+// Returns an optional colour value, if a different colour than the initial colour was chosen.
+std::optional<COLORREF> ChooseColour( const HWND hwnd, const COLORREF initialColour, COLORREF* customColours );
+
+// Creates a flat colour bitmap from an icon resource (32-bit, with transparency).
+// 'instance' - module instance handle.
+// 'iconID' - icon resource ID.
+// 'size' - pixel size.
+// 'colour' - colour value.
+// Returns the bitmap handle on success (to be deleted by the caller), or nullptr on failure.
+HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int size, const COLORREF colour );
+
+// Returns whether high contrast mode is active.
+bool IsHighContrastActive();
+
+// Returns whether the Windows classic theme is active.
+bool IsClassicThemeActive();
+
+// Returns whether the OS is Windows 10 (or later).
+bool IsWindows10();

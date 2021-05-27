@@ -8,6 +8,8 @@
 #include "Output.h"
 #include "Settings.h"
 
+#include <array>
+
 // Message ID for notification icon messages.
 static const UINT MSG_TRAYNOTIFY = WM_APP + 84;
 
@@ -65,6 +67,18 @@ public:
 	// Called when a double click event occurs on the notification area icon.
 	void OnDoubleClick();
 
+	// Called when a triple click event occurs on the notification area icon.
+	void OnTripleClick();
+
+	// Called when a quadruple click event occurs on the notification area icon.
+	void OnQuadrupleClick();
+
+	// Called when the application settings have potentially changed.
+	void OnChangeSettings();
+
+	// Called when the click timer has elapsed.
+	void OnTimerElapsed();
+
 private:
 	// Maps a context menu command ID to a playlist item ID.
 	typedef std::map<UINT,long> PlaylistMenuItemMap;
@@ -116,4 +130,10 @@ private:
 
 	// The next available playlist menu item ID.
 	UINT m_NextPlaylistMenuItemID;
+
+	// Commands for single/double/triple/quadruple click.
+	std::array<Settings::SystrayCommand,4> m_ClickCommands;
+
+	// The click count when the timer elapses.
+	int m_ClickCount;
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <list>
+#include <optional>
 #include <string>
 
 #include "Tag.h"
@@ -32,8 +33,6 @@ public:
 
 	// 'cddbID' - CDDB ID (for CDDA sources).
 	MediaInfo( const long cddbID );
-
-	virtual ~MediaInfo();
 
 	// Less than operator.
 	bool operator<( const MediaInfo& other ) const;
@@ -72,10 +71,10 @@ public:
 	void SetSampleRate( const long sampleRate );
 
 	// Returns the bits per sample, if relevant.
-	long GetBitsPerSample() const;
+	std::optional<long> GetBitsPerSample() const;
 
 	// Sets the bits per sample, if relevant.
-	void SetBitsPerSample( const long bitsPerSample );
+	void SetBitsPerSample( const std::optional<long> bitsPerSample );
 
 	// Returns the channel count.
 	long GetChannels() const;
@@ -128,17 +127,17 @@ public:
 	// Sets the format version.
 	void SetVersion( const std::wstring& version );
 
-	// Returns the track gain, in dB (or NaN if there is no gain).
-	float GetGainTrack() const;
+	// Returns the track gain, in dB (or nullopt if there is no gain).
+	std::optional<float> GetGainTrack() const;
 
 	// Sets the track gain, in dB.
-	void SetGainTrack( const float gain );
+	void SetGainTrack( const std::optional<float> gain );
 
-	// Returns the album gain, in dB (or NaN if there is no gain).
-	float GetGainAlbum() const;
+	// Returns the album gain, in dB (or nullopt if there is no gain).
+	std::optional<float> GetGainAlbum() const;
 
 	// Sets the album gain, in dB.
-	void SetGainAlbum( const float gain );
+	void SetGainAlbum( const std::optional<float> gain );
 
 	// Returns the title
 	// 'filenameAsTitle' - whether to return the filename if there is no title.
@@ -147,12 +146,12 @@ public:
 	// Returns the filename extension.
 	std::wstring GetType() const;
 
-	// Returns the bitrate, in kbps.
-	// 'calculate' - calculates the bitrate based on the filesize, if the bitrate is zero.
-	float GetBitrate( const bool calculate = false ) const;
+	// Returns the bitrate, in kbps (or nullopt if there is no bitrate).
+	// 'calculate' - calculates the bitrate based on the filesize, if there is no bitrate.
+	std::optional<float> GetBitrate( const bool calculate = false ) const;
 
 	// Sets the bitrate, in kbps.
-	void SetBitrate( const float bitrate );
+	void SetBitrate( const std::optional<float> bitrate );
 
 	// Returns the artwork ID.
 	// 'checkFolder' - if true and there is no artwork ID, returns the filename of any artwork in the media file's folder.
@@ -177,26 +176,26 @@ public:
 	static bool GetCommonInfo( const List& mediaList, MediaInfo& commonInfo );
 
 private:
-	std::wstring m_Filename;
-	long long m_Filetime;
-	long long m_Filesize;
-	float m_Duration;
-	long m_SampleRate;
-	long m_BitsPerSample;
-	long m_Channels;
-	std::wstring m_Artist;
-	std::wstring m_Title;
-	std::wstring m_Album;
-	std::wstring m_Genre;
-	long m_Year;
-	std::wstring m_Comment;
-	long m_Track;
-	std::wstring m_Version;
-	float m_GainTrack;
-	float m_GainAlbum;
-	std::wstring m_ArtworkID;
-	Source m_Source;
-	long m_CDDB;
-	float m_Bitrate;
+	std::wstring m_Filename = {};
+	long long m_Filetime = 0;
+	long long m_Filesize = 0;
+	float m_Duration = 0;
+	long m_SampleRate = 0;
+	long m_Channels = 0;
+	std::wstring m_Artist = {};
+	std::wstring m_Title = {};
+	std::wstring m_Album = {};
+	std::wstring m_Genre = {};
+	long m_Year = 0;
+	std::wstring m_Comment= {};
+	long m_Track = 0;
+	std::wstring m_Version = {};
+	std::wstring m_ArtworkID = {};
+	Source m_Source = Source::File;
+	long m_CDDB = 0;
+	std::optional<long> m_BitsPerSample = std::nullopt;
+	std::optional<float> m_Bitrate = std::nullopt;
+	std::optional<float> m_GainTrack = std::nullopt;
+	std::optional<float> m_GainAlbum = std::nullopt;
 };
 
