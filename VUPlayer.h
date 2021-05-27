@@ -416,4 +416,7 @@ private:
 
 	// Whether a tree item label is being edited.
 	bool m_IsTreeLabelEdit;
+
+	// A flag to allow first-time initialisation to be performed in the timer handler.
+	bool m_IsFirstTimeStartup;
 };

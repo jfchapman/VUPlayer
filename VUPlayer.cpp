@@ -104,7 +104,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_IdleText(),
 	m_IsHighContrast( IsHighContrastActive() ),
 	m_IsPortableMode( portable ),
-	m_IsTreeLabelEdit( false )
+	m_IsTreeLabelEdit( false ),
+	m_IsFirstTimeStartup( true )
 {
 	s_VUPlayer = this;
 
@@ -458,6 +459,11 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 {
 	bool handled = true;
 	if ( s_TimerID == timerID ) {
+		if ( m_IsFirstTimeStartup ) {
+			m_IsFirstTimeStartup = false;
+			RedrawWindow( m_Status.GetWindowHandle(), NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW );
+		}
+
 		Output::Item currentPlaying = m_Output.GetCurrentPlaying();
 		if ( m_CurrentOutput.PlaylistItem.ID != currentPlaying.PlaylistItem.ID ) {
 			OnOutputChanged( m_CurrentOutput, currentPlaying );
