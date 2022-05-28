@@ -31,7 +31,7 @@ private:
 	static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
 	// Browse folder callback procedure.
-	static int CALLBACK DlgConvert::BrowseCallbackProc( HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData );
+	static int CALLBACK BrowseCallbackProc( HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData );
 
 	// Called when the dialog is initialised.
 	// 'hwnd' - dialog window handle.

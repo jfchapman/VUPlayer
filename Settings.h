@@ -547,6 +547,48 @@ public:
 	// Sets whether hardware acceleration (for the visuals) is enabled.
 	void SetHardwareAccelerationEnabled( const bool enabled );
 
+	// Returns whether the application window is always on top.
+	bool GetAlwaysOnTop();
+
+	// Sets whether the application windows is always on top.
+	void SetAlwaysOnTop( const bool alwaysOnTop );
+
+	// Returns whether the 'stop at track end' setting should be retained on startup.
+	bool GetRetainStopAtTrackEnd();
+
+	// Sets whether the 'stop at track end' setting should be retained on startup.
+	void SetRetainStopAtTrackEnd( const bool retain );
+
+	// Returns whether the 'stop at track end' setting is enabled.
+	bool GetStopAtTrackEnd();
+
+	// Sets whether the 'stop at track end' setting is enabled.
+	void SetStopAtTrackEnd( const bool enabled );
+
+	// Returns whether the pitch and balance levels should be retained on startup.
+	bool GetRetainPitchBalance();
+
+	// Sets whether the pitch and balance levels should be retained on startup.
+	void SetRetainPitchBalance( const bool retain );
+
+	// Returns the startup pitch and balance levels.
+	std::pair<float /*pitch*/, float /*balance*/> GetPitchBalance();
+
+	// Sets the startup pitch and balance levels.
+	void SetPitchBalance( const float pitch, const float balance );
+
+	// Returns the index of the last displayed options page.
+	int GetLastOptionsPage();
+
+	// Sets the index of the last displayed options page.
+	void SetLastOptionsPage( const int index );
+
+	// Gets the taskbar thumbnail preview toolbar button colour.
+	COLORREF GetTaskbarButtonColour();
+
+	// Sets the taskbar thumbnail preview toolbar button colour.
+	void SetTaskbarButtonColour( const COLORREF colour );
+
 private:
 	// Updates the database to the current version if necessary.
 	void UpdateDatabase();

@@ -43,8 +43,4 @@ private:
 
 	// Returns the currently selected device name.
 	std::wstring GetSelectedDeviceName( const HWND hwnd ) const;
-
-	// Enables the systray controls based on whether the systray is enabled.
-	// 'hwnd' - dialog window handle.
-	void EnableSystrayControls( const HWND hwnd );
 };

@@ -15,12 +15,12 @@
 
 // Column information.
 WndList::ColumnFormats WndList::s_ColumnFormats = {
-	{ Playlist::Column::Filename, ColumnFormat( {				ID_SHOWCOLUMNS_FILENAME,			ID_SORTPLAYLIST_FILENAME,				IDS_COLUMN_FILENAME,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
+	{ Playlist::Column::Filepath, ColumnFormat( {				ID_SHOWCOLUMNS_FILEPATH,			ID_SORTPLAYLIST_FILEPATH,				IDS_COLUMN_FILEPATH,			LVCFMT_LEFT,		static_cast<int>( 200 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
 	{ Playlist::Column::Filetime, ColumnFormat( {				ID_SHOWCOLUMNS_FILETIME,			ID_SORTPLAYLIST_FILETIME,				IDS_COLUMN_FILETIME,			LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
 	{ Playlist::Column::Filesize, ColumnFormat( {				ID_SHOWCOLUMNS_FILESIZE,			ID_SORTPLAYLIST_FILESIZE,				IDS_COLUMN_FILESIZE,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
 	{ Playlist::Column::Duration, ColumnFormat( {				ID_SHOWCOLUMNS_DURATION,			ID_SORTPLAYLIST_DURATION,				IDS_COLUMN_DURATION,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
 	{ Playlist::Column::SampleRate, ColumnFormat( {			ID_SHOWCOLUMNS_SAMPLERATE,		ID_SORTPLAYLIST_SAMPLERATE,			IDS_COLUMN_SAMPLERATE,		LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::BitsPerSample, ColumnFormat( {	ID_SHOWCOLUMNS_BITSPERSAMPLE,	ID_SORTPLAYLIST_BITSPERSAMPLE,	IDS_COLUMN_BITSPERSAMPLE,	LVCFMT_RIGHT,		static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
+	{ Playlist::Column::BitsPerSample, ColumnFormat( {	ID_SHOWCOLUMNS_BITSPERSAMPLE,	ID_SORTPLAYLIST_BITSPERSAMPLE,	IDS_COLUMN_BITSPERSAMPLE,	LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
 	{ Playlist::Column::Channels, ColumnFormat( {				ID_SHOWCOLUMNS_CHANNELS,			ID_SORTPLAYLIST_CHANNELS,				IDS_COLUMN_CHANNELS,			LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
 	{ Playlist::Column::Artist, ColumnFormat( {					ID_SHOWCOLUMNS_ARTIST,				ID_SORTPLAYLIST_ARTIST,					IDS_COLUMN_ARTIST,				LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
 	{ Playlist::Column::Title, ColumnFormat( {					ID_SHOWCOLUMNS_TITLE,					ID_SORTPLAYLIST_TITLE,					IDS_COLUMN_TITLE,					LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
@@ -32,7 +32,8 @@ WndList::ColumnFormats WndList::s_ColumnFormats = {
 	{ Playlist::Column::Version, ColumnFormat( {				ID_SHOWCOLUMNS_VERSION,				ID_SORTPLAYLIST_VERSION,				IDS_COLUMN_VERSION,				LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
 	{ Playlist::Column::GainTrack, ColumnFormat( {			ID_SHOWCOLUMNS_TRACKGAIN,			ID_SORTPLAYLIST_TRACKGAIN,			IDS_COLUMN_GAINTRACK,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
 	{ Playlist::Column::GainAlbum, ColumnFormat( {			ID_SHOWCOLUMNS_ALBUMGAIN,			ID_SORTPLAYLIST_ALBUMGAIN,			IDS_COLUMN_GAINALBUM,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::Bitrate, ColumnFormat( {				ID_SHOWCOLUMNS_BITRATE,				ID_SORTPLAYLIST_BITRATE,				IDS_COLUMN_BITRATE,				LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) }
+	{ Playlist::Column::Bitrate, ColumnFormat( {				ID_SHOWCOLUMNS_BITRATE,				ID_SORTPLAYLIST_BITRATE,				IDS_COLUMN_BITRATE,				LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
+	{ Playlist::Column::Filename, ColumnFormat( {				ID_SHOWCOLUMNS_FILENAME,			ID_SORTPLAYLIST_FILENAME,				IDS_COLUMN_FILENAME,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) }
 };
 
 // List control ID
@@ -332,40 +333,65 @@ void WndList::ShowColumn( const Playlist::Column column, const int width, const 
 	if ( NULL != headerWnd ) {
 		bool columnShown = false;
 		const int columnCount = Header_GetItemCount( headerWnd );
-		for ( int columnIndex = 1; columnIndex < columnCount; columnIndex++ ) {
-			LVCOLUMN lvc = {};
-			lvc.mask = LVCF_SUBITEM;
-			if ( FALSE != ListView_GetColumn( m_hWnd, columnIndex, &lvc ) ) {
-				const Playlist::Column columnID = static_cast<Playlist::Column>( lvc.iSubItem );
-				if ( columnID == column ) {
-					columnShown = true;
-					if ( !show ) {
-						ListView_DeleteColumn( m_hWnd, columnIndex );
-					}
-					break;
+
+		bool validVisibilityChange = true;
+
+		if ( !show && ( 2 == columnCount ) ) {
+			// If the last column is about to be hidden, force the file path column to be shown.
+			int filepathColumnWidth = 0;
+			UINT filepathColumnID = 0;
+			if ( const auto formatIter = s_ColumnFormats.find( Playlist::Column::Filepath ); s_ColumnFormats.end() != formatIter ) {
+				filepathColumnWidth = formatIter->second.Width;
+				filepathColumnID = formatIter->second.ShowID;
+
+				std::set<UINT> shownColumns;
+				std::set<UINT> hiddenColumns;
+				GetColumnVisibility( shownColumns, hiddenColumns );
+				if ( const auto filepathColumnIter = shownColumns.find( filepathColumnID ); shownColumns.end() == filepathColumnIter ) {
+					ShowColumn( Playlist::Column::Filepath, filepathColumnWidth, true );
+				} else {	
+					// The file path column is already the only visible column, so do nothing.
+					validVisibilityChange = false;
 				}
 			}
 		}
 
-		if ( show && !columnShown ) {
-			const auto iter = s_ColumnFormats.find( column );
-			if ( iter != s_ColumnFormats.end() ) {
-				const ColumnFormat& columnFormat = iter->second;
+		if ( validVisibilityChange ) {
+			for ( int columnIndex = 1; columnIndex < columnCount; columnIndex++ ) {
 				LVCOLUMN lvc = {};
-				lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
-				lvc.cx = ( width > 0 ) ? width : columnFormat.Width;
-				lvc.fmt = columnFormat.Alignment;
-				lvc.iSubItem = static_cast<int>( column );
-				const int bufSize = 32;
-				WCHAR buffer[ bufSize ] = {};
-				LoadString( m_hInst, columnFormat.HeaderID, buffer, bufSize );
-				lvc.pszText = buffer;
-				ListView_InsertColumn( m_hWnd, columnCount /*iCol*/, &lvc );
-				RefreshListViewItemText();
-				UpdateSortIndicator();
+				lvc.mask = LVCF_SUBITEM;
+				if ( FALSE != ListView_GetColumn( m_hWnd, columnIndex, &lvc ) ) {
+					const Playlist::Column columnID = static_cast<Playlist::Column>( lvc.iSubItem );
+					if ( columnID == column ) {
+						columnShown = true;
+						if ( !show ) {
+							ListView_DeleteColumn( m_hWnd, columnIndex );
+						}
+						break;
+					}
+				}
+			}
 
-				// Force an update to show the horizontal scrollbar if necessary.
-				ListView_Scroll( m_hWnd, 0, 0 );
+			if ( show && !columnShown ) {
+				const auto iter = s_ColumnFormats.find( column );
+				if ( iter != s_ColumnFormats.end() ) {
+					const ColumnFormat& columnFormat = iter->second;
+					LVCOLUMN lvc = {};
+					lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+					lvc.cx = ( width > 0 ) ? width : columnFormat.Width;
+					lvc.fmt = columnFormat.Alignment;
+					lvc.iSubItem = static_cast<int>( column );
+					const int bufSize = 32;
+					WCHAR buffer[ bufSize ] = {};
+					LoadString( m_hInst, columnFormat.HeaderID, buffer, bufSize );
+					lvc.pszText = buffer;
+					ListView_InsertColumn( m_hWnd, columnCount /*iCol*/, &lvc );
+					RefreshListViewItemText();
+					UpdateSortIndicator();
+
+					// Force an update to show the horizontal scrollbar if necessary.
+					ListView_Scroll( m_hWnd, 0, 0 );
+				}
 			}
 		}
 	}
@@ -519,8 +545,20 @@ void WndList::SetListViewItemText( int itemIndex, const Playlist::Item& playlist
 				ListView_SetItemText( m_hWnd, itemIndex, columnIndex, const_cast<LPWSTR>( str.c_str() ) );
 				break;
 			}
-			case Playlist::Column::Filename : {
+			case Playlist::Column::Filepath : {
 				std::wstring str = mediaInfo.GetFilename();
+				if ( !playlistItem.Duplicates.empty() ) {
+					const int bufSize = 32;
+					WCHAR buffer[ bufSize ] = {};
+					LoadString( m_hInst, IDS_MULTIPLE_SOURCES, buffer, bufSize );
+					str = L"(" + std::wstring( buffer ) + L")";
+				}
+				ListView_SetItemText( m_hWnd, itemIndex, columnIndex, const_cast<LPWSTR>( str.c_str() ) );
+				break;
+			}
+			case Playlist::Column::Filename : {
+				const auto filename = std::filesystem::path( mediaInfo.GetFilename() ).filename();
+				std::wstring str = filename.native();
 				if ( !playlistItem.Duplicates.empty() ) {
 					const int bufSize = 32;
 					WCHAR buffer[ bufSize ] = {};
@@ -669,6 +707,13 @@ void WndList::OnContextMenu( const POINT& position )
 			const UINT statusIconEnabled = GetStatusIconEnabled() ? MF_CHECKED : MF_UNCHECKED;
 			CheckMenuItem( listmenu, ID_SHOWCOLUMNS_STATUS, MF_BYCOMMAND | statusIconEnabled );
 
+			if ( ( 1 == shownColumns.size() ) && ( *shownColumns.begin() == ID_SHOWCOLUMNS_FILEPATH ) ) {
+				// If the only visible column is the file path column, disable the option to hide it.
+				EnableMenuItem( listmenu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_DISABLED );
+			} else {
+				EnableMenuItem( listmenu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_ENABLED );
+			}
+
 			const bool hasItems = ( ListView_GetItemCount( m_hWnd ) > 0 );
 			const bool hasSelectedItems = ( ListView_GetSelectedCount( m_hWnd ) > 0 );
 			const bool allowPaste = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
@@ -676,7 +721,7 @@ void WndList::OnContextMenu( const POINT& position )
 			const bool allowCopy = ( m_Playlist && ( Playlist::Type::CDDA != m_Playlist->GetType() ) );
 			const bool allowAddStream = ( m_Playlist && ( ( Playlist::Type::Streams == m_Playlist->GetType() ) || ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
 
-			const UINT enablePaste = ( allowPaste && ( ( FALSE != IsClipboardFormatAvailable( CF_TEXT ) ) || ( FALSE != IsClipboardFormatAvailable( CF_UNICODETEXT ) ) ) ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enablePaste = ( allowPaste && ( IsClipboardFormatAvailable( CF_TEXT ) || IsClipboardFormatAvailable( CF_UNICODETEXT ) || IsClipboardFormatAvailable( CF_HDROP ) ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PASTE, MF_BYCOMMAND | enablePaste );
 
 			const UINT enableCut = ( allowCut && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
@@ -752,6 +797,7 @@ void WndList::OnCommand( const UINT command )
 		case ID_SHOWCOLUMNS_BITSPERSAMPLE :
 		case ID_SHOWCOLUMNS_DURATION :
 		case ID_SHOWCOLUMNS_FILESIZE :
+		case ID_SHOWCOLUMNS_FILEPATH :
 		case ID_SHOWCOLUMNS_FILENAME :
 		case ID_SHOWCOLUMNS_FILETIME :
 		case ID_SHOWCOLUMNS_TRACKGAIN :
@@ -773,6 +819,7 @@ void WndList::OnCommand( const UINT command )
 		case ID_SORTPLAYLIST_BITSPERSAMPLE :
 		case ID_SORTPLAYLIST_DURATION :
 		case ID_SORTPLAYLIST_FILESIZE :
+		case ID_SORTPLAYLIST_FILEPATH :
 		case ID_SORTPLAYLIST_FILENAME :
 		case ID_SORTPLAYLIST_FILETIME :
 		case ID_SORTPLAYLIST_TRACKGAIN :
@@ -865,7 +912,7 @@ void WndList::RefreshListViewItemText()
 
 void WndList::DeleteSelectedItems()
 {
-	if ( m_Playlist && ( Playlist::Type::Folder != m_Playlist->GetType() ) ) {
+	if ( m_Playlist && ( Playlist::Type::Folder != m_Playlist->GetType() ) && ( Playlist::Type::CDDA != m_Playlist->GetType() ) ) {
 		MediaInfo::List deletedMedia;
 
 		SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
@@ -1822,6 +1869,13 @@ void WndList::OnPaste()
 					GlobalUnlock( handle );
 					clipboardHasText = true;
 				}	
+			} else {
+				handle = GetClipboardData( CF_HDROP );
+				if ( nullptr != handle ) {
+					if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr == editControl ) {
+						OnDropFiles( HDROP( handle ) );
+					}
+				}
 			}
 		}
 		CloseClipboard();
@@ -1990,7 +2044,7 @@ int WndList::GetStatusIconSize() const
 		const Gdiplus::PointF origin;
 		Gdiplus::RectF bounds;
 		if ( Gdiplus::Ok == graphics.MeasureString( L"Ay96", -1, &font, origin, &bounds ) ) {
-			iconSize = max( 16, iconModulus * ( static_cast<int>( bounds.Height ) / iconModulus ) );
+			iconSize = std::max<int>( 16, iconModulus * ( static_cast<int>( bounds.Height ) / iconModulus ) );
 		}
 		ReleaseDC( m_hWnd, dc );
 	}

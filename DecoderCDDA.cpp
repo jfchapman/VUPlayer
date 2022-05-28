@@ -33,8 +33,8 @@ long DecoderCDDA::Read( float* buffer, const long sampleCount )
 	long outputBufPos = 0;
 	while ( samplesRead < sampleCount ) {
 		if ( m_CurrentBufPos < m_Buffer.size() ) {
-			buffer[ outputBufPos++ ] = static_cast<float>( m_Buffer[ m_CurrentBufPos++ ] ) / 32768.0f;
-			buffer[ outputBufPos++ ] = static_cast<float>( m_Buffer[ m_CurrentBufPos++ ] ) / 32768.0f;
+			buffer[ outputBufPos++ ] = Signed16ToFloat( m_Buffer[ m_CurrentBufPos++ ] );
+			buffer[ outputBufPos++ ] = Signed16ToFloat( m_Buffer[ m_CurrentBufPos++ ] );
 			++samplesRead;
 		} else {
 			if ( ( m_CurrentSector < m_SectorEnd ) && ( m_CDDAMedia.Read( m_Handle, m_CurrentSector++, true /*useCache*/, m_Buffer ) ) ) {
@@ -56,6 +56,7 @@ float DecoderCDDA::Seek( const float position )
 		if ( ( seekSector >= m_SectorStart ) && ( seekSector < m_SectorEnd ) ) {
 			m_CurrentSector = seekSector;
 			m_CurrentBufPos = 0;
+			m_Buffer.clear();
 			seekPosition = position;
 		}
 	}

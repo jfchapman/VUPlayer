@@ -58,7 +58,6 @@ bool HandlerWavpack::GetTags( const std::wstring& filename, Tags& tags ) const
 		const int offset = 0;
 		WavpackContext* context = WavpackOpenFileInput( WideStringToUTF8( filename ).c_str(), error, flags, offset );
 		if ( nullptr != context ) {
-			const int tagCount = WavpackGetNumTagItems( context );
 			for ( const auto& tagIter : s_SupportedTags ) {
 				const std::string& tagField = tagIter.second;
 				const int tagLength = WavpackGetTagItem( context, tagField.c_str(), nullptr /*buffer*/, 0 /*bufferSize*/ );
@@ -127,7 +126,6 @@ bool HandlerWavpack::SetTags( const std::wstring& filename, const Tags& tags ) c
 			const Tag tagField = tagIter.first;
 			const auto mapIter = s_SupportedTags.find( tagField );
 			if ( s_SupportedTags.end() != mapIter ) {
-				const Tag mapField = mapIter->first;
 				const std::string& fieldName = mapIter->second;
 				const std::string& value = tagIter.second;
 				if ( value.empty() ) {

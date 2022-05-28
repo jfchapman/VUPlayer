@@ -41,7 +41,7 @@ int EncoderOpus::CloseCallback( void *user_data )
 }
 
 
-bool EncoderOpus::Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> /*bitsPerSample*/, const std::string& settings )
+bool EncoderOpus::Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> /*bitsPerSample*/, const long long /*totalSamples*/, const std::string& settings, const Tags& /*tags*/ )
 {
 	m_Channels = channels;
 	OggOpusComments* opusComments = ope_comments_create();
@@ -52,11 +52,13 @@ bool EncoderOpus::Open( std::wstring& filename, const long sampleRate, const lon
 		if ( nullptr != f ) {
 			m_Callbacks.write = WriteCallback;
 			m_Callbacks.close = CloseCallback;
-
-			m_OpusEncoder = ope_encoder_create_callbacks( &m_Callbacks, f /*userData*/, opusComments, sampleRate, channels, 0 /*family*/, nullptr /*error*/ );
+			const int family = ( m_Channels > 8 ) ? 255 : ( ( m_Channels > 2 ) ? 1 : 0 );
+			m_OpusEncoder = ope_encoder_create_callbacks( &m_Callbacks, f /*userData*/, opusComments, sampleRate, channels, family, nullptr /*error*/ );
 			if ( nullptr != m_OpusEncoder ) {
 				const int bitrate = 1000 * GetBitrate( settings );
 				ope_encoder_ctl( m_OpusEncoder, OPUS_SET_BITRATE( bitrate ) );
+			} else {
+				fclose( f );
 			}
 		}
 		ope_comments_destroy( opusComments );

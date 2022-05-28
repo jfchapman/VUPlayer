@@ -11,6 +11,9 @@ Library::Library( Database& database, const Handlers& handlers ) :
 	m_Database( database ),
 	m_Handlers( handlers ),
 	m_PendingTags(),
+	m_LastTagWriteTime( 0 ),
+	m_TagsWritten(),
+	m_TagsWrittenMutex(),
 	m_MediaColumns( {
 		Columns::value_type( "Filename", Column::Filename ),
 		Columns::value_type( "Filetime", Column::Filetime ),
@@ -660,9 +663,9 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 void Library::WriteFileTags( MediaInfo& mediaInfo, const Tags& tags )
 {
 	if ( MediaInfo::Source::File == mediaInfo.GetSource() ) {
-		
+		const std::wstring& filename = mediaInfo.GetFilename();
 		Tags allTags;
-		const bool hasPendingTags = GetPendingTags( mediaInfo.GetFilename(), allTags );
+		const bool hasPendingTags = GetPendingTags( filename, allTags );
 		if ( hasPendingTags ) {
 			for ( const auto& tag : tags ) {
 				allTags[ tag.first ] = tag.second;
@@ -671,11 +674,12 @@ void Library::WriteFileTags( MediaInfo& mediaInfo, const Tags& tags )
 			allTags = tags;
 		}
 
-		if ( m_Handlers.SetTags( mediaInfo.GetFilename(), allTags ) ) {
-			m_PendingTags.erase( mediaInfo.GetFilename() );
+		SetRecentlyWrittenTag( filename );
+		if ( m_Handlers.SetTags( filename, allTags ) ) {
+			m_PendingTags.erase( filename );
 			GetDecoderInfo( mediaInfo );
 		} else {
-			AddPendingTags( mediaInfo.GetFilename(), tags );
+			AddPendingTags( filename, tags );
 		}
 	}
 	UpdateMediaLibrary( mediaInfo );
@@ -1341,4 +1345,31 @@ void Library::UpdateMediaInfoFromDecoder( MediaInfo& mediaInfo, const Decoder& d
 			}
 		}
 	}
+}
+
+void Library::SetRecentlyWrittenTag( const std::wstring& filename )
+{
+	std::lock_guard<std::mutex> lock( m_TagsWrittenMutex );
+	m_LastTagWriteTime = GetCurrentTimestamp();
+	m_TagsWritten[ filename ] = m_LastTagWriteTime;
+}
+
+bool Library::HasRecentlyWrittenTag( const std::wstring& filename ) const
+{
+	constexpr long long kRecentTimeSpan = 5 /*sec*/ * 10000000ll /*100-nanosecond intervals*/;
+
+	bool recentTagWrite = false;
+	std::lock_guard<std::mutex> lock( m_TagsWrittenMutex );
+	if ( !m_TagsWritten.empty() ) {
+		const long long current = GetCurrentTimestamp();
+		if ( ( current - m_LastTagWriteTime ) < kRecentTimeSpan ) {
+			if ( const auto iter = m_TagsWritten.find( filename ); m_TagsWritten.end() != iter ) {
+				const long long lastWrite = iter->second;
+				recentTagWrite = ( current - lastWrite ) < kRecentTimeSpan;
+			}
+		} else {
+			m_TagsWritten.clear();
+		}
+	}
+	return recentTagWrite;
 }

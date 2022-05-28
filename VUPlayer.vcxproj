@@ -28,26 +28,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -86,20 +86,20 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>FLAC__NO_DLL;PLATFORM_WINDOWS;_USE_MATH_DEFINES;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLAC__NO_DLL;PLATFORM_WINDOWS;_USE_MATH_DEFINES;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.34.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.3\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.3.0\include;libs\opus-1.3.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.2.1\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;libs\basshls-2.4.2\c;libs\MAC-5.69\include;libs\MPC-r475\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.38.5;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.4\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.4.0\include;libs\opus-1.3.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.2.1\include;libs\json-3.10.5;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;libs\basshls-2.4.2\c;libs\MAC-5.69\include;libs\MPC-r475\include;libs\ffmpeg-5.0.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
       </EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;libs\bass-2.4.15\c\bass.lib;libs\libvorbis-1.3.6\x86\libvorbis_static.lib;libs\libvorbis-1.3.6\x86\libvorbisfile_static.lib;libs\WavPack-5.3.0\x86\libwavpack.lib;libs\opus-1.3.1\x86\opus.lib;libs\opusfile-0.12\x86\opusfile.lib;libs\libopusenc-0.2.1\x86\opusenc.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\basswasapi-2.4.3\c\basswasapi.lib;libs\bassmix-2.4.10\c\bassmix.lib;libs\bassasio-1.4\c\bassasio.lib;libs\basshls-2.4.2\c\basshls.lib;libs\flac-1.3.3\x86\debug\libFLAC_static.lib;libs\flac-1.3.3\x86\debug\libFLAC++_static.lib;libs\flac-1.3.3\x86\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;libs\MAC-5.69\x86\debug\MACLib.lib;libs\MPC-r475\x86\libmpcdec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;libs\bass-2.4.15\c\bass.lib;libs\libvorbis-1.3.6\x86\libvorbis_static.lib;libs\libvorbis-1.3.6\x86\libvorbisfile_static.lib;libs\WavPack-5.4.0\x86\libwavpack.lib;libs\opus-1.3.1\x86\opus.lib;libs\opusfile-0.12\x86\opusfile.lib;libs\libopusenc-0.2.1\x86\opusenc.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\basswasapi-2.4.3\c\basswasapi.lib;libs\bassmix-2.4.10\c\bassmix.lib;libs\bassasio-1.4\c\bassasio.lib;libs\basshls-2.4.2\c\basshls.lib;libs\ffmpeg-5.0.1\lib\x86\avcodec.lib;libs\ffmpeg-5.0.1\lib\x86\avformat.lib;libs\ffmpeg-5.0.1\lib\x86\avutil.lib;libs\flac-1.3.4\x86\debug\libFLAC_static.lib;libs\flac-1.3.4\x86\debug\libFLAC++_static.lib;libs\flac-1.3.4\x86\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;libs\MAC-5.69\x86\debug\MACLib.lib;libs\MPC-r475\x86\libmpcdec.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)libs\bass-2.4.15\bass.dll" "$(OutDir)bass.dll"
@@ -110,7 +110,10 @@ copy "$(ProjectDir)libs\basswasapi-2.4.3\basswasapi.dll" "$(OutDir)basswasapi.dl
 copy "$(ProjectDir)libs\bassasio-1.4\bassasio.dll" "$(OutDir)bassasio.dll"
 copy "$(ProjectDir)libs\basshls-2.4.2\basshls.dll" "$(OutDir)basshls.dll"
 copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
-</Command>
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x86\avformat-59.dll" $(OutDir)avformat-59.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x86\avcodec-59.dll" $(OutDir)avcodec-59.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x86\avutil-57.dll" $(OutDir)avutil-57.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x86\swresample-4.dll" $(OutDir)swresample-4.dll</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -122,20 +125,20 @@ copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>FLAC__NO_DLL;PLATFORM_WINDOWS;_USE_MATH_DEFINES;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLAC__NO_DLL;PLATFORM_WINDOWS;_USE_MATH_DEFINES;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.34.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.3\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.3.0\include;libs\opus-1.3.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.2.1\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;libs\basshls-2.4.2\c;libs\MAC-5.69\include;libs\MPC-r475\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.38.5;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.4\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.4.0\include;libs\opus-1.3.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.2.1\include;libs\json-3.10.5;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;libs\basshls-2.4.2\c;libs\MAC-5.69\include;libs\MPC-r475\include;libs\ffmpeg-5.0.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
       </EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;libs\bass-2.4.15\c\x64\bass.lib;libs\libvorbis-1.3.6\x64\libvorbis_static.lib;libs\libvorbis-1.3.6\x64\libvorbisfile_static.lib;libs\WavPack-5.3.0\x64\libwavpack.lib;libs\opus-1.3.1\x64\opus.lib;libs\opusfile-0.12\x64\opusfile.lib;libs\libopusenc-0.2.1\x64\opusenc.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\x64\bassmidi.lib;libs\bassdsd-2.4.1\c\x64\bassdsd.lib;libs\basswasapi-2.4.3\c\x64\basswasapi.lib;libs\bassmix-2.4.10\c\x64\bassmix.lib;libs\bassasio-1.4\c\x64\bassasio.lib;libs\basshls-2.4.2\c\x64\basshls.lib;libs\flac-1.3.3\x64\debug\libFLAC_static.lib;libs\flac-1.3.3\x64\debug\libFLAC++_static.lib;libs\flac-1.3.3\x64\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;libs\MAC-5.69\x64\debug\MACLib.lib;libs\MPC-r475\x64\libmpcdec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;libs\bass-2.4.15\c\x64\bass.lib;libs\libvorbis-1.3.6\x64\libvorbis_static.lib;libs\libvorbis-1.3.6\x64\libvorbisfile_static.lib;libs\WavPack-5.4.0\x64\libwavpack.lib;libs\opus-1.3.1\x64\opus.lib;libs\opusfile-0.12\x64\opusfile.lib;libs\libopusenc-0.2.1\x64\opusenc.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\x64\bassmidi.lib;libs\bassdsd-2.4.1\c\x64\bassdsd.lib;libs\basswasapi-2.4.3\c\x64\basswasapi.lib;libs\bassmix-2.4.10\c\x64\bassmix.lib;libs\bassasio-1.4\c\x64\bassasio.lib;libs\basshls-2.4.2\c\x64\basshls.lib;libs\ffmpeg-5.0.1\lib\x64\avcodec.lib;libs\ffmpeg-5.0.1\lib\x64\avformat.lib;libs\ffmpeg-5.0.1\lib\x64\avutil.lib;libs\flac-1.3.4\x64\debug\libFLAC_static.lib;libs\flac-1.3.4\x64\debug\libFLAC++_static.lib;libs\flac-1.3.4\x64\debug\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;libs\MAC-5.69\x64\debug\MACLib.lib;libs\MPC-r475\x64\libmpcdec.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)libs\bass-2.4.15\x64\bass.dll" "$(OutDir)bass.dll"
@@ -146,7 +149,10 @@ copy "$(ProjectDir)libs\basswasapi-2.4.3\x64\basswasapi.dll" "$(OutDir)basswasap
 copy "$(ProjectDir)libs\bassasio-1.4\x64\bassasio.dll" "$(OutDir)bassasio.dll"
 copy "$(ProjectDir)libs\basshls-2.4.2\x64\basshls.dll" "$(OutDir)basshls.dll"
 copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
-</Command>
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x64\avformat-59.dll" $(OutDir)avformat-59.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x64\avcodec-59.dll" $(OutDir)avcodec-59.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x64\avutil-57.dll" $(OutDir)avutil-57.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x64\swresample-4.dll" $(OutDir)swresample-4.dll</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -160,13 +166,13 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>FLAC__NO_DLL;PLATFORM_WINDOWS;_USE_MATH_DEFINES;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLAC__NO_DLL;PLATFORM_WINDOWS;_USE_MATH_DEFINES;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.34.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.3\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.3.0\include;libs\opus-1.3.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.2.1\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;libs\basshls-2.4.2\c;libs\MAC-5.69\include;libs\MPC-r475\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.38.5;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.4\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.4.0\include;libs\opus-1.3.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.2.1\include;libs\json-3.10.5;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;libs\basshls-2.4.2\c;libs\MAC-5.69\include;libs\MPC-r475\include;libs\ffmpeg-5.0.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
       </EnableEnhancedInstructionSet>
     </ClCompile>
@@ -175,8 +181,9 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;libs\bass-2.4.15\c\bass.lib;libs\libvorbis-1.3.6\x86\libvorbis_static.lib;libs\libvorbis-1.3.6\x86\libvorbisfile_static.lib;libs\WavPack-5.3.0\x86\libwavpack.lib;libs\opus-1.3.1\x86\opus.lib;libs\opusfile-0.12\x86\opusfile.lib;libs\libopusenc-0.2.1\x86\opusenc.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\basswasapi-2.4.3\c\basswasapi.lib;libs\bassmix-2.4.10\c\bassmix.lib;libs\bassasio-1.4\c\bassasio.lib;libs\basshls-2.4.2\c\basshls.lib;libs\flac-1.3.3\x86\release\libFLAC_static.lib;libs\flac-1.3.3\x86\release\libFLAC++_static.lib;libs\flac-1.3.3\x86\release\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;libs\MAC-5.69\x86\release\MACLib.lib;libs\MPC-r475\x86\libmpcdec.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;libs\bass-2.4.15\c\bass.lib;libs\libvorbis-1.3.6\x86\libvorbis_static.lib;libs\libvorbis-1.3.6\x86\libvorbisfile_static.lib;libs\WavPack-5.4.0\x86\libwavpack.lib;libs\opus-1.3.1\x86\opus.lib;libs\opusfile-0.12\x86\opusfile.lib;libs\libopusenc-0.2.1\x86\opusenc.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\bassmidi.lib;libs\bassdsd-2.4.1\c\bassdsd.lib;libs\basswasapi-2.4.3\c\basswasapi.lib;libs\bassmix-2.4.10\c\bassmix.lib;libs\bassasio-1.4\c\bassasio.lib;libs\basshls-2.4.2\c\basshls.lib;libs\ffmpeg-5.0.1\lib\x86\avcodec.lib;libs\ffmpeg-5.0.1\lib\x86\avformat.lib;libs\ffmpeg-5.0.1\lib\x86\avutil.lib;libs\flac-1.3.4\x86\release\libFLAC_static.lib;libs\flac-1.3.4\x86\release\libFLAC++_static.lib;libs\flac-1.3.4\x86\release\win_utf8_io_static.lib;libs\libogg-1.3.3\x86\libogg_static.lib;libs\MAC-5.69\x86\release\MACLib.lib;libs\MPC-r475\x86\libmpcdec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>
+      </LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)libs\bass-2.4.15\bass.dll" "$(OutDir)bass.dll"
@@ -187,7 +194,10 @@ copy "$(ProjectDir)libs\basswasapi-2.4.3\basswasapi.dll" "$(OutDir)basswasapi.dl
 copy "$(ProjectDir)libs\bassasio-1.4\bassasio.dll" "$(OutDir)bassasio.dll"
 copy "$(ProjectDir)libs\basshls-2.4.2\basshls.dll" "$(OutDir)basshls.dll"
 copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
-</Command>
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x86\avformat-59.dll" $(OutDir)avformat-59.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x86\avcodec-59.dll" $(OutDir)avcodec-59.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x86\avutil-57.dll" $(OutDir)avutil-57.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x86\swresample-4.dll" $(OutDir)swresample-4.dll</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -201,13 +211,13 @@ copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>FLAC__NO_DLL;PLATFORM_WINDOWS;_USE_MATH_DEFINES;_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLAC__NO_DLL;PLATFORM_WINDOWS;_USE_MATH_DEFINES;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.34.0;libs\replaygain;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.3\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.3.0\include;libs\opus-1.3.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.2.1\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\rapidjson-1.1.0\include\rapidjson;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;libs\basshls-2.4.2\c;libs\MAC-5.69\include;libs\MPC-r475\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.15\c;libs\sqlite-3.38.5;libs\libogg-1.3.3\include;libs\libvorbis-1.3.6\include;libs\flac-1.3.4\include;libs\vorbis-tools-1.4.0\vorbiscomment;libs\WavPack-5.4.0\include;libs\opus-1.3.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.2.1\include;libs\json-3.10.5;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.12.0\c;libs\bassdsd-2.4.1\c;libs\scrobbler\include;libs\libebur128-1.2.4;libs\libebur128-1.2.4\queue;libs\basswasapi-2.4.3\c;libs\bassmix-2.4.10\c;libs\bassasio-1.4\c;libs\basshls-2.4.2\c;libs\MAC-5.69\include;libs\MPC-r475\include;libs\ffmpeg-5.0.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
       </EnableEnhancedInstructionSet>
     </ClCompile>
@@ -216,8 +226,9 @@ copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;libs\bass-2.4.15\c\x64\bass.lib;libs\libvorbis-1.3.6\x64\libvorbis_static.lib;libs\libvorbis-1.3.6\x64\libvorbisfile_static.lib;libs\WavPack-5.3.0\x64\libwavpack.lib;libs\opus-1.3.1\x64\opus.lib;libs\opusfile-0.12\x64\opusfile.lib;libs\libopusenc-0.2.1\x64\opusenc.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\x64\bassmidi.lib;libs\bassdsd-2.4.1\c\x64\bassdsd.lib;libs\basswasapi-2.4.3\c\x64\basswasapi.lib;libs\bassmix-2.4.10\c\x64\bassmix.lib;libs\bassasio-1.4\c\x64\bassasio.lib;libs\basshls-2.4.2\c\x64\basshls.lib;libs\flac-1.3.3\x64\release\libFLAC_static.lib;libs\flac-1.3.3\x64\release\libFLAC++_static.lib;libs\flac-1.3.3\x64\release\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;libs\MAC-5.69\x64\release\MACLib.lib;libs\MPC-r475\x64\libmpcdec.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <AdditionalDependencies>Comctl32.lib;mfuuid.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Propsys.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;libs\bass-2.4.15\c\x64\bass.lib;libs\libvorbis-1.3.6\x64\libvorbis_static.lib;libs\libvorbis-1.3.6\x64\libvorbisfile_static.lib;libs\WavPack-5.4.0\x64\libwavpack.lib;libs\opus-1.3.1\x64\opus.lib;libs\opusfile-0.12\x64\opusfile.lib;libs\libopusenc-0.2.1\x64\opusenc.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.12.0\c\x64\bassmidi.lib;libs\bassdsd-2.4.1\c\x64\bassdsd.lib;libs\basswasapi-2.4.3\c\x64\basswasapi.lib;libs\bassmix-2.4.10\c\x64\bassmix.lib;libs\bassasio-1.4\c\x64\bassasio.lib;libs\basshls-2.4.2\c\x64\basshls.lib;libs\ffmpeg-5.0.1\lib\x64\avcodec.lib;libs\ffmpeg-5.0.1\lib\x64\avformat.lib;libs\ffmpeg-5.0.1\lib\x64\avutil.lib;libs\flac-1.3.4\x64\release\libFLAC_static.lib;libs\flac-1.3.4\x64\release\libFLAC++_static.lib;libs\flac-1.3.4\x64\release\win_utf8_io_static.lib;libs\libogg-1.3.3\x64\libogg_static.lib;libs\MAC-5.69\x64\release\MACLib.lib;libs\MPC-r475\x64\libmpcdec.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>
+      </LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)libs\bass-2.4.15\x64\bass.dll" "$(OutDir)bass.dll"
@@ -228,7 +239,10 @@ copy "$(ProjectDir)libs\basswasapi-2.4.3\x64\basswasapi.dll" "$(OutDir)basswasap
 copy "$(ProjectDir)libs\bassasio-1.4\x64\bassasio.dll" "$(OutDir)bassasio.dll"
 copy "$(ProjectDir)libs\basshls-2.4.2\x64\basshls.dll" "$(OutDir)basshls.dll"
 copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
-</Command>
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x64\avformat-59.dll" $(OutDir)avformat-59.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x64\avcodec-59.dll" $(OutDir)avcodec-59.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x64\avutil-57.dll" $(OutDir)avutil-57.dll
+copy "$(ProjectDir)libs\ffmpeg-5.0.1\bin\x64\swresample-4.dll" $(OutDir)swresample-4.dll</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -240,13 +254,14 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Artwork.h" />
-    <ClInclude Include="Bling.h" />
+    <ClInclude Include="CDDACache.h" />
     <ClInclude Include="CDDAExtract.h" />
-    <ClInclude Include="CDDAManager.h" />
+    <ClInclude Include="DiscManager.h" />
     <ClInclude Include="CDDAMedia.h" />
     <ClInclude Include="Converter.h" />
     <ClInclude Include="Database.h" />
     <ClInclude Include="DecoderCDDA.h" />
+    <ClInclude Include="DecoderFFmpeg.h" />
     <ClInclude Include="DecoderMAC.h" />
     <ClInclude Include="DecoderMPC.h" />
     <ClInclude Include="DecoderOpus.h" />
@@ -259,6 +274,9 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="DlgEQ.h" />
     <ClInclude Include="DlgHotkey.h" />
     <ClInclude Include="DlgOptions.h" />
+    <ClInclude Include="HandlerFFmpeg.h" />
+    <ClInclude Include="libs\json-3.10.5\json.hpp" />
+    <ClInclude Include="libs\sqlite-3.38.5\sqlite3.h" />
     <ClInclude Include="OptionsArtwork.h" />
     <ClInclude Include="DlgTrackInfo.h" />
     <ClInclude Include="Encoder.h" />
@@ -282,7 +300,6 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="Library.h" />
     <ClInclude Include="LibraryMaintainer.h" />
     <ClInclude Include="libs\libebur128-1.2.4\ebur128.h" />
-    <ClInclude Include="libs\sqlite-3.34.0\sqlite3.h" />
     <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\i18n.h" />
     <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.h" />
     <ClInclude Include="Lock.h" />
@@ -295,8 +312,10 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="OptionsHotkeys.h" />
     <ClInclude Include="OptionsMod.h" />
     <ClInclude Include="OptionsLoudness.h" />
+    <ClInclude Include="OptionsTaskbar.h" />
     <ClInclude Include="OpusComment.h" />
     <ClInclude Include="Oscilloscope.h" />
+    <ClInclude Include="OutputDecoder.h" />
     <ClInclude Include="PeakMeter.h" />
     <ClInclude Include="GainCalculator.h" />
     <ClInclude Include="Scrobbler.h" />
@@ -323,6 +342,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClInclude Include="WndRebarItem.h" />
     <ClInclude Include="WndSplit.h" />
     <ClInclude Include="WndStatus.h" />
+    <ClInclude Include="WndTaskbar.h" />
     <ClInclude Include="WndToolbar.h" />
     <ClInclude Include="WndToolbarConvert.h" />
     <ClInclude Include="WndToolbarCrossfade.h" />
@@ -345,8 +365,9 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Artwork.cpp" />
+    <ClCompile Include="CDDACache.cpp" />
     <ClCompile Include="CDDAExtract.cpp" />
-    <ClCompile Include="CDDAManager.cpp" />
+    <ClCompile Include="DiscManager.cpp" />
     <ClCompile Include="CDDAMedia.cpp">
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4815</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4815</DisableSpecificWarnings>
@@ -357,6 +378,12 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClCompile Include="Database.cpp" />
     <ClCompile Include="Decoder.cpp" />
     <ClCompile Include="DecoderCDDA.cpp" />
+    <ClCompile Include="DecoderFFmpeg.cpp">
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4244</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4244</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4244</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4244</DisableSpecificWarnings>
+    </ClCompile>
     <ClCompile Include="DecoderMAC.cpp" />
     <ClCompile Include="DecoderMPC.cpp" />
     <ClCompile Include="DecoderOpus.cpp" />
@@ -369,6 +396,8 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClCompile Include="DlgEQ.cpp" />
     <ClCompile Include="DlgHotkey.cpp" />
     <ClCompile Include="DlgOptions.cpp" />
+    <ClCompile Include="HandlerFFmpeg.cpp" />
+    <ClCompile Include="libs\sqlite-3.38.5\sqlite3.c" />
     <ClCompile Include="OptionsArtwork.cpp" />
     <ClCompile Include="DlgTrackInfo.cpp" />
     <ClCompile Include="EncoderFlac.cpp" />
@@ -405,7 +434,6 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4267</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4267</DisableSpecificWarnings>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.34.0\sqlite3.c" />
     <ClCompile Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.c">
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4458; 4267; 4996; 4701; 4706; 4703</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4458; 4267; 4996; 4701; 4706; 4703</DisableSpecificWarnings>
@@ -422,8 +450,10 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClCompile Include="OptionsHotkeys.cpp" />
     <ClCompile Include="OptionsMod.cpp" />
     <ClCompile Include="OptionsLoudness.cpp" />
+    <ClCompile Include="OptionsTaskbar.cpp" />
     <ClCompile Include="OpusComment.cpp" />
     <ClCompile Include="Oscilloscope.cpp" />
+    <ClCompile Include="OutputDecoder.cpp" />
     <ClCompile Include="PeakMeter.cpp" />
     <ClCompile Include="GainCalculator.cpp" />
     <ClCompile Include="Scrobbler.cpp" />
@@ -459,6 +489,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <ClCompile Include="WndRebar.cpp" />
     <ClCompile Include="WndSplit.cpp" />
     <ClCompile Include="WndStatus.cpp" />
+    <ClCompile Include="WndTaskbar.cpp" />
     <ClCompile Include="WndToolbar.cpp" />
     <ClCompile Include="WndToolbarConvert.cpp" />
     <ClCompile Include="WndToolbarCrossfade.cpp" />
@@ -499,6 +530,7 @@ copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
     <Image Include="res\album.ico" />
     <Image Include="res\artist.ico" />
     <Image Include="res\artists.ico" />
+    <Image Include="res\balance.ico" />
     <Image Include="res\computer.ico" />
     <Image Include="res\convert.ico" />
     <Image Include="res\crossfade.ico" />

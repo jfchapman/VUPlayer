@@ -18,7 +18,10 @@ std::set<Hotkeys::ID> Hotkeys::s_Hotkeys = {
 	ID::SkipForwards,
 	ID::DecreasePitch,
 	ID::IncreasePitch,
-	ID::ResetPitch
+	ID::ResetPitch,
+	ID::BalanceLeft,
+	ID::BalanceRight,
+	ID::ResetBalance,
 };
 
 // Hotkey commands.
@@ -37,7 +40,10 @@ std::map<Hotkeys::ID,WPARAM> Hotkeys::s_CommandMap = {
 	{ ID::IncreaseVolume,	ID_CONTROL_VOLUMEUP },
 	{ ID::DecreasePitch,	ID_CONTROL_PITCHDOWN },
 	{ ID::IncreasePitch,	ID_CONTROL_PITCHUP },
-	{ ID::ResetPitch,     ID_CONTROL_PITCHRESET }
+	{ ID::ResetPitch,     ID_CONTROL_PITCHRESET },
+	{ ID::BalanceLeft,	  ID_CONTROL_BALANCELEFT },
+	{ ID::BalanceRight,	  ID_CONTROL_BALANCERIGHT },
+	{ ID::ResetBalance,   ID_CONTROL_BALANCERESET }
 };
 
 // Hotkey descriptions.
@@ -56,7 +62,10 @@ std::map<Hotkeys::ID,UINT> Hotkeys::s_DescriptionMap = {
 	{ ID::IncreaseVolume,	IDS_HOTKEY_VOLUMEUP },
 	{ ID::DecreasePitch,	IDS_HOTKEY_PITCHDOWN },
 	{ ID::IncreasePitch,	IDS_HOTKEY_PITCHUP },
-	{ ID::ResetPitch,     IDS_HOTKEY_PITCHRESET }
+	{ ID::ResetPitch,     IDS_HOTKEY_PITCHRESET },
+	{ ID::BalanceLeft,	  IDS_HOTKEY_BALANCELEFT },
+	{ ID::BalanceRight,	  IDS_HOTKEY_BALANCERIGHT },
+	{ ID::ResetBalance,   IDS_HOTKEY_BALANCERESET }
 };
 
 Hotkeys::Hotkeys( const HWND wnd, Settings& settings ) :

@@ -2,14 +2,14 @@
 
 #include "Handler.h"
 
-#include "CDDAManager.h"
+#include "DiscManager.h"
 
 class HandlerCDDA : public Handler
 {
 public:
 	// 'instance' - module instance handle.
-	// 'cddaManager' - CD audio manager.
-	HandlerCDDA( const HINSTANCE instance, CDDAManager& cddaManager );
+	// 'discManager' - optical disc manager.
+	HandlerCDDA( const HINSTANCE instance, DiscManager& discManager );
 
 	virtual ~HandlerCDDA();
 
@@ -54,7 +54,7 @@ private:
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
-	// CD audio manager
-	CDDAManager& m_CDDAManager;
+	// Optical disc manager.
+	DiscManager& m_DiscManager;
 };
 

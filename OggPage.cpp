@@ -54,7 +54,7 @@ OggPage::OggPage( const bool isContinued, const uint32_t serial, const uint32_t 
 	m_Content()
 {
 	if ( ( 0 != serial ) && ( 0 != sequence ) && ( content.size() <= s_MaxCommentSize ) ) {
-		const uint32_t contentSize = std::min( MaximumContentSize, static_cast<uint32_t>( content.size() ) );
+		const uint32_t contentSize = std::min<uint32_t>( MaximumContentSize, static_cast<uint32_t>( content.size() ) );
 
 		uint8_t segmentCount = static_cast<uint8_t>( contentSize / 255 );
 		if ( MaximumContentSize != contentSize ) {
@@ -72,7 +72,7 @@ OggPage::OggPage( const bool isContinued, const uint32_t serial, const uint32_t 
 		uint32_t remainingContent = contentSize;
 		auto segment = m_Header.begin() + 27;
 		while ( m_Header.end() != segment ) {
-			const uint8_t segmentSize = static_cast<uint8_t>( std::min( static_cast<uint32_t>( 255 ), remainingContent ) );
+			const uint8_t segmentSize = static_cast<uint8_t>( std::min<uint32_t>( static_cast<uint32_t>( 255 ), remainingContent ) );
 			remainingContent -= segmentSize;
 			*segment++ = segmentSize;
 		}

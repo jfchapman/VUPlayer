@@ -121,7 +121,7 @@ void Decoder::SkipSilence()
 	if ( m_Channels > 0 ) {
 		std::vector<float> buffer( m_Channels );
 		bool silence = true;
-		while ( silence && Read( &buffer[ 0 ], 1 /*sampleCount*/ ) > 0 ) {
+		while ( silence && Read( buffer.data(), 1 /*sampleCount*/ ) > 0 ) {
 			for ( auto sample = buffer.begin(); silence && ( sample != buffer.end() ); sample++ ) {
 				silence = ( 0 == *sample );
 			}

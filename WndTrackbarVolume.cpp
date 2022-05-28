@@ -53,6 +53,28 @@ const std::wstring& WndTrackbarVolume::GetTooltipText()
 			m_Tooltip = ss.str();
 			break;
 		}
+		case Type::Balance : {
+			const int value = std::lroundf( GetOutput().GetBalance() * 100 );
+			const int bufSize = 32;
+			WCHAR bufBalance[ bufSize ] = {};
+			LoadString( GetInstanceHandle(), IDS_BALANCE, bufBalance, bufSize );
+			WCHAR bufSide[ bufSize ] = {};
+			UINT sideID = IDS_CENTRAL;
+			if ( value < 0 ) {
+				sideID = IDS_LEFT;
+			} else if ( value > 0 ) {
+				sideID = IDS_RIGHT;
+			}
+			LoadString( GetInstanceHandle(), sideID, bufSide, bufSize );
+			std::wstringstream ss;
+			if ( 0 == value ) {
+				ss << bufBalance << L": " << bufSide;
+			} else {
+				ss << bufBalance << L": " << fabs( value ) << L"% " << bufSide;
+			}
+			m_Tooltip = ss.str();
+			break;
+		}
 		default : {
 			break;
 		}
@@ -73,6 +95,10 @@ void WndTrackbarVolume::OnPositionChanged( const int position )
 			UpdatePitch( position );
 			break;
 		}
+		case Type::Balance : {
+			UpdateBalance( position );
+			break;
+		}
 		default : {
 			break;
 		}
@@ -89,6 +115,10 @@ void WndTrackbarVolume::OnDrag( const int position )
 		}
 		case Type::Pitch : {
 			UpdatePitch( position );
+			break;
+		}
+		case Type::Balance : {
+			UpdateBalance( position );
 			break;
 		}
 		default : {
@@ -109,6 +139,10 @@ void WndTrackbarVolume::Update()
 		}
 		case Type::Pitch : {
 			position = GetPositionFromPitch( GetOutput().GetPitch() );
+			break;
+		}
+		case Type::Balance : {
+			position = GetPositionFromBalance( GetOutput().GetBalance() );
 			break;
 		}
 		default : {
@@ -171,6 +205,28 @@ int WndTrackbarVolume::GetPositionFromPitch( const float pitch ) const
 	return position;
 }
 
+void WndTrackbarVolume::UpdateBalance( const int position )
+{
+	const float balance = GetBalanceFromPosition( position );
+	GetOutput().SetBalance( balance );
+}
+
+float WndTrackbarVolume::GetBalanceFromPosition( const int position ) const
+{
+	float balance = 0;
+	if ( const int midpoint = GetRange() / 2; midpoint > 1 ) {		
+		balance = static_cast<float>( position ) / midpoint - 1;
+	}
+	return balance;
+}
+
+int WndTrackbarVolume::GetPositionFromBalance( const float balance ) const
+{
+	const int midpoint = GetRange() / 2;
+	const int position = static_cast<int>( midpoint * ( 1 + balance ) );
+	return position;
+}
+
 void WndTrackbarVolume::SetType( const Type type )
 {
 	if ( GetType() != type ) {
@@ -189,7 +245,9 @@ bool WndTrackbarVolume::ShowContextMenu( const POINT& position )
 
 			CheckMenuItem( trackbarMenu, ID_VIEW_TRACKBAR_VOLUME, ( Type::Volume == type ) ? MF_CHECKED : MF_UNCHECKED );
 			CheckMenuItem( trackbarMenu, ID_VIEW_TRACKBAR_PITCH, ( Type::Pitch == type ) ? MF_CHECKED : MF_UNCHECKED );
+			CheckMenuItem( trackbarMenu, ID_VIEW_TRACKBAR_BALANCE, ( Type::Balance == type ) ? MF_CHECKED : MF_UNCHECKED );
 			EnableMenuItem( trackbarMenu, ID_CONTROL_PITCHRESET, ( GetOutput().GetPitch() != 1.0f ) ? MF_ENABLED : MF_DISABLED );
+			EnableMenuItem( trackbarMenu, ID_CONTROL_BALANCERESET, ( GetOutput().GetBalance() != 0 ) ? MF_ENABLED : MF_DISABLED );
 
 			const Settings::PitchRange pitchRange = GetSettings().GetPitchRange();
 			CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_SMALL, ( Settings::PitchRange::Small == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
@@ -207,6 +265,11 @@ bool WndTrackbarVolume::ShowContextMenu( const POINT& position )
 					SetType( Type::Pitch );
 					break;
 				}
+				case ID_VIEW_TRACKBAR_BALANCE : {
+					SetType( Type::Balance );
+					break;
+				}
+				case ID_CONTROL_BALANCERESET :
 				case ID_CONTROL_PITCHRESET :
 				case ID_CONTROL_PITCHRANGE_SMALL :
 				case ID_CONTROL_PITCHRANGE_MEDIUM :
@@ -229,9 +292,9 @@ bool WndTrackbarVolume::ShowContextMenu( const POINT& position )
 
 WndTrackbar::Type WndTrackbarVolume::GetControlType( Settings& settings )
 {
-	Type type = Type::Volume;
-	if ( settings.GetOutputControlType() == static_cast<int>( Type::Pitch ) ) {
-		type = Type::Pitch;
+	Type type = static_cast<Type>( settings.GetOutputControlType() );
+	if ( ( Type::Volume != type ) && ( Type::Pitch != type ) && ( Type::Balance != type ) ) {
+		type = Type::Volume;
 	}
 	return type;
 }

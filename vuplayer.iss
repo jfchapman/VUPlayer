@@ -2,8 +2,8 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "VUPlayer"
-#define MyAppVersion "4.13"
-#define MyAppFullVersion "4.13.0.0"
+#define MyAppVersion "4.14"
+#define MyAppFullVersion "4.14.0.0"
 #define MyAppMainVersion "4"
 #define MyAppDefaultDir "VUPlayer 4"
 #define MyAppPublisher "James Chapman"
@@ -47,6 +47,10 @@ Source: "x64\Release\basswasapi.dll"; DestDir: "{app}"; Check: Is64BitInstallMod
 Source: "x64\Release\bassasio.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\basshls.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\scrobbler.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\avcodec-59.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\avformat-59.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\avutil-57.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\swresample-4.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\VUPlayer.exe"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\bass.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\bassmidi.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
@@ -56,6 +60,10 @@ Source: "Release\basswasapi.dll"; DestDir: "{app}"; Check: not Is64BitInstallMod
 Source: "Release\bassasio.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\basshls.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\scrobbler.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\avcodec-59.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\avformat-59.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\avutil-57.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\swresample-4.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "readme.txt"; DestDir: "{app}"; Flags: solidbreak
 
 [Icons]

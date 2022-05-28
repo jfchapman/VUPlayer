@@ -231,7 +231,7 @@ void Scrobbler::ScrobblerHandler()
 			}
 			while ( !scrobbles.empty() && !sk.empty() && ( WAIT_OBJECT_0 != WaitForSingleObject( m_StopEvent, 0 ) ) ) {
 				std::vector<scrobbler_track> scrobbler_tracks;
-				scrobbler_tracks.reserve( min( scrobbles.size(), s_ScrobbleBatchSize ) );
+				scrobbler_tracks.reserve( std::min<size_t>( scrobbles.size(), s_ScrobbleBatchSize ) );
 				size_t scrobbleCount = 0;
 				auto pendingScrobble = scrobbles.begin();
 				while ( ( scrobbles.end() != pendingScrobble ) && ( scrobbleCount < s_ScrobbleBatchSize ) ) {

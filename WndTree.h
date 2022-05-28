@@ -2,7 +2,7 @@
 
 #include "stdafx.h"
 
-#include "CDDAManager.h"
+#include "DiscManager.h"
 #include "FolderMonitor.h"
 #include "Library.h"
 #include "Output.h"
@@ -15,9 +15,9 @@ public:
 	// 'parent' - parent window handle.
 	// 'library' - media library.
 	// 'settings' - application settings.
-	// 'cddaManager' - CD audio manager.
+	// 'discManager' - optical disc manager.
 	// 'output' - output object.
-	WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings, CDDAManager& cddaManager, Output& output );
+	WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings, DiscManager& cddaManager, Output& output );
 
 	virtual ~WndTree();
 
@@ -96,8 +96,8 @@ public:
 	// Called when the 'mediaList' has been removed from the media library.
 	void OnRemovedMedia( const MediaInfo::List& mediaList );
 
-	// Called when the available CD audio discs have been refreshed.
-	void OnCDDARefreshed();
+	// Called when the optical disc drives need to be updated.
+	void OnRefreshDiscDrives();
 
 	// Toggles 'Favourites' on the tree control.
 	void OnFavourites();
@@ -448,7 +448,7 @@ private:
 	void AddSubFolders( const HTREEITEM item );
 
 	// Adds tracks to the folder 'playlist' represented by the tree 'item'.
-	void AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist ) const;
+	void AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist );
 
 	// Folder monitor callback.
 	// 'monitorEvent' - event type.
@@ -570,8 +570,8 @@ private:
 	// Application settings.
 	Settings& m_Settings;
 
-	// CD audio manager.
-	CDDAManager& m_CDDAManager;
+	// Optical disc manager.
+	DiscManager& m_DiscManager;
 
 	// Output object.
 	Output& m_Output;
@@ -681,9 +681,6 @@ private:
 	// Whether duplicate tracks are merged into a single entry (for Artist/Album/Genre/Year playlists).
 	bool m_MergeDuplicates;
 
-	// All file extensions supported by the (decoder) handlers.
-	const std::set<std::wstring> m_SupportedFileExtensions;
-
 	// Default edit control window procedure.
 	WNDPROC m_EditControlWndProc;
 
@@ -692,6 +689,9 @@ private:
 
 	// Maps a menu command ID to a playlist for the Add to Playlist context sub menu.
 	PlaylistMenuMap m_AddToPlaylistMenuMap;
+
+	// Maps a folder playlist item to the tracks that have been previously added to the playlist. 
+	std::map<HTREEITEM, std::set<std::wstring>> m_AddedFolderTracks;
 
 	// Root item ordering.
 	static OrderMap s_RootOrder;

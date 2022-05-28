@@ -4,8 +4,8 @@
 
 #include "resource.h"
 
-#include "CDDAManager.h"
 #include "Database.h"
+#include "DiscManager.h"
 #include "GainCalculator.h"
 #include "Hotkeys.h"
 #include "Library.h"
@@ -23,6 +23,7 @@
 #include "WndRebarItem.h"
 #include "WndSplit.h"
 #include "WndStatus.h"
+#include "WndTaskbar.h"
 #include "WndToolbarConvert.h"
 #include "WndToolbarCrossfade.h"
 #include "WndToolbarEQ.h"
@@ -46,10 +47,10 @@
 // 'lParam' : pointer to updated MediaInfo, to be deleted by the message handler.
 static constexpr UINT MSG_MEDIAUPDATED = WM_APP + 77;
 
-// Message ID for signalling that the available CD audio discs has been refreshed.
+// Message ID for signalling that the list of available optical discs has been refreshed.
 // 'wParam' : unused.
 // 'lParam' : unused.
-static constexpr UINT MSG_CDDAREFRESHED = WM_APP + 79;
+static constexpr UINT MSG_DISCREFRESHED = WM_APP + 79;
 
 // Message ID for signalling that a MusicBrainz result has arrived.
 // 'wParam' : pointer to MusicBrainz::Result, to be deleted by the message handler.
@@ -121,8 +122,8 @@ public:
 	// Handles the update of 'previousMediaInfo' to 'updatedMediaInfo', from the main thread.
 	void OnHandleMediaUpdate( const MediaInfo* previousMediaInfo, const MediaInfo* updatedMediaInfo );
 
-	// Handles the refreshing of available CD audio discs.
-	void OnHandleCDDARefreshed();
+	// Handles the refreshing of available optical discs.
+	void OnHandleDiscRefreshed();
 
 	// Restarts playback from a playlist 'itemID'.
 	void OnRestartPlayback( const long itemID );
@@ -207,6 +208,9 @@ public:
 
 	// Called when the window needs painting with the 'ps'.
 	void OnPaint( const PAINTSTRUCT& ps );
+
+	// Called when the application taskbar button has been created.
+	void OnTaskbarButtonCreated();
 
 private:
 	// Main application instance.
@@ -312,8 +316,8 @@ private:
 	// MusicBrainz manager.
 	MusicBrainz m_MusicBrainz;
 
-	// CD audio manager.
-	CDDAManager m_CDDAManager;
+	// Optical disc manager.
+	DiscManager m_DiscManager;
 
 	// Rebar control.
 	WndRebar m_Rebar;
@@ -380,6 +384,9 @@ private:
 
 	// Notification area control.
 	WndTray m_Tray;
+
+	// Taskbar extension control.
+	WndTaskbar m_Taskbar;
 
 	// EQ dialog.
 	DlgEQ m_EQ;

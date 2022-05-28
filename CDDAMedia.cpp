@@ -2,6 +2,7 @@
 
 #include "resource.h"
 
+#include "CDDACache.h"
 #include "Utility.h"
 
 #include <iomanip>
@@ -11,10 +12,10 @@
 #include <stdexcept>
 
 // CDDA sector size in bytes.
-static const unsigned long SECTORSIZE = 2352;
+constexpr unsigned long SECTORSIZE = 2352;
 
 // CDDA pregap in sectors.
-static const unsigned long PREGAP = 150;
+constexpr unsigned long PREGAP = 150;
 
 CDDAMedia::CDDAMedia( const wchar_t drive, Library& library, MusicBrainz& musicbrainz ) :
 	m_DrivePath( L"\\\\.\\" + std::wstring( 1, drive ) + L":" ),
@@ -24,7 +25,7 @@ CDDAMedia::CDDAMedia( const wchar_t drive, Library& library, MusicBrainz& musicb
 	m_TOC( {} ),
 	m_CDDB( 0 ),
 	m_Playlist( new Playlist( m_Library, Playlist::Type::CDDA ) ),
-	m_Cache( std::make_shared<Cache>() )
+	m_Cache( std::make_shared<CDDACache>() )
 {
 	if ( !ReadTOC() || !GeneratePlaylist( drive ) ) {
 		throw std::runtime_error( "No audio CD in drive " + std::string( 1, static_cast<char>( drive ) ) );

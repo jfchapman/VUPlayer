@@ -140,6 +140,9 @@ public:
 	// 'sendNotification' - whether to notify the main application if the library has been updated.
 	void UpdateMediaInfoFromDecoder( MediaInfo& mediaInfo, const Decoder& decoder, const bool sendNotification = true );
 
+	// Returns whether there has been a recent attempt to write the tags for the 'filename'.
+	bool HasRecentlyWrittenTag( const std::wstring& filename ) const;
+
 private:
 	// Media library columns.
 	typedef std::map<std::string,Column> Columns;
@@ -205,6 +208,9 @@ private:
 	// Returns whether there are any pending tags.
 	bool GetPendingTags( const std::wstring& filename, Tags& tags ) const;
 
+	// Updates the time at which the last attempt was made to write the tags for the 'filename'.
+	void SetRecentlyWrittenTag( const std::wstring& filename );
+
 	// Database.
 	Database& m_Database;
 
@@ -213,6 +219,15 @@ private:
 
 	// Tag information waiting to be written.
 	FileTags m_PendingTags;
+
+	// The time that the last attempt was made to write tags.
+	long long m_LastTagWriteTime;
+
+	// File names for which an attempt has been made to write tags, mapped to the time that the attempt was last made.
+	mutable std::map<std::wstring, long long> m_TagsWritten;
+
+	// Mutex for the map of attempted tag writes.
+	mutable std::mutex m_TagsWrittenMutex;
 
 	// Media library columns.
 	Columns m_MediaColumns;

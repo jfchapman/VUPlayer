@@ -113,7 +113,7 @@ void GainCalculator::Handler()
 
 			// Update track gain for all items.
 			Playlist::ItemList processedItems;
-			const size_t threadCount = min( pendingItems.size(), max( 1, static_cast<size_t>( std::thread::hardware_concurrency() ) ) );
+			const size_t threadCount = std::min<size_t>( pendingItems.size(), std::max<size_t>( 1, std::thread::hardware_concurrency() ) );
 			std::list<std::thread> threads;
 			for ( size_t threadIndex = 0; threadIndex < threadCount; threadIndex++ ) {
 				threads.push_back( std::thread( [ &pendingItems, &processedItems, &itemMutex, &r128States, &r128StatesMutex, canContinue, this ]() 

@@ -57,6 +57,7 @@ float DecoderFlac::Seek( const float position )
 {
 	float seekPosition = 0;
 	m_FLACFramePos = 0;
+	m_FLACFrame = {};
 	if ( ( GetSampleRate() > 0 ) && seek_absolute( static_cast<FLAC__uint64>( position * GetSampleRate() ) ) ) {
 		process_single();
 		seekPosition = static_cast<float>( m_FLACFrame.header.number.sample_number ) / GetSampleRate();

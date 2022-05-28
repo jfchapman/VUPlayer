@@ -193,7 +193,7 @@ DWORD WINAPI WndTree::FileModifiedProc( LPVOID lpParam )
 	return 0;
 }
 
-WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings, CDDAManager& cddaManager, Output& output ) :
+WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& settings, DiscManager& discManager, Output& output ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_DefaultWndProc( nullptr ),
@@ -209,7 +209,7 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_NodeCurrentOutput( nullptr ),
 	m_Library( library ),
 	m_Settings( settings ),
-	m_CDDAManager( cddaManager ),
+	m_DiscManager( discManager ),
 	m_Output( output ),
 	m_PlaylistMap(),
 	m_ArtistMap(),
@@ -246,10 +246,10 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_ScratchListUpdateThread( nullptr ),
 	m_ScratchListUpdateStopEvent( CreateEvent( nullptr /*securityAttributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
 	m_MergeDuplicates( settings.GetMergeDuplicates() ),
-	m_SupportedFileExtensions( m_Library.GetAllSupportedFileExtensions() ),
 	m_EditControlWndProc( nullptr ),
 	m_IsHighContrast( IsHighContrastActive() ),
-	m_AddToPlaylistMenuMap()
+	m_AddToPlaylistMenuMap(),
+	m_AddedFolderTracks()
 {
 	const DWORD exStyle = 0;
 	LPCTSTR className = WC_TREEVIEW;
@@ -343,27 +343,25 @@ HTREEITEM WndTree::GetStartupItem()
 						}
 					}
 				}
-			}
-		}
-
-		if ( nullptr == selectedItem ) {
-			selectedItem = GetComputerFolderNode( startupPlaylist );
-			if ( nullptr == selectedItem ) {
-				const std::list<std::wstring> parts = WideStringSplit( startupPlaylist, '\t' );
-				auto currentPart = parts.begin();
-				HTREEITEM currentItem = TreeView_GetRoot( m_hWnd );
-				while ( ( nullptr != currentItem ) && ( parts.end() != currentPart ) ) {
-					const std::wstring itemLabel = GetItemLabel( currentItem );
-					if ( itemLabel == *currentPart ) {
-						++currentPart;
-						if ( parts.end() == currentPart ) {
-							selectedItem = currentItem;
-							break;
+			} else {
+				selectedItem = GetComputerFolderNode( startupPlaylist );
+				if ( nullptr == selectedItem ) {
+					const std::list<std::wstring> parts = WideStringSplit( startupPlaylist, '\t' );
+					auto currentPart = parts.begin();
+					HTREEITEM currentItem = TreeView_GetRoot( m_hWnd );
+					while ( ( nullptr != currentItem ) && ( parts.end() != currentPart ) ) {
+						const std::wstring itemLabel = GetItemLabel( currentItem );
+						if ( itemLabel == *currentPart ) {
+							++currentPart;
+							if ( parts.end() == currentPart ) {
+								selectedItem = currentItem;
+								break;
+							} else {
+								currentItem = TreeView_GetChild( m_hWnd, currentItem );
+							}
 						} else {
-							currentItem = TreeView_GetChild( m_hWnd, currentItem );
+							currentItem = TreeView_GetNextSibling( m_hWnd, currentItem );
 						}
-					} else {
-						currentItem = TreeView_GetNextSibling( m_hWnd, currentItem );
 					}
 				}
 			}
@@ -835,23 +833,20 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 				playlist = folderItem->second;
 			} else {
 				playlist = std::make_shared<Playlist::Ptr::element_type>( m_Library, type );
+				std::wstring path;
+				GetFolderPath( node, path );
+				playlist->SetName( path );
 				m_FolderPlaylistMap.insert( PlaylistMap::value_type( node, playlist ) );
-				AddFolderTracks( node, playlist );
 			}
+			AddFolderTracks( node, playlist );
 			break;
 		}
 		default : {
 			break;
 		}
 	}
-	if ( playlist ) {
-		if ( Playlist::Type::Folder == type ) {
-			std::wstring path;
-			GetFolderPath( node, path );
-			playlist->SetName( path );
-		} else {
-			playlist->SetName( GetItemLabel( node ) );
-		}
+	if ( playlist && ( Playlist::Type::Folder != type ) ) {
+		playlist->SetName( GetItemLabel( node ) );
 	}
 	return playlist;
 }
@@ -930,6 +925,7 @@ void WndTree::OnDestroy()
 		}
 	}
 
+	std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
 	for ( const auto& iter : m_FolderPlaylistMap ) {
 		if ( iter.second ) {
 			iter.second->StopPendingThread();
@@ -1521,7 +1517,7 @@ void WndTree::AddYears()
 void WndTree::AddCDDA()
 {
 	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
-	const CDDAManager::CDDAMediaMap cddaDrives = m_CDDAManager.GetCDDADrives();
+	const DiscManager::CDDAMediaMap cddaDrives = m_DiscManager.GetCDDADrives();
 	for ( auto drive = cddaDrives.rbegin(); drive != cddaDrives.rend(); drive++ ) {
 		const CDDAMedia& cddaMedia = drive->second;
 		Playlist::Ptr cddaPlaylist = cddaMedia.GetPlaylist();
@@ -2558,23 +2554,41 @@ HTREEITEM WndTree::GetInsertAfter( const Playlist::Type type ) const
 	return insertAfter;
 }
 
-void WndTree::OnCDDARefreshed()
+void WndTree::OnRefreshDiscDrives()
 {
-	Playlist::Ptr previousPlaylist;
-	const HTREEITEM selectedItem = TreeView_GetSelection( m_hWnd );
-	if ( nullptr != selectedItem ) {
-		const auto item = m_CDDAMap.find( selectedItem );
-		if ( m_CDDAMap.end() != item ) {
-			previousPlaylist = item->second;
+	RefreshComputerNode();
+
+	std::string currentSelectedPlaylistID;
+	if ( const HTREEITEM selectedItem = TreeView_GetSelection( m_hWnd ); nullptr != selectedItem ) {
+		if ( const auto item = m_CDDAMap.find( selectedItem ); ( m_CDDAMap.end() != item ) && item->second ) {
+			currentSelectedPlaylistID = item->second->GetID();
 		}
 	}
+
+	std::string currentOutputPlaylistID;
+	for ( const auto& [ node, playlist ] : m_CDDAMap ) {
+		if ( playlist && ( node == m_NodeCurrentOutput ) ) {
+			currentOutputPlaylistID = playlist->GetID();
+			break;
+		}
+	}
+
 	RemoveCDDA();
 	AddCDDA();
-	if ( previousPlaylist ) {
-		for ( const auto& item : m_CDDAMap ) {
-			const auto playlist = item.second;
-			if ( playlist && ( playlist->GetID() == previousPlaylist->GetID() ) ) {
-				TreeView_SelectItem( m_hWnd, item.first );
+
+	if ( !currentOutputPlaylistID.empty() ) {
+		for ( const auto& [ node, playlist ] : m_CDDAMap ) {
+			if ( playlist && ( playlist->GetID() == currentOutputPlaylistID ) ) {
+				m_NodeCurrentOutput = node;
+				break;
+			}
+		}
+	}
+
+	if ( !currentSelectedPlaylistID.empty() ) {
+		for ( const auto& [ node, playlist ] : m_CDDAMap ) {
+			if ( playlist && ( playlist->GetID() == currentSelectedPlaylistID ) ) {
+				TreeView_SelectItem( m_hWnd, node );
 				break;
 			}
 		}
@@ -2716,22 +2730,17 @@ WndTree::RootFolderInfoList WndTree::GetComputerDrives() const
 	if ( bufferLength > 0 ) {
 		std::vector<WCHAR> buffer( static_cast<size_t>( bufferLength ) );
 		if ( GetLogicalDriveStrings( bufferLength, buffer.data() ) <= bufferLength ) {
+			const auto dataDiscDrives = m_DiscManager.GetDataDrives();
 			LPWSTR driveString = buffer.data();
 			size_t stringLength = wcslen( driveString );
-			const UINT previousErrorMode = GetErrorMode();
-			SetErrorMode( SEM_FAILCRITICALERRORS );
 			while ( stringLength > 0 ) {
 				const UINT driveType = GetDriveType( driveString );
 				if ( ( DRIVE_FIXED == driveType ) || ( DRIVE_REMOVABLE == driveType ) || ( DRIVE_REMOTE == driveType ) || ( DRIVE_CDROM == driveType ) ) {
 					bool includeDrive = true;
+					const auto driveLetter = driveString[ 0 ];
 
 					if ( DRIVE_CDROM == driveType ) {
-						const DWORD attributes = GetFileAttributes( driveString );
-						if ( INVALID_FILE_ATTRIBUTES == attributes ) {
-							includeDrive = false;
-						} else {
-							includeDrive = CDDAMedia::ContainsData( driveString[ 0 ] );
-						}
+						includeDrive = ( dataDiscDrives.end() != dataDiscDrives.find( driveLetter ) );
 					}
 
 					if ( includeDrive ) {
@@ -2752,11 +2761,13 @@ WndTree::RootFolderInfoList WndTree::GetComputerDrives() const
 								REMOTE_NAME_INFO* remoteInfo = reinterpret_cast<REMOTE_NAME_INFO*>( &remoteNameBuffer[ 0 ] );
 								driveName = remoteInfo->lpConnectionName;
 							}
-						} else {
-							if ( 0 != GetVolumeInformation( driveString, nameBuffer, nameBufferSize, nullptr /*serialNumber*/, nullptr /*componentLength*/, nullptr /*flags*/, nullptr /*fileSysBuffer*/, 0 /*fileSysBufferSize*/ ) ) {
-								if ( wcslen( nameBuffer ) > 0 ) {
-									driveName = nameBuffer;
-								}
+						} else if ( DRIVE_CDROM == driveType ) {
+							if ( const auto drive = dataDiscDrives.find( driveLetter ); ( dataDiscDrives.end() != drive ) && !drive->second.empty() ) {
+								driveName = drive->second;
+							}
+						} else if ( 0 != GetVolumeInformation( driveString, nameBuffer, nameBufferSize, nullptr, nullptr, nullptr, nullptr, 0 ) ) {
+							if ( wcslen( nameBuffer ) > 0 ) {
+								driveName = nameBuffer;
 							}
 						}
 
@@ -2771,7 +2782,6 @@ WndTree::RootFolderInfoList WndTree::GetComputerDrives() const
 				driveString += stringLength + 1;
 				stringLength = wcslen( driveString );
 			}
-			SetErrorMode( previousErrorMode );
 		}
 	}
 
@@ -2848,7 +2858,7 @@ void WndTree::OnItemExpanding( const HTREEITEM item )
 	}
 }
 
-void WndTree::AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist ) const
+void WndTree::AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist )
 {
 	if ( playlist && ( Playlist::Type::Folder == playlist->GetType() ) && ( nullptr != item ) ) {
 		std::set<std::wstring> fileNames;
@@ -2883,6 +2893,19 @@ void WndTree::AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist ) co
 				}
 				FindClose( handle );
 			}
+		}
+
+		if ( const auto previouslyAdded = m_AddedFolderTracks.find( item ); m_AddedFolderTracks.end() != previouslyAdded ) {
+			std::vector<std::wstring> newFiles;
+			std::set_difference( fileNames.begin(), fileNames.end(), previouslyAdded->second.begin(), previouslyAdded->second.end(), std::back_inserter( newFiles ) );
+			if ( newFiles.empty() ) {
+				fileNames.clear();
+			} else {
+				m_AddedFolderTracks[ item ] = fileNames;
+				fileNames = { newFiles.begin(), newFiles.end() };
+			}
+		} else {
+			m_AddedFolderTracks[ item ] = fileNames;
 		}
 
 		for ( const auto& fileName : fileNames ) {
@@ -3008,15 +3031,17 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			break;
 		}
 		case FolderMonitor::Event::FileDeleted : {
-			const auto folderIter = m_FolderNodesMap.find( folder );
-			if ( m_FolderNodesMap.end() != folderIter ) {
-				const std::set<HTREEITEM>& nodes = folderIter->second;
-				for ( const auto& node : nodes ) {
-					const auto playlistIter = m_FolderPlaylistMap.find( node );
-					if ( m_FolderPlaylistMap.end() != playlistIter ) {
-						Playlist::Ptr playlist = playlistIter->second;
-						if ( playlist ) {
-							playlist->RemoveItem( MediaInfo( oldFilename ) );
+			if ( !IgnoreFileMonitorEvent( oldFilename ) ) {
+				const auto folderIter = m_FolderNodesMap.find( folder );
+				if ( m_FolderNodesMap.end() != folderIter ) {
+					const std::set<HTREEITEM>& nodes = folderIter->second;
+					for ( const auto& node : nodes ) {
+						const auto playlistIter = m_FolderPlaylistMap.find( node );
+						if ( m_FolderPlaylistMap.end() != playlistIter ) {
+							Playlist::Ptr playlist = playlistIter->second;
+							if ( playlist ) {
+								playlist->RemoveItem( MediaInfo( oldFilename ) );
+							}
 						}
 					}
 				}
@@ -3350,10 +3375,13 @@ void WndTree::SetMergeDuplicates( const bool mergeDuplicates )
 bool WndTree::IgnoreFileMonitorEvent( const std::wstring& filename ) const
 {
 	bool ignore = true;
-	const size_t pos = filename.rfind( '.' );
-	if ( std::wstring::npos != pos ) {
-		const std::wstring ext = WideStringToLower( filename.substr( 1 + pos ) );
-		ignore = ( m_SupportedFileExtensions.end() == m_SupportedFileExtensions.find( ext ) );
+	const std::wstring folder = std::filesystem::path( filename ).parent_path();
+	// Note that the folder playlist map mutex has already been locked by the callback handler.
+	for ( const auto& [ treeItem, playlist ] : m_FolderPlaylistMap ) {
+		if ( playlist && ( folder == playlist->GetName() ) && !m_Library.HasRecentlyWrittenTag( filename ) ) {
+			ignore = false;
+			break;
+		}
 	}
 	return ignore;
 }
@@ -3396,7 +3424,7 @@ int WndTree::GetIconSize() const
 		const Gdiplus::PointF origin;
 		Gdiplus::RectF bounds;
 		if ( Gdiplus::Ok == graphics.MeasureString( L"Ay96", -1, &font, origin, &bounds ) ) {
-			iconSize = max( 16, iconModulus * ( static_cast<int>( bounds.Height ) / iconModulus ) );
+			iconSize = std::max<int>( 16, iconModulus * ( static_cast<int>( bounds.Height ) / iconModulus ) );
 		}
 		ReleaseDC( m_hWnd, dc );
 	}
@@ -3464,6 +3492,7 @@ void WndTree::OnOutputPlaylistChange( const Playlist::Ptr playlist )
 				break;
 			}
 			case Playlist::Type::Folder : {
+				std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
 				outputNode = FindPlaylist( m_FolderPlaylistMap, playlist );
 				break;
 			}

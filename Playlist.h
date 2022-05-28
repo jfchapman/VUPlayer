@@ -52,7 +52,7 @@ public:
 
 	// Column type.
 	enum class Column {
-		Filename = 1,
+		Filepath = 1,
 		Filetime,
 		Filesize,
 		Duration,
@@ -70,6 +70,7 @@ public:
 		GainTrack,
 		GainAlbum,
 		Bitrate,
+		Filename,
 
 		_Undefined
 	};
@@ -132,6 +133,9 @@ public:
 	// 'wrap' - whether to wrap round to the last playlist item.
 	// Returns true if a 'previousItem' was returned.
 	bool GetPreviousItem( const Item& currentItem, Item& previousItem, const bool wrap = true );
+
+	// Gets the first playlist item.
+	Item GetFirstItem();
 
 	// Gets a random playlist item.
 	// 'currentItem' - the current item.

@@ -32,9 +32,11 @@ public:
 	// 'sampleRate' - sample rate.
 	// 'channels' - channel count.
 	// 'bitsPerSample' - bits per sample, if applicable.
+	// 'totalSamples' - approximate total number of samples to encode, if known.
 	// 'settings' - encoder settings.
+	// 'tags' - metadata tags.
 	// Returns whether the encoder was opened.
-	bool Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> bitsPerSample, const std::string& settings ) override;
+	bool Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> bitsPerSample, const long long totalSamples, const std::string& settings, const Tags& tags ) override;
 
 	// Writes sample data.
 	// 'samples' - input samples (floating point format scaled to +/-1.0f).

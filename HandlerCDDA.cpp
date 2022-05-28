@@ -5,9 +5,9 @@
 #include "DecoderCDDA.h"
 #include "Utility.h"
 
-HandlerCDDA::HandlerCDDA( const HINSTANCE instance, CDDAManager& cddaManager ) :
+HandlerCDDA::HandlerCDDA( const HINSTANCE instance, DiscManager& discManager ) :
 	m_hInst( instance ),
-	m_CDDAManager( cddaManager )
+	m_DiscManager( discManager )
 {
 }
 
@@ -44,7 +44,7 @@ Decoder::Ptr HandlerCDDA::OpenDecoder( const std::wstring& filename ) const
 {
 	DecoderCDDA* decoderCDDA = nullptr;
 	try {
-		const CDDAManager::CDDAMediaMap mediaMap = m_CDDAManager.GetCDDADrives();
+		const DiscManager::CDDAMediaMap mediaMap = m_DiscManager.GetCDDADrives();
 		wchar_t drive = 0;
 		long track = 0;
 		if ( CDDAMedia::FromMediaFilepath( filename, drive, track ) ) {

@@ -1,6 +1,7 @@
 #include "Handlers.h"
 
 #include "HandlerBass.h"
+#include "HandlerFFmpeg.h"
 #include "HandlerFlac.h"
 #include "HandlerMP3.h"
 #include "HandlerOpus.h"
@@ -14,6 +15,7 @@
 
 Handlers::Handlers() :
 	m_HandlerBASS( new HandlerBass() ),
+	m_HandlerFFmpeg( new HandlerFFmpeg() ),
 	m_Handlers( {
 		Handler::Ptr( new HandlerFlac() ),
 		Handler::Ptr( new HandlerOpus() ),
@@ -22,16 +24,20 @@ Handlers::Handlers() :
 		Handler::Ptr( new HandlerMPC() ),
 		Handler::Ptr( new HandlerMP3() ),
 		Handler::Ptr( new HandlerPCM() ),
-		Handler::Ptr( m_HandlerBASS ) } ),
+		Handler::Ptr( m_HandlerBASS ),
+		Handler::Ptr( m_HandlerFFmpeg )
+		} ),
 	m_Decoders(),
 	m_Encoders()
 {
 	for ( const auto& handler : m_Handlers ) {
-		if ( handler->IsDecoder() ) {
-			m_Decoders.push_back( handler );
-		}
-		if ( handler->IsEncoder() ) {
-			m_Encoders.push_back( handler );
+		if ( handler ) {
+			if ( handler->IsDecoder() ) {
+				m_Decoders.push_back( handler );
+			}
+			if ( handler->IsEncoder() ) {
+				m_Encoders.push_back( handler );
+			}
 		}
 	}
 }
@@ -65,11 +71,9 @@ Decoder::Ptr Handlers::OpenDecoder( const std::wstring& filename ) const
 		if ( handler ) {
 			decoder = handler->OpenDecoder( filename );
 		}
-		if ( !decoder ) {
-			// Try any handler.
-			for ( auto handlerIter = m_Decoders.begin(); !decoder && ( handlerIter != m_Decoders.end() ); handlerIter++ ) {
-				decoder = handlerIter->get()->OpenDecoder( filename );
-			}
+		if ( !decoder && m_HandlerFFmpeg ) {
+			// Try the FFmpeg handler as a catch all.
+			decoder = m_HandlerFFmpeg->OpenDecoder( filename );
 		}
 	}
 	return decoder;
@@ -85,12 +89,6 @@ bool Handlers::GetTags( const std::wstring& filename, Tags& tags ) const
 			success = handler->GetTags( filename, tags );
 		}
 		if ( !success ) {
-			// Try any handler.
-			for ( auto handlerIter = m_Decoders.begin(); !success && ( handlerIter != m_Decoders.end() ); handlerIter++ ) {
-				success = handlerIter->get()->GetTags( filename, tags );
-			}
-		}
-		if ( !success ) {
 			success = ShellMetadata::Get( filename, tags );
 		}
 	}
@@ -104,12 +102,6 @@ bool Handlers::SetTags( const std::wstring& filename, const Tags& tags ) const
 		Handler::Ptr handler = FindDecoderHandler( filename );
 		if ( handler ) {
 			success = handler->SetTags( filename, tags );
-		}
-		if ( !success ) {
-			// Try any handler.
-			for ( auto handlerIter = m_Decoders.begin(); !success && ( handlerIter != m_Decoders.end() ); handlerIter++ ) {
-				success = handlerIter->get()->SetTags( filename, tags );
-			}
 		}
 		if ( !success ) {
 			success = ShellMetadata::Set( filename, tags );

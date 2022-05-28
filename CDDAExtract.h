@@ -2,7 +2,7 @@
 
 #include "stdafx.h"
 
-#include "CDDAManager.h"
+#include "DiscManager.h"
 #include "Handlers.h"
 #include "Playlist.h"
 #include "Settings.h"
@@ -18,11 +18,11 @@ public:
 	// 'library' - media library.
 	// 'settings' - application settings.
 	// 'handlers' - audio format handlers.
-	// 'cddaManager' - CD audio manager.
+	// 'discManager' - optical disc manager.
 	// 'tracks' - tracks to extract.
 	// 'encoderHandler' - encoder handler to use.
 	// 'joinFilename' - output filename, when joining tracks into a single file.
-	CDDAExtract( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, CDDAManager& cddaManager, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename );
+	CDDAExtract( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, DiscManager& discManager, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename );
 
 	virtual ~CDDAExtract();
 
@@ -89,8 +89,8 @@ private:
 	// Audio format handlers.
 	Handlers& m_Handlers;
 
-	// CD audio manager.
-	CDDAManager& m_CDDAManager;
+	// Optical disc manager.
+	DiscManager& m_DiscManager;
 
 	// Tracks to extract.
 	const Playlist::ItemList m_Tracks;

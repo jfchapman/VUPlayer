@@ -5,6 +5,7 @@
 #include "OptionsHotkeys.h"
 #include "OptionsMod.h"
 #include "OptionsLoudness.h"
+#include "OptionsTaskbar.h"
 
 #include "resource.h"
 #include "Utility.h"
@@ -43,6 +44,10 @@ INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam
 					if ( PSN_APPLY == pshNotify->hdr.code ) {
 						options->OnSave( hwnd );
 					} else {
+						if ( PSN_SETACTIVE == pshNotify->hdr.code ) {
+							const int pageIndex = PropSheet_HwndToIndex( pshNotify->hdr.hwndFrom, hwnd );
+							options->GetSettings().SetLastOptionsPage( pageIndex );
+						}
 						options->OnNotify( hwnd, wParam, lParam );
 					}
 				}
@@ -72,10 +77,11 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	m_Settings( settings ),
 	m_Output( output )
 {
-	const UINT pageCount = 5;
+	const UINT pageCount = 6;
 	std::vector<HPROPSHEETPAGE> pages( pageCount );
 
 	OptionsGeneral optionsGeneral( instance, settings, output );
+	OptionsTaskbar optionsTaskbar( instance, settings, output );
 	OptionsHotkeys optionsHotkeys( instance, settings, output );
 	OptionsMod optionsMod( instance, settings, output );
 	OptionsLoudness optionsLoudness( instance, settings, output );
@@ -91,6 +97,16 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propPageGeneral.lParam = reinterpret_cast<LPARAM>( &optionsGeneral );
 	pages.at( 0 ) = CreatePropertySheetPage( &propPageGeneral );
 	
+	// Taskbar property page
+	PROPSHEETPAGE propPageTaskbar = {};
+	propPageTaskbar.dwSize = sizeof( PROPSHEETPAGE );
+	propPageTaskbar.dwFlags = PSP_DEFAULT;
+	propPageTaskbar.hInstance = instance;
+	propPageTaskbar.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_TASKBAR );
+	propPageTaskbar.pfnDlgProc = OptionsProc;
+	propPageTaskbar.lParam = reinterpret_cast<LPARAM>( &optionsTaskbar );
+	pages.at( 1 ) = CreatePropertySheetPage( &propPageTaskbar );
+
 	// Hotkeys property page
 	PROPSHEETPAGE propPageHotkeys = {};
 	propPageHotkeys.dwSize = sizeof( PROPSHEETPAGE );
@@ -99,7 +115,7 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propPageHotkeys.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_HOTKEYS );
 	propPageHotkeys.pfnDlgProc = OptionsProc;
 	propPageHotkeys.lParam = reinterpret_cast<LPARAM>( &optionsHotkeys );
-	pages.at( 1 ) = CreatePropertySheetPage( &propPageHotkeys );
+	pages.at( 2 ) = CreatePropertySheetPage( &propPageHotkeys );
 
 	// MOD Music property page
 	PROPSHEETPAGE propPageMODMusic = {};
@@ -109,7 +125,7 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propPageMODMusic.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_MOD );
 	propPageMODMusic.pfnDlgProc = OptionsProc;
 	propPageMODMusic.lParam = reinterpret_cast<LPARAM>( &optionsMod );
-	pages.at( 2 ) = CreatePropertySheetPage( &propPageMODMusic );
+	pages.at( 3 ) = CreatePropertySheetPage( &propPageMODMusic );
 
 	// Loudness property page
 	PROPSHEETPAGE propPageLoudness = {};
@@ -119,7 +135,7 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propPageLoudness.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_GAIN );
 	propPageLoudness.pfnDlgProc = OptionsProc;
 	propPageLoudness.lParam = reinterpret_cast<LPARAM>( &optionsLoudness );
-	pages.at( 3 ) = CreatePropertySheetPage( &propPageLoudness );
+	pages.at( 4 ) = CreatePropertySheetPage( &propPageLoudness );
 
 	// Artwork property page
 	PROPSHEETPAGE propPageArtwork = {};
@@ -129,7 +145,7 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propPageArtwork.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_ARTWORK );
 	propPageArtwork.pfnDlgProc = OptionsProc;
 	propPageArtwork.lParam = reinterpret_cast<LPARAM>( &optionsArtwork );
-	pages.at( 4 ) = CreatePropertySheetPage( &propPageArtwork );
+	pages.at( 5 ) = CreatePropertySheetPage( &propPageArtwork );
 
 	PROPSHEETHEADER propSheetHeader = {};
 	propSheetHeader.dwSize = sizeof( PROPSHEETHEADER );
@@ -138,7 +154,7 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propSheetHeader.hwndParent = parent;
 	propSheetHeader.pszCaption = MAKEINTRESOURCE( IDS_OPTIONS_TITLE );
 	propSheetHeader.nPages = pageCount;
-	propSheetHeader.nStartPage = 0;
+	propSheetHeader.nStartPage = std::clamp( static_cast<UINT>( m_Settings.GetLastOptionsPage() ), 0u, pageCount - 1u );
 	propSheetHeader.phpage = pages.data();
 
 	if ( PropertySheet( &propSheetHeader ) > 0 ) {

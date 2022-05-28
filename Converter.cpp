@@ -221,7 +221,8 @@ void Converter::EncodeHandler()
 			if ( decoder ) {
 				joinChannels = decoder->GetChannels();
 				joinSampleRate = decoder->GetSampleRate();
-				conversionOK = m_Encoder->Open( m_JoinFilename, joinSampleRate, joinChannels, decoder->GetBPS(), m_EncoderSettings );
+				const long long totalSamples = static_cast<long long>( totalDuration * joinSampleRate );
+				conversionOK = m_Encoder->Open( m_JoinFilename, joinSampleRate, joinChannels, decoder->GetBPS(), totalSamples, m_EncoderSettings, {} /*tags*/ );
 				r128State = ebur128_init( static_cast<unsigned int>( joinChannels ), static_cast<unsigned int>( joinSampleRate ), EBUR128_MODE_I );
 				if ( nullptr != r128State ) {
 					r128States.push_back( r128State );
@@ -249,12 +250,12 @@ void Converter::EncodeHandler()
 						const long sampleRate = decoder->GetSampleRate();
 						const long channels = decoder->GetChannels();
 						const auto bps = decoder->GetBPS();
+						const long long trackSamplesTotal = static_cast<long long>( track->Info.GetDuration() * sampleRate );
 
 						conversionOK = extractJoin ? ( ( sampleRate == joinSampleRate ) && ( channels == joinChannels ) ) :
-							m_Encoder->Open( filename, sampleRate, channels, bps, m_EncoderSettings );
+							m_Encoder->Open( filename, sampleRate, channels, bps, trackSamplesTotal, m_EncoderSettings, m_Library.GetTags( mediaInfo ) );
 
 						if ( conversionOK ) {
-							const long long trackSamplesTotal = static_cast<long long>( track->Info.GetDuration() * sampleRate );
 							long long trackSamplesRead = 0;
 
 							const long sampleCount = 65536;

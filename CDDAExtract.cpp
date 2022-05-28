@@ -112,13 +112,13 @@ DWORD WINAPI CDDAExtract::EncodeThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, CDDAManager& cddaManager, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename ) :
+CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, DiscManager& discManager, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_Library( library ),
 	m_Settings( settings ),
 	m_Handlers( handlers ),
-	m_CDDAManager( cddaManager ),
+	m_DiscManager( discManager ),
 	m_Tracks( tracks ),
 	m_CancelEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
 	m_PendingEncodeEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
@@ -241,7 +241,7 @@ void CDDAExtract::ReadHandler()
 	const long maxCachedSectors = 32;
 
 	bool readError = false;
-	const CDDAManager::CDDAMediaMap drives = m_CDDAManager.GetCDDADrives();
+	const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
 	auto trackIter = m_Tracks.begin();
 	while ( !Cancelled() && ( m_Tracks.end() != trackIter ) ) {
 		// Get the CDDA media object for the current track.
@@ -287,7 +287,7 @@ void CDDAExtract::ReadHandler()
 							auto cacheIter = sectorCache.find( sectorIndex );
 							if ( sectorCache.end() == cacheIter ) {
 								sectorCache.clear();
-								if ( media->Read( mediaHandle, sectorIndex, (std::min)( maxCachedSectors, sectorEnd - sectorIndex ), sectorCache ) ) {
+								if ( media->Read( mediaHandle, sectorIndex, std::min<long>( maxCachedSectors, sectorEnd - sectorIndex ), sectorCache ) ) {
 									cacheIter = sectorCache.find( sectorIndex );
 								}
 							}
@@ -427,7 +427,7 @@ void CDDAExtract::EncodeHandler()
 			const long sampleRate = m_Tracks.front().Info.GetSampleRate();
 			const long channels = m_Tracks.front().Info.GetChannels();
 			const auto bps = m_Tracks.front().Info.GetBitsPerSample();
-			encoderOK = m_Encoder->Open( m_JoinFilename, sampleRate, channels, bps, m_EncoderSettings );
+			encoderOK = m_Encoder->Open( m_JoinFilename, sampleRate, channels, bps, totalSamples, m_EncoderSettings, {} /*tags*/ );
 			r128State = ebur128_init( static_cast<unsigned int>( channels ), static_cast<unsigned int>( sampleRate ), EBUR128_MODE_I );
 			if ( nullptr != r128State ) {
 				r128States.push_back( r128State );
@@ -455,6 +455,7 @@ void CDDAExtract::EncodeHandler()
 					const long sampleRate = mediaInfo.GetSampleRate();
 					const long channels = mediaInfo.GetChannels();
 					const auto bps = mediaInfo.GetBitsPerSample();
+					const long long trackSamplesTotal = static_cast<long long>( mediaInfo.GetDuration() * sampleRate );
 					long long samplesEncoded = 0;
 
 					if ( !extractJoin ) {
@@ -466,7 +467,7 @@ void CDDAExtract::EncodeHandler()
 
 					std::wstring filename = extractJoin ? m_JoinFilename : GetOutputFilename( mediaInfo );
 					if ( !filename.empty() ) {
-						if ( extractJoin || m_Encoder->Open( filename, sampleRate, channels, bps, m_EncoderSettings ) ) {
+						if ( extractJoin || m_Encoder->Open( filename, sampleRate, channels, bps, trackSamplesTotal, m_EncoderSettings, m_Library.GetTags( mediaInfo ) ) ) {
 							const long sampleBufferSize = 65536;
 							std::vector<float> sampleBuffer( sampleBufferSize * channels );
 							int r128Error = EBUR128_SUCCESS;

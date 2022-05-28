@@ -10,6 +10,8 @@
 
 #include <string>
 
+class CDDACache;
+
 // Audio CD information.
 class CDDAMedia
 {
@@ -23,10 +25,10 @@ public:
 	virtual ~CDDAMedia();
 
 	// CD audio data.
-	typedef std::vector<short> Data;
+	using Data = std::vector<short>;
 
 	// A map of CD Audio data, keyed by sector index.
-	typedef std::map<long,Data> DataMap;
+	using DataMap = std::map<long, Data>;
 
 	// Returns the formatted media 'filepath' corresponding to 'drive' & 'track'.
 	static std::wstring ToMediaFilepath( const wchar_t drive, const long track );
@@ -82,54 +84,17 @@ public:
 	std::pair<std::string /*discid*/, std::string /*toc*/> GetMusicBrainzID() const;
 
 private:
-	// Data cache.
-	class Cache
-	{
-		public:
-			Cache() :
-				m_Cache(),
-				m_Mutex()
-			{
-			}
-
-			// Gets CD audio 'data' for the 'sector' index, returning whether the sector data was retrieved.
-			bool GetData( const long sector, Data& data )
-			{
-				std::lock_guard<std::mutex> lock( m_Mutex );
-				const auto iter = m_Cache.find( sector );
-				const bool success = ( m_Cache.end() != iter );
-				if ( success ) {
-					data = iter->second;
-				}
-				return success;
-			}
-
-			// Caches the CD audio 'data' for the 'sector' index.
-			void SetData( const long sector, const Data& data )
-			{
-				std::lock_guard<std::mutex> lock( m_Mutex );
-				m_Cache.insert( std::map<long,Data>::value_type( sector, data ) );
-			}
-
-		private:
-			// CD audio data, mapped by sector.
-			std::map<long,Data> m_Cache;
-			
-			// Cache mutex.
-			std::mutex m_Mutex;
-	};
-
 	// A string pair.
-	typedef std::pair<std::wstring,std::wstring> StringPair;
+	using StringPair = std::pair<std::wstring, std::wstring>;
 
 	// Maps a track number to an artist/title pair.
-	typedef std::map<long,StringPair> StringPairMap;
+	using StringPairMap = std::map<long, StringPair>;
 
 	// Maps a block number to a string map.
-	typedef std::map<long,StringPairMap> BlockMap;
+	using BlockMap = std::map<long, StringPairMap>;
 
 	// Maps a track number to a string.
-	typedef std::map<long,std::wstring> StringMap;
+	using StringMap = std::map<long, std::wstring>;
 
 	// Reads the table of contents, returning whether there are any audio tracks available.
 	bool ReadTOC();
@@ -171,5 +136,5 @@ private:
 	Playlist::Ptr m_Playlist;
 
 	// CD audio data cache.
-	std::shared_ptr<Cache> m_Cache;
+	std::shared_ptr<CDDACache> m_Cache;
 };

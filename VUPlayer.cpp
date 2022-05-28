@@ -66,14 +66,14 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_Library( m_Database, m_Handlers ),
 	m_Maintainer( m_hInst, m_Library, m_Handlers ),
 	m_Settings( m_Database, m_Library, portableSettings ),
-	m_Output( m_hInst, m_hWnd, m_Handlers, m_Settings, m_Settings.GetVolume() ),
+	m_Output( m_hInst, m_hWnd, m_Handlers, m_Settings ),
 	m_GainCalculator( m_Library, m_Handlers ),
 	m_Scrobbler( m_Database, m_Settings, portable /*disable*/ ),
 	m_MusicBrainz( m_hInst, m_hWnd, m_Settings, portable /*disable*/ ),
-	m_CDDAManager( m_hInst, m_hWnd, m_Library, m_Handlers, m_MusicBrainz ),
+	m_DiscManager( m_hInst, m_hWnd, m_Library, m_Handlers, m_MusicBrainz ),
 	m_Rebar( m_hInst, m_hWnd, m_Settings ),
 	m_Status( m_hInst, m_hWnd ),
-	m_Tree( m_hInst, m_hWnd, m_Library, m_Settings, m_CDDAManager, m_Output ),
+	m_Tree( m_hInst, m_hWnd, m_Library, m_Settings, m_DiscManager, m_Output ),
 	m_Visual( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Settings, m_Output, m_Library ),
 	m_List( m_hInst, m_hWnd, m_Settings, m_Output ),
 	m_SeekControl( m_hInst, m_Rebar.GetWindowHandle(), m_Output, m_Settings ),
@@ -93,6 +93,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_Counter( m_hInst, m_Rebar.GetWindowHandle(), m_Settings, m_Output ),
 	m_Splitter( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Tree.GetWindowHandle(), m_Visual.GetWindowHandle(), m_List.GetWindowHandle(), m_Settings ),
 	m_Tray( m_hInst, m_hWnd, m_Library, m_Settings, m_Output, m_Tree, m_List ),
+	m_Taskbar( m_hInst, m_hWnd ),
 	m_EQ( m_hInst, m_List.GetWindowHandle(), m_Settings, m_Output ),
 	m_CurrentOutput(),
 	m_CustomColours(),
@@ -135,6 +136,10 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 
 	SetWindowPos( m_Tree.GetWindowHandle(), m_List.GetWindowHandle(), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOREDRAW | SWP_NOSIZE );
 	SetFocus( m_List.GetWindowHandle() );
+
+	if ( m_Settings.GetAlwaysOnTop() ) {
+		SetWindowPos( m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE );
+	}
 
 	m_Handlers.Init( m_Settings );
 
@@ -501,6 +506,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_Counter.Refresh();
 		m_Status.Update( m_GainCalculator, m_Maintainer, m_MusicBrainz );
 		m_Tray.Update( m_CurrentOutput );
+		m_Taskbar.Update( m_ToolbarPlayback );
 		m_List.UpdateStatusIcon();
 		m_Tree.UpdateOutputIcon();
 	} else if ( TIMER_SYSTRAY == timerID ) {
@@ -641,7 +647,15 @@ void VUPlayer::OnCommand( const int commandID )
 				default : {
 					const Playlist::Ptr playlist = m_List.GetPlaylist();
 					if ( playlist ) {
-						const Playlist::Item item = m_List.GetCurrentSelectedItem();
+						Playlist::Item item = m_List.GetCurrentSelectedItem();
+						if ( ( 0 == item.ID ) && ( playlist->GetCount() > 0 ) ) {
+							if ( m_Output.GetRandomPlay() ) {
+								item = playlist->GetRandomItem( {} );
+							} else {
+								item = playlist->GetFirstItem();
+							}
+							m_List.SelectPlaylistItem( item.ID );
+						}
 						if ( 0 != item.ID ) {
 							m_Output.Play( playlist, item.ID );
 						}
@@ -653,6 +667,9 @@ void VUPlayer::OnCommand( const int commandID )
 		}
 		case ID_CONTROL_STOP : {
 			m_Output.Stop();
+			if ( m_Output.GetStopAtTrackEnd() && !m_Settings.GetRetainStopAtTrackEnd() ) {
+				m_Output.ToggleStopAtTrackEnd();
+			}
 			break;
 		}
 		case ID_CONTROL_PREVIOUSTRACK : {
@@ -782,6 +799,18 @@ void VUPlayer::OnCommand( const int commandID )
 		}
 		case ID_CONTROL_PITCHRESET : {
 			m_Output.SetPitch( 1.0f );
+			m_VolumeControl.Update();
+			break;
+		}
+		case ID_CONTROL_BALANCELEFT : 
+		case ID_CONTROL_BALANCERIGHT : {
+			const float balance = m_Output.GetBalance() + ( ( ID_CONTROL_BALANCELEFT == commandID ) ? -0.01f : 0.01f );
+			m_Output.SetBalance( balance );
+			m_VolumeControl.Update();
+			break;
+		}
+		case ID_CONTROL_BALANCERESET : {
+			m_Output.SetBalance( 0 );
 			m_VolumeControl.Update();
 			break;
 		}
@@ -947,10 +976,25 @@ void VUPlayer::OnCommand( const int commandID )
 			m_VolumeControl.SetType( WndTrackbar::Type::Pitch );
 			break;
 		}
+		case ID_VIEW_TRACKBAR_BALANCE : {
+			m_VolumeControl.SetType( WndTrackbar::Type::Balance );
+			break;
+		}
 		case ID_VIEW_EQ : {
 			m_EQ.ToggleVisibility();
 			break;
 		}
+		case ID_VIEW_ALWAYSONTOP : {
+			const bool alwaysOnTop = !m_Settings.GetAlwaysOnTop();
+			m_Settings.SetAlwaysOnTop( alwaysOnTop );
+			if ( alwaysOnTop ) {
+				SetWindowPos( m_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE );
+			} else {
+				SetWindowPos( m_hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE );
+			}
+			break;
+		}
+		case ID_SHOWCOLUMNS_TITLE :
 		case ID_SHOWCOLUMNS_ARTIST :
 		case ID_SHOWCOLUMNS_ALBUM :
 		case ID_SHOWCOLUMNS_GENRE :
@@ -964,6 +1008,7 @@ void VUPlayer::OnCommand( const int commandID )
 		case ID_SHOWCOLUMNS_BITSPERSAMPLE :
 		case ID_SHOWCOLUMNS_DURATION :
 		case ID_SHOWCOLUMNS_FILESIZE :
+		case ID_SHOWCOLUMNS_FILEPATH :
 		case ID_SHOWCOLUMNS_FILENAME :
 		case ID_SHOWCOLUMNS_FILETIME :
 		case ID_SHOWCOLUMNS_TRACKGAIN :
@@ -985,6 +1030,7 @@ void VUPlayer::OnCommand( const int commandID )
 		case ID_SORTPLAYLIST_BITSPERSAMPLE :
 		case ID_SORTPLAYLIST_DURATION :
 		case ID_SORTPLAYLIST_FILESIZE :
+		case ID_SORTPLAYLIST_FILEPATH :
 		case ID_SORTPLAYLIST_FILENAME :
 		case ID_SORTPLAYLIST_FILETIME :
 		case ID_SORTPLAYLIST_TRACKGAIN :
@@ -1055,14 +1101,6 @@ void VUPlayer::OnCommand( const int commandID )
 		}
 		case ID_HELP_ONLINEDOCUMENTATION : {
 			ShellExecute( NULL, L"open", s_OnlineDocs, NULL, NULL, SW_SHOWNORMAL );
-			break;
-		}
-		case ID_BLING1 : 
-		case ID_BLING2 :
-		case ID_BLING3 :
-		case ID_BLING4 : {
-			const int bling = ( ID_BLING1 == commandID ) ? 1 : ( ( ID_BLING2 == commandID ) ? 2 : ( ( ID_BLING3 == commandID ) ? 3 : 4 ) );
-			m_Output.Bling( bling );
 			break;
 		}
 		case ID_TOOLBAR_FILE :
@@ -1198,6 +1236,13 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const UINT statusIconEnabled = m_List.GetStatusIconEnabled() ? MF_CHECKED : MF_UNCHECKED;
 		CheckMenuItem( menu, ID_SHOWCOLUMNS_STATUS, MF_BYCOMMAND | statusIconEnabled );
 
+		if ( ( 1 == shownColumns.size() ) && ( *shownColumns.begin() == ID_SHOWCOLUMNS_FILEPATH ) ) {
+			// If the only visible column is the file path column, disable the option to hide it.
+			EnableMenuItem( menu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_DISABLED );
+		} else {
+			EnableMenuItem( menu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_ENABLED );
+		}
+
 		const UINT currentVisual = m_Visual.GetCurrentVisualID();
 		const std::set<UINT> visualIDs = m_Visual.GetVisualIDs();
 		for ( const auto& visualID : visualIDs ) {
@@ -1231,7 +1276,9 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const WndTrackbar::Type trackbarType = m_VolumeControl.GetType();
 		CheckMenuItem( menu, ID_VIEW_TRACKBAR_VOLUME, ( ( WndTrackbar::Type::Volume == trackbarType ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_VIEW_TRACKBAR_PITCH, ( ( WndTrackbar::Type::Pitch == trackbarType ) ? MF_CHECKED : MF_UNCHECKED ) );
+		CheckMenuItem( menu, ID_VIEW_TRACKBAR_BALANCE, ( ( WndTrackbar::Type::Balance == trackbarType ) ? MF_CHECKED : MF_UNCHECKED ) );
 
+		CheckMenuItem( menu, ID_VIEW_ALWAYSONTOP, m_Settings.GetAlwaysOnTop() ? MF_CHECKED : MF_UNCHECKED );
 		CheckMenuItem( menu, ID_VIEW_EQ, m_EQ.IsVisible() ? MF_CHECKED : MF_UNCHECKED );
 
 		// Control menu
@@ -1249,6 +1296,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_CONTROL_NEXTTRACK, MF_BYCOMMAND | nextEnabled );
 
 		EnableMenuItem( menu, ID_CONTROL_PITCHRESET, ( ( m_Output.GetPitch() != 1.0f ) ? MF_ENABLED : MF_DISABLED ) );
+		EnableMenuItem( menu, ID_CONTROL_BALANCERESET, ( ( m_Output.GetBalance() != 0 ) ? MF_ENABLED : MF_DISABLED ) );
 		const Settings::PitchRange pitchRange = m_Settings.GetPitchRange();
 		CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_SMALL, ( Settings::PitchRange::Small == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
 		CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_MEDIUM, ( Settings::PitchRange::Medium == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
@@ -1261,8 +1309,10 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const bool isCrossfade = m_Output.GetCrossfade();
 		const bool isStream =	IsURL( m_Output.GetCurrentPlaying().PlaylistItem.Info.GetFilename() );
 
+		const UINT enableStopAtTrackEnd = ( isFadeOut || isFadeToNext ) ? MF_DISABLED : MF_ENABLED;
 		const UINT enableFadeOut = ( !isFadeToNext && ( Output::State::Playing == outputState ) ) ? MF_ENABLED : MF_DISABLED;
 		const UINT enableFadeToNext = ( !isFadeOut && !isStream && ( Output::State::Playing == outputState ) ) ? MF_ENABLED : MF_DISABLED;
+		EnableMenuItem( menu, ID_CONTROL_STOPTRACKEND, MF_BYCOMMAND | enableStopAtTrackEnd );
 		EnableMenuItem( menu, ID_CONTROL_FADEOUT, MF_BYCOMMAND | enableFadeOut );
 		EnableMenuItem( menu, ID_CONTROL_FADETONEXT, MF_BYCOMMAND | enableFadeToNext );
 
@@ -1335,11 +1385,28 @@ void VUPlayer::OnHandleMediaUpdate( const MediaInfo* previousMediaInfo, const Me
 	}
 }
 
-void VUPlayer::OnHandleCDDARefreshed()
+void VUPlayer::OnHandleDiscRefreshed()
 {
 	const auto currentSelection = m_List.GetCurrentSelectedItem();
 	
-	m_Tree.OnCDDARefreshed();
+	m_Tree.OnRefreshDiscDrives();
+
+	if ( const auto item = m_Output.GetCurrentPlaying(); MediaInfo::Source::CDDA == item.PlaylistItem.Info.GetSource() ) {
+		if ( const auto& filename = item.PlaylistItem.Info.GetFilename(); !filename.empty() ) {
+			const auto currentDrive = filename.front();
+			const DiscManager::CDDAMediaMap cddaDrives = m_DiscManager.GetCDDADrives();
+			bool stopPlayback = true;
+			for ( const auto& [ drive, media ] : cddaDrives ) {
+				if ( currentDrive == drive ) {
+					stopPlayback = false;
+					break;
+				}
+			}
+			if ( stopPlayback ) {
+				m_Output.Stop();
+			}
+		}
+	}
 	
 	if ( MediaInfo::Source::CDDA == currentSelection.Info.GetSource() ) {
 		if ( const auto playlist = m_List.GetPlaylist(); playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) {
@@ -1444,6 +1511,7 @@ void VUPlayer::OnOptions()
 {
 	const std::string previousScrobblerToken = m_Scrobbler.GetToken();
 	const auto previousPlaceholderArtwork = m_Settings.GetDefaultArtwork();
+	const COLORREF previousTaskbarButtonColour = m_Settings.GetTaskbarButtonColour();
 
 	m_Hotkeys.Unregister();
 	DlgOptions options( m_hInst, m_hWnd, m_Settings, m_Output );
@@ -1479,6 +1547,10 @@ void VUPlayer::OnOptions()
 	if ( ID_VISUAL_ARTWORK == m_Visual.GetCurrentVisualID() ) {
 		m_Splitter.Resize();
 		m_Visual.DoRender();
+	}
+
+	if ( const COLORREF taskbarButtonColour = m_Settings.GetTaskbarButtonColour(); taskbarButtonColour != previousTaskbarButtonColour ) {
+		m_Taskbar.SetToolbarButtonColour( m_Settings );
 	}
 }
 
@@ -1611,19 +1683,22 @@ void VUPlayer::InsertAddToPlaylists( const HMENU menu, const UINT insertAfterIte
 
 void VUPlayer::OnDeviceChange( const WPARAM wParam, const LPARAM lParam )
 {
-	m_CDDAManager.OnDeviceChange();
-
 	PDEV_BROADCAST_HDR hdr = reinterpret_cast<PDEV_BROADCAST_HDR>( lParam );
 	if ( nullptr != hdr ) {
 		if ( DBT_DEVTYP_VOLUME == hdr->dbch_devicetype ) {
 			PDEV_BROADCAST_VOLUME volume = reinterpret_cast<PDEV_BROADCAST_VOLUME>( lParam );
 			DWORD unitMask = volume->dbcv_unitmask;
 			for ( wchar_t drive = 'A'; drive <= 'Z'; drive++ ) {
-				if ( unitMask & 1 ) {
-					if ( DBT_DEVICEARRIVAL == wParam ) {
-						m_Tree.OnDriveArrived( drive );
-					} else if ( ( DBT_DEVICEREMOVEPENDING == wParam ) || ( DBT_DEVICEREMOVECOMPLETE == wParam ) ) {
-						m_Tree.OnDriveRemoved( drive );
+				if ( ( unitMask & 1 ) && ( ( DBT_DEVICEARRIVAL == wParam ) || ( DBT_DEVICEREMOVEPENDING == wParam ) || ( DBT_DEVICEREMOVECOMPLETE == wParam ) ) ) {
+					const std::wstring driveString = std::wstring( 1, drive ) + L":\\";
+					if ( DRIVE_CDROM == GetDriveType( driveString.c_str() ) ) {
+						m_DiscManager.OnDeviceChange( drive, ( DBT_DEVICEARRIVAL == wParam ) ? DiscManager::ChangeType::Added : DiscManager::ChangeType::Removed );
+					} else {
+						if ( DBT_DEVICEARRIVAL == wParam ) {
+							m_Tree.OnDriveArrived( drive );
+						} else if ( ( DBT_DEVICEREMOVEPENDING == wParam ) || ( DBT_DEVICEREMOVECOMPLETE == wParam ) ) {
+							m_Tree.OnDriveRemoved( drive );
+						}
 					}
 				}
 				unitMask >>= 1;
@@ -1672,7 +1747,7 @@ void VUPlayer::OnConvert()
 
 				const std::wstring& joinFilename = dlgConvert.GetJoinFilename();
 				if ( Playlist::Type::CDDA == playlist->GetType() ) {
-					CDDAExtract extract( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, m_CDDAManager, selectedItems, handler, joinFilename );
+					CDDAExtract extract( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, m_DiscManager, selectedItems, handler, joinFilename );
 				} else {
 					Converter converter( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, selectedItems, handler, joinFilename );
 				}
@@ -1700,7 +1775,7 @@ void VUPlayer::OnMusicBrainzQuery()
 		const Playlist::ItemList playlistItems = playlist->GetItems();
 		if ( !playlistItems.empty() ) {
 			const long cddbID = playlistItems.front().Info.GetCDDB();
-			const CDDAManager::CDDAMediaMap drives = m_CDDAManager.GetCDDADrives();
+			const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
 			for ( const auto& drive : drives ) {
 				if ( cddbID == drive.second.GetCDDB() ) {
 					const auto [ discID, toc ] = drives.begin()->second.GetMusicBrainzID();
@@ -1717,7 +1792,7 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
 	const int selectedResult = ( ( 1 == result.Albums.size() ) && !forceDialog ) ? 0 : m_MusicBrainz.ShowMatchesDialog( result );
 	if ( ( selectedResult >= 0 ) && ( selectedResult < static_cast<int>( result.Albums.size() ) ) ) {
 		const MusicBrainz::Album& album = result.Albums[ selectedResult ];
-		const CDDAManager::CDDAMediaMap drives = m_CDDAManager.GetCDDADrives();
+		const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
 		for ( const auto& drive : drives ) {
 			const auto [ discID, toc ] = drive.second.GetMusicBrainzID();
 			if ( result.DiscID == discID ) {
@@ -1875,6 +1950,14 @@ void VUPlayer::SaveSettings()
 	m_Settings.SetVolume( m_Output.GetVolume() );
 	m_Settings.SetPlaybackSettings( m_Output.GetRandomPlay(), m_Output.GetRepeatTrack(), m_Output.GetRepeatPlaylist(), m_Output.GetCrossfade() );
 	m_Settings.SetOutputControlType( static_cast<int>( m_VolumeControl.GetType() ) );
+
+	m_Settings.SetStopAtTrackEnd( m_Settings.GetRetainStopAtTrackEnd() ? m_Output.GetStopAtTrackEnd() : false );
+
+	if ( m_Settings.GetRetainPitchBalance() ) {
+		m_Settings.SetPitchBalance( m_Output.GetPitch(), m_Output.GetBalance() );
+	} else {
+		m_Settings.SetPitchBalance( 1.0f, 0 );
+	}
 }
 
 void VUPlayer::OnExportSettings()
@@ -1995,4 +2078,9 @@ void VUPlayer::OnPaint( const PAINTSTRUCT& ps )
 		ExcludeClipRect( ps.hdc, rect.left, rect.top, rect.right, rect.bottom );
 	}
 	FillRect( ps.hdc, &ps.rcPaint, HBRUSH( COLOR_3DFACE + 1 ) );
+}
+
+void VUPlayer::OnTaskbarButtonCreated()
+{
+	m_Taskbar.Init( m_Settings );
 }

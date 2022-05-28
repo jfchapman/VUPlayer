@@ -3,10 +3,7 @@
 #include "Utility.h"
 #include "VUPlayer.h"
 
-#undef min
-#undef max
-#undef GetObject
-#include "document.h"
+#include "json.hpp"
 
 #include <filesystem>
 #include <sstream>
@@ -583,15 +580,17 @@ static long ParseYear( const std::string& date )
 	return year;
 }
 
-static std::wstring ParseArtistCredit( const rapidjson::GenericArray<true,rapidjson::Value>& artistCredit )
+static std::wstring ParseArtistCredit( const nlohmann::json& artistCredit )
 {
 	std::wstring result;
-	for ( const auto& artist : artistCredit ) {
-		if ( const auto name = artist.FindMember( "name" ); ( artist.MemberEnd() != name ) && name->value.IsString() ) {
-			result += UTF8ToWideString( name->value.GetString() );
-		}
-		if ( const auto joinphrase = artist.FindMember( "joinphrase" ); ( artist.MemberEnd() != joinphrase ) && joinphrase->value.IsString() ) {
-			result += UTF8ToWideString( joinphrase->value.GetString() );
+	if ( artistCredit.is_array() ) {
+		for ( const auto& artist : artistCredit ) {
+			if ( const auto name = artist.find( "name" ); ( artist.end() != name ) && name->is_string() ) {
+				result += UTF8ToWideString( *name );
+			}
+			if ( const auto joinphrase = artist.find( "joinphrase" ); ( artist.end() != joinphrase ) && joinphrase->is_string() ) {
+				result += UTF8ToWideString( *joinphrase );
+			}
 		}
 	}
 	return result;
@@ -601,11 +600,10 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 {
 	result.Albums.clear();
 	if ( !response.empty() ) {
-		rapidjson::Document document;
-		document.Parse( response.c_str() );
-		if ( !document.HasParseError() ) {
-			const auto releases = document.FindMember( "releases" );
-			if ( ( document.MemberEnd() != releases ) && releases->value.IsArray() ) {
+		try {
+			const nlohmann::json document = nlohmann::json::parse( response );
+			const auto releases = document.find( "releases" );
+			if ( ( document.end() != releases ) && releases->is_array() ) {
 
 				auto albumCompare = []( const Album& a, const Album& b )
 				{
@@ -614,32 +612,32 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 				std::set<Album, decltype( albumCompare )> albums( albumCompare );
 
 				// Get release information.
-				for ( const auto& release : releases->value.GetArray() ) {
+				for ( const auto& release : *releases ) {
 					std::vector<Album> releaseAlbums;
 					std::wstring releaseTitle;
 					std::wstring releaseArtist;
 					long releaseYear = 0;
 					
-					if ( const auto title = release.FindMember( "title" ); ( release.MemberEnd() != title ) && title->value.IsString() ) {
-						releaseTitle = UTF8ToWideString( title->value.GetString() );
+					if ( const auto title = release.find( "title" ); ( release.end() != title ) && title->is_string() ) {
+						releaseTitle = UTF8ToWideString( *title );
 					}
 					
-					if ( const auto date = release.FindMember( "date" ); ( release.MemberEnd() != date ) && date->value.IsString() ) {
-						releaseYear = ParseYear( date->value.GetString() );
+					if ( const auto date = release.find( "date" ); ( release.end() != date ) && date->is_string() ) {
+						releaseYear = ParseYear( *date );
 					}
 					
-					if ( const auto artistCredit = release.FindMember( "artist-credit" ); ( release.MemberEnd() != artistCredit ) && artistCredit->value.IsArray() ) {
-						releaseArtist = ParseArtistCredit( artistCredit->value.GetArray() );
+					if ( const auto artistCredit = release.find( "artist-credit" ); ( release.end() != artistCredit ) && artistCredit->is_array() ) {
+						releaseArtist = ParseArtistCredit( *artistCredit );
 					}
 
-					if ( const auto media = release.FindMember( "media" ); ( release.MemberEnd() != media ) && media->value.IsArray() ) {
-						for ( const auto& medium : media->value.GetArray() ) {
+					if ( const auto media = release.find( "media" ); ( release.end() != media ) && media->is_array() ) {
+						for ( const auto& medium : *media ) {
 							// If this is an exact match, we want to ignore all other media in this release.
 							bool exactMatch = false;
-							if ( const auto discs = medium.FindMember( "discs" ); ( medium.MemberEnd() != discs ) && discs->value.IsArray() ) {
-								for ( const auto& disc : discs->value.GetArray() ) {
-									if ( const auto discID = disc.FindMember( "id" ); ( disc.MemberEnd() != discID ) && discID->value.IsString() ) {
-										exactMatch = ( result.DiscID == discID->value.GetString() );
+							if ( const auto discs = medium.find( "discs" ); ( medium.end() != discs ) && discs->is_array() ) {
+								for ( const auto& disc : *discs ) {
+									if ( const auto discID = disc.find( "id" ); ( disc.end() != discID ) && discID->is_string() ) {
+										exactMatch = ( result.DiscID == *discID );
 										if ( exactMatch ) {
 											releaseAlbums.clear();
 										}
@@ -647,30 +645,29 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 								}
 							}
 
-							if ( const auto tracks = medium.FindMember( "tracks" ); ( medium.MemberEnd() != tracks ) && tracks->value.IsArray() ) {
+							if ( const auto tracks = medium.find( "tracks" ); ( medium.end() != tracks ) && tracks->is_array() ) {
 								Album album = {};
 								album.Title = releaseTitle;
 								album.Artist = releaseArtist;
 								album.Year = releaseYear;
-								for ( const auto& track : tracks->value.GetArray() ) {
-									if ( const auto trackposition = track.FindMember( "position" ); ( track.MemberEnd() != trackposition ) && trackposition->value.IsNumber() ) {
-										if ( const auto title = track.FindMember( "title" ); ( track.MemberEnd() != title ) && title->value.IsString() ) {
-											const std::wstring trackTitle = UTF8ToWideString( title->value.GetString() );
+								for ( const auto& track : *tracks ) {
+									if ( const auto trackposition = track.find( "position" ); ( track.end() != trackposition ) && trackposition->is_number() ) {
+										if ( const auto title = track.find( "title" ); ( track.end() != title ) && title->is_string() ) {
+											const std::wstring trackTitle = UTF8ToWideString( *title );
 
 											std::wstring trackArtist;
-											if ( const auto artistCredit = track.FindMember( "artist-credit" ); ( track.MemberEnd() != artistCredit ) && artistCredit->value.IsArray() ) {
-												trackArtist = ParseArtistCredit( artistCredit->value.GetArray() );
+											if ( const auto artistCredit = track.find( "artist-credit" ); ( track.end() != artistCredit ) && artistCredit->is_array() ) {
+												trackArtist = ParseArtistCredit( *artistCredit );
 											}
 
 											long trackYear = 0;
-											if ( const auto trackRecording = track.FindMember( "recording" ); ( track.MemberEnd() != trackRecording ) && trackRecording->value.IsObject() ) {
-												const auto recording = trackRecording->value.GetObject();
-												if ( const auto date = recording.FindMember( "first-release-date" ); ( recording.MemberEnd() != date ) && date->value.IsString() ) {
-													trackYear = ParseYear( date->value.GetString() );
+											if ( const auto recording = track.find( "recording" ); ( track.end() != recording ) && recording->is_object() ) {
+												if ( const auto date = recording->find( "first-release-date" ); ( recording->end() != date ) && date->is_string() ) {
+													trackYear = ParseYear( *date );
 												}
 											}
 
-											album.Tracks.emplace( trackposition->value.GetInt(), std::make_tuple( trackTitle, trackArtist, trackYear ) );
+											album.Tracks.emplace( *trackposition, std::make_tuple( trackTitle, trackArtist, trackYear ) );
 										}
 									}
 								}
@@ -684,8 +681,8 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 					}
 
 					// Lookup artwork.
-					if ( const auto id = release.FindMember( "id" ); ( release.MemberEnd() != id ) && id->value.IsString() && ( ( nullptr == canContinue ) || canContinue() ) ) {
-						const auto artwork = LookupCoverArt( id->value.GetString() );
+					if ( const auto id = release.find( "id" ); ( release.end() != id ) && id->is_string() && ( ( nullptr == canContinue ) || canContinue() ) ) {
+						const auto artwork = LookupCoverArt( *id );
 						for ( auto& album : releaseAlbums ) {
 							album.Artwork = artwork;
 						}
@@ -696,6 +693,8 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 
 				result.Albums.insert( result.Albums.end(), albums.begin(), albums.end() );
 			}
+		} catch ( const nlohmann::json::exception& ) {
+
 		}
 	}
 	return !result.Albums.empty();

@@ -1,6 +1,5 @@
 #include "Output.h"
 
-#include "Bling.h"
 #include "GainCalculator.h"
 #include "Utility.h"
 #include "VUPlayer.h"
@@ -14,37 +13,37 @@
 #include <cmath>
 
 // Output buffer length, in seconds.
-static const float s_BufferLength = 1.5f;
+constexpr float s_BufferLength = 1.5f;
 
 // Cutoff point, in seconds, after which previous track replays the current track from the beginning.
-static const float s_PreviousTrackCutoff = 5.0f;
+constexpr float s_PreviousTrackCutoff = 5.0f;
 
 // Amount of time to devote to estimating a gain value, in seconds.
-static const float s_GainPrecalcTime = 0.25f;
+constexpr float s_GainPrecalcTime = 0.25f;
 
 // Minimum allowed gain adjustment, in dB.
-static const float s_GainMin = -20.0f;
+constexpr float s_GainMin = -20.0f;
 
 // Maximum allowed gain adjustment, in dB.
-static const float s_GainMax = 20.0f;
+constexpr float s_GainMax = 20.0f;
 
 // Fade out duration, in seconds.
-static const float s_FadeOutDuration = 5.0f;
+constexpr float s_FadeOutDuration = 5.0f;
 
 // The relative volume at which to set the crossfade position on a track.
-static const float s_CrossfadeVolume = 0.3f;
+constexpr float s_CrossfadeVolume = 0.3f;
 
 // The fade to next duration, in seconds.
-static const float s_FadeToNextDuration = 3.0f;
+constexpr float s_FadeToNextDuration = 3.0f;
 
 // Indicates when fading to the next track.
-static const long s_ItemIsFadingToNext = -1;
+constexpr long s_ItemIsFadingToNext = -1;
 
 // The fade out duration when stopping a track (in standard mode), in milliseconds.
-static const DWORD s_StopFadeDuration = 20;
+constexpr DWORD s_StopFadeDuration = 20;
 
 // Maximum number of playlist items to skip when trying to switch decoder streams.
-static const size_t s_MaxSkipItems = 20;
+constexpr size_t s_MaxSkipItems = 20;
 
 // Define to output debug timing for slow StreamProc calls.
 #undef STREAMPROC_TIMING
@@ -178,7 +177,7 @@ DWORD WINAPI Output::PreloadDecoderProc( LPVOID lpParam )
 	return 0;
 }
 
-Output::Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handlers, Settings& settings, const float initialVolume ) :
+Output::Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handlers, Settings& settings ) :
 	m_hInst( instance ),
 	m_Parent( hwnd ),
 	m_Handlers( handlers ),
@@ -194,6 +193,7 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handl
 	m_QueueMutex(),
 	m_Volume( 1.0f ),
 	m_Pitch( 1.0f ),
+	m_Balance( 0 ),
 	m_OutputQueue(),
 	m_RestartItemID( 0 ),
 	m_RandomPlay( false ),
@@ -204,7 +204,8 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handl
 	m_GainMode( Settings::GainMode::Disabled ),
 	m_LimitMode( Settings::LimitMode::None ),
 	m_GainPreamp( 0 ),
-	m_StopAtTrackEnd( false ),
+	m_RetainStopAtTrackEnd( m_Settings.GetRetainStopAtTrackEnd() ),
+	m_StopAtTrackEnd( m_RetainStopAtTrackEnd ? m_Settings.GetStopAtTrackEnd() : false ),
 	m_Muted( false ),
 	m_FadeOut( false ),
 	m_FadeToNext( false ),
@@ -223,10 +224,10 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handl
 	m_CrossfadingStream(),
 	m_CrossfadingStreamMutex(),
 	m_CurrentItemCrossfading( {} ),
+	m_CrossfadingItemID( 0 ),
 	m_SoftClipStateCrossfading(),
 	m_CrossfadeSeekOffset( 0 ),
 	m_GainEstimateMap(),
-	m_BlingMap(),
 	m_CurrentEQ( m_Settings.GetEQSettings() ),
 	m_FX(),
 	m_EQEnabled( m_CurrentEQ.Enabled ),
@@ -237,19 +238,37 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handl
 	m_WASAPIPaused( false ),
 	m_ResetASIO( false ),
 	m_OutputStreamFinished( false ),
+	m_MixerStreamHasEndSync( false ),
 	m_LeadInSeconds( 0 ),
 	m_PreloadedDecoder( {} ),
 	m_PreloadedDecoderMutex(),
 	m_StreamTitleQueue(),
 	m_StreamTitleMutex(),
-	m_OnPlaylistChangeCallback( nullptr )
+	m_OnPlaylistChangeCallback( nullptr ),
+	m_OnPreBufferFinishedCallback( [ this ] ( const long id )
+		{
+			if ( id != m_CrossfadingItemID ) {
+				std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
+				if ( m_PreloadedDecoder.decoder ) {
+					m_PreloadedDecoder.decoder->PreBuffer( m_OnPreBufferFinishedCallback );
+				}
+			}
+		}
+	)
 {
 	InitialiseBass();
-	SetVolume( initialVolume );
-	SetPitch( m_Pitch );
+
+	SetVolume( m_Settings.GetVolume() );
+	if ( m_Settings.GetRetainPitchBalance() ) {
+		const auto [ pitch, balance ] = m_Settings.GetPitchBalance();
+		SetPitch( pitch );
+		SetBalance( balance );
+	}
 
 	m_Settings.GetGainSettings( m_GainMode, m_LimitMode, m_GainPreamp );
-	m_Settings.GetPlaybackSettings( m_RandomPlay, m_RepeatTrack, m_RepeatPlaylist, m_Crossfade );
+	bool crossfade = false;
+	m_Settings.GetPlaybackSettings( m_RandomPlay, m_RepeatTrack, m_RepeatPlaylist, crossfade );
+	m_Crossfade = crossfade;
 
 	StartPreloadDecoderThread();
 }
@@ -287,7 +306,7 @@ bool Output::Play( const long playlistID, const float seek )
 	}
 
 	if ( m_Playlist && m_Playlist->GetItem( item ) ) {
-		m_DecoderStream = OpenDecoder( item );
+		m_DecoderStream = OpenOutputDecoder( item );
 		if ( m_DecoderStream ) {
 
 			const DWORD outputBufferSize = static_cast<DWORD>( 1000 * ( ( ( MediaInfo::Source::CDDA ) == item.Info.GetSource() ) ? ( 2 * s_BufferLength ) : s_BufferLength ) );
@@ -313,11 +332,18 @@ bool Output::Play( const long playlistID, const float seek )
 				m_DecoderStream->SkipSilence();
 			}
 
+			if ( ( Settings::OutputMode::Standard != m_OutputMode ) && !IsURL( item.Info.GetFilename() ) ) {
+				m_DecoderStream->PreBuffer( m_OnPreBufferFinishedCallback );
+			}
+
 			if ( CreateOutputStream( item.Info ) ) {
 				m_CurrentItemDecoding = item;
 				UpdateOutputVolume();
 				if ( 1.0f != m_Pitch ) {
 					BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_FREQ, freq * m_Pitch );
+				}
+				if ( 0 != m_Balance ) {
+					BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_PAN, m_Balance );
 				}
 				UpdateEQ( m_CurrentEQ );
 
@@ -395,6 +421,7 @@ void Output::Stop()
 	m_CurrentItemDecoding = {};
 	m_SoftClipStateDecoding.clear();
 	m_CurrentItemCrossfading = {};
+	m_CrossfadingItemID = m_CurrentItemCrossfading.ID;
 	m_SoftClipStateCrossfading.clear();
 	m_RestartItemID = 0;
 	SetOutputQueue( {} );
@@ -406,6 +433,7 @@ void Output::Stop()
 	m_WASAPIFailed = false;
 	m_WASAPIPaused = false;
 	m_OutputStreamFinished = false;
+	m_MixerStreamHasEndSync = false;
 	StopCrossfadeThread();
 	StopLoudnessPrecalcThread();
 	std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
@@ -527,7 +555,7 @@ Output::State Output::GetState()
 					break;
 				}
 				case BASS_ACTIVE_STALLED : {
-					if ( m_OutputStreamFinished ) {
+					if ( m_OutputStreamFinished && !m_MixerStreamHasEndSync ) {
 						Stop();
 					} else {
 						state = State::Playing;
@@ -607,7 +635,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 		if ( channels > 0 ) {
 			long samplesToRead = static_cast<long>( byteCount ) / ( channels * 4 );
 
-			if ( GetCrossfade() && !GetFadeOut() && !GetFadeToNext() ) {
+			if ( GetCrossfade() && !GetFadeOut() && !GetFadeToNext() && !GetStopAtTrackEnd() ) {
 				const float crossfadePosition = GetCrossfadePosition();			
 				if ( crossfadePosition > 0 ) {
 					bool checkCrossFade = ( GetRandomPlay() || GetRepeatTrack() );
@@ -631,6 +659,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 									std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 									m_CrossfadingStream = m_DecoderStream;
 									m_CurrentItemCrossfading = m_CurrentItemDecoding;
+									m_CrossfadingItemID = m_CurrentItemCrossfading.ID;
 									m_SoftClipStateCrossfading = m_SoftClipStateDecoding;
 								}
 							}
@@ -644,6 +673,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 				m_CrossfadingStream = m_DecoderStream;
 				m_CurrentItemCrossfading = m_CurrentItemDecoding;
 				m_CurrentItemCrossfading.ID = s_ItemIsFadingToNext;
+				m_CrossfadingItemID = m_CurrentItemCrossfading.ID;
 				m_SoftClipStateCrossfading = m_SoftClipStateDecoding;
 			}
 
@@ -665,14 +695,14 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 		SetCrossfadePosition( 0 );
 		m_LastTransitionPosition = 0;
 
-		if ( GetStopAtTrackEnd() || GetFadeOut() ) {
+		if ( ( GetStopAtTrackEnd() && ( m_CrossfadingItemID != s_ItemIsFadingToNext ) ) || GetFadeOut() ) {
 			// Set a sync on the output stream, so that the states can be toggled when playback actually finishes.
 			m_RestartItemID = {};
-			BASS_ChannelSetSync( handle, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
+			SetEndSync( handle );
 		} else if ( m_DecoderStream && ( 0 != BASS_ChannelGetPosition( m_OutputStream, BASS_POS_DECODE ) ) && !IsURL( m_CurrentItemDecoding.Info.GetFilename() ) ) {
 			// Create a stream from the next playlist item, but not if there has been an error starting playback, or if the previous or next stream is a URL.
 			Playlist::Item nextItem = m_CurrentItemDecoding;
-			Decoder::Ptr nextDecoder = GetNextDecoder( nextItem );
+			auto nextDecoder = GetNextDecoder( nextItem );
 			if ( nextDecoder && !IsURL( nextItem.Info.GetFilename() ) ) {
 				EstimateGain( nextItem );
 				const long channels = m_DecoderStream->GetChannels();
@@ -706,12 +736,13 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 			if ( ( 0 == bytesRead ) && ( nextItem.ID > 0 ) ) {
 				// Signal that playback should be restarted from the next playlist item.
 				m_RestartItemID = nextItem.ID;
-				BASS_ChannelSetSync( handle, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
+				SetEndSync( handle );
 
 				std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 				if ( m_CrossfadingStream ) {
 					m_CrossfadingStream.reset();
 					m_CurrentItemCrossfading = {};
+					m_CrossfadingItemID = m_CurrentItemCrossfading.ID;
 					m_SoftClipStateCrossfading.clear();
 				}
 			}
@@ -732,8 +763,8 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 			if ( ( channels > 0 ) && ( samplerate > 0 ) ) {
 				const long samplesToRead = static_cast<long>( bytesRead ) / ( channels * 4 );
 				std::vector<float> crossfadingBuffer( bytesRead / 4 );
-				const long crossfadingBytesRead = m_CrossfadingStream->Read( &crossfadingBuffer[ 0 ], samplesToRead ) * channels * 4;
-				ApplyGain( &crossfadingBuffer[ 0 ], crossfadingBytesRead / ( channels * 4 ), m_CurrentItemCrossfading, m_SoftClipStateCrossfading );
+				const long crossfadingBytesRead = m_CrossfadingStream->Read( crossfadingBuffer.data(), samplesToRead ) * channels * 4;
+				ApplyGain( crossfadingBuffer.data(), crossfadingBytesRead / ( channels * 4 ), m_CurrentItemCrossfading, m_SoftClipStateCrossfading );
 				if ( crossfadingBytesRead <= static_cast<long>( bytesRead ) ) {
 					long crossfadingSamplesRead = crossfadingBytesRead / ( channels * 4 );
 
@@ -779,6 +810,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 					if ( 0 == crossfadingSamplesRead ) {
 						m_CrossfadingStream.reset();
 						m_CurrentItemCrossfading = {};
+						m_CrossfadingItemID = m_CurrentItemCrossfading.ID;
 						m_SoftClipStateCrossfading.clear();
 					} else {
 						for ( long sample = 0; sample < crossfadingSamplesRead * channels; sample++ ) {
@@ -800,7 +832,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 				bytesRead = 0;
 				// Set a sync on the output stream, so that the 'fade out' state can be toggled when playback actually finishes.
 				m_RestartItemID = {};
-				BASS_ChannelSetSync( handle, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
+				SetEndSync( handle );
 			} else {
 				const long sampleCount = static_cast<long>( bytesRead ) / ( channels * 4 );
 				const float fadeOutEndPosition = m_FadeOutStartPosition + GetFadeOutDuration();
@@ -833,7 +865,7 @@ float Output::GetVolume() const
 void Output::SetVolume( const float volume )
 {
 	if ( volume != m_Volume ) {
-		m_Volume = ( volume < 0.0f ) ? 0.0f : ( ( volume > 1.0f ) ? 1.0f : volume );
+		m_Volume = std::clamp( volume, 0.0f, 1.0f );
 		if ( m_Muted ) {
 			m_Muted = false;
 		}
@@ -861,6 +893,20 @@ void Output::SetPitch( const float pitch )
 		if ( ( 0 != sampleRate ) && ( 0 != m_OutputStream ) ) {
 			BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_FREQ, sampleRate * m_Pitch );
 		}
+	}
+}
+
+float Output::GetBalance() const
+{
+	return m_Balance;
+}
+
+void Output::SetBalance( const float balance )
+{
+	const float clampedBalance = std::clamp( balance, -1.0f, 1.0f );
+	if ( clampedBalance != m_Balance ) {
+		m_Balance = clampedBalance;
+		BASS_ChannelSetAttribute( m_OutputStream, BASS_ATTRIB_PAN, m_Balance );
 	}
 }
 
@@ -909,9 +955,9 @@ void Output::GetSampleData( const long sampleCount, std::vector<float>& samples,
 					if ( sampleSize > 0 ) {
 						samples.resize( sampleSize );
 						if ( Settings::OutputMode::Standard == m_OutputMode ) {
-							BASS_ChannelGetData( m_OutputStream, &samples[ 0 ], sampleSize * sizeof( float ) );
+							BASS_ChannelGetData( m_OutputStream, samples.data(), sampleSize * sizeof( float ) );
 						} else {
-							BASS_Mixer_ChannelGetData( m_OutputStream, &samples[ 0 ], sampleSize * sizeof( float ) );
+							BASS_Mixer_ChannelGetData( m_OutputStream, samples.data(), sampleSize * sizeof( float ) );
 						}
 					}
 				}
@@ -925,7 +971,7 @@ void Output::GetSampleData( const long sampleCount, std::vector<float>& samples,
 						const long sampleSize = channels * sampleCount;
 						if ( sampleSize > 0 ) {
 							samples.resize( sampleSize );
-							BASS_WASAPI_GetData( &samples[ 0 ], sampleSize * sizeof( float ) );
+							BASS_WASAPI_GetData( samples.data(), sampleSize * sizeof( float ) );
 						}
 					}
 				}
@@ -970,16 +1016,17 @@ void Output::GetFFTData( std::vector<float>& fft )
 
 void Output::OnSyncEnd()
 {
-	if ( GetStopAtTrackEnd() || GetFadeOut() ) {
-		if ( GetStopAtTrackEnd() ) {
+	if ( m_RestartItemID > 0 ) {
+		PostMessage( m_Parent, MSG_RESTARTPLAYBACK, m_RestartItemID, NULL /*lParam*/ );
+	} else if ( GetStopAtTrackEnd() || GetFadeOut() ) {
+		if ( GetStopAtTrackEnd() && !m_RetainStopAtTrackEnd ) {
 			ToggleStopAtTrackEnd();
 		}
 		if ( GetFadeOut() ) {
 			ToggleFadeOut();
 		}
 		m_RestartItemID = 0;
-	} else if ( m_RestartItemID > 0 ) {
-		PostMessage( m_Parent, MSG_RESTARTPLAYBACK, m_RestartItemID, NULL /*lParam*/ );
+		m_MixerStreamHasEndSync = false;
 	}
 }
 
@@ -1165,6 +1212,8 @@ void Output::SettingsChanged()
 		}
 	}
 
+	m_RetainStopAtTrackEnd = m_Settings.GetRetainStopAtTrackEnd();
+
 	m_Handlers.SettingsChanged( m_Settings );
 }
 
@@ -1233,7 +1282,7 @@ void Output::EstimateGain( Playlist::Item& item )
 			if ( m_GainEstimateMap.end() != estimateIter ) {
 				item.Info.SetGainTrack( estimateIter->second );
 			} else {
-				Decoder::Ptr tempDecoder = OpenDecoder( item );
+				const auto tempDecoder = OpenDecoder( item );
 				if ( tempDecoder ) {
 					const auto trackGain = tempDecoder->CalculateTrackGain( [] () { return true; }, s_GainPrecalcTime );
 					item.Info.SetGainTrack( trackGain );
@@ -1255,7 +1304,7 @@ void Output::CalculateCrossfadePoint( const Playlist::Item& item, const float se
 
 void Output::CalculateCrossfadeHandler()
 {
-	const Decoder::Ptr decoder = IsURL( m_CrossfadeItem.Info.GetFilename() ) ? nullptr : OpenDecoder( m_CrossfadeItem );
+	const auto decoder = IsURL( m_CrossfadeItem.Info.GetFilename() ) ? nullptr : OpenDecoder( m_CrossfadeItem );
 	if ( decoder ) {
 		const float duration = decoder->GetDuration();
 		const long channels = decoder->GetChannels();
@@ -1266,6 +1315,9 @@ void Output::CalculateCrossfadeHandler()
 			}
 
 			float position = 0;
+			if ( m_CrossfadeSeekOffset > 0 ) {
+				position = decoder->Seek( m_CrossfadeSeekOffset );
+			}
 			float crossfadePosition = 0;
 
 			int64_t cumulativeCount = 0;
@@ -1277,7 +1329,7 @@ void Output::CalculateCrossfadeHandler()
 			std::vector<float> buffer( windowSize * channels );
 
 			while ( WAIT_OBJECT_0 != WaitForSingleObject( m_CrossfadeStopEvent, 0 ) ) {
-				long sampleCount = decoder->Read( &buffer[ 0 ], windowSize );
+				long sampleCount = decoder->Read( buffer.data(), windowSize );
 				if ( sampleCount > 0 ) {
 					auto sampleIter = buffer.begin();
 					double windowTotal = 0;
@@ -1304,6 +1356,26 @@ void Output::CalculateCrossfadeHandler()
 			}
 			if ( WAIT_OBJECT_0 != WaitForSingleObject( m_CrossfadeStopEvent, 0 ) ) {
 				SetCrossfadePosition( crossfadePosition - m_CrossfadeSeekOffset );
+
+				Playlist::Item nextItem = {};
+				{
+					std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
+					nextItem = m_PreloadedDecoder.item;
+				}
+				if ( MediaInfo::Source::CDDA == nextItem.Info.GetSource() ) {
+					// Pre-cache some CD audio data for the next track, to prevent glitches when crossfading.
+					if ( const auto nextDecoder = OpenDecoder( nextItem ); nextDecoder ) {
+						const long kSamplesToRead = 10 * nextDecoder->GetSampleRate();
+						long totalSamplesRead = 0;
+						while ( WAIT_OBJECT_0 != WaitForSingleObject( m_CrossfadeStopEvent, 0 ) ) {
+							const long samplesRead = nextDecoder->Read( buffer.data(), windowSize );
+							totalSamplesRead += samplesRead;
+							if ( ( totalSamplesRead >= kSamplesToRead ) || ( samplesRead <= 0 ) ) {
+								break;
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -1379,6 +1451,7 @@ void Output::ToggleFadeToNext()
 		if ( m_CrossfadingStream ) {
 			m_CrossfadingStream.reset();
 			m_CurrentItemCrossfading = {};
+			m_CrossfadingItemID = m_CurrentItemCrossfading.ID;
 			m_SoftClipStateCrossfading.clear();
 		}
 	}
@@ -1435,7 +1508,7 @@ void Output::ApplyGain( float* buffer, const long sampleCount, const Playlist::I
 					if ( softClipState.size() != static_cast<size_t>( channels ) ) {
 						softClipState.resize( channels, 0 );
 					}
-					opus_pcm_soft_clip( buffer, sampleCount, channels, &softClipState[ 0 ] );
+					opus_pcm_soft_clip( buffer, sampleCount, channels, softClipState.data() );
 					break;
 				}
 				default : {
@@ -1462,51 +1535,6 @@ float Output::GetPitchRange() const
 {
 	const float range = m_Settings.GetPitchRangeOptions()[ m_Settings.GetPitchRange() ];
 	return range;
-}
-
-void Output::Bling( const int blingID )
-{
-	if ( Settings::OutputMode::Standard == m_OutputMode ) {
-		auto blingIter = m_BlingMap.find( blingID );
-		if ( m_BlingMap.end() == blingIter ) {
-			const BYTE* bling = nullptr;
-			QWORD blingSize = 0;
-			switch ( blingID ) {
-				case 1 : {
-					bling = bling1;
-					blingSize = sizeof( bling1 );
-					break;
-				}
-				case 2 : {
-					bling = bling2;
-					blingSize = sizeof( bling2 );
-					break;
-				}
-				case 3 : {
-					bling = bling3;
-					blingSize = sizeof( bling3 );
-					break;
-				}
-				case 4 : {
-					bling = bling4;
-					blingSize = sizeof( bling4 );
-					break;
-				}
-				default : {
-					break;
-				}
-			}
-			if ( nullptr != bling ) {
-				const HSTREAM stream = BASS_StreamCreateFile( TRUE /*mem*/, bling, 0 /*offset*/, blingSize, 0 /*flags*/ );
-				if ( 0 != stream ) {
-					blingIter = m_BlingMap.insert( StreamMap::value_type( blingID, stream ) ).first;
-				}
-			}
-		}
-		if ( m_BlingMap.end() != blingIter ) {
-			BASS_ChannelPlay( blingIter->second, TRUE /*restart*/ );
-		}
-	}
 }
 
 void Output::UpdateEQ( const Settings::EQ& eq )
@@ -1565,22 +1593,9 @@ void Output::UpdateEQ( const Settings::EQ& eq )
 	}
 }
 
-Decoder::Ptr Output::OpenDecoder( Playlist::Item& item, const bool usePreloadedDecoder )
+Decoder::Ptr Output::OpenDecoder( Playlist::Item& item )
 {
-	Decoder::Ptr decoder;
-	if ( usePreloadedDecoder ) {
-		std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
-		if ( m_PreloadedDecoder.decoder && ( m_PreloadedDecoder.item.Info.GetFilename() == item.Info.GetFilename() ) && ( m_PreloadedDecoder.item.Info.GetFiletime() == item.Info.GetFiletime() ) ) {
-			decoder = m_PreloadedDecoder.decoder;
-			m_PreloadedDecoder.decoder.reset();
-			m_PreloadedDecoder.item = {};
-		}
-	}
-
-	if ( !decoder ) {
-		decoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
-	}
-
+	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
 	if ( !decoder ) {
 		auto duplicate = item.Duplicates.begin();
 		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
@@ -1588,12 +1603,34 @@ Decoder::Ptr Output::OpenDecoder( Playlist::Item& item, const bool usePreloadedD
 			++duplicate;
 		}
 	}
-
 	if ( decoder ) {
 		m_Playlist->GetLibrary().UpdateMediaInfoFromDecoder( item.Info, *decoder );
 	}
-
 	return decoder;
+}
+
+Output::OutputDecoderPtr Output::OpenOutputDecoder( Playlist::Item& item, const bool usePreloadedDecoder )
+{
+	OutputDecoderPtr outputDecoder;
+	if ( usePreloadedDecoder ) {
+		std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
+		if ( m_PreloadedDecoder.decoder && ( m_PreloadedDecoder.item.Info.GetFilename() == item.Info.GetFilename() ) && ( m_PreloadedDecoder.item.Info.GetFiletime() == item.Info.GetFiletime() ) ) {
+			outputDecoder = m_PreloadedDecoder.decoder;
+			m_PreloadedDecoder.decoder.reset();
+			m_PreloadedDecoder.item = {};
+			if ( ( Settings::OutputMode::Standard != m_OutputMode ) && !IsURL( item.Info.GetFilename() ) ) {
+				// Ensure pre-buffering has started (in case the pre-buffer finished callback was not received for the previous decoder).
+				outputDecoder->PreBuffer( m_OnPreBufferFinishedCallback );
+			}
+		}
+	}
+	if ( !outputDecoder ) {
+		try {
+			outputDecoder = std::make_shared<OutputDecoder>( OpenDecoder( item ), item.ID );
+		} catch ( const std::runtime_error& ) {
+		}
+	}
+	return outputDecoder;
 }
 
 Output::State Output::StartOutput()
@@ -1688,9 +1725,39 @@ bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
 		switch ( m_OutputMode ) {
 			case Settings::OutputMode::Standard : {
 				m_LeadInSeconds = 0;
-				const DWORD flags = BASS_SAMPLE_FLOAT;
-				m_OutputStream = BASS_StreamCreate( samplerate, channels, flags, StreamProc, this );
-				success = ( 0 != m_OutputStream );
+				BASS_INFO bassInfo = {};
+				const DWORD outputChannels = ( BASS_GetInfo( &bassInfo ) && ( bassInfo.speakers >= 2ul ) ) ? std::clamp( channels, 2ul, bassInfo.speakers ) : channels;
+				if ( channels > outputChannels ) {
+					DWORD flags = BASS_SAMPLE_FLOAT | BASS_MIXER_POSEX;
+					m_OutputStream = BASS_Mixer_StreamCreate( samplerate, outputChannels, flags );
+					success = ( 0 != m_OutputStream );
+					if ( success ) {
+						flags = BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE;
+						m_MixerStream = BASS_StreamCreate( samplerate, channels, flags, StreamProc, this );
+						success = ( 0 != m_MixerStream );
+						if ( success ) {
+							flags = BASS_MIXER_CHAN_BUFFER;
+							if ( channels > outputChannels ) {
+								flags |= BASS_MIXER_CHAN_DOWNMIX;
+							}
+							success = ( 0 != BASS_Mixer_StreamAddChannel( m_OutputStream, m_MixerStream, flags ) );
+						}
+					}
+					if ( !success ) {
+						if ( 0 != m_OutputStream ) {
+							BASS_StreamFree( m_OutputStream );
+							m_OutputStream = 0;
+						}
+						if ( 0 != m_MixerStream ) {
+							BASS_StreamFree( m_MixerStream );
+							m_MixerStream = 0;
+						}
+					}
+				} else {
+					const DWORD flags = BASS_SAMPLE_FLOAT;
+					m_OutputStream = BASS_StreamCreate( samplerate, channels, flags, StreamProc, this );
+					success = ( 0 != m_OutputStream );
+				}
 				break;
 			}
 
@@ -1884,7 +1951,7 @@ DWORD Output::ApplyLeadIn( float* buffer, const DWORD byteCount, HSTREAM handle 
 			BASS_CHANNELINFO info = {};
 			if ( ( TRUE == BASS_ChannelGetInfo( handle, &info ) ) && ( info.freq > 0 ) && ( info.chans > 0 ) ) {
 				bytesPadded = static_cast<DWORD>( 0.5f + ( m_LeadInSeconds - position ) * info.freq ) * info.chans * 4;
-				bytesPadded = min( bytesPadded, byteCount );
+				bytesPadded = std::min<DWORD>( bytesPadded, byteCount );
 				if ( bytesPadded > 0 ) {
 					std::fill( buffer, buffer + bytesPadded / 4, 0.0f );
 				}
@@ -1907,7 +1974,7 @@ float Output::GetFadeToNextDuration() const
 void Output::LoudnessPrecalcHandler()
 {
 	// Playlist might have new items, so check back every so often.
-	const DWORD interval = 30 /*sec*/ * 1000;
+	constexpr DWORD interval = 30 /*sec*/ * 1000;
 
 	Decoder::CanContinue canContinue( [ stopEvent = m_LoudnessPrecalcStopEvent ] ()
 	{
@@ -1983,9 +2050,9 @@ void Output::SetOutputStreamFinished( const bool finished )
 	m_OutputStreamFinished = finished;
 }
 
-Decoder::Ptr Output::GetNextDecoder( Playlist::Item& item )
+Output::OutputDecoderPtr Output::GetNextDecoder( Playlist::Item& item )
 {
-	Decoder::Ptr nextDecoder;
+	OutputDecoderPtr nextDecoder;
 	Playlist::Item nextItem = item;
 	item = {};
 	std::lock_guard<std::mutex> playlistLock( m_PlaylistMutex );
@@ -2007,7 +2074,7 @@ Decoder::Ptr Output::GetNextDecoder( Playlist::Item& item )
 				m_Playlist->GetNextItem( currentItem, nextItem, GetRepeatPlaylist() /*wrap*/ );
 			}
 			if ( nextItem.ID > 0 ) {
-				nextDecoder = OpenDecoder( nextItem, true /*usePreloadedDecoder*/ );
+				nextDecoder = OpenOutputDecoder( nextItem, true /*usePreloadedDecoder*/ );
 				if ( nextDecoder ) {
 					item = nextItem;
 					PreloadNextDecoder( item );
@@ -2043,7 +2110,7 @@ void Output::PreloadDecoderHandler()
 	while ( WaitForMultipleObjects( 2, handles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
 		std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
 		const std::wstring& filename = m_PreloadedDecoder.itemToPreload.Info.GetFilename();
-		m_PreloadedDecoder.decoder = IsURL( filename ) ? nullptr : m_Handlers.OpenDecoder( filename );
+		m_PreloadedDecoder.decoder = IsURL( filename ) ? nullptr : OpenOutputDecoder( m_PreloadedDecoder.itemToPreload );
 		if ( m_PreloadedDecoder.decoder ) {
 			m_PreloadedDecoder.item = m_PreloadedDecoder.itemToPreload;
 		} else {
@@ -2087,4 +2154,14 @@ void Output::SetStreamTitleQueue( const std::vector<std::pair<float /*seconds*/,
 void Output::SetPlaylistChangeCallback( PlaylistChangeCallback callback )
 {
 	m_OnPlaylistChangeCallback = callback;
+}
+
+void Output::SetEndSync( const HSTREAM stream )
+{
+	if ( stream == m_OutputStream ) {
+		BASS_ChannelSetSync( stream, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
+	}	else if ( const DWORD mixerStream = BASS_Mixer_ChannelGetMixer( m_MixerStream ); mixerStream == m_OutputStream ) {
+		BASS_ChannelSetSync( mixerStream, BASS_SYNC_STALL | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
+		m_MixerStreamHasEndSync = true;
+	}
 }

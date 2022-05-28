@@ -4,6 +4,7 @@
 
 #include "bass.h"
 #include "Handlers.h"
+#include "OutputDecoder.h"
 #include "Playlist.h"
 #include "Settings.h"
 
@@ -21,8 +22,7 @@ public:
 	// 'hwnd' - main window handle.
 	// 'handlers' - the available handlers.
 	// 'settings' - application settings.
-	// 'initialVolume' - initial volume level.
-	Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handlers, Settings& settings, const float initialVolume );
+	Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handlers, Settings& settings );
 
 	virtual ~Output();
 
@@ -92,6 +92,12 @@ public:
 
 	// Sets the pitch adjustment factor, with 1.0 representing no adjustment.
 	void SetPitch( const float pitch );
+
+	// Returns the balance, with -1.0 representing full left, 0 representing central, +1.0 representing full right.
+	float GetBalance() const;
+
+	// Sets the balance, with -1.0 representing full left, 0 representing central, +1.0 representing full right.
+	void SetBalance( const float balance );
 
 	// Gets the channel levels for visualisation.
 	// 'left' - out, left channel level in the range 0.0 to 1.0.
@@ -180,9 +186,6 @@ public:
 	// Returns the maximum pitch adjustment factor.
 	float GetPitchRange() const;
 
-	// Easter egg.
-	void Bling( const int blingID );
-
 	// Updates the EQ settings.
 	void UpdateEQ( const Settings::EQ& eq );
 
@@ -194,22 +197,22 @@ public:
 
 private:
 	// Output queue.
-	typedef std::vector<Item> Queue;
+	using Queue = std::vector<Item>;
 
 	// Maps a playlist item ID to a gain estimate.
-	typedef std::map<long, std::optional<float>> GainEstimateMap;
-
-	// Maps an ID to a stream handle.
-	typedef std::map<int,HSTREAM> StreamMap;
+	using GainEstimateMap = std::map<long, std::optional<float>>;
 
 	// A list of FX.
-	typedef std::list<HFX> FXList;
+	using FXList = std::list<HFX>;
+
+	// Buffered output decoder shared pointer.
+	using OutputDecoderPtr =  std::shared_ptr<OutputDecoder>;
 
 	// Preloaded decoder information.
 	struct PreloadedDecoder {
-		Playlist::Item itemToPreload = {};			// Item to preload.
-		Playlist::Item item = {};								// Preloaded item.
-		Decoder::Ptr	 decoder = {};						// Preloaded decoder.
+		Playlist::Item		itemToPreload = {};			// Item to preload.
+		Playlist::Item		item = {};								// Preloaded item.
+		OutputDecoderPtr	decoder = {};						// Preloaded decoder.
 	};
 
 	// BASS stream callback.
@@ -293,8 +296,11 @@ private:
 	void SetOutputQueue( const Queue& queue );
 
 	// Returns a decoder for the 'item' (and updates the item if necessary), or nullptr if a decoder could not be opened.
+	Decoder::Ptr OpenDecoder( Playlist::Item& item );
+
+	// Returns an output decoder for the 'item'.
 	// 'usePreloadedDecoder' - whether to use the preloaded decoder (when available).
-	Decoder::Ptr OpenDecoder( Playlist::Item& item, const bool usePreloadedDecoder = false );
+	OutputDecoderPtr OpenOutputDecoder( Playlist::Item& item, const bool usePreloadedDecoder = false );
 
 	// Starts the output and returns the output state.
 	State StartOutput();
@@ -339,7 +345,7 @@ private:
 
 	// Returns the next decoder on from the 'item', or nullptr if a decoder could not be opened.
 	// Updates 'item' with the next playlist item on success, resets 'item' on failure.
-	Decoder::Ptr GetNextDecoder( Playlist::Item& item );
+	OutputDecoderPtr GetNextDecoder( Playlist::Item& item );
 
 	// Starts the preload decoder thread.
 	void StartPreloadDecoderThread();
@@ -355,6 +361,9 @@ private:
 
 	// Sets the stream title 'queue'.
 	void SetStreamTitleQueue( const std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>>& queue );
+
+	// Sets the synchronizer which is called when the current output 'stream' ends.
+	void SetEndSync( const HSTREAM stream );
 
 	// Module instance handle.
 	const HINSTANCE m_hInst;
@@ -378,7 +387,7 @@ private:
 	std::vector<float> m_SoftClipStateDecoding;
 
 	// The currently decoding stream.
-	Decoder::Ptr m_DecoderStream;
+	OutputDecoderPtr m_DecoderStream;
 
 	// The sample rate of the currently decoding stream.
 	long m_DecoderSampleRate;
@@ -400,6 +409,9 @@ private:
 
 	// Pitch adjustment factor, with the default being 1.0 (no adjustment).
 	float m_Pitch;
+
+	// Balance, with -1.0 representing full left, 0 representing central, +1.0 representing full right.
+	float m_Balance;
 
 	// The queue of output items, with their start times, in the output stream.
 	Queue m_OutputQueue;
@@ -430,6 +442,9 @@ private:
 
 	// Gain preamp in dB.
 	float m_GainPreamp;
+
+	// Indicates whether the 'stop at track end' setting should be reset when playback ends.
+	bool m_RetainStopAtTrackEnd;
 
 	// Indicates whether to stop playback at the end of the current track.
 	bool m_StopAtTrackEnd;
@@ -480,13 +495,16 @@ private:
 	HANDLE m_PreloadDecoderWakeEvent;
 
 	// The decoding stream that is being faded out during a crossfade.
-	Decoder::Ptr m_CrossfadingStream;
+	OutputDecoderPtr m_CrossfadingStream;
 
 	// Crossfading stream mutex.
 	std::mutex m_CrossfadingStreamMutex;
 
 	// The item that is being faded out during a crossfade.
 	Playlist::Item m_CurrentItemCrossfading;
+
+	// The ID of the playlist item that is being faded out during a crossfade.
+	std::atomic<long> m_CrossfadingItemID;
 
 	// The soft-clip state for the currently crossfading item.
 	std::vector<float> m_SoftClipStateCrossfading;
@@ -496,9 +514,6 @@ private:
 
 	// Gain estimates.
 	GainEstimateMap m_GainEstimateMap;
-
-	// Bling map.
-	StreamMap m_BlingMap;
 
 	// Current EQ settings.
 	Settings::EQ m_CurrentEQ;
@@ -530,6 +545,9 @@ private:
 	// Indicates whether the output stream has finished.
 	std::atomic<bool> m_OutputStreamFinished;
 
+	// Indicates whether an end synchronizer has been set on a mixer stream.
+	std::atomic<bool> m_MixerStreamHasEndSync;
+
 	// When starting playback in non-standard output mode, the lead-in length before passing through actual sample data.
 	float m_LeadInSeconds;
 
@@ -547,4 +565,7 @@ private:
 
 	// Callback function for when the output playlist changes.
 	PlaylistChangeCallback m_OnPlaylistChangeCallback;
+
+	// Callback function for when the output decoder has finished pre-buffering.
+	const OutputDecoder::PreBufferFinishedCallback m_OnPreBufferFinishedCallback;
 };

@@ -1,5 +1,7 @@
 #include "FolderMonitor.h"
 
+#include "Utility.h"
+
 #include "dbt.h"
 
 DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
@@ -33,9 +35,7 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 										if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
 											if ( ChangeType::FileChange == monitorInfo->ChangeType ) {
 												// Delay the callback.
-												FILETIME fileTime = {};
-												GetSystemTimeAsFileTime( &fileTime );
-												const long long addedTime = ( static_cast<long long>( fileTime.dwHighDateTime ) << 32 ) + fileTime.dwLowDateTime;
+												const long long addedTime = GetCurrentTimestamp();
 												std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
 												monitorInfo->PendingMap.insert( PendingMap::value_type( filename, std::make_pair( PendingAction::FileAdded, addedTime ) ) );
 											} else {
@@ -49,9 +49,7 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 											const DWORD attributes = GetFileAttributes( filename.c_str() );
 											if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
 												// Delay the callback.
-												FILETIME fileTime = {};
-												GetSystemTimeAsFileTime( &fileTime );
-												const long long modifiedTime = ( static_cast<long long>( fileTime.dwHighDateTime ) << 32 ) + fileTime.dwLowDateTime;
+												const long long modifiedTime = GetCurrentTimestamp();
 												std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
 												monitorInfo->PendingMap.insert( PendingMap::value_type( filename, std::make_pair( PendingAction::FileModified, modifiedTime ) ) );
 											}
@@ -122,9 +120,7 @@ DWORD WINAPI FolderMonitor::AddFileThreadProc( LPVOID lpParam )
 		const long long minimumPendingTime = 1ll /*sec*/ * 10000000ll /*100-nanosecond intervals*/;
 
 		while ( WAIT_OBJECT_0 != WaitForSingleObject( monitorInfo->CancelHandle, retryInterval ) ) {
-			FILETIME t = {};
-			GetSystemTimeAsFileTime( &t );
-			const long long currentTime = ( static_cast<long long>( t.dwHighDateTime ) << 32 ) + t.dwLowDateTime;
+			const long long currentTime = GetCurrentTimestamp();
 
 			std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
 			auto fileIter = monitorInfo->PendingMap.begin();

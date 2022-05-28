@@ -8,7 +8,7 @@
 #include "Utility.h"
 
 // Amount of padding to add when writing out FLAC files that don't contain any padding.
-static const unsigned int s_PaddingSize = 1024;
+constexpr uint32_t kPaddingSize = 1024;
 
 HandlerFlac::HandlerFlac() :
 	Handler()
@@ -272,7 +272,7 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) cons
 								picture->set_height( static_cast<FLAC__uint32>( height ) );
 								picture->set_depth( static_cast<FLAC__uint32>( depth ) );
 								picture->set_colors( static_cast<FLAC__uint32>( colours ) );
-								picture->set_data( &imageBytes[ 0 ], static_cast<FLAC__uint32>( imageSize ) );
+								picture->set_data( imageBytes.data(), static_cast<FLAC__uint32>( imageSize ) );
 								picture->set_type( FLAC__STREAM_METADATA_PICTURE_TYPE_FRONT_COVER );
 								iterator.insert_block_after( picture );
 								writeChain = true;
@@ -299,7 +299,7 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) cons
 						}
 					} while ( !paddingExists && iterator.next() );
 					if ( !paddingExists ) {
-						FLAC::Metadata::Padding* padding = new FLAC::Metadata::Padding( s_PaddingSize );	
+						FLAC::Metadata::Padding* padding = new FLAC::Metadata::Padding( kPaddingSize );	
 						iterator.insert_block_after( padding );
 						chain.sort_padding();
 					}

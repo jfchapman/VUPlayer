@@ -19,14 +19,14 @@ public:
 	// Returns the tooltip resource ID corresponding to a 'commandID'.
 	UINT GetTooltip( const UINT commandID ) const override;
 
+	// Returns whether the pause button is shown.
+	bool IsPauseShown() const;
+
 private:
 	// Creates the buttons.
 	void CreateButtons();
 
 	// Sets whether the 'paused' button is shown.
 	void SetPaused( const bool paused ) const;
-
-	// Returns whether the pause button is shown.
-	bool IsPauseShown() const;
 };
 

@@ -37,8 +37,8 @@ void WndToolbarPlayback::Update( Output& output, const Playlist::Ptr playlist, c
 			break;
 		}
 		case Output::State::Stopped : {
-			playEnabled = ( 0 != selectedItem.ID );
 			if ( playlist ) {
+				playEnabled = ( playlist->GetCount() > 0 );
 				previousEnabled = nextEnabled = ( 0 != selectedItem.ID );
 			}
 			break;

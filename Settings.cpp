@@ -4,13 +4,7 @@
 #include "VUMeter.h"
 #include "VUPlayer.h"
 
-#undef min
-#undef max
-#undef GetObject
-
-#include "document.h"
-#include "stringbuffer.h"
-#include "prettywriter.h"
+#include "json.hpp"
 
 #include <array>
 
@@ -2615,40 +2609,39 @@ void Settings::SetMusicBrainzEnabled( const bool enabled )
 
 void Settings::ExportSettings( std::string& output )
 {
+	using namespace nlohmann;
+
 	output.clear();
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		rapidjson::Document document;
-		document.SetObject();
-		auto& allocator = document.GetAllocator();
+		json document;
 
 		// Settings table.
 		sqlite3_stmt* stmt = nullptr;
 		std::string query = "SELECT Setting, Value FROM Settings ORDER BY Setting ASC;";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			rapidjson::Value settingsObject;
-			settingsObject.SetObject();
+			json settings;
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
 				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
 				if ( nullptr != text ) {
 					const std::string setting = reinterpret_cast<const char*>( text );
-					rapidjson::Value value;
+					json value;
 					const int type = sqlite3_column_type( stmt, 1 /*columnIndex*/ );
 					switch ( type ) {
 						case SQLITE_INTEGER : {
-							value.SetInt64( sqlite3_column_int64( stmt, 1 /*columnIndex*/ ) );
+							value = sqlite3_column_int64( stmt, 1 /*columnIndex*/ );
 							break;
 						}
 						case SQLITE_FLOAT : {
-							value.SetDouble( sqlite3_column_double( stmt, 1 /*columnIndex*/ ) );
+							value = sqlite3_column_double( stmt, 1 /*columnIndex*/ );
 							break;
 						}
 						case SQLITE_TEXT : {
 							const std::string str = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 1 /*columnIndex*/ ) );
 							if ( str.empty() ) {
-								value.SetNull();
+								value = nullptr;
 							} else {
-								value.SetString( str.c_str(), static_cast<rapidjson::SizeType>( str.size() ), allocator );
+								value = str;
 							}
 							break;
 						}
@@ -2660,9 +2653,9 @@ void Settings::ExportSettings( std::string& output )
 								logfont.lfFaceName[ LF_FACESIZE - 1 ] = 0;
 								const std::string facename = WideStringToUTF8( logfont.lfFaceName );
 								if ( facename.empty() ) {
-									value.SetNull();
+									value = nullptr;
 								} else {
-									value.SetObject();
+									value = json::object();
 									const std::map<std::string,int> fields = {
 										{ "lfHeight", logfont.lfHeight },
 										{ "lfWidth", logfont.lfWidth },
@@ -2678,67 +2671,56 @@ void Settings::ExportSettings( std::string& output )
 										{ "lfQuality", logfont.lfQuality },
 										{ "lfPitchAndFamily", logfont.lfPitchAndFamily }
 									};
-									rapidjson::Value v;
-									for ( const auto& field : fields ) {
-										rapidjson::Value key( field.first.c_str(), static_cast<rapidjson::SizeType>( field.first.size() ), allocator );
-										v.SetInt( field.second );
-										value.AddMember( key, v, allocator );
+									for ( const auto& [ fieldName, fieldValue ] : fields ) {
+										value[ fieldName ] = fieldValue;
 									}
-									v = rapidjson::Value( facename.c_str(), static_cast<rapidjson::SizeType>( facename.size() ), allocator );
-									value.AddMember( "lfFaceName", v, allocator );
+									value[ "lfFaceName" ] = facename;
 								}
 							}
 							break;
 						}
 						default : {
-							value.SetNull();
+							value = nullptr;
 							break;
 						}
 					}
-					if ( !value.IsNull() ) {
-						rapidjson::Value key( setting.c_str(), static_cast<rapidjson::SizeType>( setting.size() ), allocator );
-						settingsObject.AddMember( key, value, allocator );
+					if ( !value.is_null() ) {
+						settings[ setting ] = value;
 					}
 				}
 			}
 			sqlite3_finalize( stmt );
 			stmt = nullptr;
-			if ( !settingsObject.ObjectEmpty() ) {
-				document.AddMember( "Settings", settingsObject, allocator );
+			if ( !settings.empty() ) {
+				document[ "Settings" ] = settings;
 			}
 		}
 
 		// PlaylistColumns table.
 		query = "SELECT Col,Width FROM PlaylistColumns ORDER BY rowid ASC;";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			rapidjson::Value columnsArray;
-			columnsArray.SetArray();
+			json columns;
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
 				const int col = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
 				const int width = sqlite3_column_int( stmt, 1 /*columnIndex*/ );
 				if ( ( col > 0 ) && ( width > 0 ) ) {
-					rapidjson::Value columnObject;
-					columnObject.SetObject();
-					rapidjson::Value value;
-					value.SetInt( col );
-					columnObject.AddMember( "Col", value, allocator );
-					value.SetInt( width );
-					columnObject.AddMember( "Width", value, allocator );
-					columnsArray.PushBack( columnObject, allocator );
+					json column;
+					column[ "Col" ] = col;
+					column[ "Width" ] = width;
+					columns.push_back( column );
 				}
 			}
 			sqlite3_finalize( stmt );
 			stmt = nullptr;
-			if ( columnsArray.Size() > 0 ) {
-				document.AddMember( "PlaylistColumns", columnsArray, allocator );
+			if ( columns.size() > 0 ) {
+				document[ "PlaylistColumns" ] = columns;
 			}
 		}
 
 		// Hotkeys table.
 		query = "SELECT ID,Hotkey,Alt,Ctrl,Shift FROM Hotkeys;";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			rapidjson::Value hotkeysArray;
-			hotkeysArray.SetArray();
+			json hotkeys;
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
 				const int id = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
 				const int hotkey = sqlite3_column_int( stmt, 1 /*columnIndex*/ );
@@ -2746,72 +2728,61 @@ void Settings::ExportSettings( std::string& output )
 				const bool ctrl = ( 0 != sqlite3_column_int( stmt, 3 /*columnIndex*/ ) );
 				const bool shift = ( 0 != sqlite3_column_int( stmt, 4 /*columnIndex*/ ) );
 				if ( ( id > 0 ) && ( hotkey > 0 ) && ( alt || ctrl || shift ) ) {
-					rapidjson::Value hotkeyObject;
-					hotkeyObject.SetObject();
-					rapidjson::Value value;
-					value.SetInt( id );
-					hotkeyObject.AddMember( "ID", value, allocator );
-					value.SetInt( hotkey );
-					hotkeyObject.AddMember( "Hotkey", value, allocator );
-					value.SetBool( alt );
-					hotkeyObject.AddMember( "Alt", value, allocator );
-					value.SetBool( ctrl );
-					hotkeyObject.AddMember( "Ctrl", value, allocator );
-					value.SetBool( shift );
-					hotkeyObject.AddMember( "Shift", value, allocator );
-					hotkeysArray.PushBack( hotkeyObject, allocator );
+					json entry;
+					entry[ "ID" ] = id;
+					entry[ "Hotkey" ] = hotkey;
+					entry[ "Alt" ] = alt;
+					entry[ "Ctrl" ] = ctrl;
+					entry[ "Shift" ] = shift;
+					hotkeys.push_back( entry );
 				}
 			}
 			sqlite3_finalize( stmt );
 			stmt = nullptr;
-			if ( hotkeysArray.Size() > 0 ) {
-				document.AddMember( "Hotkeys", hotkeysArray, allocator );
+			if ( hotkeys.size() > 0 ) {
+				document[ "Hotkeys" ] = hotkeys;
 			}
 		}
 
-		rapidjson::StringBuffer buffer;
-		rapidjson::PrettyWriter<rapidjson::StringBuffer> writer( buffer );
-		document.Accept( writer );
-		output = buffer.GetString();
+		constexpr int kIndent = 2;
+		output = document.dump( kIndent );
 	}
 }
 
 void Settings::ImportSettings( const std::string& input )
 {
-	rapidjson::Document document;
-	document.Parse( input.c_str() );
-	if ( !document.HasParseError() ) {
+	using namespace nlohmann;
+	try {
+		const json document = json::parse( input );
 		sqlite3* database = m_Database.GetDatabase();
 		if ( nullptr != database ) {
 			// Settings object.
-			const auto settingsIter = document.FindMember( "Settings" );
-			if ( ( document.MemberEnd() != settingsIter ) && settingsIter->value.IsObject() ) {
-				const auto settingsObject = settingsIter->value.GetObject();
+			const auto settings = document.find( "Settings" );
+			if ( ( document.end() != settings ) && settings->is_object() ) {
 				sqlite3_stmt* stmt = nullptr;
 				const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
 				if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-					for ( const auto& member : settingsObject ) {
-						const std::string name = member.name.GetString();
-						if ( member.value.IsDouble() ) {
+					for ( const auto& [ name, value ] : settings->items() ) {
+						if ( value.is_number_float() ) {
 							sqlite3_bind_text( stmt, 1, name.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-							sqlite3_bind_double( stmt, 2, member.value.GetDouble() );
+							sqlite3_bind_double( stmt, 2, value );
 							sqlite3_step( stmt );
 							sqlite3_reset( stmt );
-						} else if ( member.value.IsInt64() ) {
+						} else if ( value.is_number_integer() ) {
 							sqlite3_bind_text( stmt, 1, name.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-							sqlite3_bind_int64( stmt, 2, member.value.GetInt64() );
+							sqlite3_bind_int64( stmt, 2, value );
 							sqlite3_step( stmt );
 							sqlite3_reset( stmt );
-						} else if ( member.value.IsString() ) {
+						} else if ( value.is_string() ) {
 							sqlite3_bind_text( stmt, 1, name.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-							sqlite3_bind_text( stmt, 2, member.value.GetString(), -1 /*strLen*/, SQLITE_STATIC );
+							const std::string str( value );
+							sqlite3_bind_text( stmt, 2, str.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 							sqlite3_step( stmt );
 							sqlite3_reset( stmt );
-						} else if ( member.value.IsObject() ) {
+						} else if ( value.is_object() ) {
 							// Note that we should only have sub-objects which represent LOGFONT structures.
-							const auto fontObject = member.value.GetObject();
-							if ( fontObject.HasMember( "lfFaceName" ) ) {
-								const std::wstring fontname = UTF8ToWideString( fontObject[ "lfFaceName" ].GetString() );
+							if ( value.end() != value.find( "lfFaceName" ) ) {
+								const std::wstring fontname = UTF8ToWideString( value[ "lfFaceName" ] );
 								LOGFONT logfont = {};
 								wcscpy_s( logfont.lfFaceName, LF_FACESIZE - 1, fontname.c_str() );
 								const std::map<std::string,LONG*> longfields = {
@@ -2831,15 +2802,15 @@ void Settings::ImportSettings( const std::string& input )
 									{ "lfQuality", &logfont.lfQuality },
 									{ "lfPitchAndFamily", &logfont.lfPitchAndFamily }
 								};
-								for ( const auto& fontMember : fontObject ) {
-									if ( fontMember.value.IsNumber() ) {
-										const auto longfield = longfields.find( fontMember.name.GetString() );
+								for ( const auto& [ fontKey, fontValue ] : value.items() ) {
+									if ( fontValue.is_number() ) {
+										const auto longfield = longfields.find( fontKey );
 										if ( longfields.end() != longfield ) {
-											*longfield->second = static_cast<LONG>( fontMember.value.GetInt() );
+											*longfield->second = static_cast<LONG>( fontValue );
 										} else {
-											const auto bytefield = bytefields.find( fontMember.name.GetString() );
+											const auto bytefield = bytefields.find( fontKey );
 											if ( bytefields.end() != bytefield ) {
-												*bytefield->second = static_cast<BYTE>( fontMember.value.GetInt() );
+												*bytefield->second = static_cast<BYTE>( fontValue );
 											}
 										}
 									}
@@ -2857,24 +2828,21 @@ void Settings::ImportSettings( const std::string& input )
 			}
 
 			// PlaylistColumns array.
-			const auto playlistColumnsIter = document.FindMember( "PlaylistColumns" );
-			if ( ( document.MemberEnd() != playlistColumnsIter ) && playlistColumnsIter->value.IsArray() ) {
-				const auto columnsArray = playlistColumnsIter->value.GetArray();
+			const auto columns = document.find( "PlaylistColumns" );
+			if ( ( document.end() != columns ) && columns->is_array() ) {
 				sqlite3_stmt* stmt = nullptr;
 				std::string query = "DELETE FROM PlaylistColumns;";
 				sqlite3_exec( database, query.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 				query = "INSERT INTO PlaylistColumns (Col,Width) VALUES (?1,?2);";
 				if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-					for ( const auto& columnObject : columnsArray ) {
-						if ( columnObject.IsObject() ) {
-							const auto colIter = columnObject.FindMember( "Col" );
-							const auto widthIter = columnObject.FindMember( "Width" );
-							if ( ( columnObject.MemberEnd() != colIter ) && ( columnObject.MemberEnd() != widthIter ) ) {
-								const int col = colIter->value.GetInt();
-								const int width = widthIter->value.GetInt();
-								if ( ( col > 0 ) && ( width > 0 ) ) {
-									sqlite3_bind_int( stmt, 1, col );
-									sqlite3_bind_int( stmt, 2, width );
+					for ( const auto& column : *columns ) {
+						if ( column.is_object() ) {
+							const auto col = column.find( "Col" );
+							const auto width = column.find( "Width" );
+							if ( ( column.end() != col ) && ( column.end() != width ) && col->is_number() && width->is_number() ) {
+								if ( ( *col > 0 ) && ( *width > 0 ) ) {
+									sqlite3_bind_int( stmt, 1, *col );
+									sqlite3_bind_int( stmt, 2, *width );
 									sqlite3_step( stmt );
 									sqlite3_reset( stmt );
 								}
@@ -2887,37 +2855,29 @@ void Settings::ImportSettings( const std::string& input )
 			}
 
 			// Hotkeys array.
-			const auto hotkeysIter = document.FindMember( "Hotkeys" );
-			if ( ( document.MemberEnd() != hotkeysIter ) && hotkeysIter->value.IsArray() ) {
+			const auto hotkeys = document.find( "Hotkeys" );
+			if ( ( document.end() != hotkeys ) && hotkeys->is_array() ) {
 				sqlite3_stmt* stmt = nullptr;
 				std::string query = "DELETE FROM Hotkeys;";
 				sqlite3_exec( database, query.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 				query = "INSERT INTO Hotkeys (ID,Hotkey,Alt,Ctrl,Shift) VALUES (?1,?2,?3,?4,?5);";
 				if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-					const auto hotkeysArray = hotkeysIter->value.GetArray();
-					for ( const auto& hotkeyObject : hotkeysArray ) {
-						if ( hotkeyObject.IsObject() ) {
-							const auto idIter = hotkeyObject.FindMember( "ID" );
-							const auto hotkeyIter = hotkeyObject.FindMember( "Hotkey" );
-							const auto altIter = hotkeyObject.FindMember( "Alt" );
-							const auto ctrlIter = hotkeyObject.FindMember( "Ctrl" );
-							const auto shiftIter = hotkeyObject.FindMember( "Shift" );
-							if ( ( hotkeyObject.MemberEnd() != idIter ) && ( hotkeyObject.MemberEnd() != hotkeyIter ) &&
-									( hotkeyObject.MemberEnd() != altIter ) && ( hotkeyObject.MemberEnd() != ctrlIter ) && ( hotkeyObject.MemberEnd() != shiftIter ) ) {
-								const int id = idIter->value.GetInt();
-								const int hotkey = hotkeyIter->value.GetInt();
-								const int alt = altIter->value.IsTrue() ? 1 : 0;
-								const int ctrl = ctrlIter->value.IsTrue() ? 1 : 0;
-								const int shift = shiftIter->value.IsTrue() ? 1 : 0;
-								if ( ( id > 0 ) && ( hotkey > 0 ) && ( ( alt > 0 ) || ( ctrl > 0 ) || ( shift > 0 ) ) ) {
-									sqlite3_bind_int( stmt, 1, id );
-									sqlite3_bind_int( stmt, 2, hotkey );
-									sqlite3_bind_int( stmt, 3, alt );
-									sqlite3_bind_int( stmt, 4, ctrl );
-									sqlite3_bind_int( stmt, 5, shift );
-									sqlite3_step( stmt );
-									sqlite3_reset( stmt );
-								}
+					for ( const auto& entry : *hotkeys ) {
+						if ( entry.is_object() ) {
+							const auto id = entry.find( "ID" );
+							const auto hotkey = entry.find( "Hotkey" );
+							const auto alt = entry.find( "Alt" );
+							const auto ctrl = entry.find( "Ctrl" );
+							const auto shift = entry.find( "Shift" );
+							if ( ( entry.end() != id ) && ( entry.end() != hotkey ) && ( entry.end() != alt ) && ( entry.end() != ctrl ) && ( entry.end() != shift ) &&
+									id->is_number() && hotkey->is_number() && alt->is_boolean() && ctrl->is_boolean() && shift->is_boolean() && ( *id > 0 ) && ( *hotkey > 0 ) ) {
+								sqlite3_bind_int( stmt, 1, *id );
+								sqlite3_bind_int( stmt, 2, *hotkey );
+								sqlite3_bind_int( stmt, 3, *alt );
+								sqlite3_bind_int( stmt, 4, *ctrl );
+								sqlite3_bind_int( stmt, 5, *shift );
+								sqlite3_step( stmt );
+								sqlite3_reset( stmt );
 							}
 						}
 					}
@@ -2926,15 +2886,16 @@ void Settings::ImportSettings( const std::string& input )
 				}
 			}
 		}
+	} catch ( const json::exception& ) {
 	}
 }
 
 void Settings::GetDefaultAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn, int& maxBufferLength, int& maxLeadIn )
 {
 	useDeviceDefaultFormat = false;
-	bufferLength = 100;
+	bufferLength = 250;
 	leadIn = 0;
-	maxBufferLength = 500;
+	maxBufferLength = 1000;
 	maxLeadIn = 2000;
 }
 
@@ -3165,7 +3126,7 @@ void Settings::SetToolbarColours( const COLORREF buttonColour, const COLORREF ba
 
 bool Settings::GetHardwareAccelerationEnabled()
 {
-	bool enabled = false;
+	bool enabled = true;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		sqlite3_stmt* stmt = nullptr;
@@ -3191,6 +3152,254 @@ void Settings::SetHardwareAccelerationEnabled( const bool enabled )
 			sqlite3_bind_int( stmt, 2, enabled );
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+bool Settings::GetAlwaysOnTop()
+{
+	bool alwaysOnTop = false;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='AlwaysOnTop';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				alwaysOnTop = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return alwaysOnTop;
+}
+
+void Settings::SetAlwaysOnTop( const bool alwaysOnTop )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "AlwaysOnTop", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, alwaysOnTop );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+bool Settings::GetRetainStopAtTrackEnd()
+{
+	bool retain = false;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='RetainStopAtTrackEnd';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				retain = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return retain;
+}
+
+void Settings::SetRetainStopAtTrackEnd( const bool retain )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "RetainStopAtTrackEnd", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, retain );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+bool Settings::GetStopAtTrackEnd()
+{
+	bool enabled = false;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='StopAtTrackEnd';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return enabled;
+}
+
+void Settings::SetStopAtTrackEnd( const bool enabled )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "StopAtTrackEnd", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, enabled );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+bool Settings::GetRetainPitchBalance()
+{
+	bool retain = false;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='RetainPitchBalance';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				retain = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return retain;
+}
+
+void Settings::SetRetainPitchBalance( const bool retain )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "RetainPitchBalance", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, retain );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+std::pair<float /*pitch*/, float /*balance*/> Settings::GetPitchBalance()
+{
+	auto setting = std::make_pair( 1.0f, 0.0f );
+	auto& [ pitch, balance ] = setting;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		std::string query = "SELECT Value FROM Settings WHERE Setting='Pitch';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				pitch = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+		stmt = nullptr;
+		query = "SELECT Value FROM Settings WHERE Setting='Balance';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				balance = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return setting;
+}
+
+void Settings::SetPitchBalance( const float pitch, const float balance )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "Pitch", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_double( stmt, 2, pitch );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_bind_text( stmt, 1, "Balance", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_double( stmt, 2, balance );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+}
+
+int Settings::GetLastOptionsPage()
+{
+	int index = 0;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='OptionsPage';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				index = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return index;
+}
+
+void Settings::SetLastOptionsPage( const int index )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "OptionsPage", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, index );
+			sqlite3_step( stmt );
+			sqlite3_reset( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+COLORREF Settings::GetTaskbarButtonColour()
+{
+	constexpr COLORREF kDefaultColour = RGB( 55, 165, 255 );
+
+	COLORREF colour = kDefaultColour;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting='TaskbarButtonColour';";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				colour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return colour;
+}
+
+void Settings::SetTaskbarButtonColour( const COLORREF colour )
+{
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, "TaskbarButtonColour", -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_bind_int( stmt, 2, static_cast<int>( colour ) );
+			sqlite3_step( stmt );
 			sqlite3_finalize( stmt );
 		}
 	}

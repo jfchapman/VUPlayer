@@ -5,7 +5,7 @@
 Database::Database( const std::wstring& filename, const Mode mode ) :
 	m_Database( nullptr ),
 	m_Filename( filename ),
-	m_Mode( filename.empty() ? Mode::Memory : mode ),
+	m_Mode( ( filename.empty() && ( Mode::Disk == mode ) ) ? Mode::Memory : mode ),
 	m_LogMutex(),
 	m_Log()
 {

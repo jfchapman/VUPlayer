@@ -43,28 +43,28 @@ long DecoderMAC::Read( float* destBuffer, const long sampleCount )
 				case 8 : {
 					unsigned char* uBuf = reinterpret_cast<unsigned char*>( srcBuffer.data() );
 					for ( long long block = 0; block < blocksRead * channels; block++ ) {
-						*destBuffer++ = static_cast<float>( static_cast<int>( uBuf[ block ] ) - 128 ) / 128;
+						*destBuffer++ = Unsigned8ToFloat( uBuf[ block ] );
 					}
 					break;
 				}
 				case 16 : {
 					short* sBuf = reinterpret_cast<short*>( srcBuffer.data() );
 					for ( long long block = 0; block < blocksRead * channels; block++ ) {
-						*destBuffer++ = static_cast<float>( sBuf[ block ] ) / 32768;
+						*destBuffer++ = Signed16ToFloat( sBuf[ block ] );
 					}
 					break;
 				}
 				case 24 : {
 					unsigned char* uBuf = reinterpret_cast<unsigned char*>( srcBuffer.data() );
 					for ( long long block = 0; block < blocksRead * channels; block++ ) {
-						*destBuffer++ = static_cast<float>( ( uBuf[ block * 3 + 2 ] << 24 ) | ( uBuf[ block * 3 + 1 ] << 16 ) | ( uBuf[ block * 3 ] << 8 ) ) / 2147483648ul;
+						*destBuffer++ = Signed32ToFloat( ( uBuf[ block * 3 + 2 ] << 24 ) | ( uBuf[ block * 3 + 1 ] << 16 ) | ( uBuf[ block * 3 ] << 8 ) );
 					}
 					break;
 				}
 				case 32 : {
 					int32_t* iBuf = reinterpret_cast<int32_t*>( srcBuffer.data() );
 					for ( long long block = 0; block < blocksRead * channels; block++ ) {
-						*destBuffer++ = static_cast<float>( iBuf[ block ] ) / 2147483648ul;
+						*destBuffer++ = Signed32ToFloat( iBuf[ block ] );
 					}
 					break;
 				}

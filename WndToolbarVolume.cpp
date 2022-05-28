@@ -4,7 +4,7 @@
 #include "VUPlayer.h"
 
 WndToolbarVolume::WndToolbarVolume( HINSTANCE instance, HWND parent, Settings& settings ) :
-	WndToolbar( instance, parent, ID_TOOLBAR_VOLUME, settings, { IDI_VOLUME, IDI_VOLUME_MUTE, IDI_PITCH } )
+	WndToolbar( instance, parent, ID_TOOLBAR_VOLUME, settings, { IDI_VOLUME, IDI_VOLUME_MUTE, IDI_PITCH, IDI_BALANCE } )
 {
 	WndTrackbar::Type trackbarType = WndTrackbar::Type::Volume;
 	if ( settings.GetOutputControlType() == static_cast<int>( WndTrackbar::Type::Pitch ) ) {
@@ -43,6 +43,16 @@ void WndToolbarVolume::Update( const Output& output, const WndTrackbar::Type tra
 				SetButtonEnabled( button.idCommand, ( output.GetPitch() != 1.0f ) ? true : false );
 				break;
 			}
+			case WndTrackbar::Type::Balance : {
+				if ( ID_CONTROL_BALANCERESET != button.idCommand ) {
+					SendMessage( GetWindowHandle(), TB_SETCMDID, 0, ID_CONTROL_BALANCERESET );
+				}
+				if ( 3 != button.iBitmap ) {
+					SendMessage( GetWindowHandle(), TB_CHANGEBITMAP, ID_CONTROL_BALANCERESET, 3 );
+				}
+				SetButtonEnabled( button.idCommand, ( output.GetBalance() != 0 ) ? true : false );
+				break;
+			}
 		}
 	}
 }
@@ -54,8 +64,23 @@ void WndToolbarVolume::CreateButtons( const WndTrackbar::Type trackbarType )
 	const int buttonCount = 1;
 	TBBUTTON buttons[ buttonCount ] = {};
 	buttons[ 0 ].fsStyle = TBSTYLE_BUTTON;
-	buttons[ 0 ].iBitmap = ( WndTrackbar::Type::Pitch == trackbarType ) ? 2 : 0;
-	buttons[ 0 ].idCommand = ( WndTrackbar::Type::Pitch == trackbarType ) ? ID_CONTROL_PITCHRESET : ID_CONTROL_MUTE;
+	switch ( trackbarType ) {
+		case WndTrackbar::Type::Pitch : {
+			buttons[ 0 ].iBitmap = 2;
+			buttons[ 0 ].idCommand = ID_CONTROL_PITCHRESET;
+			break;
+		}
+		case WndTrackbar::Type::Balance : {
+			buttons[ 0 ].iBitmap = 3;
+			buttons[ 0 ].idCommand = ID_CONTROL_BALANCERESET;
+			break;
+		}
+		default : {
+			buttons[ 0 ].iBitmap = 0;
+			buttons[ 0 ].idCommand = ID_CONTROL_MUTE;
+			break;
+		}
+	}
 	SendMessage( GetWindowHandle(), TB_ADDBUTTONS, buttonCount, reinterpret_cast<LPARAM>( buttons ) );
 }
 
@@ -69,6 +94,10 @@ UINT WndToolbarVolume::GetTooltip( const UINT commandID ) const
 		}
 		case ID_CONTROL_PITCHRESET : {
 			tooltip = IDS_HOTKEY_PITCHRESET;
+			break;
+		}
+		case ID_CONTROL_BALANCERESET : {
+			tooltip = IDS_HOTKEY_BALANCERESET;
 			break;
 		}
 	}

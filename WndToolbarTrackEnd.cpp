@@ -16,16 +16,17 @@ void WndToolbarTrackEnd::Update( Output& output, const Playlist::Ptr /*playlist*
 	const bool isFadeOut = output.GetFadeOut();
 	const bool isFadeToNext = output.GetFadeToNext();
 
-	SetButtonChecked( ID_CONTROL_STOPTRACKEND, isStopAtTrackEnd );
-	SetButtonChecked( ID_CONTROL_FADEOUT, isFadeOut );
-	SetButtonChecked( ID_CONTROL_FADETONEXT, isFadeToNext );
-
 	const Output::State outputState = output.GetState();
 	const bool isStream =	IsURL( output.GetCurrentPlaying().PlaylistItem.Info.GetFilename() );
+	const bool enableStopAtTrackEnd = !isFadeOut && !isFadeToNext;
 	const bool enableFadeOut = ( !isFadeToNext && ( Output::State::Playing == outputState ) );
 	const bool enableFadeToNext = ( !isFadeOut && !isStream && ( Output::State::Playing == outputState ) );
 
-	SetButtonEnabled( ID_CONTROL_STOPTRACKEND, true );
+	SetButtonChecked( ID_CONTROL_STOPTRACKEND, isStopAtTrackEnd && enableStopAtTrackEnd );
+	SetButtonChecked( ID_CONTROL_FADEOUT, isFadeOut );
+	SetButtonChecked( ID_CONTROL_FADETONEXT, isFadeToNext );
+
+	SetButtonEnabled( ID_CONTROL_STOPTRACKEND, enableStopAtTrackEnd );
 	SetButtonEnabled( ID_CONTROL_FADEOUT, enableFadeOut );
 	SetButtonEnabled( ID_CONTROL_FADETONEXT, enableFadeToNext );
 }

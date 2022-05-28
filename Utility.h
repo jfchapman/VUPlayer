@@ -106,18 +106,6 @@ std::string GainToString( const std::optional<float> gain );
 // Centres a 'dialog' with respect to its parent window, or the desktop window if the parent is not visible.
 void CentreDialog( const HWND dialog );
 
-// Converts a floating point sample 'value' to 24-bit (clamping any value outside the range -1.0 to +1.0).
-int FloatTo24( const float value );
-
-// Converts a floating point sample 'value' to 16-bit (clamping any value outside the range -1.0 to +1.0).
-short FloatTo16( const float value );
-
-// Converts a floating point sample 'value' to signed 8-bit (clamping any value outside the range -1.0 to +1.0).
-char FloatToSigned8( const float value );
-
-// Converts a floating point sample 'value' to unsigned 8-bit (clamping any value outside the range -1.0 to +1.0).
-unsigned char FloatToUnsigned8( const float value );
-
 // Returns the 'filename' extension in lowercase.
 std::wstring GetFileExtension( const std::wstring& filename );
 
@@ -159,6 +147,15 @@ std::optional<COLORREF> ChooseColour( const HWND hwnd, const COLORREF initialCol
 // Returns the bitmap handle on success (to be deleted by the caller), or nullptr on failure.
 HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int size, const COLORREF colour );
 
+// Creates a flat colour bitmap from an icon resource (32-bit, with transparency).
+// 'instance' - module instance handle.
+// 'iconID' - icon resource ID.
+// 'width' - pixel width.
+// 'height' - pixel height.
+// 'colour' - colour value.
+// Returns the bitmap handle on success (to be deleted by the caller), or nullptr on failure.
+HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int width, const int height, const COLORREF colour );
+
 // Returns whether high contrast mode is active.
 bool IsHighContrastActive();
 
@@ -167,3 +164,71 @@ bool IsClassicThemeActive();
 
 // Returns whether the OS is Windows 10 (or later).
 bool IsWindows10();
+
+// Converts a floating point sample 'value' to 24-bit (clamping any value outside the range -1.0 to +1.0).
+inline int32_t FloatTo24( const float value )
+{
+	const float scaledValue = value * 8388608;
+	const int32_t result = ( scaledValue > static_cast<float>( 8388607 ) ) ? 8388607 :
+		( ( scaledValue < static_cast<float>( -8388608 ) ) ? -8388608 : static_cast<int32_t>( scaledValue ) );
+	return result;
+}
+
+// Converts a floating point sample 'value' to 16-bit (clamping any value outside the range -1.0 to +1.0).
+inline int16_t FloatTo16( const float value )
+{
+	const float scaledValue = value * 32768;
+	const int16_t result = ( scaledValue > static_cast<float>( 32767 ) ) ? 32767 :
+		( ( scaledValue < static_cast<float>( -32768 ) ) ? -32768 : static_cast<int16_t>( scaledValue ) );
+	return result;
+}
+
+// Converts a floating point sample 'value' to signed 8-bit (clamping any value outside the range -1.0 to +1.0).
+inline int8_t FloatToSigned8( const float value )
+{
+	const float scaledValue = value * 128;
+	const int8_t result = ( scaledValue > static_cast<float>( 127 ) ) ? 127 :
+		( ( scaledValue < static_cast<float>( -128 ) ) ? -128 : static_cast<int8_t>( scaledValue ) );
+	return result;
+}
+
+// Converts a floating point sample 'value' to unsigned 8-bit (clamping any value outside the range -1.0 to +1.0).
+inline uint8_t FloatToUnsigned8( const float value )
+{
+	const float scaledValue = ( value + 1.0f ) * 128;
+	const uint8_t result = ( scaledValue > static_cast<float>( 255 ) ) ? 255 :
+		( ( scaledValue < static_cast<float>( 0 ) ) ? 0 : static_cast<uint8_t>( scaledValue ) );
+	return result;
+}
+
+// Converts a signed 64-bit 'value' to a floating point value in the range -1.0 to +1.0.
+inline float Signed64ToFloat( const int64_t value )
+{
+	return static_cast<float>( value ) / 0x8000000000000000ull;
+}
+
+// Converts a signed 32-bit 'value' to a floating point value in the range -1.0 to +1.0.
+inline float Signed32ToFloat( const int32_t value )
+{
+	return static_cast<float>( value ) / 0x80000000ul;
+}
+
+// Converts a signed 16-bit 'value' to a floating point value in the range -1.0 to +1.0.
+inline float Signed16ToFloat( const int16_t value )
+{
+	return static_cast<float>( value ) / 0x8000;
+}
+
+// Converts an unsigned 8-bit 'value' to a floating point value in the range -1.0 to +1.0.
+inline float Unsigned8ToFloat( const uint8_t value )
+{
+	return static_cast<float>( static_cast<int>( value ) - 0x80 ) / 0x80;
+}
+
+// Returns the current timestamp (the number of 100-nanosecond intervals since January 1, 1601 UTC).
+inline long long GetCurrentTimestamp()
+{
+	FILETIME fileTime = {};
+	GetSystemTimeAsFileTime( &fileTime );
+	return ( static_cast<long long>( fileTime.dwHighDateTime ) << 32 ) + fileTime.dwLowDateTime;
+}

@@ -36,7 +36,7 @@ Playlist::Playlist( Library& library, const std::string& id, const Type& type ) 
 	m_PendingWakeEvent( NULL ),
 	m_RestartPendingThread( false ),
 	m_Library( library ),
-	m_SortColumn( ( Type::Folder == type ) ? Column::Filename : Column::_Undefined ),
+	m_SortColumn( ( Type::Folder == type ) ? Column::Filepath : Column::_Undefined ),
 	m_SortAscending( ( Type::Folder == type ) ? true : false ),
 	m_Type( type ),
 	m_MergeDuplicates( false ),
@@ -171,6 +171,16 @@ bool Playlist::GetPreviousItem( const Item& currentItem, Item& previousItem, con
 		}
 	}
 	return success;
+}
+
+Playlist::Item Playlist::GetFirstItem()
+{
+	Item result = {};
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	if ( !m_Playlist.empty() ) {
+		result = m_Playlist.front();
+	}
+	return result;
 }
 
 Playlist::Item Playlist::GetRandomItem( const Item& currentItem )
@@ -500,8 +510,14 @@ bool Playlist::LessThan( const Item& item1, const Item& item2, const Column colu
 			lessThan = item1.Info.GetDuration() < item2.Info.GetDuration();
 			break;
 		}
-		case Column::Filename : {
+		case Column::Filepath : {
 			lessThan = _wcsicmp( item1.Info.GetFilename().c_str(), item2.Info.GetFilename().c_str() ) < 0;
+			break;
+		}
+		case Column::Filename : {
+			const auto filename1 = std::filesystem::path( item1.Info.GetFilename() ).filename();
+			const auto filename2 = std::filesystem::path( item2.Info.GetFilename() ).filename();
+			lessThan = _wcsicmp( filename1.c_str(), filename2.c_str() ) < 0;
 			break;
 		}
 		case Column::Filesize : {

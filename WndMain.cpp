@@ -15,6 +15,7 @@ HINSTANCE g_hInst = 0;
 HWND g_hWnd = 0;
 WCHAR g_szTitle[ MAX_LOADSTRING ] = {};
 WCHAR g_szWindowClass[ MAX_LOADSTRING ] = {};
+UINT g_MsgTaskbarButtonCreated = 0;
 
 // Forward declarations of functions included in this code module:
 ATOM MyRegisterClass( HINSTANCE hInstance );
@@ -74,6 +75,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 			if ( 0 == _wcsicmp( args[ argc ], s_portableCmdLineSwitch ) ) {
 				// Handle the '-portable' command-line switch (and the following settings file argument).
 				portable = true;
+				mode = Database::Mode::Memory;
 				if ( ( argc + 1 ) < numArgs ) {
 					const std::wstring settingsFileName = args[ argc + 1 ];
 					if ( settingsFileName.size() > 4 ) {
@@ -170,6 +172,8 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 	ULONG_PTR gdiplusToken;
 	GdiplusStartup( &gdiplusToken, &gdiplusStartupInput, NULL );
 
+	SetErrorMode( SEM_FAILCRITICALERRORS );
+
 	VUPlayer* vuplayer = new VUPlayer( g_hInst, g_hWnd, cmdLineFiles, portable, portableSettings, mode );
 
 	SetWindowLongPtr( g_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( vuplayer ) );
@@ -220,7 +224,12 @@ ATOM MyRegisterClass( HINSTANCE hInstance )
 // Saves instance handle and creates main window
 BOOL InitInstance( HINSTANCE hInstance, int /*nCmdShow*/ )
 {
-	g_hInst = hInstance; // Store instance handle in our global variable
+	g_hInst = hInstance;
+	
+	if ( IsWindows10() ) {
+		// Register the appropriate Windows message, so that we can use taskbar extension shell methods.
+		g_MsgTaskbarButtonCreated = RegisterWindowMessage( L"TaskbarButtonCreated" );
+	}
 
 	const DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS;
 	const int x = 0;
@@ -385,9 +394,9 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
-		case MSG_CDDAREFRESHED : {
+		case MSG_DISCREFRESHED : {
 			if ( nullptr != vuplayer ) {
-				vuplayer->OnHandleCDDARefreshed();
+				vuplayer->OnHandleDiscRefreshed();
 			}
 			break;
 		}
@@ -409,6 +418,9 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			break;
 		}
 		default : {
+			if ( ( g_MsgTaskbarButtonCreated == message ) && ( 0 != g_MsgTaskbarButtonCreated ) && ( nullptr != vuplayer ) ) {
+				vuplayer->OnTaskbarButtonCreated();
+			}
 			break;
 		}
 	}

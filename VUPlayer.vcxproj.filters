@@ -213,10 +213,7 @@
     <ClInclude Include="WndToolbarFavourites.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Bling.h">
-      <Filter>Resource Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CDDAManager.h">
+    <ClInclude Include="DiscManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CDDAMedia.h">
@@ -312,9 +309,6 @@
     <ClInclude Include="DlgAddStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\sqlite-3.34.0\sqlite3.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
     <ClInclude Include="DecoderMPC.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -331,6 +325,30 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WndToolbarVolume.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DecoderFFmpeg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HandlerFFmpeg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OptionsTaskbar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WndTaskbar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\json-3.10.5\json.hpp">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="OutputDecoder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CDDACache.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\sqlite-3.38.5\sqlite3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -509,7 +527,7 @@
     <ClCompile Include="WndToolbarFavourites.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CDDAManager.cpp">
+    <ClCompile Include="DiscManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CDDAMedia.cpp">
@@ -599,9 +617,6 @@
     <ClCompile Include="DlgAddStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.34.0\sqlite3.c">
-      <Filter>Third Party</Filter>
-    </ClCompile>
     <ClCompile Include="DecoderMPC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -615,6 +630,27 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WndToolbarVolume.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DecoderFFmpeg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlerFFmpeg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OptionsTaskbar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="WndTaskbar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OutputDecoder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CDDACache.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\sqlite-3.38.5\sqlite3.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -736,6 +772,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\streams.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\balance.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

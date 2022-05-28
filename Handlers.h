@@ -52,6 +52,9 @@ private:
 	// BASS Handler.
 	Handler::Ptr m_HandlerBASS;
 
+	// FFmpeg handler.
+	Handler::Ptr m_HandlerFFmpeg;
+
 	// Available handlers.
 	Handler::List m_Handlers;
 

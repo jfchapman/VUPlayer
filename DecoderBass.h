@@ -45,6 +45,9 @@ private:
 	// Called when metadata is received for a 'channel'.
 	void OnMetadata( const DWORD channel );
 
+	// Tries to load music from 'filename', setting the stream handle on success.
+	void LoadMusic( const std::wstring& filename );
+
 	// Stream handle
 	DWORD m_Handle;
 

@@ -196,7 +196,8 @@ void OptionsHotkeys::ClearHotkey( const HWND hwnd )
 			if ( TRUE == ListView_GetItem( listWnd, &item ) ) {
 				const Hotkeys::ID id = static_cast<Hotkeys::ID>( item.lParam );
 				m_HotkeyMap.erase( id );
-				ListView_SetItemText( listWnd, itemIndex, 1, L"" );
+				const std::wstring blank;
+				ListView_SetItemText( listWnd, itemIndex, 1, const_cast<LPWSTR>( blank.c_str() ) );
 			}
 		}
 	}

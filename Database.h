@@ -19,8 +19,8 @@ public:
 		Memory	// Use a pure in-memory copy of the database, which gets flushed back out to disk when closed.
 	};
 
-	// 'filename' - database file name, or an empty string for a pure in-memory database which is not persisted.
-	// 'mode' - database access mode.
+	// 'filename' - database file name.
+	// 'mode' - database access mode (if Disk mode is specified and 'filename' is empty, then Memory mode will be used).
 	Database( const std::wstring& filename, const Mode mode );
 
 	virtual ~Database();

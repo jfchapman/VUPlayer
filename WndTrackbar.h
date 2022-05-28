@@ -12,7 +12,8 @@ public:
 	enum class Type {
 		Seek,
 		Volume,
-		Pitch
+		Pitch,
+		Balance
 	};
 
 	// 'instance' - module instance handle.

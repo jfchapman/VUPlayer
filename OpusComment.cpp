@@ -372,7 +372,7 @@ bool OpusComment::WriteComments()
 		const size_t lastPageContentSize = modifiedContentSize % OggPage::MaximumContentSize;
 		if ( lastPageContentSize < OggPage::MaximumContentSize ) {
 			const size_t padding = 512;
-			modifiedContentSize += min( OggPage::MaximumContentSize - lastPageContentSize - 1, padding );
+			modifiedContentSize += std::min<size_t>( OggPage::MaximumContentSize - lastPageContentSize - 1, padding );
 		}
 	}
 

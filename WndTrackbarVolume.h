@@ -60,6 +60,15 @@ private:
 	// Returns the trackbar position corresponding to the pitch adjustment.
 	int GetPositionFromPitch( const float pitch ) const;
 
+	// Updates the balance adjustment when the trackbar 'position' changes.
+	void UpdateBalance( const int position );
+
+	// Returns the balance adjustment corresponding to the trackbar position.
+	float GetBalanceFromPosition( const int position ) const;
+
+	// Returns the trackbar position corresponding to the balance adjustment.
+	int GetPositionFromBalance( const float balance ) const;
+
 	// Sets the control width, based on the 'settings'.
 	void SetWidth( Settings& settings );
 

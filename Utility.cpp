@@ -546,38 +546,6 @@ void CentreDialog( const HWND dialog )
 	}
 }
 
-int FloatTo24( const float value )
-{
-	const float scaledValue = value * 8388608;
-	const int result = ( scaledValue > static_cast<float>( 8388607 ) ) ? 8388607 :
-		( ( scaledValue < static_cast<float>( -8388608 ) ) ? -8388608 : static_cast<int>( scaledValue ) );
-	return result;
-}
-
-short FloatTo16( const float value )
-{
-	const float scaledValue = value * 32768;
-	const short result = ( scaledValue > static_cast<float>( 32767 ) ) ? 32767 :
-		( ( scaledValue < static_cast<float>( -32768 ) ) ? -32768 : static_cast<short>( scaledValue ) );
-	return result;
-}
-
-char FloatToSigned8( const float value )
-{
-	const float scaledValue = value * 128;
-	const char result = ( scaledValue > static_cast<float>( 127 ) ) ? 127 :
-		( ( scaledValue < static_cast<float>( -128 ) ) ? -128 : static_cast<char>( scaledValue ) );
-	return result;
-}
-
-unsigned char FloatToUnsigned8( const float value )
-{
-	const float scaledValue = ( value + 1.0f ) * 128;
-	const unsigned char result = ( scaledValue > static_cast<float>( 255 ) ) ? 255 :
-		( ( scaledValue < static_cast<float>( 0 ) ) ? 0 : static_cast<unsigned char>( scaledValue ) );
-	return result;
-}
-
 std::wstring GetFileExtension( const std::wstring& filename )
 {
 	const size_t pos = filename.rfind( '.' );
@@ -703,8 +671,13 @@ std::optional<COLORREF> ChooseColour( const HWND hwnd, const COLORREF initialCol
 
 HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int size, const COLORREF colour )
 {
+	return CreateColourBitmap( instance, iconID, size, size, colour );
+}
+
+HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int width, const int height, const COLORREF colour )
+{
 	HBITMAP hBitmap = nullptr;
-	if ( const HICON hIcon = static_cast<HICON>( LoadImage( instance, MAKEINTRESOURCE( iconID ), IMAGE_ICON, size, size, LR_DEFAULTCOLOR | LR_SHARED ) ); nullptr != hIcon ) {
+	if ( const HICON hIcon = static_cast<HICON>( LoadImage( instance, MAKEINTRESOURCE( iconID ), IMAGE_ICON, width, height, LR_DEFAULTCOLOR | LR_SHARED ) ); nullptr != hIcon ) {
 		if ( ICONINFO iconInfo = {}; ( nullptr != hIcon ) && GetIconInfo( hIcon, &iconInfo ) ) {
 			if ( BITMAP bm = {}; GetObject( iconInfo.hbmColor, sizeof( BITMAP ), &bm ) ) {
 				if ( const HDC dc = GetDC( nullptr ); nullptr != dc ) {

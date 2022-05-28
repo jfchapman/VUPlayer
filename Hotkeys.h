@@ -23,7 +23,10 @@ public:
 		IncreaseVolume,
 		DecreasePitch,
 		IncreasePitch,
-		ResetPitch
+		ResetPitch,
+		BalanceLeft,
+		BalanceRight,
+		ResetBalance
 	};
 
 	// Constructor.
