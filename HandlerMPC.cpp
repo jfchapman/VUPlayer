@@ -18,8 +18,7 @@ std::wstring HandlerMPC::GetDescription() const
 
 std::set<std::wstring> HandlerMPC::GetSupportedFileExtensions() const
 {
-	const std::set<std::wstring> filetypes = { L"mpc", L"mp+", L"mpp" };
-	return filetypes;
+	return { L"mpc", L"mp+", L"mpp" };
 }
 
 bool HandlerMPC::GetTags( const std::wstring& /*filename*/, Tags& /*tags*/ ) const

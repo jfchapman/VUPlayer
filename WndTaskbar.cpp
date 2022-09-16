@@ -53,9 +53,17 @@ void WndTaskbar::Init( Settings& settings )
 			m_TaskbarList = nullptr;
 		}
 	}
+	m_ProgressEnabled = settings.GetTaskbarShowProgress();
 }
 
-void WndTaskbar::Update( WndToolbarPlayback& toolbarPlayback )
+
+void WndTaskbar::Update( WndToolbarPlayback& toolbarPlayback, Output& output )
+{
+	UpdateToolbarButtons( toolbarPlayback );
+	UpdateProgress( output );
+}
+
+void WndTaskbar::UpdateToolbarButtons( WndToolbarPlayback& toolbarPlayback )
 {
 	if ( nullptr != m_TaskbarList ) {
 		std::vector<THUMBBUTTON> buttonsToUpdate;
@@ -99,6 +107,56 @@ void WndTaskbar::Update( WndToolbarPlayback& toolbarPlayback )
 	}
 }
 
+void WndTaskbar::UpdateProgress( Output& output )
+{
+	if ( nullptr != m_TaskbarList ) {
+		const Output::Item item = output.GetCurrentPlaying();
+		const float position = item.Position;
+		const float duration = item.PlaylistItem.Info.GetDuration();
+		const auto outputState = output.GetState();
+
+		TBPFLAG progressState = TBPF_NOPROGRESS;
+		if ( m_ProgressEnabled && ( duration > 0 ) && ( Output::State::Stopped != outputState ) ) {
+			progressState = ( Output::State::Paused == outputState ) ? TBPF_PAUSED : TBPF_NORMAL;
+		}
+		if ( progressState != m_ProgressState ) {
+			m_ProgressState = progressState;
+			m_TaskbarList->SetProgressState( m_hWnd, m_ProgressState );
+		}
+
+		constexpr unsigned long long kCounterSteps = 200;
+		unsigned long long counter = 0;
+		if ( ( duration > 0 ) && ( TBPF_NOPROGRESS != m_ProgressState ) ) {
+			counter = std::clamp( static_cast<unsigned long long>( kCounterSteps * position / duration ), 1ull, kCounterSteps );
+		}
+		if ( counter != m_ProgressCounter ) {
+			m_ProgressCounter = counter;
+			m_TaskbarList->SetProgressValue( m_hWnd, m_ProgressCounter, kCounterSteps );
+		}
+	}
+}
+
+void WndTaskbar::UpdateProgress( const float progress )
+{
+	if ( nullptr != m_TaskbarList ) {
+		const TBPFLAG progressState = m_ProgressEnabled ? TBPF_NORMAL : TBPF_NOPROGRESS;
+		if ( progressState != m_ProgressState ) {
+			m_ProgressState = progressState;
+			m_TaskbarList->SetProgressState( m_hWnd, m_ProgressState );
+		}
+
+		constexpr unsigned long long kCounterSteps = 200;
+		unsigned long long counter = 0;
+		if ( TBPF_NOPROGRESS != m_ProgressState ) {
+			counter = std::clamp( static_cast<unsigned long long>( kCounterSteps * progress ), 1ull, kCounterSteps );
+		}
+		if ( counter != m_ProgressCounter ) {
+			m_ProgressCounter = counter;
+			m_TaskbarList->SetProgressValue( m_hWnd, m_ProgressCounter, kCounterSteps );
+		}
+	}
+}
+
 void WndTaskbar::SetToolbarButtonColour( Settings& settings )
 {
 	if ( nullptr != m_TaskbarList ) {
@@ -125,4 +183,9 @@ void WndTaskbar::SetToolbarButtonColour( Settings& settings )
 			m_ImageList = imageList;
 		}
 	}
+}
+
+void WndTaskbar::EnableProgressBar( const bool enable )
+{
+	m_ProgressEnabled = enable;
 }

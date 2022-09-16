@@ -60,14 +60,15 @@ private:
 	// Pending action.
 	enum class PendingAction {
 		FileAdded,						// File has been added.	
-		FileModified					// File has been modified.
+		FileModified,					// File has been modified.
+    FileRenamed           // File has been renamed.
 	};
 
-	// Pairs a pending action with a file time.
-	typedef std::pair<PendingAction,long long> PendingInfo;
+	// Associates a pending action with a file time, file name & old file name (valid for a FileRenamed action).
+	using PendingInfo = std::tuple<PendingAction, long long, std::wstring, std::wstring>;
 
-	// Maps a file name to pending information.
-	typedef std::map<std::wstring,PendingInfo> PendingMap;
+	// Pending action list.
+	using PendingVector = std::vector<PendingInfo>;
 
 	// Monitor information.
 	struct MonitorInfo {
@@ -79,7 +80,7 @@ private:
 		HDEVNOTIFY DevNotifyHandle;	// Device notification handle.
 		EventCallback Callback;			// Event callback.
 		ChangeType ChangeType;			// Change type.
-		PendingMap PendingMap;			// Pending files.
+		PendingVector Pending;		  // Pending file actions.
 		std::mutex PendingMutex;		// Pending mutex.
 	};
 

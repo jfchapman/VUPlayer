@@ -36,8 +36,7 @@ public:
 	// 'instance' - module instance handle.
 	// 'hwnd' - application window handle.
 	// 'settings' - application settings.
-	// 'disable' - whether to disable MusicBrainz functionality.
-	MusicBrainz( const HINSTANCE instance, const HWND hwnd, Settings& settings, const bool disable );
+	MusicBrainz( const HINSTANCE instance, const HWND hwnd, Settings& settings );
 
 	virtual ~MusicBrainz();
 

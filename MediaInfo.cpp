@@ -51,6 +51,9 @@ MediaInfo::operator Tags() const
 	if ( !m_Title.empty() ) {
 		tags.insert( Tags::value_type( Tag::Title, WideStringToUTF8( m_Title ) ) );
 	}
+  if ( !m_Version.empty() ) {
+    tags.insert( Tags::value_type( Tag::Version, WideStringToUTF8( m_Version ) ) );
+  }
 	if ( m_Track > 0 ) {
 		tags.insert( Tags::value_type( Tag::Track, std::to_string( m_Track ) ) );
 	}

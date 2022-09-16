@@ -736,3 +736,25 @@ bool IsWindows10()
 {
 	return IsWindows10OrGreater();
 }
+
+FILETIME GetLastModifiedTime( const std::filesystem::path& filepath )
+{
+	FILETIME lastModifiedTime = {};
+	constexpr DWORD accessMode = GENERIC_READ;
+	constexpr DWORD shareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+	if ( const HANDLE handle = CreateFile( filepath.c_str(), accessMode, shareMode, nullptr /*security*/, OPEN_EXISTING, 0 /*flags*/, nullptr /*template*/ ); INVALID_HANDLE_VALUE != handle ) {
+		GetFileTime( handle, nullptr /*creationTime*/, nullptr /*lastAccessTime*/, &lastModifiedTime );
+		CloseHandle( handle );
+	}
+	return lastModifiedTime;
+}
+
+void SetLastModifiedTime( const std::filesystem::path& filepath, const FILETIME lastModified )
+{
+	constexpr DWORD accessMode = FILE_WRITE_ATTRIBUTES;
+	constexpr DWORD shareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+	if ( const HANDLE handle = CreateFile( filepath.c_str(), accessMode, shareMode, nullptr /*security*/, OPEN_EXISTING, 0 /*flags*/, nullptr /*template*/ ); INVALID_HANDLE_VALUE != handle ) {
+		SetFileTime( handle, nullptr, nullptr, &lastModified );
+		CloseHandle( handle );
+	}
+}

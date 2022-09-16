@@ -37,8 +37,7 @@ std::wstring HandlerWavpack::GetDescription() const
 
 std::set<std::wstring> HandlerWavpack::GetSupportedFileExtensions() const
 {
-	const std::set<std::wstring> filetypes = { L"wv" };
-	return filetypes;
+	return { L"wv" };
 }
 
 bool HandlerWavpack::GetTags( const std::wstring& filename, Tags& tags ) const

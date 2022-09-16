@@ -3,8 +3,6 @@
 #include "DecoderFlac.h"
 #include "EncoderFlac.h"
 
-#include <share/windows_unicode_filenames.h>
-
 #include "Utility.h"
 
 // Amount of padding to add when writing out FLAC files that don't contain any padding.
@@ -27,15 +25,13 @@ std::wstring HandlerFlac::GetDescription() const
 
 std::set<std::wstring> HandlerFlac::GetSupportedFileExtensions() const
 {
-	const std::set<std::wstring> fileTypes = { L"flac" };
-	return fileTypes;
+	return { L"flac" };
 }
 
 bool HandlerFlac::GetTags( const std::wstring& filename, Tags& tags ) const
 {
 	bool success = false;
 	tags.clear();
-	flac_internal_set_utf8_filenames( true );
 	FLAC::Metadata::SimpleIterator iterator;
 	if ( iterator.is_valid() &&	iterator.init( WideStringToUTF8( filename ).c_str(), true /*readOnly*/, true /*preserveFileStats*/ ) ) {
 		success = true;
@@ -105,7 +101,6 @@ bool HandlerFlac::GetTags( const std::wstring& filename, Tags& tags ) const
 bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) const
 {
 	bool success = false;
-	flac_internal_set_utf8_filenames( true );
 	FLAC::Metadata::Chain chain;
 	if ( chain.is_valid() && chain.read( WideStringToUTF8( filename ).c_str() ) ) {
 		FLAC::Metadata::Iterator iterator;

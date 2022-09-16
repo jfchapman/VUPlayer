@@ -6,9 +6,10 @@
 
 DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 {
+  CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
 	MonitorInfo* monitorInfo = reinterpret_cast<MonitorInfo*>( lpParam );
 	if ( nullptr != monitorInfo ) {
-		const DWORD bufferSize = 32768;
+    const DWORD bufferSize = 32768;
 		std::vector<unsigned char> buffer( bufferSize );
 		const BOOL watchSubtree = TRUE;
 		const DWORD notifyFilter = ( ChangeType::FileChange == monitorInfo->ChangeType ) ? ( FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE ) : FILE_NOTIFY_CHANGE_DIR_NAME;
@@ -21,23 +22,23 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 			bool cancelled = false;
 
 			while ( !cancelled ) {
-				if ( ReadDirectoryChangesW( monitorInfo->DirectoryHandle, &buffer[ 0 ], bufferSize, watchSubtree, notifyFilter, &bytesReturned, &overlapped, nullptr /*completionRoutine*/ ) ) {
+				if ( ReadDirectoryChangesW( monitorInfo->DirectoryHandle, buffer.data(), bufferSize, watchSubtree, notifyFilter, &bytesReturned, &overlapped, nullptr /*completionRoutine*/ ) ) {
 					if ( WAIT_OBJECT_0 == WaitForMultipleObjects( 2 /*count*/, waitHandles, FALSE /*waitAll*/, INFINITE ) ) {
 						if ( GetOverlappedResult( monitorInfo->DirectoryHandle, &overlapped, &bytesReturned, FALSE /*wait*/ ) ) {
-							unsigned char* pBuffer = &buffer[ 0 ];
+							unsigned char* pBuffer = buffer.data();
 							FILE_NOTIFY_INFORMATION* notifyInfo = reinterpret_cast<FILE_NOTIFY_INFORMATION*>( pBuffer );
 							while ( nullptr != notifyInfo ) {
 								const std::wstring filename = monitorInfo->DirectoryPath + std::wstring( notifyInfo->FileName, notifyInfo->FileNameLength / 2 );
+								const long long currentTime = GetCurrentTimestamp();
 
-								switch ( notifyInfo->Action ) {
+                switch ( notifyInfo->Action ) {
 									case FILE_ACTION_ADDED : {
 										const DWORD attributes = GetFileAttributes( filename.c_str() );
 										if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
 											if ( ChangeType::FileChange == monitorInfo->ChangeType ) {
 												// Delay the callback.
-												const long long addedTime = GetCurrentTimestamp();
 												std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
-												monitorInfo->PendingMap.insert( PendingMap::value_type( filename, std::make_pair( PendingAction::FileAdded, addedTime ) ) );
+                        monitorInfo->Pending.push_back( std::make_tuple( PendingAction::FileAdded, currentTime, filename, filename ) );
 											} else {
 												monitorInfo->Callback( FolderMonitor::Event::FolderCreated, filename, filename );
 											}
@@ -47,19 +48,16 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 									case FILE_ACTION_MODIFIED : {
 										if ( ChangeType::FileChange == monitorInfo->ChangeType ) {
 											const DWORD attributes = GetFileAttributes( filename.c_str() );
-											if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
+											if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
 												// Delay the callback.
-												const long long modifiedTime = GetCurrentTimestamp();
 												std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
-												monitorInfo->PendingMap.insert( PendingMap::value_type( filename, std::make_pair( PendingAction::FileModified, modifiedTime ) ) );
+												monitorInfo->Pending.push_back( std::make_tuple( PendingAction::FileModified, currentTime, filename, filename ) );
 											}
 										}
 										break;
 									}
 									case FILE_ACTION_REMOVED : {
-										std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
-										monitorInfo->PendingMap.erase( filename );
-										monitorInfo->Callback( ( ChangeType::FileChange == monitorInfo->ChangeType ) ? FolderMonitor::Event::FileDeleted : FolderMonitor::Event::FolderDeleted, filename, filename );
+                    monitorInfo->Callback( ( ChangeType::FileChange == monitorInfo->ChangeType ) ? FolderMonitor::Event::FileDeleted : FolderMonitor::Event::FolderDeleted, filename, filename );
 										break;
 									}
 									case FILE_ACTION_RENAMED_OLD_NAME : {
@@ -70,10 +68,9 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 												const std::wstring newFilename = monitorInfo->DirectoryPath + std::wstring( notifyInfo->FileName, notifyInfo->FileNameLength / 2 );
 												const DWORD attributes = GetFileAttributes( newFilename.c_str() );
 												if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
+                          // Delay the callback.
 													std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
-													monitorInfo->PendingMap.erase( filename );
-													monitorInfo->PendingMap.erase( newFilename );
-													monitorInfo->Callback( ( ChangeType::FileChange == monitorInfo->ChangeType ) ? FolderMonitor::Event::FileRenamed : FolderMonitor::Event::FolderRenamed, filename, newFilename );
+												  monitorInfo->Pending.push_back( std::make_tuple( PendingAction::FileRenamed, currentTime, newFilename, filename ) );
 												}
 											}
 										}
@@ -107,72 +104,83 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 			CloseHandle( overlapped.hEvent );
 		}
 	}
+  CoUninitialize();
 	return 0;
 }
 
 DWORD WINAPI FolderMonitor::AddFileThreadProc( LPVOID lpParam )
 {
+  CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
 	MonitorInfo* monitorInfo = reinterpret_cast<MonitorInfo*>( lpParam );
 	if ( nullptr != monitorInfo ) {
 
-		const DWORD retryInterval = 1000 /*msec*/;
-		const long long maximumPendingTime = 5ll * 60ll /*sec*/ * 10000000ll /*100-nanosecond intervals*/;
-		const long long minimumPendingTime = 1ll /*sec*/ * 10000000ll /*100-nanosecond intervals*/;
+		constexpr DWORD retryInterval = 1000 /*msec*/;
+		constexpr long long maximumPendingTime = 5ll * 60ll /*sec*/ * 10000000ll /*100-nanosecond intervals*/;
+		constexpr long long minimumPendingTime = 1ll /*sec*/ * 10000000ll /*100-nanosecond intervals*/;
 
 		while ( WAIT_OBJECT_0 != WaitForSingleObject( monitorInfo->CancelHandle, retryInterval ) ) {
 			const long long currentTime = GetCurrentTimestamp();
 
 			std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
-			auto fileIter = monitorInfo->PendingMap.begin();
-			while ( monitorInfo->PendingMap.end() != fileIter ) {
+			auto fileIter = monitorInfo->Pending.begin();
+			while ( monitorInfo->Pending.end() != fileIter ) {
 				bool removePending = true;
+        auto& [ action, filetime, filename, oldFilename ] = *fileIter;
 
-				const std::wstring& fileName = fileIter->first;
-				long long fileTime = fileIter->second.second;
-				const DWORD attributes = GetFileAttributes( fileName.c_str() );
+				const DWORD attributes = GetFileAttributes( filename.c_str() );
 				if ( INVALID_FILE_ATTRIBUTES != attributes ) {
 					const DWORD desiredAccess = GENERIC_READ;
 					const DWORD shareMode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
 					const DWORD creationDisposition = OPEN_EXISTING;
 					const DWORD flags = 0;
-					const HANDLE fileHandle = CreateFile( fileName.c_str(), desiredAccess, shareMode, nullptr /*securityAttributes*/, creationDisposition, flags, nullptr /*template*/ );
+					const HANDLE fileHandle = CreateFile( filename.c_str(), desiredAccess, shareMode, nullptr /*securityAttributes*/, creationDisposition, flags, nullptr /*template*/ );
 					if ( INVALID_HANDLE_VALUE == fileHandle ) {
 						// File cannot be opened at this time.
-						if ( ( currentTime - fileTime ) < maximumPendingTime ) {
+						if ( ( currentTime - filetime ) < maximumPendingTime ) {
 							// Try again later.
 							removePending = false;
 						}
 					} else {
-						const long long pendingTime = currentTime - fileTime;
+						const long long pendingTime = currentTime - filetime;
 						if ( pendingTime < minimumPendingTime ) {
 							// Keep the file pending until it has 'settled down'.
-							FILETIME creationTime = {};
-							FILETIME accessTime = {};
 							FILETIME writeTime = {};
-							if ( GetFileTime( fileHandle, &creationTime, &accessTime, &writeTime ) ) {
+							if ( GetFileTime( fileHandle, nullptr, nullptr, &writeTime ) ) {
 								const long long currentFileTime = ( static_cast<long long>( writeTime.dwHighDateTime ) << 32 ) + writeTime.dwLowDateTime;
-								fileIter->second.second = currentFileTime;
+								filetime = currentFileTime;
 								removePending = false;
 							}
 							CloseHandle( fileHandle );
 						} else {
 							// File has settled down, so fire off the callback.
 							CloseHandle( fileHandle );
-							const PendingAction action = fileIter->second.first;
-							const FolderMonitor::Event monitorEvent = ( PendingAction::FileAdded == action ) ? FolderMonitor::Event::FileCreated : FolderMonitor::Event::FileModified;
-							monitorInfo->Callback( monitorEvent, fileName, fileName );
+              switch ( action ) {
+                case PendingAction::FileAdded : {
+							    monitorInfo->Callback( FolderMonitor::Event::FileCreated, filename, filename );
+                  break;
+                }
+                case PendingAction::FileModified : {
+							    monitorInfo->Callback( FolderMonitor::Event::FileModified, filename, filename );
+                  break;
+                }
+                case PendingAction::FileRenamed : {
+							    monitorInfo->Callback( FolderMonitor::Event::FileRenamed, oldFilename, filename );
+                  break;
+                }
+              }
 						}
 					}
 				}
 
 				if ( removePending ) {
-					fileIter = monitorInfo->PendingMap.erase( fileIter );
+					fileIter = monitorInfo->Pending.erase( fileIter );
 				} else {
 					++fileIter;
 				}
 			}
 		}
 	}
+  CoUninitialize();
 	return 0;
 }
 

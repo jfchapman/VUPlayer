@@ -750,7 +750,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 	}
 
 	if ( 0 != bytesRead ) {
-		const long currentDecodingChannels = m_CurrentItemDecoding.Info.GetChannels();
+		const long currentDecodingChannels = OutputDecoder::GetOutputChannels( m_CurrentItemDecoding.Info );
 		if ( currentDecodingChannels > 0 ) {
 			ApplyGain( buffer, static_cast<long>( bytesRead / ( currentDecodingChannels * 4 ) ), m_CurrentItemDecoding, m_SoftClipStateDecoding );
 		}
@@ -758,7 +758,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 		std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 		if ( m_CrossfadingStream ) {
 			// Decode and fade out the crossfading stream and mix with the final output buffer.
-			const long channels = m_CurrentItemCrossfading.Info.GetChannels();
+			const long channels = OutputDecoder::GetOutputChannels( m_CurrentItemCrossfading.Info );
 			const long samplerate = m_CurrentItemCrossfading.Info.GetSampleRate();
 			if ( ( channels > 0 ) && ( samplerate > 0 ) ) {
 				const long samplesToRead = static_cast<long>( bytesRead ) / ( channels * 4 );
@@ -1465,7 +1465,7 @@ bool Output::GetFadeToNext() const
 void Output::ApplyGain( float* buffer, const long sampleCount, const Playlist::Item& item, std::vector<float>& softClipState )
 {
 	const bool eqEnabled = m_EQEnabled;
-	const long channels = item.Info.GetChannels();
+	const long channels = OutputDecoder::GetOutputChannels( item.Info );
 	if ( ( 0 != sampleCount ) && ( channels > 0 ) && ( ( Settings::GainMode::Disabled != m_GainMode ) || eqEnabled ) ) {
 		float preamp = eqEnabled ? m_EQPreamp : 0;
 
@@ -1721,7 +1721,7 @@ bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
 	bool success = false;
 	if ( ( mediaInfo.GetSampleRate() > 0 ) && ( mediaInfo.GetChannels() > 0 ) ) {
 		const DWORD samplerate = static_cast<DWORD>( mediaInfo.GetSampleRate() );
-		const DWORD channels = static_cast<DWORD>( mediaInfo.GetChannels() );
+		const DWORD channels = static_cast<DWORD>( OutputDecoder::GetOutputChannels( mediaInfo ) );
 		switch ( m_OutputMode ) {
 			case Settings::OutputMode::Standard : {
 				m_LeadInSeconds = 0;

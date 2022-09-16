@@ -6,6 +6,7 @@
 
 #include <vector>
 
+class Output;
 class Settings;
 class WndToolbarPlayback;
 class WndVisual;
@@ -24,12 +25,28 @@ public:
 
 	// Updates the taskbar state.
 	// 'toolbarPlayback' - playback toolbar.
-	void Update( WndToolbarPlayback& toolbarPlayback );
+	// 'output' - output object.
+	void Update( WndToolbarPlayback& toolbarPlayback, Output& output );
 
 	// Sets the thumbnail preview toolbar button colour, using the application settings.
 	void SetToolbarButtonColour( Settings& settings );
 
+	// Sets whether the progress bar is enabled.
+	void EnableProgressBar( const bool enable );
+
+	// Updates the progress bar.
+	// 'progress' - progress in the range [0.0, 1.0]
+	void UpdateProgress( const float progress );
+
 private:
+	// Updates the thumbnail preview toolbar buttons.
+	// 'toolbarPlayback' - playback toolbar.
+	void UpdateToolbarButtons( WndToolbarPlayback& toolbarPlayback );
+
+	// Updates the progress bar.
+	// 'output' - output object.
+	void UpdateProgress( Output& output );
+
 	// Module instance handle.
 	const HINSTANCE m_hInst;
 
@@ -44,4 +61,13 @@ private:
 
 	// Taskbar list instance.
 	ITaskbarList3* m_TaskbarList = nullptr;
+
+	// Current progress bar state.
+	TBPFLAG m_ProgressState = TBPF_NOPROGRESS;
+
+	// Current progress bar counter.
+	unsigned long long m_ProgressCounter = 0;
+
+	// Whether the progress bar is enabled.
+	bool m_ProgressEnabled = true;
 };

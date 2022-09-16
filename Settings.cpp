@@ -4,9 +4,8 @@
 #include "VUMeter.h"
 #include "VUPlayer.h"
 
-#include "json.hpp"
-
 #include <array>
+#include <type_traits>
 
 // Pitch ranges
 const Settings::PitchRangeMap Settings::s_PitchRanges = {
@@ -25,14 +24,80 @@ const Settings::ButtonSizeMap Settings::s_ButtonSizes = {
 // Default conversion/extraction filename format.
 static const wchar_t s_DefaultExtractFilename[] = L"%A\\%D\\%N - %T";
 
-Settings::Settings( Database& database, Library& library, const std::string& settings ) :
+template <typename T>
+std::optional<T> Settings::ReadSetting( const std::string& name )
+{
+	std::optional<T> value;
+	if ( sqlite3* database = m_Database.GetDatabase(); nullptr != database ) {
+		sqlite3_stmt* stmt = nullptr;
+		const std::string query = "SELECT Value FROM Settings WHERE Setting=?1;";
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1, name.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) {
+				if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					constexpr int kColumnIndex = 0;
+					if constexpr ( std::is_floating_point_v<T> ) {
+						value = static_cast<T>( sqlite3_column_double( stmt, kColumnIndex ) );
+					} else if constexpr ( std::is_integral_v<T> ) {
+						value = static_cast<T>( sqlite3_column_int64( stmt, kColumnIndex ) );
+					} else if constexpr ( std::is_enum_v<T> ) {
+						value = static_cast<T>( sqlite3_column_int( stmt, kColumnIndex ) );
+					} else if constexpr ( std::is_same_v<T, std::string> ) {
+						if ( const unsigned char* text = sqlite3_column_text( stmt, kColumnIndex ); nullptr != text ) {
+							value = reinterpret_cast<const char*>( text );
+						}
+					} else if constexpr ( std::is_same_v<T, std::wstring> ) {
+						if ( const unsigned char* text = sqlite3_column_text( stmt, kColumnIndex ); nullptr != text ) {
+							value = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
+						}
+					} else if constexpr ( std::is_same_v<T, LOGFONT> ) {
+				    if ( const int bytes = sqlite3_column_bytes( stmt, kColumnIndex ); sizeof( LOGFONT ) == bytes ) {
+              value = *reinterpret_cast<const LOGFONT*>( sqlite3_column_blob( stmt, kColumnIndex ) );
+            }
+          } else {
+						static_assert( !sizeof( T ), "Settings::ReadSetting - unsupported type" );
+					}
+				}
+			}
+			sqlite3_finalize( stmt );
+		}
+	}
+	return value;
+}
+
+template <typename T>
+void Settings::WriteSetting( const std::string& name, const T& value )
+{
+	if ( sqlite3* database = m_Database.GetDatabase(); nullptr != database ) {
+		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, name.c_str(), -1 /*strLen*/, SQLITE_STATIC );
+			if constexpr ( std::is_floating_point_v<T> ) {
+				sqlite3_bind_double( stmt, 2, value );
+			} else if constexpr ( std::is_integral_v<T> ) {
+				sqlite3_bind_int64( stmt, 2, value );
+			} else if constexpr ( std::is_enum_v<T> ) {
+				sqlite3_bind_int( stmt, 2, static_cast<int>( value ) );
+			} else if constexpr ( std::is_same_v<T, std::string> ) {
+				sqlite3_bind_text( stmt, 2, value.c_str(), -1 /*strLen*/, SQLITE_STATIC );
+			} else if constexpr ( std::is_same_v<T, std::wstring> ) {
+				sqlite3_bind_text( stmt, 2, WideStringToUTF8( value ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+			} else if constexpr (std::is_same_v<T, LOGFONT> ) {
+  			sqlite3_bind_blob( stmt, 2, &value, sizeof( LOGFONT ), SQLITE_STATIC );
+      } else {
+				static_assert( !sizeof( T ), "Settings::WriteSetting - unsupported type" );
+			}
+			sqlite3_step( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
+}
+
+Settings::Settings( Database& database, Library& library ) :
 	m_Database( database ),
 	m_Library( library )
 {
 	UpdateDatabase();
-	if ( !settings.empty() ) {
-		ImportSettings( settings );
-	}
 }
 
 Settings::~Settings()
@@ -66,8 +131,10 @@ void Settings::UpdateSettingsTable()
 				for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
-						const std::string name = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) );
-						columns.insert( name );
+						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
+              const std::string name = reinterpret_cast<const char*>( text );
+						  columns.insert( name );
+            }
 						break;
 					}
 				}
@@ -102,8 +169,10 @@ void Settings::UpdatePlaylistColumnsTable()
 				for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
-						const std::string name = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) );
-						columns.insert( name );
+						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
+						  const std::string name = reinterpret_cast<const char*>( text );
+						  columns.insert( name );
+            }
 						break;
 					}
 				}
@@ -138,8 +207,10 @@ void Settings::UpdatePlaylistsTable()
 				for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
-						const std::string name = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) );
-						columns.insert( name );
+						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
+						  const std::string name = reinterpret_cast<const char*>( text );
+						  columns.insert( name );
+            }
 						break;
 					}
 				}
@@ -177,8 +248,10 @@ void Settings::UpdatePlaylistTable( const std::string& table )
 				for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
-						const std::string name = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) );
-						columns.insert( name );
+						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
+						  const std::string name = reinterpret_cast<const char*>( text );
+						  columns.insert( name );
+            }
 						break;
 					}
 				}
@@ -214,8 +287,10 @@ void Settings::UpdateHotkeysTable()
 				for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
-						const std::string name = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) );
-						columns.insert( name );
+						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
+						  const std::string name = reinterpret_cast<const char*>( text );
+						  columns.insert( name );
+            }
 						break;
 					}
 				}
@@ -461,182 +536,59 @@ void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const bool s
 void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour,
 		bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='TreeFont';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const int bytes = sqlite3_column_bytes( stmt, 0 /*columnIndex*/ );
-				if ( sizeof( LOGFONT ) == bytes ) {
-					font = *reinterpret_cast<const LOGFONT*>( sqlite3_column_blob( stmt, 0 /*columnIndex*/ ) );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeFontColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				fontColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeBackgroundColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				backgroundColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeHighlightColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				highlightColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeIconColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				iconColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeFavourites';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				showFavourites = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeStreams';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				showStreams = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeAllTracks';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				showAllTracks = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeArtists';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				showArtists = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeAlbums';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				showAlbums = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeGenres';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				showGenres = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='TreeYears';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				showYears = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
+	if ( const auto value = ReadSetting<LOGFONT>( "TreeFont" ); value ) {
+		font = *value;
+	}
+	if ( const auto value = ReadSetting<COLORREF>( "TreeFontColour" ); value ) {
+		fontColour = *value;
+	}
+	if ( const auto value = ReadSetting<COLORREF>( "TreeBackgroundColour" ); value ) {
+		backgroundColour = *value;
+	}
+	if ( const auto value = ReadSetting<COLORREF>( "TreeHighlightColour" ); value ) {
+		highlightColour = *value;
+	}
+	if ( const auto value = ReadSetting<COLORREF>( "TreeIconColour" ); value ) {
+		iconColour = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "TreeFavourites" ); value ) {
+		showFavourites = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "TreeStreams" ); value ) {
+		showStreams = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "TreeAllTracks" ); value ) {
+		showAllTracks = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "TreeArtists" ); value ) {
+		showArtists = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "TreeAlbums" ); value ) {
+		showAlbums = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "TreeGenres" ); value ) {
+		showGenres = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "TreeYears" ); value ) {
+		showYears = *value;
 	}
 }
 
 void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF iconColour,
 		const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string insertQuery = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, insertQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "TreeFont", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_blob( stmt, 2, &font, sizeof( LOGFONT ), SQLITE_STATIC );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeFontColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( fontColour ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeBackgroundColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( backgroundColour ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeHighlightColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( highlightColour ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeIconColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( iconColour ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeFavourites", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( showFavourites ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeStreams", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( showStreams ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeAllTracks", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( showAllTracks ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeArtists", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( showArtists ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeAlbums", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( showAlbums ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeGenres", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( showGenres ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "TreeYears", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( showYears ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "TreeFont", font );
+  WriteSetting( "TreeFontColour", fontColour );
+  WriteSetting( "TreeBackgroundColour", backgroundColour );
+  WriteSetting( "TreeHighlightColour", highlightColour );
+  WriteSetting( "TreeIconColour", iconColour );
+  WriteSetting( "TreeFavourites", showFavourites );
+  WriteSetting( "TreeStreams", showStreams );
+  WriteSetting( "TreeAllTracks", showAllTracks );
+  WriteSetting( "TreeArtists", showArtists );
+  WriteSetting( "TreeAlbums", showAlbums );
+  WriteSetting( "TreeGenres", showGenres );
+  WriteSetting( "TreeYears", showYears );
 }
 
 Playlists Settings::GetPlaylists()
@@ -654,13 +606,11 @@ Playlists Settings::GetPlaylists()
 				for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "ID" ) {
-						const unsigned char* text = sqlite3_column_text( stmt, columnIndex );
-						if ( nullptr != text ) {
+						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
 							playlistID = reinterpret_cast<const char*>( text );
 						}
 					} else if ( columnName == "Name" ) {
-						const unsigned char* text = sqlite3_column_text( stmt, columnIndex );
-						if ( nullptr != text ) {
+						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
 							playlistName = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
 						}
 					}
@@ -704,8 +654,7 @@ void Settings::ReadPlaylistFiles( Playlist& playlist )
 					for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 						const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 						if ( columnName == "File" ) {
-							const unsigned char* text = sqlite3_column_text( stmt, columnIndex );
-							if ( nullptr != text ) {
+							if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
 								filename = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
 							}
 						} else if ( columnName == "Pending" ) {
@@ -823,683 +772,217 @@ void Settings::SavePlaylist( Playlist& playlist )
 
 std::filesystem::path Settings::GetDefaultArtwork()
 {
-	std::filesystem::path artwork;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='DefaultArtwork';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
-				if ( nullptr != text ) {
-					artwork = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return artwork;
+	return ReadSetting<std::wstring>( "DefaultArtwork" ).value_or( std::wstring() );
 }
 
 void Settings::SetDefaultArtwork( const std::filesystem::path& artwork )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "DefaultArtwork", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, WideStringToUTF8( artwork ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "DefaultArtwork", artwork.native() );
 }
 
 COLORREF Settings::GetOscilloscopeColour()
 {
-	COLORREF colour = {};
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='OscilloscopeColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				colour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return colour;
+  constexpr COLORREF kDefaultBackground = RGB( 0, 0, 0 );
+
+  return ReadSetting<COLORREF>( "OscilloscopeColour" ).value_or( kDefaultBackground );
 }
 
 void Settings::SetOscilloscopeColour( const COLORREF colour )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "OscilloscopeColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( colour ) );
-			sqlite3_step( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "OscilloscopeColour", colour );
 }
 
 COLORREF Settings::GetOscilloscopeBackground()
 {
-	COLORREF colour = 0xffffffff;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='OscilloscopeBackground';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				colour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return colour;
+  constexpr COLORREF kDefaultBackground = RGB( 255, 255, 255 );
+
+  return ReadSetting<COLORREF>( "OscilloscopeBackground" ).value_or( kDefaultBackground );
 }
 
 void Settings::SetOscilloscopeBackground( const COLORREF colour )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "OscilloscopeBackground", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( colour ) );
-			sqlite3_step( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "OscilloscopeBackground", colour );
 }
 
 float Settings::GetOscilloscopeWeight()
 {
-	float weight = 2.0f;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='OscilloscopeWeight';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const float value = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
-				if ( ( value >= 0.5f ) && ( value <= 5.0f ) ) {
-					weight = value;
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return weight;
+  constexpr float kDefaultWeight = 2.0f;
+  constexpr float kMinWeight = 0.5f;
+  constexpr float kMaxWeight = 5.0f;
+
+  return std::clamp( ReadSetting<float>( "OscilloscopeWeight" ).value_or( kDefaultWeight ), kMinWeight, kMaxWeight );
 }
 
 void Settings::SetOscilloscopeWeight( const float weight )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "OscilloscopeWeight", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_double( stmt, 2, weight );
-			sqlite3_step( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "OscilloscopeWeight", weight );
 }
 
 float Settings::GetVUMeterDecay()
 {
-	float decay = VUMeterDecayNormal;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='VUMeterDecay';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const float value = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
-				if ( value < VUMeterDecayMinimum ) {
-					decay = VUMeterDecayMinimum;
-				} else if ( value > VUMeterDecayMaximum ) {
-					decay = VUMeterDecayMaximum;
-				} else {
-					decay = value;
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return decay;
+  return std::clamp( ReadSetting<float>( "VUMeterDecay" ).value_or( VUMeterDecayNormal ), VUMeterDecayMinimum, VUMeterDecayMaximum );
 }
 
 void Settings::SetVUMeterDecay( const float decay )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "VUMeterDecay", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_double( stmt, 2, decay );
-			sqlite3_step( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "VUMeterDecay", decay );
 }
 
 void Settings::GetSpectrumAnalyserSettings( COLORREF& base, COLORREF& peak, COLORREF& background )
 {
-	base = RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ );
-	peak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
-	background = RGB( 0x00 /*red*/, 0x00 /*green*/, 0x00 /*blue*/ );
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='SpectrumAnalyserBase';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				base = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
+	constexpr COLORREF kBase = RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ );
+	constexpr COLORREF kPeak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
+	constexpr COLORREF kBackground = RGB( 0x00 /*red*/, 0x00 /*green*/, 0x00 /*blue*/ );
 
-		query = "SELECT Value FROM Settings WHERE Setting='SpectrumAnalyserPeak';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				peak = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-
-		query = "SELECT Value FROM Settings WHERE Setting='SpectrumAnalyserBackground';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				background = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  base = ReadSetting<COLORREF>( "SpectrumAnalyserBase" ).value_or( kBase );
+  peak = ReadSetting<COLORREF>( "SpectrumAnalyserPeak" ).value_or( kPeak );
+  background = ReadSetting<COLORREF>( "SpectrumAnalyserBackground" ).value_or( kBackground );
 }
 
 void Settings::SetSpectrumAnalyserSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "SpectrumAnalyserBase", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( base ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "SpectrumAnalyserPeak", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( peak ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "SpectrumAnalyserBackground", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( background ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "SpectrumAnalyserBase", base );
+  WriteSetting( "SpectrumAnalyserPeak", peak );
+  WriteSetting( "SpectrumAnalyserBackground", background );
 }
 
 void Settings::GetPeakMeterSettings( COLORREF& base, COLORREF& peak, COLORREF& background )
 {
-	base = RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ );
-	peak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
-	background = RGB( 0 /*red*/, 0 /*green*/, 0 /*blue*/ );
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='PeakMeterBase';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				base = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
+	constexpr COLORREF kBase = RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ );
+	constexpr COLORREF kPeak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
+	constexpr COLORREF kBackground = RGB( 0 /*red*/, 0 /*green*/, 0 /*blue*/ );
 
-		query = "SELECT Value FROM Settings WHERE Setting='PeakMeterPeak';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				peak = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-
-		query = "SELECT Value FROM Settings WHERE Setting='PeakMeterBackground';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				background = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  base = ReadSetting<COLORREF>( "PeakMeterBase" ).value_or( kBase );
+  peak = ReadSetting<COLORREF>( "PeakMeterPeak" ).value_or( kPeak );
+  background = ReadSetting<COLORREF>( "PeakMeterBackground" ).value_or( kBackground );
 }
 
 void Settings::SetPeakMeterSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "PeakMeterBase", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( base ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "PeakMeterPeak", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( peak ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "PeakMeterBackground", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( background ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "PeakMeterBase", base );
+  WriteSetting( "PeakMeterPeak", peak );
+  WriteSetting( "PeakMeterBackground", background );
 }
 
 void Settings::GetStartupPosition( int& x, int& y, int& width, int& height, bool& maximised, bool& minimised )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='StartupX';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				x = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='StartupY';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				y = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='StartupWidth';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				width = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='StartupHeight';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				height = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='StartupMaximised';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				maximised = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='StartupMinimised';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				minimised = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
+	if ( const auto value = ReadSetting<int>( "StartupX" ); value ) {
+		x = *value;
+	}
+	if ( const auto value = ReadSetting<int>( "StartupY" ); value ) {
+		y = *value;
+	}
+	if ( const auto value = ReadSetting<int>( "StartupWidth" ); value ) {
+		width = *value;
+	}
+	if ( const auto value = ReadSetting<int>( "StartupHeight" ); value ) {
+		height = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "StartupMaximised" ); value ) {
+		maximised = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "StartupMinimised" ); value ) {
+		minimised = *value;
 	}
 }
 
 void Settings::SetStartupPosition( const int x, const int y, const int width, const int height, const bool maximised, const bool minimised )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "StartupX", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, x );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_bind_text( stmt, 1, "StartupY", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, y );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_bind_text( stmt, 1, "StartupWidth", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, width );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_bind_text( stmt, 1, "StartupHeight", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, height );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_bind_text( stmt, 1, "StartupMaximised", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, maximised );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_bind_text( stmt, 1, "StartupMinimised", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, minimised );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "StartupX", x );
+  WriteSetting( "StartupY", y );
+  WriteSetting( "StartupWidth", width );
+  WriteSetting( "StartupHeight", height );
+  WriteSetting( "StartupMaximised", maximised );
+  WriteSetting( "StartupMinimised", minimised );
 }
 
 int Settings::GetVisualID()
 {
-	int visualID = 0;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='VisualID';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				visualID = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return visualID;
+  return ReadSetting<int>( "VisualID" ).value_or( 0 );
 }
 
 void Settings::SetVisualID( const int visualID )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "VisualID", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, visualID );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "VisualID", visualID );
 }
 
 int Settings::GetSplitWidth()
 {
-	int width = 0;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='SplitWidth';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				width = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return width;
+  return ReadSetting<int>( "SplitWidth" ).value_or( 0 );
 }
 
 void Settings::SetSplitWidth( const int width )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "SplitWidth", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, width );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "SplitWidth", width );
 }
 
 float Settings::GetVolume()
 {
-	float volume = 1.0f;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='Volume';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				volume = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return volume;
+  return ReadSetting<float>( "Volume" ).value_or( 1.0f );
 }
 
 void Settings::SetVolume( const float volume )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "Volume", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_double( stmt, 2, volume );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "Volume", volume );
 }
 
 std::wstring Settings::GetStartupPlaylist()
 {
-	std::wstring playlist;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='StartupPlaylist';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) );
-				if ( nullptr != text ) {
-					playlist = UTF8ToWideString( text );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return playlist;
+  return ReadSetting<std::wstring>( "StartupPlaylist" ).value_or( std::wstring() );
 }
 
 void Settings::SetStartupPlaylist( const std::wstring& playlist )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "StartupPlaylist", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, WideStringToUTF8( playlist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "StartupPlaylist", playlist );
 }
 
 std::wstring Settings::GetStartupFilename()
 {
-	std::wstring filename;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='StartupFilename';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) );
-				if ( nullptr != text ) {
-					filename = UTF8ToWideString( text );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return filename;
+  return ReadSetting<std::wstring>( "StartupFilename" ).value_or( std::wstring() );
 }
 
 void Settings::SetStartupFilename( const std::wstring& filename )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "StartupFilename", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "StartupFilename", filename );
 }
 
 void Settings::GetCounterSettings( LOGFONT& font, COLORREF& fontColour, bool& showRemaining )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='CounterFont';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const int bytes = sqlite3_column_bytes( stmt, 0 /*columnIndex*/ );
-				if ( sizeof( LOGFONT ) == bytes ) {
-					font = *reinterpret_cast<const LOGFONT*>( sqlite3_column_blob( stmt, 0 /*columnIndex*/ ) );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='CounterFontColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				fontColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='CounterRemaining';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				showRemaining = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
+	if ( const auto value = ReadSetting<LOGFONT>( "CounterFont" ); value ) {
+		font = *value;
+	}
+	if ( const auto value = ReadSetting<COLORREF>( "CounterFontColour" ); value ) {
+		fontColour = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "CounterRemaining" ); value ) {
+		showRemaining = *value;
 	}
 }
 
 void Settings::SetCounterSettings( const LOGFONT& font, const COLORREF fontColour, const bool showRemaining )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "CounterFont", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_blob( stmt, 2, &font, sizeof( LOGFONT ), SQLITE_STATIC );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "CounterFontColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( fontColour ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "CounterRemaining", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, showRemaining ? 1 : 0 );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "CounterFont", font );
+  WriteSetting( "CounterFontColour", fontColour );
+  WriteSetting( "CounterRemaining", showRemaining );
 }
 
 void Settings::GetOutputSettings( std::wstring& deviceName, OutputMode& mode )
 {
 	deviceName.clear();
 	mode = OutputMode::Standard;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='OutputDevice';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) );
-				if ( nullptr != text ) {
-					deviceName = UTF8ToWideString( text );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='OutputMode';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				mode = static_cast<OutputMode>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
+
+	if ( const auto value = ReadSetting<std::wstring>( "OutputDevice" ); value ) {
+		deviceName = *value;
+	}
+	if ( const auto value = ReadSetting<OutputMode>( "OutputMode" ); value ) {
+		mode = std::clamp( *value, OutputMode::Standard, OutputMode::ASIO );
 	}
 }
 
 void Settings::SetOutputSettings( const std::wstring& deviceName, const OutputMode mode )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "OutputDevice", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, WideStringToUTF8( deviceName ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "OutputMode", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( mode ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "OutputDevice", deviceName );
+  WriteSetting( "OutputMode", mode );
 }
 
 void Settings::GetDefaultMODSettings( long long& mod, long long& mtm, long long& s3m, long long& xm, long long& it )
@@ -1516,87 +999,31 @@ void Settings::GetDefaultMODSettings( long long& mod, long long& mtm, long long&
 void Settings::GetMODSettings( long long& mod, long long& mtm, long long& s3m, long long& xm, long long& it )
 {
 	GetDefaultMODSettings( mod, mtm, s3m, xm, it );
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='MOD';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				mod = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='MTM';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				mtm = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='S3M';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				s3m = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='XM';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				xm = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='IT';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				it = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
+
+	if ( const auto value = ReadSetting<long long>( "MOD" ); value ) {
+		mod = *value;
+	}
+	if ( const auto value = ReadSetting<long long>( "MTM" ); value ) {
+		mtm = *value;
+	}
+	if ( const auto value = ReadSetting<long long>( "S3M" ); value ) {
+		s3m = *value;
+	}
+	if ( const auto value = ReadSetting<long long>( "XM" ); value ) {
+		xm = *value;
+	}
+	if ( const auto value = ReadSetting<long long>( "IT" ); value ) {
+		it = *value;
 	}
 }
 
 void Settings::SetMODSettings( const long long mod, const long long mtm, const long long s3m, const long long xm, const long long it )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "MOD", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int64( stmt, 2, mod );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "MTM", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int64( stmt, 2, mtm );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "S3M", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int64( stmt, 2, s3m );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "XM", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int64( stmt, 2, xm );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "IT", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int64( stmt, 2, it );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "MOD", mod );
+  WriteSetting( "MTM", mtm );
+  WriteSetting( "S3M", s3m );
+  WriteSetting( "XM", xm );
+  WriteSetting( "IT", it );
 }
 
 void Settings::GetDefaultGainSettings( GainMode& gainMode, LimitMode& limitMode, float& preamp )
@@ -1609,67 +1036,25 @@ void Settings::GetDefaultGainSettings( GainMode& gainMode, LimitMode& limitMode,
 void Settings::GetGainSettings( GainMode& gainMode, LimitMode& limitMode, float& preamp )
 {
 	GetDefaultGainSettings( gainMode, limitMode, preamp );
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='GainMode';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				if ( ( value >= static_cast<int>( GainMode::Disabled ) ) && ( value <= static_cast<int>( GainMode::Album ) ) ) {
-					gainMode = static_cast<GainMode>( value );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='GainPreamp';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				preamp = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='GainLimit';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				if ( ( value >= static_cast<int>( LimitMode::None ) ) && ( value <= static_cast<int>( LimitMode::Soft ) ) ) {
-					limitMode = static_cast<LimitMode>( value );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
+
+	if ( const auto value = ReadSetting<GainMode>( "GainMode" ); value ) {
+		gainMode = std::clamp( *value, GainMode::Disabled, GainMode::Album );
+	}
+	if ( const auto value = ReadSetting<LimitMode>( "GainLimit" ); value ) {
+		limitMode = std::clamp( *value, LimitMode::None, LimitMode::Soft );
+	}
+	if ( const auto value = ReadSetting<float>( "GainPreamp" ); value ) {
+    constexpr float kMinPreamp = -6.0f;
+    constexpr float kMaxPreamp = 12.0f;
+		preamp = std::clamp( *value, kMinPreamp, kMaxPreamp );
 	}
 }
 
 void Settings::SetGainSettings( const GainMode gainMode, const LimitMode limitMode, const float preamp )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "GainMode", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( gainMode ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "GainPreamp", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_double( stmt, 2, preamp );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "GainLimit", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( limitMode ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "GainMode", gainMode );
+  WriteSetting( "GainLimit", limitMode );
+  WriteSetting( "GainPreamp", preamp );
 }
 
 void Settings::GetSystraySettings( bool& enable, bool& minimise, SystrayCommand& singleClick, SystrayCommand& doubleClick, SystrayCommand& tripleClick, SystrayCommand& quadClick )
@@ -1680,112 +1065,35 @@ void Settings::GetSystraySettings( bool& enable, bool& minimise, SystrayCommand&
 	doubleClick = SystrayCommand::None;
 	tripleClick = SystrayCommand::None;
 	quadClick = SystrayCommand::None;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='SysTrayEnable';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				enable = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='SysTrayMinimise';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				minimise = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='SysTraySingleClick';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				if ( ( value >= static_cast<int>( SystrayCommand::None ) ) && ( value <= static_cast<int>( SystrayCommand::ShowHide ) ) ) {
-					singleClick = static_cast<SystrayCommand>( value );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='SysTrayDoubleClick';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				if ( ( value >= static_cast<int>( SystrayCommand::None ) ) && ( value <= static_cast<int>( SystrayCommand::ShowHide ) ) ) {
-					doubleClick = static_cast<SystrayCommand>( value );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='SysTrayTripleClick';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				if ( ( value >= static_cast<int>( SystrayCommand::None ) ) && ( value <= static_cast<int>( SystrayCommand::ShowHide ) ) ) {
-					tripleClick = static_cast<SystrayCommand>( value );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='SysTrayQuadrupleClick';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				if ( ( value >= static_cast<int>( SystrayCommand::None ) ) && ( value <= static_cast<int>( SystrayCommand::ShowHide ) ) ) {
-					quadClick = static_cast<SystrayCommand>( value );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
+
+	if ( const auto value = ReadSetting<bool>( "SysTrayEnable" ); value ) {
+		enable = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "SysTrayMinimise" ); value ) {
+		minimise = *value;
+	}
+	if ( const auto value = ReadSetting<SystrayCommand>( "SysTraySingleClick" ); value ) {
+		singleClick = std::clamp( *value, SystrayCommand::None, SystrayCommand::ShowHide );
+	}
+	if ( const auto value = ReadSetting<SystrayCommand>( "SysTrayDoubleClick" ); value ) {
+		doubleClick = std::clamp( *value, SystrayCommand::None, SystrayCommand::ShowHide );
+	}
+	if ( const auto value = ReadSetting<SystrayCommand>( "SysTrayTripleClick" ); value ) {
+		tripleClick = std::clamp( *value, SystrayCommand::None, SystrayCommand::ShowHide );
+	}
+	if ( const auto value = ReadSetting<SystrayCommand>( "SysTrayQuadrupleClick" ); value ) {
+		quadClick = std::clamp( *value, SystrayCommand::None, SystrayCommand::ShowHide );
 	}
 }
 
 void Settings::SetSystraySettings( const bool enable, const bool minimise, const SystrayCommand singleClick, const SystrayCommand doubleClick, const SystrayCommand tripleClick, const SystrayCommand quadClick )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "SysTrayEnable", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, enable );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "SysTrayMinimise", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, minimise );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "SysTraySingleClick", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( singleClick ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "SysTrayDoubleClick", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( doubleClick ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "SysTrayTripleClick", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( tripleClick ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "SysTrayQuadrupleClick", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( quadClick ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "SysTrayEnable", enable );
+  WriteSetting( "SysTrayMinimise", minimise );
+  WriteSetting( "SysTraySingleClick", singleClick );
+  WriteSetting( "SysTrayDoubleClick", doubleClick );
+  WriteSetting( "SysTrayTripleClick", tripleClick );
+  WriteSetting( "SysTrayQuadrupleClick", quadClick );
 }
 
 void Settings::GetPlaybackSettings( bool& randomPlay, bool& repeatTrack, bool& repeatPlaylist, bool& crossfade )
@@ -1794,41 +1102,20 @@ void Settings::GetPlaybackSettings( bool& randomPlay, bool& repeatTrack, bool& r
 	repeatTrack = false;
 	repeatPlaylist = false;
 	crossfade = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='RandomPlay';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				randomPlay = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='RepeatTrack';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				repeatTrack = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='RepeatPlaylist';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				repeatPlaylist = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='Crossfade';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				crossfade = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
+
+	if ( const auto value = ReadSetting<bool>( "RandomPlay" ); value ) {
+		randomPlay = *value;
 	}
+	if ( const auto value = ReadSetting<bool>( "RepeatTrack" ); value ) {
+		repeatTrack = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "RepeatPlaylist" ); value ) {
+		repeatPlaylist = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "Crossfade" ); value ) {
+		crossfade = *value;
+	}
+
 	if ( randomPlay ) {
 		repeatTrack = repeatPlaylist = false;
 	} else if ( repeatTrack ) {
@@ -1840,35 +1127,10 @@ void Settings::GetPlaybackSettings( bool& randomPlay, bool& repeatTrack, bool& r
 
 void Settings::SetPlaybackSettings( const bool randomPlay, const bool repeatTrack, const bool repeatPlaylist, const bool crossfade )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "RandomPlay", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, randomPlay );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "RepeatTrack", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, repeatTrack );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "RepeatPlaylist", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, repeatPlaylist );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "Crossfade", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, crossfade );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "RandomPlay", randomPlay );
+  WriteSetting( "RepeatTrack", repeatTrack );
+  WriteSetting( "RepeatPlaylist", repeatPlaylist );
+  WriteSetting( "Crossfade", crossfade );
 }
 
 void Settings::GetHotkeySettings( bool& enable, HotkeyList& hotkeys )
@@ -1905,8 +1167,7 @@ void Settings::GetHotkeySettings( bool& enable, HotkeyList& hotkeys )
 					} else if ( columnName == "Shift" ) {
 						hotkey.Shift = ( 0 != sqlite3_column_int( stmt, columnIndex ) );
 					} else if ( columnName == "Keyname" ) {
-						const unsigned char* text = sqlite3_column_text( stmt, columnIndex );
-						if ( nullptr != text ) {
+						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
 							hotkey.Name = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
 						}
 					}
@@ -1961,37 +1222,12 @@ void Settings::SetHotkeySettings( const bool enable, const HotkeyList& hotkeys )
 
 Settings::PitchRange Settings::GetPitchRange()
 {
-	PitchRange range = PitchRange::Small;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='PitchRange';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				if ( ( value >= static_cast<int>( PitchRange::Small ) ) && ( value <= static_cast<int>( PitchRange::Large ) ) ) {
-					range = static_cast<PitchRange>( value );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return range;
+	return std::clamp<PitchRange>( ReadSetting<PitchRange>( "PitchRange" ).value_or( PitchRange::Small ), PitchRange::Small, PitchRange::Large );
 }
 
 void Settings::SetPitchRange( const PitchRange range )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "PitchRange", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( range ) );
-			sqlite3_step( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "PitchRange", range );
 }
 
 Settings::PitchRangeMap Settings::GetPitchRangeOptions() const
@@ -2001,34 +1237,12 @@ Settings::PitchRangeMap Settings::GetPitchRangeOptions() const
 
 int Settings::GetOutputControlType()
 {
-	int type = 0;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='OutputControlType';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				type = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return type;
+  return ReadSetting<int>( "OutputControlType" ).value_or( 0 );
 }
 
 void Settings::SetOutputControlType( const int type )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "OutputControlType", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, type );
-			sqlite3_step( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "OutputControlType", type );
 }
 
 void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename, bool& addToLibrary, bool& joinTracks )
@@ -2037,47 +1251,20 @@ void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename,
 	filename.clear();
 	addToLibrary = true;
 	joinTracks = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='ExtractFolder';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
-				if ( nullptr != text ) {
-					folder = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ExtractFilename';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
-				if ( nullptr != text ) {
-					filename = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ExtractToLibrary';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				addToLibrary = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ExtractJoin';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				joinTracks = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
+
+	if ( const auto value = ReadSetting<std::wstring>( "ExtractFolder" ); value ) {
+		folder = *value;
 	}
+	if ( const auto value = ReadSetting<std::wstring>( "ExtractFilename" ); value ) {
+		filename = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "ExtractToLibrary" ); value ) {
+		addToLibrary = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "ExtractJoin" ); value ) {
+		joinTracks = *value;
+	}
+
 	if ( folder.empty() || !FolderExists( folder ) ) {
 		PWSTR path = nullptr;
 		HRESULT hr = SHGetKnownFolderPath( FOLDERID_Music, KF_FLAG_DEFAULT, NULL /*token*/, &path );
@@ -2093,361 +1280,110 @@ void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename,
 
 void Settings::SetExtractSettings( const std::wstring& folder, const std::wstring& filename, const bool addToLibrary, const bool joinTracks )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "ExtractFolder", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, WideStringToUTF8( folder ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "ExtractFilename", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "ExtractToLibrary", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, addToLibrary );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "ExtractJoin", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, joinTracks );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "ExtractFolder", folder );
+  WriteSetting( "ExtractFilename", filename );
+  WriteSetting( "ExtractToLibrary", addToLibrary );
+  WriteSetting( "ExtractJoin", joinTracks );
 }
 
 Settings::EQ Settings::GetEQSettings()
 {
 	EQ eq;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='EQVisible';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				eq.Visible = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='EQX';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				eq.X = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='EQY';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				eq.Y = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='EQEnable';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				eq.Enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='EQPreamp';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				float preamp = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
-				if ( preamp < EQ::MinGain ) {
-					preamp = EQ::MinGain;
-				} else if ( preamp > EQ::MaxGain ) {
-					preamp = EQ::MaxGain;
-				}
-				eq.Preamp = preamp;
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		for ( auto& gainIter : eq.Gains ) {
-			stmt = nullptr;
-			query = "SELECT Value FROM Settings WHERE Setting='EQ" + std::to_string( gainIter.first ) + "';";
-			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-				if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-					float gain = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
-					if ( gain < EQ::MinGain ) {
-						gain = EQ::MinGain;
-					} else if ( gain > EQ::MaxGain ) {
-						gain = EQ::MaxGain;
-					}
-					gainIter.second = gain;
-				}
-				sqlite3_finalize( stmt );
-			}
-		}
+	if ( const auto value = ReadSetting<bool>( "EQVisible" ); value ) {
+		eq.Visible = *value;
 	}
+	if ( const auto value = ReadSetting<int>( "EQX" ); value ) {
+		eq.X = *value;
+	}
+	if ( const auto value = ReadSetting<int>( "EQY" ); value ) {
+		eq.Y = *value;
+	}
+	if ( const auto value = ReadSetting<bool>( "EQEnable" ); value ) {
+		eq.Enabled = *value;
+	}
+	if ( const auto value = ReadSetting<float>( "EQPreamp" ); value ) {
+		eq.Preamp = std::clamp( *value, EQ::MinGain, EQ::MaxGain );
+	}
+	for ( auto& [ freq, gain ] : eq.Gains ) {
+    const std::string settingName = "EQ" + std::to_string( freq );
+	  if ( const auto value = ReadSetting<float>( settingName ); value ) {
+		  gain = std::clamp( *value, EQ::MinGain, EQ::MaxGain );
+	  }
+  }
 	return eq;
 }
 
 void Settings::SetEQSettings( const EQ& eq )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "EQVisible", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, eq.Visible );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "EQX", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, eq.X );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "EQY", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, eq.Y );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "EQEnable", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, eq.Enabled );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "EQPreamp", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_double( stmt, 2, eq.Preamp );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			for ( auto& gainIter : eq.Gains ) {
-				const std::string setting = "EQ" + std::to_string( gainIter.first );
-				const float gain = gainIter.second;
-				sqlite3_bind_text( stmt, 1, setting.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-				sqlite3_bind_double( stmt, 2, gain );
-				sqlite3_step( stmt );
-				sqlite3_reset( stmt );
-			}
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "EQVisible", eq.Visible );
+  WriteSetting( "EQX", eq.X );
+  WriteSetting( "EQY", eq.Y );
+  WriteSetting( "EQEnable", eq.Enabled );
+  WriteSetting( "EQPreamp", eq.Preamp );
+	for ( const auto& [ freq, gain ] : eq.Gains ) {
+    const std::string settingName = "EQ" + std::to_string( freq );
+    WriteSetting( settingName, gain );
+  }
 }
 
 std::wstring Settings::GetEncoder()
 {
-	std::wstring encoderName;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='Encoder';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
-				if ( nullptr != text ) {
-					encoderName = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return encoderName;
+  return ReadSetting<std::wstring>( "Encoder" ).value_or( std::wstring() );
 }
 
 void Settings::SetEncoder( const std::wstring& encoder )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "Encoder", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, WideStringToUTF8( encoder ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "Encoder", encoder );
 }
 
 std::string Settings::GetEncoderSettings( const std::wstring& encoder )
 {
-	std::string settings;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string settingName = WideStringToUTF8( L"Encoder_" + encoder );
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting=?1;";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, settingName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) {
-				if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-					const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
-					if ( nullptr != text ) {
-						settings = reinterpret_cast<const char*>( text );
-					}
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return settings;
+	const std::string settingName = WideStringToUTF8( L"Encoder_" + encoder );
+  return ReadSetting<std::string>( settingName ).value_or( std::string() );
 }
 
 void Settings::SetEncoderSettings( const std::wstring& encoder, const std::string& settings )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string settingName = WideStringToUTF8( L"Encoder_" + encoder );
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, settingName.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, settings.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+	const std::string settingName = WideStringToUTF8( L"Encoder_" + encoder );
+  WriteSetting( settingName, settings );
 }
 
 std::wstring Settings::GetSoundFont()
 {
-	std::wstring soundFont;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='SoundFont';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
-				if ( nullptr != text ) {
-					soundFont = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return soundFont;
+  return ReadSetting<std::wstring>( "SoundFont" ).value_or( std::wstring() );
 }
 
 void Settings::SetSoundFont( const std::wstring& filename )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "SoundFont", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+  WriteSetting( "SoundFont", filename );
 }
 
 bool Settings::GetToolbarEnabled( const int toolbarID )
 {
-	bool enabled = true;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string idString = "Toolbar" + std::to_string( toolbarID );
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='" + idString + "';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return enabled;
+	const std::string toolbarName = "Toolbar" + std::to_string( toolbarID );
+	return ReadSetting<bool>( toolbarName ).value_or( true );
 }
 
 void Settings::SetToolbarEnabled( const int toolbarID, const bool enabled )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string idString = "Toolbar" + std::to_string( toolbarID );
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, idString.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, enabled );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+	const std::string toolbarName = "Toolbar" + std::to_string( toolbarID );
+  WriteSetting( toolbarName, enabled );
 }
 
 bool Settings::GetMergeDuplicates()
 {
-	bool mergeDuplicates = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='HideDuplicates';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				mergeDuplicates = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return mergeDuplicates;
+	return ReadSetting<bool>( "HideDuplicates" ).value_or( false );
 }
 
 void Settings::SetMergeDuplicates( const bool mergeDuplicates )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "HideDuplicates", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, mergeDuplicates );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+  WriteSetting( "HideDuplicates", mergeDuplicates );
 }
 
 std::wstring Settings::GetLastFolder( const std::string& folderType )
 {
-	std::wstring lastFolder;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='Folder" + folderType + "';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
-				if ( nullptr != text ) {
-					lastFolder = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
+  const std::string settingName = "Folder" + folderType;
+	std::wstring lastFolder = ReadSetting<std::wstring>( settingName ).value_or( std::wstring() );
 	if ( !lastFolder.empty() ) {
 		if ( ( lastFolder.back() == '\\'  ) || ( lastFolder.back() == '/' ) ) {
 			lastFolder.pop_back();
@@ -2461,80 +1397,24 @@ std::wstring Settings::GetLastFolder( const std::string& folderType )
 
 void Settings::SetLastFolder( const std::string& folderType, const std::wstring& folder )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			const std::string folderSetting = "Folder" + folderType;
-			sqlite3_bind_text( stmt, 1, folderSetting.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-			std::string folderValue = WideStringToUTF8( folder );
-			if ( !folderValue.empty() ) {
-				if ( ( folderValue.back() == '\\'  ) || ( folderValue.back() == '/' ) ) {
-					folderValue.pop_back();
-				}
-			}
-			sqlite3_bind_text( stmt, 2, folderValue.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+	const std::string settingName = "Folder" + folderType;
+  WriteSetting( settingName, folder );
 }
 
 bool Settings::GetScrobblerEnabled()
 {
-	bool enabled = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='ScrobblerEnable';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return enabled;
+	return ReadSetting<bool>( "ScrobblerEnable" ).value_or( false );
 }
 
 void Settings::SetScrobblerEnabled( const bool enabled )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "ScrobblerEnable", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, enabled );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+	WriteSetting( "ScrobblerEnable", enabled );
 }
 
 std::string Settings::GetScrobblerKey()
 {
-	std::string key;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='ScrobblerKey';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
-				if ( nullptr != text ) {
-					key = reinterpret_cast<const char*>( text );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
 	std::string decryptedKey;
-	if ( !key.empty() ) {
+	if ( const std::string key = ReadSetting<std::string>( "ScrobblerKey" ).value_or( std::string() ); !key.empty() ) {
 		// Decrypt key from storage.
 		std::vector<BYTE> bytes = Base64Decode( key );
 		DATA_BLOB dataIn = { static_cast<DWORD>( bytes.size() ), &bytes[ 0 ] };
@@ -2549,345 +1429,27 @@ std::string Settings::GetScrobblerKey()
 
 void Settings::SetScrobblerKey( const std::string& key )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		std::string encryptedKey;
-		if ( !key.empty() ) {
-			// Encrypt key for storage.
-			DATA_BLOB dataIn = { static_cast<DWORD>( key.size() ), const_cast<BYTE*>( reinterpret_cast<const BYTE*>( key.c_str() ) ) };
-			DATA_BLOB dataOut = {};
-			if ( CryptProtectData( &dataIn, nullptr /*dataDesc*/, nullptr /*entropy*/, nullptr /*reserved*/, nullptr /*prompt*/, 0 /*flags*/, &dataOut ) ) {
-				encryptedKey = Base64Encode( dataOut.pbData, dataOut.cbData );
-				LocalFree( dataOut.pbData );
-			}
-		}
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "ScrobblerKey", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_text( stmt, 2, encryptedKey.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
+	std::string encryptedKey;
+	if ( !key.empty() ) {
+		// Encrypt key for storage.
+		DATA_BLOB dataIn = { static_cast<DWORD>( key.size() ), const_cast<BYTE*>( reinterpret_cast<const BYTE*>( key.c_str() ) ) };
+		DATA_BLOB dataOut = {};
+		if ( CryptProtectData( &dataIn, nullptr /*dataDesc*/, nullptr /*entropy*/, nullptr /*reserved*/, nullptr /*prompt*/, 0 /*flags*/, &dataOut ) ) {
+			encryptedKey = Base64Encode( dataOut.pbData, dataOut.cbData );
+			LocalFree( dataOut.pbData );
 		}
 	}
+	WriteSetting( "ScrobblerKey", encryptedKey );
 }
 
 bool Settings::GetMusicBrainzEnabled()
 {
-	bool enabled = true;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='MusicBrainzEnable';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return enabled;
+	return ReadSetting<bool>( "MusicBrainzEnable" ).value_or( true );
 }
 
 void Settings::SetMusicBrainzEnabled( const bool enabled )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "MusicBrainzEnable", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, enabled );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
-}
-
-void Settings::ExportSettings( std::string& output )
-{
-	using namespace nlohmann;
-
-	output.clear();
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		json document;
-
-		// Settings table.
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Setting, Value FROM Settings ORDER BY Setting ASC;";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			json settings;
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const unsigned char* text = sqlite3_column_text( stmt, 0 /*columnIndex*/ );
-				if ( nullptr != text ) {
-					const std::string setting = reinterpret_cast<const char*>( text );
-					json value;
-					const int type = sqlite3_column_type( stmt, 1 /*columnIndex*/ );
-					switch ( type ) {
-						case SQLITE_INTEGER : {
-							value = sqlite3_column_int64( stmt, 1 /*columnIndex*/ );
-							break;
-						}
-						case SQLITE_FLOAT : {
-							value = sqlite3_column_double( stmt, 1 /*columnIndex*/ );
-							break;
-						}
-						case SQLITE_TEXT : {
-							const std::string str = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 1 /*columnIndex*/ ) );
-							if ( str.empty() ) {
-								value = nullptr;
-							} else {
-								value = str;
-							}
-							break;
-						}
-						case SQLITE_BLOB : {
-							// Note that blob fields should only contain LOGFONT structures.
-							const int bytes = sqlite3_column_bytes( stmt, 1 /*columnIndex*/ );
-							if ( sizeof( LOGFONT ) == bytes ) {
-								LOGFONT logfont = *reinterpret_cast<const LOGFONT*>( sqlite3_column_blob( stmt, 1 /*columnIndex*/ ) );
-								logfont.lfFaceName[ LF_FACESIZE - 1 ] = 0;
-								const std::string facename = WideStringToUTF8( logfont.lfFaceName );
-								if ( facename.empty() ) {
-									value = nullptr;
-								} else {
-									value = json::object();
-									const std::map<std::string,int> fields = {
-										{ "lfHeight", logfont.lfHeight },
-										{ "lfWidth", logfont.lfWidth },
-										{ "lfEscapement", logfont.lfEscapement },
-										{ "lfOrientation", logfont.lfOrientation },
-										{ "lfWeight", logfont.lfWeight },
-										{ "lfItalic", logfont.lfItalic },
-										{ "lfUnderline", logfont.lfUnderline },
-										{ "lfStrikeOut", logfont.lfStrikeOut },
-										{ "lfCharSet", logfont.lfCharSet },
-										{ "lfOutPrecision", logfont.lfOutPrecision },
-										{ "lfClipPrecision", logfont.lfClipPrecision },
-										{ "lfQuality", logfont.lfQuality },
-										{ "lfPitchAndFamily", logfont.lfPitchAndFamily }
-									};
-									for ( const auto& [ fieldName, fieldValue ] : fields ) {
-										value[ fieldName ] = fieldValue;
-									}
-									value[ "lfFaceName" ] = facename;
-								}
-							}
-							break;
-						}
-						default : {
-							value = nullptr;
-							break;
-						}
-					}
-					if ( !value.is_null() ) {
-						settings[ setting ] = value;
-					}
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-			if ( !settings.empty() ) {
-				document[ "Settings" ] = settings;
-			}
-		}
-
-		// PlaylistColumns table.
-		query = "SELECT Col,Width FROM PlaylistColumns ORDER BY rowid ASC;";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			json columns;
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const int col = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				const int width = sqlite3_column_int( stmt, 1 /*columnIndex*/ );
-				if ( ( col > 0 ) && ( width > 0 ) ) {
-					json column;
-					column[ "Col" ] = col;
-					column[ "Width" ] = width;
-					columns.push_back( column );
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-			if ( columns.size() > 0 ) {
-				document[ "PlaylistColumns" ] = columns;
-			}
-		}
-
-		// Hotkeys table.
-		query = "SELECT ID,Hotkey,Alt,Ctrl,Shift FROM Hotkeys;";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			json hotkeys;
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const int id = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				const int hotkey = sqlite3_column_int( stmt, 1 /*columnIndex*/ );
-				const bool alt = ( 0 != sqlite3_column_int( stmt, 2 /*columnIndex*/ ) );
-				const bool ctrl = ( 0 != sqlite3_column_int( stmt, 3 /*columnIndex*/ ) );
-				const bool shift = ( 0 != sqlite3_column_int( stmt, 4 /*columnIndex*/ ) );
-				if ( ( id > 0 ) && ( hotkey > 0 ) && ( alt || ctrl || shift ) ) {
-					json entry;
-					entry[ "ID" ] = id;
-					entry[ "Hotkey" ] = hotkey;
-					entry[ "Alt" ] = alt;
-					entry[ "Ctrl" ] = ctrl;
-					entry[ "Shift" ] = shift;
-					hotkeys.push_back( entry );
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-			if ( hotkeys.size() > 0 ) {
-				document[ "Hotkeys" ] = hotkeys;
-			}
-		}
-
-		constexpr int kIndent = 2;
-		output = document.dump( kIndent );
-	}
-}
-
-void Settings::ImportSettings( const std::string& input )
-{
-	using namespace nlohmann;
-	try {
-		const json document = json::parse( input );
-		sqlite3* database = m_Database.GetDatabase();
-		if ( nullptr != database ) {
-			// Settings object.
-			const auto settings = document.find( "Settings" );
-			if ( ( document.end() != settings ) && settings->is_object() ) {
-				sqlite3_stmt* stmt = nullptr;
-				const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-				if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-					for ( const auto& [ name, value ] : settings->items() ) {
-						if ( value.is_number_float() ) {
-							sqlite3_bind_text( stmt, 1, name.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-							sqlite3_bind_double( stmt, 2, value );
-							sqlite3_step( stmt );
-							sqlite3_reset( stmt );
-						} else if ( value.is_number_integer() ) {
-							sqlite3_bind_text( stmt, 1, name.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-							sqlite3_bind_int64( stmt, 2, value );
-							sqlite3_step( stmt );
-							sqlite3_reset( stmt );
-						} else if ( value.is_string() ) {
-							sqlite3_bind_text( stmt, 1, name.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-							const std::string str( value );
-							sqlite3_bind_text( stmt, 2, str.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-							sqlite3_step( stmt );
-							sqlite3_reset( stmt );
-						} else if ( value.is_object() ) {
-							// Note that we should only have sub-objects which represent LOGFONT structures.
-							if ( value.end() != value.find( "lfFaceName" ) ) {
-								const std::wstring fontname = UTF8ToWideString( value[ "lfFaceName" ] );
-								LOGFONT logfont = {};
-								wcscpy_s( logfont.lfFaceName, LF_FACESIZE - 1, fontname.c_str() );
-								const std::map<std::string,LONG*> longfields = {
-									{ "lfHeight", &logfont.lfHeight },
-									{ "lfWidth", &logfont.lfWidth },
-									{ "lfEscapement", &logfont.lfEscapement },
-									{ "lfOrientation", &logfont.lfOrientation },
-									{ "lfWeight", &logfont.lfWeight }
-								};
-								const std::map<std::string,BYTE*> bytefields = {
-									{ "lfItalic", &logfont.lfItalic },
-									{ "lfUnderline", &logfont.lfUnderline },
-									{ "lfStrikeOut", &logfont.lfStrikeOut },
-									{ "lfCharSet", &logfont.lfCharSet },
-									{ "lfOutPrecision", &logfont.lfOutPrecision },
-									{ "lfClipPrecision", &logfont.lfClipPrecision },
-									{ "lfQuality", &logfont.lfQuality },
-									{ "lfPitchAndFamily", &logfont.lfPitchAndFamily }
-								};
-								for ( const auto& [ fontKey, fontValue ] : value.items() ) {
-									if ( fontValue.is_number() ) {
-										const auto longfield = longfields.find( fontKey );
-										if ( longfields.end() != longfield ) {
-											*longfield->second = static_cast<LONG>( fontValue );
-										} else {
-											const auto bytefield = bytefields.find( fontKey );
-											if ( bytefields.end() != bytefield ) {
-												*bytefield->second = static_cast<BYTE>( fontValue );
-											}
-										}
-									}
-								}
-								sqlite3_bind_text( stmt, 1, name.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-								sqlite3_bind_blob( stmt, 2, &logfont, sizeof( LOGFONT ), SQLITE_STATIC );
-								sqlite3_step( stmt );
-								sqlite3_reset( stmt );
-							}
-						}
-					}
-					sqlite3_finalize( stmt );
-					stmt = nullptr;
-				}
-			}
-
-			// PlaylistColumns array.
-			const auto columns = document.find( "PlaylistColumns" );
-			if ( ( document.end() != columns ) && columns->is_array() ) {
-				sqlite3_stmt* stmt = nullptr;
-				std::string query = "DELETE FROM PlaylistColumns;";
-				sqlite3_exec( database, query.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-				query = "INSERT INTO PlaylistColumns (Col,Width) VALUES (?1,?2);";
-				if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-					for ( const auto& column : *columns ) {
-						if ( column.is_object() ) {
-							const auto col = column.find( "Col" );
-							const auto width = column.find( "Width" );
-							if ( ( column.end() != col ) && ( column.end() != width ) && col->is_number() && width->is_number() ) {
-								if ( ( *col > 0 ) && ( *width > 0 ) ) {
-									sqlite3_bind_int( stmt, 1, *col );
-									sqlite3_bind_int( stmt, 2, *width );
-									sqlite3_step( stmt );
-									sqlite3_reset( stmt );
-								}
-							}
-						}
-					}
-					sqlite3_finalize( stmt );
-					stmt = nullptr;
-				}
-			}
-
-			// Hotkeys array.
-			const auto hotkeys = document.find( "Hotkeys" );
-			if ( ( document.end() != hotkeys ) && hotkeys->is_array() ) {
-				sqlite3_stmt* stmt = nullptr;
-				std::string query = "DELETE FROM Hotkeys;";
-				sqlite3_exec( database, query.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-				query = "INSERT INTO Hotkeys (ID,Hotkey,Alt,Ctrl,Shift) VALUES (?1,?2,?3,?4,?5);";
-				if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-					for ( const auto& entry : *hotkeys ) {
-						if ( entry.is_object() ) {
-							const auto id = entry.find( "ID" );
-							const auto hotkey = entry.find( "Hotkey" );
-							const auto alt = entry.find( "Alt" );
-							const auto ctrl = entry.find( "Ctrl" );
-							const auto shift = entry.find( "Shift" );
-							if ( ( entry.end() != id ) && ( entry.end() != hotkey ) && ( entry.end() != alt ) && ( entry.end() != ctrl ) && ( entry.end() != shift ) &&
-									id->is_number() && hotkey->is_number() && alt->is_boolean() && ctrl->is_boolean() && shift->is_boolean() && ( *id > 0 ) && ( *hotkey > 0 ) ) {
-								sqlite3_bind_int( stmt, 1, *id );
-								sqlite3_bind_int( stmt, 2, *hotkey );
-								sqlite3_bind_int( stmt, 3, *alt );
-								sqlite3_bind_int( stmt, 4, *ctrl );
-								sqlite3_bind_int( stmt, 5, *shift );
-								sqlite3_step( stmt );
-								sqlite3_reset( stmt );
-							}
-						}
-					}
-					sqlite3_finalize( stmt );
-					stmt = nullptr;
-				}
-			}
-		}
-	} catch ( const json::exception& ) {
-	}
+	WriteSetting( "MusicBrainzEnable", enabled );
 }
 
 void Settings::GetDefaultAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn, int& maxBufferLength, int& maxLeadIn )
@@ -2904,61 +1466,22 @@ void Settings::GetAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat,
 	int maxBufferLength = 0;
 	int maxLeadIn = 0;
 	GetDefaultAdvancedWasapiExclusiveSettings( useDeviceDefaultFormat, bufferLength, leadIn, maxBufferLength, maxLeadIn );
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='WasapiExclusiveUseDeviceFormat';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				useDeviceDefaultFormat = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='WasapiExclusiveBufferLength';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				bufferLength = std::clamp( sqlite3_column_int( stmt, 0 /*columnIndex*/ ), 0, maxBufferLength );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='WasapiExclusiveLeadIn';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				leadIn = std::clamp( sqlite3_column_int( stmt, 0 /*columnIndex*/ ), 0, maxLeadIn );
-			}
-			sqlite3_finalize( stmt );
-		}
+	if ( const auto value = ReadSetting<bool>( "WasapiExclusiveUseDeviceFormat" ); value ) {
+		useDeviceDefaultFormat = *value;
+	}
+	if ( const auto value = ReadSetting<int>( "WasapiExclusiveBufferLength" ); value ) {
+		bufferLength = std::clamp( *value, 0, maxBufferLength );
+	}
+	if ( const auto value = ReadSetting<int>( "WasapiExclusiveLeadIn" ); value ) {
+		leadIn = std::clamp( *value, 0, maxLeadIn );
 	}
 }
 
 void Settings::SetAdvancedWasapiExclusiveSettings( const bool useDeviceDefaultFormat, const int bufferLength, const int leadIn )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "WasapiExclusiveUseDeviceFormat", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, useDeviceDefaultFormat );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "WasapiExclusiveBufferLength", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, bufferLength );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "WasapiExclusiveLeadIn", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, leadIn );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+	WriteSetting( "WasapiExclusiveUseDeviceFormat", useDeviceDefaultFormat );
+	WriteSetting( "WasapiExclusiveBufferLength", bufferLength );
+	WriteSetting( "WasapiExclusiveLeadIn", leadIn );
 }
 
 void Settings::GetDefaultAdvancedASIOSettings( bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn, int& maxDefaultSamplerate, int& maxLeadIn )
@@ -2975,96 +1498,32 @@ void Settings::GetAdvancedASIOSettings( bool& useDefaultSamplerate, int& default
 	int maxDefaultSamplerate = 0;
 	int maxLeadIn = 0;
 	GetDefaultAdvancedASIOSettings( useDefaultSamplerate, defaultSamplerate, leadIn, maxDefaultSamplerate, maxLeadIn );
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='ASIOUseDefaultSamplerate';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				useDefaultSamplerate = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ASIODefaultSamplerate';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				defaultSamplerate = std::clamp( sqlite3_column_int( stmt, 0 /*columnIndex*/ ), 0, maxDefaultSamplerate );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ASIOLeadIn';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				leadIn = std::clamp( sqlite3_column_int( stmt, 0 /*columnIndex*/ ), 0, maxLeadIn );
-			}
-			sqlite3_finalize( stmt );
-		}
+	if ( const auto value = ReadSetting<bool>( "ASIOUseDefaultSamplerate" ); value ) {
+		useDefaultSamplerate = *value;
+	}
+	if ( const auto value = ReadSetting<int>( "ASIODefaultSamplerate" ); value ) {
+		defaultSamplerate = std::clamp( *value, 0, maxDefaultSamplerate );
+	}
+	if ( const auto value = ReadSetting<int>( "ASIOLeadIn" ); value ) {
+		leadIn = std::clamp( *value, 0, maxLeadIn );
 	}
 }
 
 void Settings::SetAdvancedASIOSettings( const bool useDefaultSamplerate, const int defaultSamplerate, const int leadIn )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "ASIOUseDefaultSamplerate", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, useDefaultSamplerate );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "ASIODefaultSamplerate", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, defaultSamplerate );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "ASIOLeadIn", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, leadIn );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+	WriteSetting( "ASIOUseDefaultSamplerate", useDefaultSamplerate );
+	WriteSetting( "ASIODefaultSamplerate", defaultSamplerate );
+	WriteSetting( "ASIOLeadIn", leadIn );
 }
 
 Settings::ToolbarSize Settings::GetToolbarSize()
 {
-	ToolbarSize size = ToolbarSize::Small;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='ToolbarSize';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				const int value = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-				if ( ( value >= static_cast<int>( ToolbarSize::Small ) ) && ( value <= static_cast<int>( ToolbarSize::Large ) ) ) {
-					size = static_cast<ToolbarSize>( value );
-				}
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return size;
+	return std::clamp<ToolbarSize>( ReadSetting<ToolbarSize>( "ToolbarSize" ).value_or( ToolbarSize::Small ), ToolbarSize::Small, ToolbarSize::Large );
 }
 
 void Settings::SetToolbarSize( const ToolbarSize size )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "ToolbarSize", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( size ) );
-			sqlite3_step( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+	WriteSetting( "ToolbarSize", size );
 }
 
 int Settings::GetToolbarButtonSize( const ToolbarSize size )
@@ -3079,328 +1538,136 @@ int Settings::GetToolbarButtonSize( const ToolbarSize size )
 
 void Settings::GetToolbarColours( COLORREF& buttonColour, COLORREF& backgroundColour )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='ToolbarButtonColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				buttonColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ToolbarBackgroundColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				backgroundColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
+	if ( const auto value = ReadSetting<COLORREF>( "ToolbarButtonColour" ); value ) {
+		buttonColour = *value;
+	}
+	if ( const auto value = ReadSetting<COLORREF>( "ToolbarBackgroundColour" ); value ) {
+		backgroundColour = *value;
 	}
 }
 
 void Settings::SetToolbarColours( const COLORREF buttonColour, const COLORREF backgroundColour )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "ToolbarButtonColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, buttonColour );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "ToolbarBackgroundColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, backgroundColour );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+	WriteSetting( "ToolbarButtonColour", buttonColour );
+	WriteSetting( "ToolbarBackgroundColour", backgroundColour );
 }
 
 bool Settings::GetHardwareAccelerationEnabled()
 {
-	bool enabled = true;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='VisualHardwareAcceleration';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return enabled;
+	return ReadSetting<bool>( "VisualHardwareAcceleration" ).value_or( true );
 }
 
 void Settings::SetHardwareAccelerationEnabled( const bool enabled )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "VisualHardwareAcceleration", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, enabled );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+	WriteSetting( "VisualHardwareAcceleration", enabled );
 }
 
 bool Settings::GetAlwaysOnTop()
 {
-	bool alwaysOnTop = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='AlwaysOnTop';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				alwaysOnTop = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return alwaysOnTop;
+	return ReadSetting<bool>( "AlwaysOnTop" ).value_or( false );
 }
 
 void Settings::SetAlwaysOnTop( const bool alwaysOnTop )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "AlwaysOnTop", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, alwaysOnTop );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+	WriteSetting( "AlwaysOnTop", alwaysOnTop );
 }
 
 bool Settings::GetRetainStopAtTrackEnd()
 {
-	bool retain = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='RetainStopAtTrackEnd';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				retain = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return retain;
+	return ReadSetting<bool>( "RetainStopAtTrackEnd" ).value_or( false );
 }
 
 void Settings::SetRetainStopAtTrackEnd( const bool retain )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "RetainStopAtTrackEnd", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, retain );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+	WriteSetting( "RetainStopAtTrackEnd", retain );
 }
 
 bool Settings::GetStopAtTrackEnd()
 {
-	bool enabled = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='StopAtTrackEnd';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				enabled = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return enabled;
+	return ReadSetting<bool>( "StopAtTrackEnd" ).value_or( false );
 }
 
 void Settings::SetStopAtTrackEnd( const bool enabled )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "StopAtTrackEnd", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, enabled );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+	WriteSetting( "StopAtTrackEnd", enabled );
 }
 
 bool Settings::GetRetainPitchBalance()
 {
-	bool retain = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='RetainPitchBalance';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				retain = ( 0 != sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return retain;
+	return ReadSetting<bool>( "RetainPitchBalance" ).value_or( false );
 }
 
 void Settings::SetRetainPitchBalance( const bool retain )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "RetainPitchBalance", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, retain );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+	WriteSetting( "RetainPitchBalance", retain );
 }
 
 std::pair<float /*pitch*/, float /*balance*/> Settings::GetPitchBalance()
 {
-	auto setting = std::make_pair( 1.0f, 0.0f );
+	constexpr float kDefaultPitch = 1.0f;
+	constexpr float kDefaultBalance = 0.0f;
+
+	auto setting = std::make_pair( kDefaultPitch, kDefaultBalance );
 	auto& [ pitch, balance ] = setting;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		std::string query = "SELECT Value FROM Settings WHERE Setting='Pitch';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				pitch = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='Balance';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				balance = static_cast<float>( sqlite3_column_double( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
+	pitch = ReadSetting<float>( "Pitch" ).value_or( kDefaultPitch );
+	balance = ReadSetting<float>( "Balance" ).value_or( kDefaultBalance );
 	return setting;
 }
 
 void Settings::SetPitchBalance( const float pitch, const float balance )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "Pitch", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_double( stmt, 2, pitch );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "Balance", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_double( stmt, 2, balance );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
+	WriteSetting( "Pitch", pitch );
+	WriteSetting( "Balance", balance );
 }
 
 int Settings::GetLastOptionsPage()
 {
-	int index = 0;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='OptionsPage';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				index = sqlite3_column_int( stmt, 0 /*columnIndex*/ );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return index;
+	return ReadSetting<int>( "OptionsPage" ).value_or( 0 );
 }
 
 void Settings::SetLastOptionsPage( const int index )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "OptionsPage", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, index );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+	WriteSetting( "OptionsPage", index );
 }
 
 COLORREF Settings::GetTaskbarButtonColour()
 {
 	constexpr COLORREF kDefaultColour = RGB( 55, 165, 255 );
 
-	COLORREF colour = kDefaultColour;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		sqlite3_stmt* stmt = nullptr;
-		const std::string query = "SELECT Value FROM Settings WHERE Setting='TaskbarButtonColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				colour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-	}
-	return colour;
+	return ReadSetting<COLORREF>( "TaskbarButtonColour" ).value_or( kDefaultColour );
 }
 
 void Settings::SetTaskbarButtonColour( const COLORREF colour )
 {
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "REPLACE INTO Settings (Setting,Value) VALUES (?1,?2);";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			sqlite3_bind_text( stmt, 1, "TaskbarButtonColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( colour ) );
-			sqlite3_step( stmt );
-			sqlite3_finalize( stmt );
-		}
-	}
+	WriteSetting( "TaskbarButtonColour", colour );
+}
+
+bool Settings::GetTaskbarShowProgress()
+{
+  return ReadSetting<bool>( "TaskbarProgress" ).value_or( true );
+}
+
+void Settings::SetTaskbarShowProgress( const bool showProgress )
+{
+	WriteSetting( "TaskbarProgress", showProgress );
+}
+
+bool Settings::GetWriteFileTags()
+{
+  return ReadSetting<bool>( "WriteFileTags" ).value_or( true );
+}
+
+void Settings::SetWriteFileTags( const bool write )
+{
+	WriteSetting( "WriteFileTags", write );
+}
+
+bool Settings::GetPreserveLastModifiedTime()
+{
+  return ReadSetting<bool>( "PreserveLastModified" ).value_or( false );
+}
+
+void Settings::SetPreserveLastModifiedTime( const bool preserve )
+{
+	WriteSetting( "PreserveLastModified", preserve );
 }

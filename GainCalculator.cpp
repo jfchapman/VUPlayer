@@ -8,7 +8,9 @@ DWORD WINAPI GainCalculator::CalcThreadProc( LPVOID lpParam )
 {
 	GainCalculator* gainCalculator = reinterpret_cast<GainCalculator*>( lpParam );
 	if ( nullptr != gainCalculator ) {
+		CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
 		gainCalculator->Handler();
+    CoUninitialize();
 	}
 	return 0;
 }

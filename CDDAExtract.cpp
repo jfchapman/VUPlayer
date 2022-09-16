@@ -2,6 +2,7 @@
 
 #include "resource.h"
 #include "Utility.h"
+#include "WndTaskbar.h"
 
 #include "ebur128.h"
 
@@ -112,13 +113,14 @@ DWORD WINAPI CDDAExtract::EncodeThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, DiscManager& discManager, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename ) :
+CDDAExtract::CDDAExtract( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, DiscManager& discManager, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_Library( library ),
 	m_Settings( settings ),
 	m_Handlers( handlers ),
 	m_DiscManager( discManager ),
+	m_Taskbar( taskbar ),
 	m_Tracks( tracks ),
 	m_CancelEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
 	m_PendingEncodeEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
@@ -478,9 +480,9 @@ void CDDAExtract::EncodeHandler()
 									*destIter++ = *sourceIter++ / 32768.0f;
 								}
 								const long sampleCount = static_cast<long>( destIter - sampleBuffer.begin() ) / channels;
-								if ( m_Encoder->Write( &sampleBuffer[ 0 ], sampleCount ) ) {
+								if ( m_Encoder->Write( sampleBuffer.data(), sampleCount ) ) {
 									if ( ( nullptr != r128State ) && ( EBUR128_SUCCESS == r128Error ) ) {
-										r128Error = ebur128_add_frames_float( r128State, &sampleBuffer[ 0 ], static_cast<size_t>( sampleCount ) );
+										r128Error = ebur128_add_frames_float( r128State, sampleBuffer.data(), static_cast<size_t>( sampleCount ) );
 									}
 									samplesEncoded += sampleCount;
 									totalSamplesEncoded += sampleCount;
@@ -519,7 +521,7 @@ void CDDAExtract::EncodeHandler()
 									std::optional<float> albumGain;
 									if ( !r128States.empty() ) {
 										double loudness = 0;
-										if ( EBUR128_SUCCESS == ebur128_loudness_global_multiple( &r128States[ 0 ], r128States.size(), &loudness ) ) {
+										if ( EBUR128_SUCCESS == ebur128_loudness_global_multiple( r128States.data(), r128States.size(), &loudness ) ) {
 											albumGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
 										}
 									}
@@ -753,6 +755,8 @@ void CDDAExtract::UpdateStatus()
 			SendMessage( progressEncode, PBM_SETPOS, currentPosition, 0 );
 		}
 	}
+
+	m_Taskbar.UpdateProgress( m_ProgressEncode );
 }
 
 void CDDAExtract::WriteTrackTags( const std::wstring& filename, const MediaInfo& mediaInfo )
@@ -792,7 +796,7 @@ void CDDAExtract::WriteTrackTags( const std::wstring& filename, const MediaInfo&
 	}
 	const std::vector<BYTE> imageBytes = m_Library.GetMediaArtwork( mediaInfo );
 	if ( !imageBytes.empty() ) {
-		const std::string encodedArtwork = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageBytes.size() ) );
+		const std::string encodedArtwork = Base64Encode( imageBytes.data(), static_cast<int>( imageBytes.size() ) );
 		tags.insert( Tags::value_type( Tag::Artwork, encodedArtwork ) );
 	}
 

@@ -59,7 +59,10 @@ bool CDDAMedia::FromMediaFilepath( const std::wstring& filepath, wchar_t& drive,
 		const std::wstring& driveStr = match.str( 1 );
 		if ( !driveStr.empty() ) {
 			drive = driveStr.front();
-			track = std::stol( match.str( 2 ) );
+      try {
+			  track = std::stol( match.str( 2 ) );
+      } catch ( const std::logic_error& ) {
+      }
 			success = ( track > 0 );
 		}
 	}

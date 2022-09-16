@@ -27,7 +27,7 @@ INT_PTR CALLBACK About( HWND, UINT, WPARAM, LPARAM );
 // Copied data should be an array of null terminated WCHAR strings, ending with an additional null terminator.
 static const UINT VUPLAYER_COPYDATA = 0x1974;
 
-// Command line switch to run in 'portable' mode (i.e. no persistent database).
+// Command line switch to run in 'portable' mode (i.e. use the application folder for database storage).
 static const TCHAR s_portableCmdLineSwitch[] = L"-portable";
 
 // Command line switch to set the database access mode.
@@ -65,36 +65,15 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 	// Parse command line
 	std::list<std::wstring> cmdLineFiles;
 	bool portable = false;
-	std::string portableSettings;
-	Database::Mode mode = Database::Mode::Temp;
+	Database::Mode mode = Database::Mode::Disk;
 
 	int numArgs = 0;
 	LPWSTR* args = CommandLineToArgvW( GetCommandLine(), &numArgs );
 	if ( nullptr != args ) {
 		for ( int argc = 1; argc < numArgs; argc++ ) {
 			if ( 0 == _wcsicmp( args[ argc ], s_portableCmdLineSwitch ) ) {
-				// Handle the '-portable' command-line switch (and the following settings file argument).
+				// Portable mode.
 				portable = true;
-				mode = Database::Mode::Memory;
-				if ( ( argc + 1 ) < numArgs ) {
-					const std::wstring settingsFileName = args[ argc + 1 ];
-					if ( settingsFileName.size() > 4 ) {
-						const std::wstring ext = WideStringToUpper( settingsFileName.substr( settingsFileName.size() - 4 ) );
-						if ( L".INI" == ext ) {
-							std::ifstream filestream;
-							std::ostringstream stringstream;
-							filestream.open( settingsFileName );
-							if ( filestream.is_open() ) {
-								stringstream << filestream.rdbuf();
-								portableSettings = stringstream.str();
-								filestream.close();
-							}
-						}
-					}
-				}
-				if ( !portableSettings.empty() ) {
-					++argc;
-				}
 			} else if ( 0 == _wcsicmp( args[ argc ], s_databasemodeCmdLineSwitch ) ) {
 				// Handle the '-mode' command-line switch (and the following database access mode argument).
 				if ( ( argc + 1 ) < numArgs ) {
@@ -104,7 +83,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 							mode = static_cast<Database::Mode>( value );
 							++argc;
 						}
-					} catch ( ... ) {
+					} catch ( const std::logic_error& ) {
 					}
 				}
 			} else {
@@ -174,14 +153,13 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 
 	SetErrorMode( SEM_FAILCRITICALERRORS );
 
-	VUPlayer* vuplayer = new VUPlayer( g_hInst, g_hWnd, cmdLineFiles, portable, portableSettings, mode );
+	VUPlayer* vuplayer = new VUPlayer( g_hInst, g_hWnd, cmdLineFiles, portable, mode );
 
 	SetWindowLongPtr( g_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( vuplayer ) );
-	const HACCEL hAccelTable = vuplayer ? vuplayer->GetAcceleratorTable() : nullptr;
 	MSG msg;
 	// Main message loop
 	while ( GetMessage( &msg, nullptr, 0, 0 ) ) {
-		if ( !TranslateAccelerator( g_hWnd, hAccelTable, &msg ) && !IsDialogMessage( g_hWnd, &msg ) && !IsDialogMessage( vuplayer->GetEQ(), &msg ) ) {
+		if ( !TranslateAccelerator( g_hWnd, vuplayer->GetAcceleratorTable(), &msg ) && !IsDialogMessage( g_hWnd, &msg ) && !IsDialogMessage( vuplayer->GetEQ(), &msg ) ) {
 			TranslateMessage( &msg );
 			DispatchMessage( &msg );
 		}

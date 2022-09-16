@@ -26,8 +26,7 @@ std::wstring HandlerCDDA::GetDescription() const
 
 std::set<std::wstring> HandlerCDDA::GetSupportedFileExtensions() const
 {
-	const std::set<std::wstring> filetypes = { L"cdda" };
-	return filetypes;
+	return { L"cdda" };
 }
 
 bool HandlerCDDA::GetTags( const std::wstring& /*filename*/, Tags& /*tags*/ ) const

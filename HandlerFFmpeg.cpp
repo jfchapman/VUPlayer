@@ -17,7 +17,8 @@ std::wstring HandlerFFmpeg::GetDescription() const
 
 std::set<std::wstring> HandlerFFmpeg::GetSupportedFileExtensions() const
 {
-	return {};
+	// Although FFmpeg is the fallback decoder, return some of the extensions not handled by other decoders (so that they pass the default filter in file selection dialogs). 
+	return { L"aac", L"aiff", L"asf", L"avi", L"m4a", L"mkv", L"mov", L"mp4", L"mpeg", L"mpg", L"shn", L"tta", L"webm" };
 }
 
 bool HandlerFFmpeg::GetTags( const std::wstring& /*filename*/, Tags& /*tags*/ ) const

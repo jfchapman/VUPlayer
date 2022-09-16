@@ -138,12 +138,6 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 						wndList->DeleteSelectedItems();
 						return 0;
 					}
-					case VK_SPACE : {
-						if ( Output::State::Stopped != wndList->m_Output.GetState() ) {
-							wndList->m_Output.Pause();
-							return 0;
-						}
-					}
 				}
 				break;
 			}
@@ -1314,7 +1308,7 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 								long tracknumber = 0;
 								try {
 									tracknumber = std::stol( item.pszText );
-								} catch ( ... ) {
+								} catch ( const std::logic_error& ) {
 								}
 								libraryColumnID = Library::Column::Track;
 								playlistItem.Info.SetTrack( tracknumber );
@@ -1324,7 +1318,7 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 								long year = 0;
 								try {
 									year = std::stol( item.pszText );
-								} catch ( ... ) {
+								} catch ( const std::logic_error& ) {
 								}
 								libraryColumnID = Library::Column::Year;
 								playlistItem.Info.SetYear( year );

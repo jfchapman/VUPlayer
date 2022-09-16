@@ -145,10 +145,7 @@ public:
 
 private:
 	// Media library columns.
-	typedef std::map<std::string,Column> Columns;
-
-	// Maps a filename to tag information.
-	typedef std::map<std::wstring,Tags> FileTags;
+	using Columns = std::map<std::string, Column>;
 
 	// Updates the database to the current version if necessary.
 	void UpdateDatabase();
@@ -170,8 +167,9 @@ private:
 
 	// Queries the decoders for media information.
 	// 'mediaInfo' - in/out, media information containing the filename to query.
+  // 'getTags' - whether to read file tags.
 	// Returns true if the file was successfully opened by a decoder.
-	bool GetDecoderInfo( MediaInfo& mediaInfo );
+	bool GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags );
 
 	// Updates the media library.
 	// 'mediaInfo' - media information.
@@ -180,8 +178,7 @@ private:
 
 	// Writes out tag information to file.
 	// 'mediaInfo' - in/out, media information which will be modified if tags are successfully written.
-	// 'tags' - tags to write.
-	void WriteFileTags( MediaInfo& mediaInfo, const Tags& tags );
+	void WriteFileTags( MediaInfo& mediaInfo );
 
 	// Adds an artwork to the media library.
 	// 'id' - artwork ID.
@@ -201,13 +198,6 @@ private:
 	// Updates 'mediaInfo' with the 'tags'.
 	void UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Tags& tags );
 
-	// Adds any pending 'tags' for the 'filename', to be written out at the next opportunity.
-	void AddPendingTags( const std::wstring& filename, const Tags& tags );
-
-	// Gets any pending 'tags' for the 'filename'.
-	// Returns whether there are any pending tags.
-	bool GetPendingTags( const std::wstring& filename, Tags& tags ) const;
-
 	// Updates the time at which the last attempt was made to write the tags for the 'filename'.
 	void SetRecentlyWrittenTag( const std::wstring& filename );
 
@@ -217,8 +207,8 @@ private:
 	// The available handlers.
 	const Handlers& m_Handlers;
 
-	// Tag information waiting to be written.
-	FileTags m_PendingTags;
+	// Files with tag information waiting to be written.
+	std::set<std::wstring> m_PendingTags;
 
 	// The time that the last attempt was made to write tags.
 	long long m_LastTagWriteTime;

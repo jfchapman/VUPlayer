@@ -3,7 +3,7 @@
 
 #define MyAppName "VUPlayer"
 #define MyAppVersion "4.14"
-#define MyAppFullVersion "4.14.0.0"
+#define MyAppFullVersion "4.15.0.0"
 #define MyAppMainVersion "4"
 #define MyAppDefaultDir "VUPlayer 4"
 #define MyAppPublisher "James Chapman"
@@ -26,7 +26,7 @@ VersionInfoVersion={#MyAppFullVersion}
 DefaultDirName={autopf}\{#MyAppDefaultDir}
 UninstallDisplayIcon={app}\VUPlayer.exe
 DisableProgramGroupPage=yes
-OutputBaseFilename=vuplayersetup
+OutputBaseFilename=VUPlayerSetup
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64

@@ -3,13 +3,13 @@
 #include "Visual.h"
 
 // Minimum decay factor.
-static const float VUMeterDecayMinimum = 0.0075f;
+constexpr float VUMeterDecayMinimum = 0.0075f;
 
 // Normal decay factor.
-static const float VUMeterDecayNormal = 0.01f;
+constexpr float VUMeterDecayNormal = 0.01f;
 
 // Maximum decay factor.
-static const float VUMeterDecayMaximum = 0.015f;
+constexpr float VUMeterDecayMaximum = 0.015f;
 
 class VUMeter :	public Visual
 {
@@ -43,7 +43,7 @@ private:
 	static DWORD WINAPI RenderThreadProc( LPVOID lpParam );
 
 	// Returns the pin position corresponding to the 'level'.
-	static int GetPinPosition( const float level );
+	int GetPinPosition( const float level );
 
 	// Render thread handler.
 	void RenderThreadHandler();
@@ -69,13 +69,28 @@ private:
 	// Frees the resources.
 	void FreeResources();
 
+  // Whether the meter resource has been loaded successfully.
+  static bool s_MeterLoaded;
+
+  // Base meter image width.
+  static DWORD s_MeterWidth;
+
+  // Base meter image height.
+  static DWORD s_MeterHeight;
+
+  // Base meter image bytes.
+  static const BYTE* s_MeterBase;
+
+  // Meter pin delta arrays (null terminated).
+  static std::vector<const DWORD*> s_MeterPins;
+
 	// Rendering thread handle.
 	HANDLE m_RenderThread;
 
 	// Rendering thread stop event handle.
 	HANDLE m_RenderStopEvent;
 
-	// Meter image.
+  // Composed meter image.
 	std::vector<BYTE> m_MeterImage;
 
 	// Current pin position buffer drawn on the meter image.

@@ -72,10 +72,8 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 
 	// Remote settings
 	if ( const HWND hwndMusicBrainz = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MUSICBRAINZ_ENABLE ); nullptr != hwndMusicBrainz ) {
-		const bool musicbrainzAvailable = ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzAvailable();
 		const bool musicbrainzEnabled = GetSettings().GetMusicBrainzEnabled();
 		Button_SetCheck( hwndMusicBrainz, ( musicbrainzEnabled ? BST_CHECKED : BST_UNCHECKED ) );
-		EnableWindow( hwndMusicBrainz, musicbrainzAvailable ? TRUE : FALSE );
 	}
 
 	const bool scrobblerAvailable = ( nullptr != vuplayer ) && vuplayer->IsScrobblerAvailable();
@@ -89,6 +87,18 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 	if ( ( nullptr != hwndScrobblerAuthorise ) && !scrobblerAvailable ) {
 		ShowWindow( hwndScrobblerAuthorise, SW_HIDE );
 	}
+
+  // Tagging settings
+  const bool writeFileTags = GetSettings().GetWriteFileTags();
+  if ( const HWND hwndWriteFileTags = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_WRITETAGS ); nullptr != hwndWriteFileTags ) {
+    Button_SetCheck( hwndWriteFileTags, ( writeFileTags ? BST_CHECKED : BST_UNCHECKED ) );
+  }
+
+  if ( const HWND hwndPreserveFiletime = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_PRESERVE_FILETIME ); nullptr != hwndPreserveFiletime ) {
+    const bool preserveFiletime = GetSettings().GetPreserveLastModifiedTime();
+    Button_SetCheck( hwndPreserveFiletime, ( preserveFiletime ? BST_CHECKED : BST_UNCHECKED ) );
+    EnableWindow( hwndPreserveFiletime, writeFileTags ? TRUE : FALSE );
+  }
 }
 
 void OptionsGeneral::OnSave( const HWND hwnd )
@@ -114,6 +124,13 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 
 	const bool enableScrobbler = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SCROBBLER_ENABLE ) ) );
 	GetSettings().SetScrobblerEnabled( enableScrobbler );
+
+  // Tagging settings
+	const bool writeFileTags = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_WRITETAGS ) ) );
+	GetSettings().SetWriteFileTags( writeFileTags );
+
+	const bool preserveFiletime = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_PRESERVE_FILETIME ) ) );
+	GetSettings().SetPreserveLastModifiedTime( preserveFiletime );
 }
 
 void OptionsGeneral::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /*lParam*/ )
@@ -125,20 +142,28 @@ void OptionsGeneral::OnCommand( const HWND hwnd, const WPARAM wParam, const LPAR
 			RefreshOutputDeviceList( hwnd );
 		}
 	} else if ( BN_CLICKED == notificationCode ) {
-		if ( IDC_OPTIONS_MODE_ADVANCED == controlID ) {
-			const Settings::OutputMode mode = GetSelectedMode( hwnd );
-			switch ( mode ) {
-				case Settings::OutputMode::WASAPIExclusive : {
-					DlgAdvancedWasapi dialog( GetInstanceHandle(), hwnd, GetSettings() );
-					break;
-				}
-				case Settings::OutputMode::ASIO : {
-					DlgAdvancedASIO dialog( GetInstanceHandle(), hwnd, GetSettings() );
-					break;
-				}
+    switch ( controlID ) {
+      case IDC_OPTIONS_MODE_ADVANCED : {
+			  const Settings::OutputMode mode = GetSelectedMode( hwnd );
+			  switch ( mode ) {
+				  case Settings::OutputMode::WASAPIExclusive : {
+					  DlgAdvancedWasapi dialog( GetInstanceHandle(), hwnd, GetSettings() );
+					  break;
+				  }
+				  case Settings::OutputMode::ASIO : {
+					  DlgAdvancedASIO dialog( GetInstanceHandle(), hwnd, GetSettings() );
+					  break;
+				  }
+			  }
+        break;
+      }
+			case IDC_OPTIONS_GENERAL_WRITETAGS : {
+	      const bool enablePreserveFiletime = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_WRITETAGS ) ) );
+        EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_PRESERVE_FILETIME ), enablePreserveFiletime ? TRUE : FALSE );
+				break;
 			}
-		}
-	}
+    }
+  }
 }
 
 void OptionsGeneral::OnNotify( const HWND /*hwnd*/, const WPARAM /*wParam*/, const LPARAM lParam )

@@ -9,10 +9,10 @@ const size_t s_ScrobbleBatchSize = 20;
 // Maximum length of time to cache scrobbles, in seconds.
 const time_t s_ScrobblerCacheLength = 60 * 60 * 24 * 7;
 
-Scrobbler::Scrobbler( Database& database, Settings& settings, const bool disable ) :
+Scrobbler::Scrobbler( Database& database, Settings& settings ) :
 	m_Database( database ),
 	m_Settings( settings ),
-	m_Handle( disable ? nullptr : LoadLibrary( L"scrobbler.dll" ) ),
+	m_Handle( LoadLibrary( L"scrobbler.dll" ) ),
 	m_Init( nullptr ),
 	m_Close( nullptr ),
 	m_Authorize( nullptr ),
@@ -294,16 +294,13 @@ void Scrobbler::ReadCachedScrobbles()
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
 				const time_t timestamp = sqlite3_column_int64( stmt, 0 /*columnIndex*/ );
 				TrackInfo info = {};
-				const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 1 /*columnIndex*/ ) );
-				if ( nullptr != text ) {
+				if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 1 /*columnIndex*/ ) ); nullptr != text ) {
 					info.Artist = text;
 				}
-				text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 2 /*columnIndex*/ ) );
-				if ( nullptr != text ) {
+				if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 2 /*columnIndex*/ ) ); nullptr != text ) {
 					info.Title = text;
 				}
-				text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 3 /*columnIndex*/ ) );
-				if ( nullptr != text ) {
+				if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 3 /*columnIndex*/ ) ); nullptr != text ) {
 					info.Album = text;
 				}
 				info.Tracknumber = static_cast<int32_t>( sqlite3_column_int( stmt, 4 /*columnIndex*/ ) );
@@ -341,8 +338,10 @@ void Scrobbler::SaveCachedScrobbles()
 					for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 						const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 						if ( columnName == "name" ) {
-							const std::string name = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) );
-							columns.insert( name );
+						  if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
+							  const std::string name = reinterpret_cast<const char*>( text );
+							  columns.insert( name );
+              }
 							break;
 						}
 					}

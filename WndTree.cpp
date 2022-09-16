@@ -814,7 +814,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 					for ( const auto& mediaInfo : mediaList ) {
 						playlist->AddItem( mediaInfo );
 					}
-				} catch ( ... ) {
+				} catch ( const std::logic_error& ) {
 				}
 			}
 			break;
@@ -2986,17 +2986,23 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			break;
 		}
 		case FolderMonitor::Event::FileRenamed : {
-			const auto folderIter = m_FolderNodesMap.find( folder );
-			if ( m_FolderNodesMap.end() != folderIter ) {
-				const std::set<HTREEITEM>& nodes = folderIter->second;
-				for ( const auto& node : nodes ) {
-					const auto playlistIter = m_FolderPlaylistMap.find( node );
-					if ( m_FolderPlaylistMap.end() != playlistIter ) {
-						Playlist::Ptr playlist = playlistIter->second;
-						if ( playlist ) {
-							const bool removed = playlist->RemoveItem( MediaInfo( oldFilename ) );
-							if ( removed || !IgnoreFileMonitorEvent( newFilename ) ) {
-								playlist->AddPending( newFilename );
+			if ( !IgnoreFileMonitorEvent( oldFilename ) && !IgnoreFileMonitorEvent( newFilename ) ) {
+				const auto folderIter = m_FolderNodesMap.find( folder );
+				if ( m_FolderNodesMap.end() != folderIter ) {
+					const std::set<HTREEITEM>& nodes = folderIter->second;
+					for ( const auto& node : nodes ) {
+						const auto playlistIter = m_FolderPlaylistMap.find( node );
+						if ( m_FolderPlaylistMap.end() != playlistIter ) {
+							Playlist::Ptr playlist = playlistIter->second;
+							if ( playlist ) {
+							  playlist->RemoveItem( MediaInfo( oldFilename ) );
+                if ( playlist->ContainsFilename( newFilename ) ) {
+				          std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
+				          m_FilesModified.insert( newFilename );
+				          SetEvent( m_FileModifiedWakeEvent );
+                } else {
+							    playlist->AddPending( newFilename );
+                }
 							}
 						}
 					}
@@ -3014,7 +3020,13 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 						if ( m_FolderPlaylistMap.end() != playlistIter ) {
 							Playlist::Ptr playlist = playlistIter->second;
 							if ( playlist ) {
-								playlist->AddPending( newFilename );
+                if ( playlist->ContainsFilename( newFilename ) ) {
+				          std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
+				          m_FilesModified.insert( newFilename );
+				          SetEvent( m_FileModifiedWakeEvent );
+                } else {
+								  playlist->AddPending( newFilename );
+                }
 							}
 						}
 					}
@@ -3072,8 +3084,8 @@ void WndTree::OnFileModifiedHandler()
 		} else {
 			MediaInfo mediaInfo( filename );
 			if ( m_Library.GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
-				m_Library.GetMediaInfo( mediaInfo );
-			}
+			  m_Library.GetMediaInfo( mediaInfo );
+      }
 		}
 	}
 }
@@ -3375,15 +3387,19 @@ void WndTree::SetMergeDuplicates( const bool mergeDuplicates )
 bool WndTree::IgnoreFileMonitorEvent( const std::wstring& filename ) const
 {
 	bool ignore = true;
-	const std::wstring folder = std::filesystem::path( filename ).parent_path();
-	// Note that the folder playlist map mutex has already been locked by the callback handler.
-	for ( const auto& [ treeItem, playlist ] : m_FolderPlaylistMap ) {
-		if ( playlist && ( folder == playlist->GetName() ) && !m_Library.HasRecentlyWrittenTag( filename ) ) {
-			ignore = false;
-			break;
-		}
-	}
-	return ignore;
+  if ( !m_Library.HasRecentlyWrittenTag( filename ) ) {
+	  const std::filesystem::path filepath( filename );
+	  const std::wstring folder = filepath.parent_path();
+
+	  // Note that the folder playlist map mutex has already been locked by the callback handler.
+	  for ( const auto& [ treeItem, playlist ] : m_FolderPlaylistMap ) {
+		  if ( playlist && ( folder == playlist->GetName() ) ) {
+			  ignore = false;
+			  break;
+		  }
+	  }
+  }
+  return ignore;
 }
 
 Playlist::Ptr WndTree::SelectAudioCD( const wchar_t drive )

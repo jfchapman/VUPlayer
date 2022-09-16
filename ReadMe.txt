@@ -1,4 +1,4 @@
-VUPlayer 4.14
+VUPlayer 4.15
 Copyright (c) 2022 James Chapman
 ------------------------------------------------------------------------------
 website: http://www.vuplayer.com
@@ -15,13 +15,11 @@ Audioscrobbler functionality requires an internet connection and a Last.fm accou
 Command-line
 ------------
 Ordinarily, VUPlayer stores application settings and metadata in a SQLite database in the user documents folder.
-To run in 'portable' mode, leaving no database footprint, the application can be launched using the following command-line argument(s):
+To store this database in the application folder, the following command-line argument can be used to run in 'portable' mode:
 
-	VUPlayer.exe -portable [settings file]
+	VUPlayer.exe -portable
 
-The optional [settings file] parameter specifies the location of an application settings file to use.
-The 'Export Settings' function in the main application can be used to save the current settings in the correct format.
-Please note that MusicBrainz & Audioscrobbler functionality is disabled when running in 'portable' mode.
+Please note that, when running in 'portable' mode, database storage requires write permission to the application folder.
 
 
 Credits

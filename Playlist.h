@@ -222,6 +222,9 @@ public:
 	// Returns true if the item is in the playlist. 
 	bool ContainsItem( const Item& item );
 
+	// Returns whether the playlist contains 'filename'.
+	bool ContainsFilename( const std::wstring& filename );
+
 private:
 	// Pending file thread proc.
 	static DWORD WINAPI PendingThreadProc( LPVOID lpParam );
@@ -237,9 +240,6 @@ private:
 
 	// Thread handler for processing the list of pending files.
 	void OnPendingThreadHandler();
-
-	// Returns whether the playlist contains 'filename'.
-	bool ContainsFilename( const std::wstring& filename );
 
 	// Merges any duplicate items.
 	void MergeDuplicates();

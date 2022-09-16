@@ -7,6 +7,8 @@
 
 #include <atomic>
 
+class WndTaskbar;
+
 // Audio file converter.
 class Converter
 {
@@ -19,7 +21,8 @@ public:
 	// 'tracks' - tracks to convert.
 	// 'encoderHandler' - encoder handler to use.
 	// 'joinFilename' - output filename, when joining tracks into a single file.
-	Converter( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename );
+	// 'taskbar' - taskbar control.
+	Converter( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar );
 
 	virtual ~Converter();
 
@@ -75,6 +78,9 @@ private:
 
 	// Audio format handlers.
 	Handlers& m_Handlers;
+
+	// Taskbar control.
+	WndTaskbar& m_Taskbar;
 
 	// Tracks to convert.
 	const Playlist::ItemList m_Tracks;

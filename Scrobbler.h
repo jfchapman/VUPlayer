@@ -12,8 +12,7 @@ class Scrobbler
 public:
 	// 'database' - application database.
 	// 'settings' - application settings.
-	// 'disable' - whether to disable Scrobbler functionality entirely.
-	Scrobbler( Database& database, Settings& settings, const bool disable );
+	Scrobbler( Database& database, Settings& settings );
 
 	virtual ~Scrobbler();
 

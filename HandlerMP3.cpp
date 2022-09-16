@@ -27,8 +27,7 @@ std::wstring HandlerMP3::GetDescription() const
 
 std::set<std::wstring> HandlerMP3::GetSupportedFileExtensions() const
 {
-	const std::set<std::wstring> fileTypes = { L"mp3" };
-	return fileTypes;
+	return { L"mp3" };
 }
 
 bool HandlerMP3::GetTags( const std::wstring& /*filename*/, Tags& /*tags*/ ) const

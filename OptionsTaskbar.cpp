@@ -60,12 +60,16 @@ void OptionsTaskbar::OnInit( const HWND hwnd )
 	}
 	EnableSystrayControls( hwnd );
 
-	// Thumbnail preview settings
+	// Taskbar settings
 	if ( IsWindows10() ) {
 		m_ToolbarButtonColour = GetSettings().GetTaskbarButtonColour();
+		if ( HWND hwndProgress = GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_PROGRESS ); nullptr != hwndProgress ) {
+			Button_SetCheck( hwndProgress, ( GetSettings().GetTaskbarShowProgress() ? BST_CHECKED : BST_UNCHECKED ) );
+		}
 	} else {
 		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_THUMBNAILGROUP ), SW_HIDE );
 		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_BUTTONCOLOUR ), SW_HIDE );
+		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_PROGRESS ), SW_HIDE );
 	}
 }
 
@@ -82,6 +86,9 @@ void OptionsTaskbar::OnSave( const HWND hwnd )
 
 	// Thumbnail preview settings
 	GetSettings().SetTaskbarButtonColour( m_ToolbarButtonColour );
+
+	// Progress bar
+	GetSettings().SetTaskbarShowProgress( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_PROGRESS ) ) );
 }
 
 void OptionsTaskbar::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /*lParam*/ )

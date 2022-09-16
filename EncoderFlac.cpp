@@ -5,7 +5,8 @@
 #include <vector>
 
 EncoderFlac::EncoderFlac() :
-	Encoder()
+	Encoder(),
+  FLAC::Encoder::File()
 {
 }
 

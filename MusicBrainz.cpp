@@ -23,15 +23,15 @@ static constexpr char s_CoverArtArchiveServer[]= "coverartarchive.org";
 // Cover Art Archive API for MusicBrainz release lookup.
 static constexpr char s_CoverArtArchiveAPI[]= "/release/";
 
-MusicBrainz::MusicBrainz( const HINSTANCE instance, const HWND hwnd, Settings& settings, const bool disable ) :
+MusicBrainz::MusicBrainz( const HINSTANCE instance, const HWND hwnd, Settings& settings ) :
 	m_hInst( instance ),
 	m_hWnd( hwnd ),
 	m_Settings( settings ),
 	m_PendingQueries(),
 	m_PendingQueriesMutex(),
-	m_StopEvent( disable ? nullptr : CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
-	m_WakeEvent( disable ? nullptr : CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
-	m_QueryThread( disable ? nullptr : CreateThread( NULL /*attributes*/, 0 /*stackSize*/, QueryThreadProc, this /*param*/, 0 /*flags*/, NULL /*threadId*/ ) ),
+	m_StopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
+	m_WakeEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
+	m_QueryThread( CreateThread( NULL /*attributes*/, 0 /*stackSize*/, QueryThreadProc, this /*param*/, 0 /*flags*/, NULL /*threadId*/ ) ),
 	m_ActiveQuery( false )
 {
 	const int bufSize = 32;
@@ -575,7 +575,7 @@ static long ParseYear( const std::string& date )
 	if ( const size_t pos = date.find_first_not_of( "0123456789" ); ( 4 == pos ) || ( ( std::string::npos == pos ) && ( 4 == date.size() ) ) ) {
 		try {
 			year = std::stol( date.substr( 0, pos ) );
-		} catch ( const std::exception& ) {}
+		} catch ( const std::logic_error& ) {}
 	}
 	return year;
 }

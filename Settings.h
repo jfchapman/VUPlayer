@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <list>
+#include <optional>
 
 #include "Database.h"
 #include "Library.h"
@@ -16,8 +17,7 @@ class Settings
 public:
 	// 'database' - application database.
 	// 'library' - media library.
-	// 'settings' - initial settings, used when running in 'portable' mode. 
-	Settings( Database& database, Library& library, const std::string& settings = std::string() );
+	Settings( Database& database, Library& library );
 
 	virtual ~Settings();
 
@@ -85,16 +85,16 @@ public:
 	// EQ settings.
 	struct EQ {
 		// Maps a centre frequency, in Hz, to a gain value.
-		typedef std::map<int,float> GainMap;
+		using GainMap = std::map<int, float>;
 
 		// Indicates that the EQ window is centred.
-		static const int Centred = INT_MIN;
+		static constexpr int Centred = INT_MIN;
 
 		// Maximum gain in dB.
-		static const int MaxGain = 9;
+		static constexpr float MaxGain = 9.0f;
 
 		// Minimum gain in dB.
-		static const int MinGain = -9;
+		static constexpr float MinGain = -9.0f;
 
 		EQ() :
 			Visible( false ),
@@ -483,9 +483,6 @@ public:
 	// Sets whether MusicBrainz functionality is enabled.
 	void SetMusicBrainzEnabled( const bool enabled );
 
-	// Exports the settings in JSON format to 'output'.
-	void ExportSettings( std::string& output );
-
 	// Gets the default (and maximum allowed) advanced WASAPI exclusive mode settings.
 	// 'useDeviceDefaultFormat' - out, true to use the device's default sample format, false to use the source sample format.
 	// 'bufferLength' - out, buffer length, in milliseconds.
@@ -589,6 +586,24 @@ public:
 	// Sets the taskbar thumbnail preview toolbar button colour.
 	void SetTaskbarButtonColour( const COLORREF colour );
 
+	// Returns whether to show a progress bar in the taskbar button.
+	bool GetTaskbarShowProgress();
+
+	// Sets whether to show a progress bar in the taskbar button.
+	void SetTaskbarShowProgress( const bool showProgress );
+
+  // Returns whether to allow writing of metadata tags to file.
+  bool GetWriteFileTags();
+
+  // Sets whether to allow writing of metadata tags to file.
+  void SetWriteFileTags( const bool write );
+
+  // Returns whether to preserve the last modified time when writing metadata tags to file.
+  bool GetPreserveLastModifiedTime();
+
+  // Sets whether to preserve the last modified time when writing metadata tags to file.
+  void SetPreserveLastModifiedTime( const bool preserve );
+
 private:
 	// Updates the database to the current version if necessary.
 	void UpdateDatabase();
@@ -614,11 +629,16 @@ private:
 	// Sets the playlist files from the database.
 	void ReadPlaylistFiles( Playlist& playlist );
 
-	// Imports the JSON format settings from 'input'.
-	void ImportSettings( const std::string& input );
-
 	// Returns whether a GUID string is valid.
 	static bool IsValidGUID( const std::string& guid );
+	
+	// Returns the value of the setting 'name', or nullopt if the setting is not in the database.
+	template <typename T>
+	std::optional<T> ReadSetting( const std::string& name );
+
+	// Sets the setting 'name' in the database to 'value'.
+	template <typename T>
+	void WriteSetting( const std::string& name, const T& value );
 
 	// Database.
 	Database& m_Database;

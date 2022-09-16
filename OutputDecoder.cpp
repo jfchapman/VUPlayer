@@ -9,9 +9,9 @@ constexpr float kSecondsPerSlot = 0.5f;
 OutputDecoder::OutputDecoder( Decoder::Ptr decoder, const long id ) :
 	m_Decoder( decoder ),
 	m_ID( id ),
-	m_Channels( decoder ? decoder->GetChannels() : 0 )
+	m_Channels( GetOutputChannels( decoder ) )
 {
-	if ( m_Channels <= 0 ) {
+  if ( m_Channels <= 0 ) {
 		throw std::runtime_error( "Unable to create output decoder" );
 	}
 }
@@ -35,7 +35,10 @@ long OutputDecoder::Read( float* buffer, const long sampleCount )
 			const long readBufferSize = ( nullptr != m_ReadBuffer ) ? static_cast<long>( m_ReadBuffer->size() ) : 0;
 			if ( m_ReadBufferOffset < readBufferSize ) {
 				const long samplesToRead = std::min<long>( sampleCount - samplesRead, ( readBufferSize - m_ReadBufferOffset ) / m_Channels );
-				std::copy( m_ReadBuffer->data() + m_ReadBufferOffset, m_ReadBuffer->data() + m_ReadBufferOffset + samplesToRead * m_Channels, buffer + samplesRead * m_Channels );
+        const auto first = m_ReadBuffer->begin() + m_ReadBufferOffset;
+        const auto last = first + samplesToRead * m_Channels;
+        const auto dest = buffer + samplesRead * m_Channels;
+				std::copy( first, last, dest );
 				m_ReadBufferOffset += samplesToRead * m_Channels;
 				samplesRead += samplesToRead;
 			} else {
@@ -52,7 +55,7 @@ long OutputDecoder::Read( float* buffer, const long sampleCount )
 			}
 		}
 	} else {
-		samplesRead = m_Decoder->Read( buffer, sampleCount );
+		samplesRead = Decode( buffer, sampleCount );
 	}
 	return samplesRead;
 }
@@ -76,7 +79,7 @@ long OutputDecoder::GetSampleRate() const
 
 long OutputDecoder::GetChannels() const
 {
-	return m_Decoder->GetChannels();
+	return m_Channels;
 }
 
 std::optional<long> OutputDecoder::GetBPS() const
@@ -149,7 +152,7 @@ void OutputDecoder::StartPreBufferThread()
 				slotIndex = ( 1 + slotIndex ) % kSlotCount;
 
 				buffer.resize( bufferSamples * m_Channels );
-				const long samplesRead = m_Decoder->Read( buffer.data(), bufferSamples );
+				const long samplesRead = Decode( buffer.data(), bufferSamples );
 				buffer.resize( samplesRead * m_Channels );
 
 				WaitForSingleObject( m_SemaphoreInput, INFINITE );
@@ -182,4 +185,39 @@ void OutputDecoder::StopPreBufferThread()
 		while ( WAIT_OBJECT_0 == WaitForSingleObject( m_SemaphoreInput, 0 ) ) {}
 		ReleaseSemaphore( m_SemaphoreInput, kQueueSize, nullptr );
 	}
+}
+
+long OutputDecoder::GetOutputChannels( const Decoder::Ptr& decoder )
+{
+  MediaInfo info;
+  info.SetChannels( decoder ? decoder->GetChannels() : 0 );
+  return GetOutputChannels( info );
+}
+
+long OutputDecoder::GetOutputChannels( const MediaInfo& mediaInfo )
+{
+  // Convert 6.1 files to 7.1, so that they can be downmixed correctly.
+  const long channels = mediaInfo.GetChannels();
+  return ( 7 == channels ) ? 8 : channels;
+}
+
+long OutputDecoder::Decode( float* buffer, const long sampleCount )
+{
+  const long samplesRead = m_Decoder->Read( buffer, sampleCount );
+  if ( ( 7 == m_Decoder->GetChannels() ) && ( 8 == m_Channels ) ) {
+    // Copy the back centre channel to the back left & back right channels.
+    for ( long sample = sampleCount - 1; sample >= 0; sample-- ) {
+      const long srcOffset = sample * 7;
+      const long destOffset = sample * 8;
+      buffer[ destOffset + 7 ] = buffer[ srcOffset + 6 ];
+      buffer[ destOffset + 6 ] = buffer[ srcOffset + 5 ];
+      buffer[ destOffset + 5 ] = buffer[ srcOffset + 4 ];
+      buffer[ destOffset + 4 ] = buffer[ srcOffset + 4 ];
+      buffer[ destOffset + 3 ] = buffer[ srcOffset + 3 ];
+      buffer[ destOffset + 2 ] = buffer[ srcOffset + 2 ];
+      buffer[ destOffset + 1 ] = buffer[ srcOffset + 1 ];
+      buffer[ destOffset + 0 ] = buffer[ srcOffset + 0 ];
+    }
+  }
+  return samplesRead;
 }

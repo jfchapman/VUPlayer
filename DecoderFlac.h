@@ -47,11 +47,11 @@ private:
 	// Current FLAC frame.
 	FLAC__Frame m_FLACFrame;
 
-	// Current FLAC buffer.
-	FLAC__int32** m_FLACBuffer;
+	// Frame buffer.
+	std::vector<float> m_FrameBuffer;
 
-	// Current FLAC frame position.
-	unsigned int m_FLACFramePos;
+	// Current frame buffer position.
+	uint32_t m_FramePos;
 
 	// Indicates whether this is a valid FLAC stream.
 	bool m_Valid;

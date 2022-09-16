@@ -165,6 +165,12 @@ bool IsClassicThemeActive();
 // Returns whether the OS is Windows 10 (or later).
 bool IsWindows10();
 
+// Returns the last modified time for a file.
+FILETIME GetLastModifiedTime( const std::filesystem::path& filepath );
+
+// Sets the last modified time for a file.
+void SetLastModifiedTime( const std::filesystem::path& filepath, const FILETIME lastModified );
+
 // Converts a floating point sample 'value' to 24-bit (clamping any value outside the range -1.0 to +1.0).
 inline int32_t FloatTo24( const float value )
 {

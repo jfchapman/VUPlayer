@@ -57,19 +57,20 @@ VUPlayer* VUPlayer::Get()
 }
 
 VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<std::wstring>& startupFilenames,
-		const bool portable, const std::string& portableSettings, const Database::Mode databaseMode ) :
+		const bool portable, const Database::Mode databaseMode ) :
 	m_hInst( instance ),
 	m_hWnd( hwnd ),
 	m_hAccel( LoadAccelerators( m_hInst, MAKEINTRESOURCE( IDC_VUPLAYER ) ) ),
+	m_hAccelEditLabel( CreateModifiedAcceleratorTable() ),
 	m_Handlers(),
-	m_Database( ( portable ? std::wstring() : ( DocumentsFolder() + s_Database ) ), databaseMode ),
+	m_Database( ( portable ? ( ApplicationFolder() / s_Database ) : ( DocumentsFolder() / s_Database ) ), databaseMode ),
 	m_Library( m_Database, m_Handlers ),
 	m_Maintainer( m_hInst, m_Library, m_Handlers ),
-	m_Settings( m_Database, m_Library, portableSettings ),
+	m_Settings( m_Database, m_Library ),
 	m_Output( m_hInst, m_hWnd, m_Handlers, m_Settings ),
 	m_GainCalculator( m_Library, m_Handlers ),
-	m_Scrobbler( m_Database, m_Settings, portable /*disable*/ ),
-	m_MusicBrainz( m_hInst, m_hWnd, m_Settings, portable /*disable*/ ),
+	m_Scrobbler( m_Database, m_Settings ),
+	m_MusicBrainz( m_hInst, m_hWnd, m_Settings ),
 	m_DiscManager( m_hInst, m_hWnd, m_Library, m_Handlers, m_MusicBrainz ),
 	m_Rebar( m_hInst, m_hWnd, m_Settings ),
 	m_Status( m_hInst, m_hWnd ),
@@ -104,9 +105,10 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_TitlebarText(),
 	m_IdleText(),
 	m_IsHighContrast( IsHighContrastActive() ),
-	m_IsPortableMode( portable ),
 	m_IsTreeLabelEdit( false ),
-	m_IsFirstTimeStartup( true )
+	m_IsFirstTimeStartup( true ),
+	m_IsEditingLabel( false ),
+	m_IsConverting( false )
 {
 	s_VUPlayer = this;
 
@@ -230,16 +232,28 @@ void VUPlayer::WriteWindowSettings()
 	m_Settings.SetStartupPosition( x, y, width, height, maximised, minimised );
 }
 
-std::wstring VUPlayer::DocumentsFolder()
+std::filesystem::path VUPlayer::DocumentsFolder()
 {
-	std::wstring folder;
+	std::filesystem::path folder;
 	PWSTR path = nullptr;
 	HRESULT hr = SHGetKnownFolderPath( FOLDERID_Documents, KF_FLAG_DEFAULT, NULL /*token*/, &path );
 	if ( SUCCEEDED( hr ) ) {
 		folder = path;
 		CoTaskMemFree( path );
-		folder += L"\\VUPlayer\\";
+		folder /= L"VUPlayer";
 		CreateDirectory( folder.c_str(), NULL /*attributes*/ ); 
+	}
+	return folder;
+}
+
+std::filesystem::path VUPlayer::ApplicationFolder()
+{
+	std::filesystem::path folder;
+	constexpr size_t kPathSize = 1024;
+	std::vector<TCHAR> filename( kPathSize );
+	if ( GetModuleFileName( nullptr, filename.data(), kPathSize - 1 ) && ( ERROR_INSUFFICIENT_BUFFER != GetLastError() ) ) {
+		const std::filesystem::path filepath( filename.data() );
+		folder = filepath.parent_path();
 	}
 	return folder;
 }
@@ -272,12 +286,14 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 		switch ( nmhdr->code ) {
 			case TVN_BEGINLABELEDIT : {
 				result = m_Tree.OnBeginLabelEdit( wParam, lParam );
+				m_IsEditingLabel = !result;
 				m_IsTreeLabelEdit = true;
 				handled = true;
 				break;
 			}
 			case TVN_ENDLABELEDIT : {
 				result = m_Tree.OnEndLabelEdit( wParam, lParam );
+				m_IsEditingLabel = false;
 				m_IsTreeLabelEdit = false;
 				break;
 			}
@@ -398,6 +414,7 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				if ( ( nullptr != hdr ) && ( hdr->hwndFrom == m_List.GetWindowHandle() ) ) {
 					NMLVDISPINFO* dispInfo = reinterpret_cast<NMLVDISPINFO*>( lParam );
 					result = m_List.OnBeginLabelEdit( dispInfo->item );
+					m_IsEditingLabel = !result;
 					handled = true;
 				}
 				break;
@@ -408,6 +425,7 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 					NMLVDISPINFO* dispInfo = reinterpret_cast<NMLVDISPINFO*>( lParam );
 					m_List.OnEndLabelEdit( dispInfo->item );
 					result = FALSE;
+					m_IsEditingLabel = false;
 					handled = true;
 				}
 				break;
@@ -506,7 +524,9 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_Counter.Refresh();
 		m_Status.Update( m_GainCalculator, m_Maintainer, m_MusicBrainz );
 		m_Tray.Update( m_CurrentOutput );
-		m_Taskbar.Update( m_ToolbarPlayback );
+		if ( !m_IsConverting ) {
+			m_Taskbar.Update( m_ToolbarPlayback, m_Output );
+		}
 		m_List.UpdateStatusIcon();
 		m_Tree.UpdateOutputIcon();
 	} else if ( TIMER_SYSTRAY == timerID ) {
@@ -947,10 +967,6 @@ void VUPlayer::OnCommand( const int commandID )
 			OnConvert();
 			break;
 		}
-		case ID_FILE_EXPORTSETTINGS : {
-			OnExportSettings();
-			break;
-		}
 		case ID_FILE_MUSICBRAINZ_QUERY : {
 			OnMusicBrainzQuery();
 			break;
@@ -1172,7 +1188,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | addToFavouritesEnabled );
 		const UINT gainCalculatorEnabled = selectedItems ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | gainCalculatorEnabled );
-		const UINT refreshLibraryEnabled = ( m_IsPortableMode || m_Maintainer.IsActive() ) ? MF_DISABLED : MF_ENABLED;
+		const UINT refreshLibraryEnabled = m_Maintainer.IsActive() ? MF_DISABLED : MF_ENABLED;
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
 		const UINT musicbrainzEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) && IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
@@ -1552,6 +1568,7 @@ void VUPlayer::OnOptions()
 	if ( const COLORREF taskbarButtonColour = m_Settings.GetTaskbarButtonColour(); taskbarButtonColour != previousTaskbarButtonColour ) {
 		m_Taskbar.SetToolbarButtonColour( m_Settings );
 	}
+	m_Taskbar.EnableProgressBar( m_Settings.GetTaskbarShowProgress() );
 }
 
 Settings& VUPlayer::GetApplicationSettings()
@@ -1744,13 +1761,14 @@ void VUPlayer::OnConvert()
 				if ( ( Playlist::Type::CDDA == playlist->GetType() ) && outputPlaylist && ( Playlist::Type::CDDA == outputPlaylist->GetType() ) ) {
 					m_Output.Stop();
 				}
-
+				m_IsConverting = true;
 				const std::wstring& joinFilename = dlgConvert.GetJoinFilename();
 				if ( Playlist::Type::CDDA == playlist->GetType() ) {
-					CDDAExtract extract( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, m_DiscManager, selectedItems, handler, joinFilename );
+					CDDAExtract extract( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, m_DiscManager, selectedItems, handler, joinFilename, m_Taskbar );
 				} else {
-					Converter converter( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, selectedItems, handler, joinFilename );
+					Converter converter( m_hInst, m_hWnd, m_Library, m_Settings, m_Handlers, selectedItems, handler, joinFilename, m_Taskbar );
 				}
+				m_IsConverting = false;
 			}
 		}
 		SetFocus( m_List.GetWindowHandle() );
@@ -1829,19 +1847,14 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
 	}
 }
 
-bool VUPlayer::IsMusicBrainzAvailable() const
-{
-	return m_MusicBrainz.IsAvailable();
-}
-
 bool VUPlayer::IsMusicBrainzEnabled()
 {
-	return ( IsMusicBrainzAvailable() && m_Settings.GetMusicBrainzEnabled() );
+	return m_Settings.GetMusicBrainzEnabled();
 }
 
 HACCEL VUPlayer::GetAcceleratorTable() const
 {
-	return m_hAccel;
+	return m_IsEditingLabel ? m_hAccelEditLabel : m_hAccel;
 }
 
 void VUPlayer::OnRemoveFromLibrary( const MediaInfo::List& mediaList )
@@ -1960,58 +1973,6 @@ void VUPlayer::SaveSettings()
 	}
 }
 
-void VUPlayer::OnExportSettings()
-{
-	std::string settings;
-
-	// Ensure all database settings are up to date, before exporting.
-	m_List.SaveSettings();
-	m_Tree.SaveSettings();
-	m_EQ.SaveSettings();
-	WriteWindowSettings();
-	SaveSettings();
-	m_Counter.SaveSettings();
-
-	m_Settings.ExportSettings( settings );
-	if ( !settings.empty() ) {
-		WCHAR title[ MAX_PATH ] = {};
-		LoadString( m_hInst, IDS_EXPORTSETTINGS_TITLE, title, MAX_PATH );
-
-		WCHAR filter[ MAX_PATH ] = {};
-		LoadString( m_hInst, IDS_EXPORTSETTINGS_FILTER, filter, MAX_PATH );
-		const std::wstring filter1( filter );
-		const std::wstring filter2( L"*.ini" );
-		std::vector<WCHAR> filterStr;
-		filterStr.reserve( MAX_PATH );
-		filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
-		filterStr.push_back( 0 );
-		filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
-		filterStr.push_back( 0 );
-		filterStr.push_back( 0 );
-
-		WCHAR buffer[ MAX_PATH ] = {};
-		LoadString( m_hInst, IDS_EXPORTSETTINGS_DEFAULT, buffer, MAX_PATH );
-
-		OPENFILENAME ofn = {};
-		ofn.lStructSize = sizeof( OPENFILENAME );
-		ofn.hwndOwner = m_hWnd;
-		ofn.lpstrTitle = title;
-		ofn.lpstrFilter = &filterStr[ 0 ];
-		ofn.nFilterIndex = 1;
-		ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER;
-		ofn.lpstrFile = buffer;
-		ofn.nMaxFile = MAX_PATH;
-		if ( FALSE != GetSaveFileName( &ofn ) ) {
-			std::ofstream fileStream;
-			fileStream.open( ofn.lpstrFile, std::ios::out | std::ios::trunc );
-			if ( fileStream.is_open() ) {
-				fileStream << settings;
-				fileStream.close();
-			}
-		}
-	}
-}
-
 HWND VUPlayer::GetEQ() const
 {
 	return m_EQ.GetWindowHandle();
@@ -2083,4 +2044,28 @@ void VUPlayer::OnPaint( const PAINTSTRUCT& ps )
 void VUPlayer::OnTaskbarButtonCreated()
 {
 	m_Taskbar.Init( m_Settings );
+}
+
+HACCEL VUPlayer::CreateModifiedAcceleratorTable() const
+{
+	HACCEL modifiedAcceleratorTable = nullptr;
+	if ( const int entries = CopyAcceleratorTable( m_hAccel, nullptr, 0 ); entries > 0 ) {
+		std::vector<ACCEL> accelerators( entries );
+		if ( const int copied = CopyAcceleratorTable( m_hAccel, accelerators.data(), entries ); copied == entries ) {
+			constexpr std::array<ACCEL, 1> kIgnoredAccelerators = { { FVIRTKEY | FNOINVERT, VK_SPACE, ID_CONTROL_PLAY } };
+			for ( auto accel = accelerators.begin(); accelerators.end() != accel; ) {
+				const auto ignored = std::find_if( kIgnoredAccelerators.begin(), kIgnoredAccelerators.end(), [ accel ] ( const ACCEL& ignoredAccel ) 
+					{
+						return ( accel->fVirt == ignoredAccel.fVirt ) && ( accel->key == ignoredAccel.key ) && ( accel->cmd == ignoredAccel.cmd );
+					} );
+				if ( kIgnoredAccelerators.end() != ignored ) {
+					accel = accelerators.erase( accel );
+				} else {
+					++accel;
+				}
+			}
+			modifiedAcceleratorTable = CreateAcceleratorTable( accelerators.data(), static_cast<int>( accelerators.size() ) );
+		}
+	}
+	return modifiedAcceleratorTable;
 }

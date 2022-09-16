@@ -2,6 +2,7 @@
 
 #include "resource.h"
 #include "Utility.h"
+#include "WndTaskbar.h"
 
 #include "ebur128.h"
 
@@ -87,12 +88,13 @@ DWORD WINAPI Converter::EncodeThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-Converter::Converter( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename ) :
+Converter::Converter( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_Library( library ),
 	m_Settings( settings ),
 	m_Handlers( handlers ),
+	m_Taskbar( taskbar ),
 	m_Tracks( tracks ),
 	m_CancelEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
 	m_EncodeThread( nullptr ),
@@ -271,12 +273,12 @@ void Converter::EncodeHandler()
 							int r128Error = EBUR128_SUCCESS;
 							bool continueEncoding = true;
 							while ( !Cancelled() && continueEncoding ) {
-								const long samplesRead = decoder->Read( &sampleBuffer[ 0 ], sampleCount );
+								const long samplesRead = decoder->Read( sampleBuffer.data(), sampleCount );
 								if ( samplesRead > 0 ) {
 									if ( ( nullptr != r128State ) && ( EBUR128_SUCCESS == r128Error ) ) {
-										r128Error = ebur128_add_frames_float( r128State, &sampleBuffer[ 0 ], static_cast<size_t>( samplesRead ) );
+										r128Error = ebur128_add_frames_float( r128State, sampleBuffer.data(), static_cast<size_t>( samplesRead ) );
 									}
-									continueEncoding = m_Encoder->Write( &sampleBuffer[ 0 ], samplesRead );
+									continueEncoding = m_Encoder->Write( sampleBuffer.data(), samplesRead );
 
 									trackSamplesRead += samplesRead;
 									if ( 0 != trackSamplesTotal ) {
@@ -358,7 +360,7 @@ void Converter::EncodeHandler()
 						std::optional<float> albumGain;
 						if ( !r128States.empty() ) {
 							double loudness = 0;
-							if ( EBUR128_SUCCESS == ebur128_loudness_global_multiple( &r128States[ 0 ], r128States.size(), &loudness ) ) {
+							if ( EBUR128_SUCCESS == ebur128_loudness_global_multiple( r128States.data(), r128States.size(), &loudness ) ) {
 								albumGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
 							}
 						}
@@ -534,6 +536,8 @@ void Converter::UpdateStatus()
 			SendMessage( progressTotal, PBM_SETPOS, currentPosition, 0 );
 		}
 	}
+
+	m_Taskbar.UpdateProgress( m_ProgressTotal );
 }
 
 void Converter::WriteTrackTags( const std::wstring& filename, const MediaInfo& mediaInfo )
@@ -573,7 +577,7 @@ void Converter::WriteTrackTags( const std::wstring& filename, const MediaInfo& m
 	}
 	const std::vector<BYTE> imageBytes = m_Library.GetMediaArtwork( mediaInfo );
 	if ( !imageBytes.empty() ) {
-		const std::string encodedArtwork = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageBytes.size() ) );
+		const std::string encodedArtwork = Base64Encode( imageBytes.data(), static_cast<int>( imageBytes.size() ) );
 		tags.insert( Tags::value_type( Tag::Artwork, encodedArtwork ) );
 	}
 

@@ -93,9 +93,6 @@
     <ClInclude Include="VUMeter.h">
       <Filter>Visuals</Filter>
     </ClInclude>
-    <ClInclude Include="VUMeterData.h">
-      <Filter>Visuals</Filter>
-    </ClInclude>
     <ClInclude Include="Handler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -192,12 +189,6 @@
     <ClInclude Include="WndToolbarPlaylist.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
-    <ClInclude Include="libs\vorbis-tools-1.4.0\vorbiscomment\i18n.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
     <ClInclude Include="DecoderOpus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -285,9 +276,6 @@
     <ClInclude Include="OpusComment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\libebur128-1.2.4\ebur128.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
     <ClInclude Include="OptionsLoudness.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -339,17 +327,26 @@
     <ClInclude Include="WndTaskbar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\json-3.10.5\json.hpp">
-      <Filter>Third Party</Filter>
-    </ClInclude>
     <ClInclude Include="OutputDecoder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CDDACache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\sqlite-3.38.5\sqlite3.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="libs\json-3.11.2\json.hpp">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\sqlite-3.39.3\sqlite3.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\libebur128-1.2.6\ebur128.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\vorbis-tools-1.4.2\vorbiscomment\i18n.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\vorbis-tools-1.4.2\vorbiscomment\vcedit.h">
+      <Filter>Third Party</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -509,9 +506,6 @@
     <ClCompile Include="WndToolbarPlaylist.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\vorbis-tools-1.4.0\vorbiscomment\vcedit.c">
-      <Filter>Third Party</Filter>
-    </ClCompile>
     <ClCompile Include="DecoderOpus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -593,9 +587,6 @@
     <ClCompile Include="OpusComment.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\libebur128-1.2.4\ebur128.c">
-      <Filter>Third Party</Filter>
-    </ClCompile>
     <ClCompile Include="OptionsLoudness.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -650,8 +641,14 @@
     <ClCompile Include="CDDACache.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.38.5\sqlite3.c">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="libs\sqlite-3.39.3\sqlite3.c">
+      <Filter>Third Party</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\libebur128-1.2.6\ebur128.c">
+      <Filter>Third Party</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\vorbis-tools-1.4.2\vorbiscomment\vcedit.c">
+      <Filter>Third Party</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -782,5 +779,8 @@
     <Manifest Include="res\version.manifest">
       <Filter>Resource Files</Filter>
     </Manifest>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\vumeter.data" />
   </ItemGroup>
 </Project>

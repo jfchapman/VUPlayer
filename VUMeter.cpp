@@ -1,15 +1,28 @@
 #include "VUMeter.h"
 
-#include "VUMeterData.h"
-
 // Render thread millisecond interval.
-static const DWORD s_RenderThreadInterval = 15;
+constexpr DWORD kRenderThreadInterval = 15;
 
 // Rise factor.
-static const float s_RiseFactor = 0.2f;
+constexpr float kRiseFactor = 0.2f;
 
 // Rounded corner width.
-static const float s_RoundedCornerWidth = 16.0f;
+constexpr float kRoundedCornerWidth = 16.0f;
+
+// Whether the meter resource has been loaded successfully.
+bool VUMeter::s_MeterLoaded = false;
+
+// Base meter image width.
+DWORD VUMeter::s_MeterWidth = 0;
+
+// Base meter image height.
+DWORD VUMeter::s_MeterHeight = 0;
+
+// Base meter image.
+const BYTE* VUMeter::s_MeterBase = nullptr;
+
+// Meter pin delta arrays (null terminated).
+std::vector<const DWORD*> VUMeter::s_MeterPins = {};
 
 DWORD WINAPI VUMeter::RenderThreadProc( LPVOID lpParam )
 {
@@ -24,7 +37,7 @@ VUMeter::VUMeter( WndVisual& wndVisual, const bool stereo ) :
 	Visual( wndVisual ),
 	m_RenderThread( NULL ),
 	m_RenderStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
-	m_MeterImage( VU_WIDTH * VU_HEIGHT * 4 ),
+	m_MeterImage(),
 	m_MeterPin( nullptr ),
 	m_BitmapLeft( nullptr ),
 	m_BitmapRight( nullptr ),
@@ -36,7 +49,52 @@ VUMeter::VUMeter( WndVisual& wndVisual, const bool stereo ) :
 	m_Decay( GetSettings().GetVUMeterDecay() ),
 	m_IsStereo( stereo )
 {
-	memcpy( m_MeterImage.data(), VU_BASE, VU_WIDTH * VU_HEIGHT * 4 );
+  if ( !s_MeterLoaded ) {
+    // Load resources.
+    if ( HRSRC hResource = FindResource( nullptr, MAKEINTRESOURCE( IDR_VUMETER ), RT_RCDATA ); nullptr != hResource ) {
+      constexpr DWORD kHeaderBytes = 8;
+      if ( const DWORD resourceSize = SizeofResource( nullptr, hResource ); resourceSize > kHeaderBytes ) {
+        if ( HGLOBAL hGlobal = LoadResource( nullptr, hResource ); nullptr != hGlobal ) {
+          if ( const BYTE* resourceData = static_cast<const BYTE*>( LockResource( hGlobal ) ); nullptr != resourceData ) {
+            // Base image.
+            const DWORD* header = reinterpret_cast<const DWORD*>( resourceData );
+            s_MeterWidth = header[ 0 ];
+            s_MeterHeight = header[ 1 ];
+            if ( ( 0 != s_MeterWidth ) && ( 0 != s_MeterHeight ) ) {
+              if ( const DWORD imageBytes = s_MeterWidth * s_MeterHeight * 4; imageBytes < ( resourceSize - kHeaderBytes ) ) {
+                s_MeterBase = resourceData + kHeaderBytes;
+             
+                // Meter pin deltas.
+                const DWORD* data = reinterpret_cast<const DWORD*>( resourceData + kHeaderBytes + imageBytes );
+                const DWORD dataSize = ( resourceSize - imageBytes - kHeaderBytes ) / 4;
+                if ( ( dataSize > 0 ) && ( 0 == data[ dataSize - 1 ] ) ) {
+                  s_MeterPins.clear();
+                  s_MeterPins.push_back( data );
+                  DWORD offset = 0;
+                  bool pinsOK = true;
+                  do {
+                    do {
+                      pinsOK = ( data[ offset ] >> 8 ) < imageBytes;
+                    } while ( 0 != data[ offset++ ] );
+
+                    if ( offset < dataSize ) {
+                      s_MeterPins.push_back( data + offset );
+                    }
+                  } while ( pinsOK && ( offset < dataSize ) );
+
+                  s_MeterLoaded = pinsOK;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if ( s_MeterLoaded ) {
+    m_MeterImage.resize( s_MeterWidth * s_MeterHeight * 4 );
+  }
 }
 
 VUMeter::~VUMeter()
@@ -49,7 +107,7 @@ VUMeter::~VUMeter()
 
 int VUMeter::GetHeight( const int width )
 {
-	const int height = static_cast<int>( static_cast<float>( width ) * ( m_IsStereo ? 2 : 1 ) / VU_WIDTH * VU_HEIGHT );
+	const int height = s_MeterLoaded ? ( static_cast<int>( static_cast<float>( width ) * ( m_IsStereo ? 2 : 1 ) / s_MeterWidth * s_MeterHeight ) ) : 0;
 	return height;
 }
 
@@ -92,7 +150,7 @@ void VUMeter::RenderThreadHandler()
 		if ( GetLevels() ) {
 			DoRender();
 		}
-		result = WaitForSingleObject( m_RenderStopEvent, s_RenderThreadInterval );
+		result = WaitForSingleObject( m_RenderStopEvent, kRenderThreadInterval );
 	} while ( WAIT_OBJECT_0 != result );
 }
 
@@ -114,7 +172,7 @@ bool VUMeter::GetLevels()
 	float rightDisplay = m_RightDisplayLevel;
 
 	if ( leftDisplay < leftOutput ) {
-		leftDisplay += ( leftOutput - leftDisplay ) * s_RiseFactor;
+		leftDisplay += ( leftOutput - leftDisplay ) * kRiseFactor;
 	} else {
 		leftDisplay -= m_Decay;
 		if ( leftDisplay < leftOutput ) {
@@ -123,7 +181,7 @@ bool VUMeter::GetLevels()
 	}
 
 	if ( rightDisplay < rightOutput ) {
-		rightDisplay += ( rightOutput - rightDisplay ) * s_RiseFactor;
+		rightDisplay += ( rightOutput - rightDisplay ) * kRiseFactor;
 	} else {
 		rightDisplay -= m_Decay;
 		if ( rightDisplay < rightOutput ) {
@@ -142,51 +200,49 @@ bool VUMeter::GetLevels()
 
 void VUMeter::DrawPin( const int position )
 {
-	int pos = position;
-	if ( pos < 0 ) {
-		pos = 0;
-	} else if ( pos > VU_PINCOUNT ) {
-		pos = VU_PINCOUNT;
-	}
+  if ( s_MeterLoaded ) {
+    const int pos = std::clamp( position, 0, static_cast<int>( s_MeterPins.size() - 1 ) );
+    const DWORD* pinBuffer = s_MeterPins[ pos ];
+	  if ( m_MeterPin != pinBuffer ) {
+		  // Blank out the previous pin position.
+      std::copy( s_MeterBase, s_MeterBase + s_MeterWidth * s_MeterHeight * 4, m_MeterImage.data() );
 
-	const DWORD* pinBuffer = VU_PIN[ pos ];
-	if ( m_MeterPin != pinBuffer ) {
-		// Blank out the previous pin position.
-		memcpy( m_MeterImage.data(), VU_BASE, VU_WIDTH * VU_HEIGHT * 4 );
+		  // Draw the current pin.
+		  int index = 0;
+		  while ( 0 != pinBuffer[ index ] ) {
+			  m_MeterImage[ pinBuffer[ index ] >> 8 ] = static_cast<BYTE>( pinBuffer[ index ] & 0xff );
+			  ++index;
+		  }
 
-		// Draw the current pin.
-		int index = 0;
-		while ( 0 != pinBuffer[ index ] ) {
-			m_MeterImage[ pinBuffer[ index ] >> 8 ] = static_cast<BYTE>( pinBuffer[ index ] & 0xff );
-			++index;
-		}
-
-		m_MeterPin = pinBuffer;
-	}
+		  m_MeterPin = pinBuffer;
+	  }
+  }
 }
 
 void VUMeter::UpdateBitmaps( const float leftLevel, const float rightLevel )
 {
-	auto& [ leftMeter, rightMeter ] = m_MeterPosition;
+  if ( s_MeterLoaded ) {
+	  auto& [ leftMeter, rightMeter ] = m_MeterPosition;
 
-	const int leftPosition = GetPinPosition( leftLevel );
-	const int rightPosition = GetPinPosition( rightLevel );
+	  const int leftPosition = GetPinPosition( leftLevel );
+	  const int rightPosition = GetPinPosition( rightLevel );
 
-	if ( ( leftMeter != leftPosition ) && ( nullptr != m_BitmapLeft ) ) {
-		leftMeter = leftPosition;
-		DrawPin( leftMeter );
-		const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, VU_WIDTH /*right*/, VU_HEIGHT /*bottom*/ );
-		const UINT32 pitch = VU_WIDTH * 4;
-		m_BitmapLeft->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
-	} 
+	  if ( ( leftMeter != leftPosition ) && ( nullptr != m_BitmapLeft ) ) {
+		  leftMeter = leftPosition;
+		  DrawPin( leftMeter );
+		  const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, s_MeterWidth /*right*/, s_MeterHeight /*bottom*/ );
+		  const UINT32 pitch = s_MeterWidth * 4;
+		  m_BitmapLeft->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
+	  } 
 
-	if ( ( rightMeter != rightPosition ) && ( nullptr != m_BitmapRight ) ) {
-		rightMeter = rightPosition;
-		DrawPin( rightMeter );
-		const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, VU_WIDTH /*right*/, VU_HEIGHT /*bottom*/ );
-		const UINT32 pitch = VU_WIDTH * 4;
-		m_BitmapRight->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
-	}
+	  if ( ( rightMeter != rightPosition ) && ( nullptr != m_BitmapRight ) ) {
+		  rightMeter = rightPosition;
+		  DrawPin( rightMeter );
+		  const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, s_MeterWidth /*right*/, s_MeterHeight /*bottom*/ );
+		  const UINT32 pitch = s_MeterWidth * 4;
+		  m_BitmapRight->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
+	  }
+  }
 }
 
 void VUMeter::OnPaint()
@@ -195,7 +251,7 @@ void VUMeter::OnPaint()
 	if ( nullptr != deviceContext ) {
 		LoadResources( deviceContext );
 		const D2D1_SIZE_F targetSize = deviceContext->GetSize();
-		if ( ( targetSize.height > 0 ) && ( targetSize.height > 0 ) ) {
+		if ( s_MeterLoaded && ( targetSize.height > 0 ) && ( targetSize.height > 0 ) ) {
 			UpdateBitmaps( m_LeftDisplayLevel, m_RightDisplayLevel );
 			const float halfHeight = targetSize.height / ( m_IsStereo ? 2.0f : 1.0f );
 			const D2D1_RECT_F leftRect = D2D1::RectF( 0, 0, targetSize.width, halfHeight );
@@ -209,7 +265,7 @@ void VUMeter::OnPaint()
 				deviceContext->DrawBitmap( m_BitmapRight, &rightRect, opacity, interpolationMode, NULL /*srcRect*/, NULL /*transform*/ );
 			}
 			if ( nullptr != m_Brush ) {
-				const float strokeWidth = s_RoundedCornerWidth * targetSize.width / VU_WIDTH;
+				const float strokeWidth = kRoundedCornerWidth * targetSize.width / s_MeterWidth;
 				D2D1_ROUNDED_RECT roundedRect = {};
 				roundedRect.radiusX = strokeWidth * 2;
 				roundedRect.radiusY = strokeWidth * 2;
@@ -240,8 +296,8 @@ void VUMeter::LoadResources( ID2D1DeviceContext* deviceContext )
 			deviceContext->CreateSolidColorBrush( D2D1::ColorF( GetSysColor( COLOR_3DFACE ) ), &m_Brush );
 		}
 
-		if ( ( nullptr == m_BitmapLeft ) && ( nullptr == m_BitmapRight ) ) {
-			const D2D1_SIZE_U bitmapSize = D2D1::SizeU( VU_WIDTH, VU_HEIGHT );
+		if ( s_MeterLoaded && ( nullptr == m_BitmapLeft ) && ( nullptr == m_BitmapRight ) ) {
+			const D2D1_SIZE_U bitmapSize = D2D1::SizeU( s_MeterWidth, s_MeterHeight );
 			D2D1_BITMAP_PROPERTIES bitmapProperties = {};
 			bitmapProperties.pixelFormat = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE };
 			HRESULT hr = deviceContext->CreateBitmap( bitmapSize, bitmapProperties, &m_BitmapLeft );
@@ -256,8 +312,8 @@ void VUMeter::LoadResources( ID2D1DeviceContext* deviceContext )
 			}
 
 			DrawPin( 0 );
-			const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, VU_WIDTH /*right*/, VU_HEIGHT /*bottom*/ );
-			const UINT32 pitch = VU_WIDTH * 4;
+			const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, s_MeterWidth /*right*/, s_MeterHeight /*bottom*/ );
+			const UINT32 pitch = s_MeterWidth * 4;
 			if ( nullptr != m_BitmapLeft ) {
 				m_BitmapLeft->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
 			}
@@ -286,5 +342,5 @@ void VUMeter::FreeResources()
 
 int VUMeter::GetPinPosition( const float level )
 {
-	return int( level * VU_PINCOUNT + 0.5f );
+	return static_cast<int>( level * ( s_MeterPins.size() - 1 ) + 0.5f );
 }

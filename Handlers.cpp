@@ -10,6 +10,8 @@
 #include "HandlerMAC.h"
 #include "HandlerMPC.h"
 
+#include "Library.h"
+#include "Settings.h"
 #include "ShellMetadata.h"
 #include "Utility.h"
 
@@ -71,7 +73,7 @@ Decoder::Ptr Handlers::OpenDecoder( const std::wstring& filename ) const
 		if ( handler ) {
 			decoder = handler->OpenDecoder( filename );
 		}
-		if ( !decoder && m_HandlerFFmpeg ) {
+		if ( !decoder && m_HandlerFFmpeg && ( handler != m_HandlerFFmpeg ) ) {
 			// Try the FFmpeg handler as a catch all.
 			decoder = m_HandlerFFmpeg->OpenDecoder( filename );
 		}
@@ -95,18 +97,46 @@ bool Handlers::GetTags( const std::wstring& filename, Tags& tags ) const
 	return success;
 }
 
-bool Handlers::SetTags( const std::wstring& filename, const Tags& tags ) const
+bool Handlers::SetTags( const MediaInfo& mediaInfo, Library& library ) const
 {
-	bool success = false;
-	if ( !IsURL( filename ) ) {
-		Handler::Ptr handler = FindDecoderHandler( filename );
-		if ( handler ) {
-			success = handler->SetTags( filename, tags );
-		}
-		if ( !success ) {
-			success = ShellMetadata::Set( filename, tags );
-		}
-	}
+	bool success = true;
+  const auto& filename = mediaInfo.GetFilename();
+	if ( m_WriteTags && ( MediaInfo::Source::File == mediaInfo.GetSource() ) && !IsURL( filename ) ) {
+    Tags tagsToWrite = library.GetTags( mediaInfo );
+
+    Tags fileTags;
+    GetTags( filename, fileTags );
+
+    for ( auto libraryTag = tagsToWrite.begin(); tagsToWrite.end() != libraryTag; ) {
+      const auto fileTag = fileTags.find( libraryTag->first );
+      if ( fileTags.end() != fileTag ) {
+        if ( libraryTag->second == fileTag->second ) {
+          libraryTag = tagsToWrite.erase( libraryTag );
+        } else {
+          ++libraryTag;
+        }
+        fileTags.erase( fileTag );
+      } else {
+        ++libraryTag;
+      }
+    }
+
+    for ( const auto& [ tag, value ] : fileTags ) {
+      tagsToWrite.insert( Tags::value_type( tag, {} ) );
+    }
+
+    if ( !tagsToWrite.empty() ) {
+		  const FILETIME lastModified = m_PreserveLastModifiedTime ? GetLastModifiedTime( filename ) : FILETIME();
+		  Handler::Ptr handler = FindDecoderHandler( filename );
+      success = handler ? handler->SetTags( filename, tagsToWrite ) : false;
+		  if ( !success ) {
+			  success = ShellMetadata::Set( filename, tagsToWrite );
+		  }
+		  if ( success && m_PreserveLastModifiedTime ) {
+			  SetLastModifiedTime( filename, lastModified );
+		  }
+    }
+  }
 	return success;
 }
 
@@ -163,6 +193,8 @@ void Handlers::SettingsChanged( Settings& settings ) const
 			handler->SettingsChanged( settings );
 		}
 	}
+  m_WriteTags = settings.GetWriteFileTags();
+  m_PreserveLastModifiedTime = settings.GetPreserveLastModifiedTime();
 }
 
 void Handlers::Init( Settings& settings )

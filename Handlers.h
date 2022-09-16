@@ -4,6 +4,9 @@
 
 #include <list>
 
+class Library;
+class MediaInfo;
+
 // Audio format handlers
 class Handlers
 {
@@ -20,8 +23,8 @@ public:
 	// Reads 'tags' from 'filename', returning true if the tags were read.
 	bool GetTags( const std::wstring& filename, Tags& tags ) const;
 
-	// Writes 'tags' to 'filename', returning true if the tags were written.
-	bool SetTags( const std::wstring& filename, const Tags& tags ) const;
+	// Writes tags for 'mediaInfo' using the media 'library', returning true if the tags were written.
+	bool SetTags( const MediaInfo& mediaInfo, Library& library ) const;
 
 	// Returns all the file extensions supported by the decoders, as a set of lowercase strings.
 	std::set<std::wstring> GetAllSupportedFileExtensions() const;
@@ -63,5 +66,11 @@ private:
 
 	// Available encoders.
 	Handler::List m_Encoders;
+
+  // Whether to allow writing of metadata tags to file.
+  mutable bool m_WriteTags = false;
+
+  // Whether to preserve the last modified time when writing metadata tags to file.
+  mutable bool m_PreserveLastModifiedTime = false;
 };
 

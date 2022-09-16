@@ -54,7 +54,7 @@ WndTray::WndTray( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_NotifyIconData.hWnd = parent;
 	m_NotifyIconData.uCallbackMessage = MSG_TRAYNOTIFY;
 	m_NotifyIconData.uVersion = NOTIFYICON_VERSION_4;
-	m_NotifyIconData.guidItem = GenerateGUID();
+  CLSIDFromString( L"{CCEEB8B4-0D76-4865-9743-2CD58B903747}", &m_NotifyIconData.guidItem );
 	LoadIconMetric( instance, MAKEINTRESOURCE( IDI_VUPLAYER ), LIM_SMALL, &m_NotifyIconData.hIcon );
 
 	LoadString( instance, IDS_APP_TITLE, m_NotifyIconData.szTip, sMaxTooltip );

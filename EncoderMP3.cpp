@@ -2,6 +2,8 @@
 
 #include "bassmix.h"
 
+#include <stdexcept>
+
 void null_report_function( const char* /*format*/, va_list /*ap*/ )
 {
 }
@@ -31,7 +33,14 @@ bool EncoderMP3::Open( std::wstring& filename, const long sampleRate, const long
 		lame_set_bWriteVbrTag( m_flags, 1 );
 
 		m_inputChannels = channels;
-		const int outputChannels = std::min<int>( channels, 2 );
+
+    // Convert 6.1 files to 7.1, so that they are downmixed correctly.
+    m_convert61to71 = ( 7 == m_inputChannels );
+    if ( m_convert61to71 ) {
+      m_inputChannels = 8;
+    }
+
+		const int outputChannels = std::min<int>( m_inputChannels, 2 );
 
 		success = ( 0 == lame_set_num_channels( m_flags, outputChannels ) );
 			( 0 == lame_set_in_samplerate( m_flags, static_cast<int>( sampleRate ) ) ) &&
@@ -71,6 +80,24 @@ bool EncoderMP3::Write( float* samples, const long sampleCount )
 	const int outputChannels = lame_get_num_channels( m_flags );
 
 	if ( outputChannels < m_inputChannels ) {
+    if ( m_convert61to71 ) {
+      // Copy the back centre channel to the back left & back right channels.
+      m_convertedBuffer.resize( sampleCount * 8 );
+      for ( long sample = sampleCount - 1; sample >= 0; sample-- ) {
+        const long srcOffset = sample * 7;
+        const long destOffset = sample * 8;
+        m_convertedBuffer[ destOffset + 7 ] = samples[ srcOffset + 6 ];
+        m_convertedBuffer[ destOffset + 6 ] = samples[ srcOffset + 5 ];
+        m_convertedBuffer[ destOffset + 5 ] = samples[ srcOffset + 4 ];
+        m_convertedBuffer[ destOffset + 4 ] = samples[ srcOffset + 4 ];
+        m_convertedBuffer[ destOffset + 3 ] = samples[ srcOffset + 3 ];
+        m_convertedBuffer[ destOffset + 2 ] = samples[ srcOffset + 2 ];
+        m_convertedBuffer[ destOffset + 1 ] = samples[ srcOffset + 1 ];
+        m_convertedBuffer[ destOffset + 0 ] = samples[ srcOffset + 0 ];
+      }
+      samples = m_convertedBuffer.data();
+    }
+
 		const DWORD decodeBufferSize = sampleCount * m_inputChannels * 4;
 		const DWORD mixBufferSize = outputChannels * sampleCount;
 		m_mixBuffer.resize( outputChannels * sampleCount );
@@ -133,8 +160,7 @@ int EncoderMP3::GetVBRQuality( const std::string& settings )
 		if ( ( quality < 0 ) || ( quality > 9 ) ) {
 			quality = 2;
 		}
-	} catch ( ... ) {
-
+	} catch ( const std::logic_error& ) {
 	}
 	return quality;
 }

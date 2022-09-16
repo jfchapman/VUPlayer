@@ -5,8 +5,8 @@ DecoderFlac::DecoderFlac( const std::wstring& filename ) :
 	FLAC::Decoder::Stream(),
 	m_FileStream(),
 	m_FLACFrame(),
-	m_FLACBuffer( nullptr ),
-	m_FLACFramePos( 0 ),
+	m_FrameBuffer(),
+	m_FramePos( 0 ),
 	m_Valid( false )
 {
 	m_FileStream.open( filename, std::ios::binary | std::ios::in );
@@ -35,35 +35,35 @@ long DecoderFlac::Read( float* buffer, const long sampleCount )
 {
 	long samplesRead = 0;
 	while ( samplesRead < sampleCount ) {
-		if ( m_FLACFramePos >= m_FLACFrame.header.blocksize ) {
-			m_FLACFramePos = 0;
-			m_FLACFrame = {};
-			if ( !process_single() || ( 0 == m_FLACFrame.header.blocksize ) ) {
-				break;
-			}
-		}
-		for ( unsigned int channel = 0; channel < m_FLACFrame.header.channels; channel++ ) {
-			buffer[ samplesRead * m_FLACFrame.header.channels + channel ] = 
-					static_cast<float>( m_FLACBuffer[ channel ][ m_FLACFramePos ] ) / ( 1 << ( m_FLACFrame.header.bits_per_sample - 1 ) );
-		}
-		++samplesRead;
-		++m_FLACFramePos;
+    if ( m_FramePos < m_FLACFrame.header.blocksize ) {
+      const uint32_t samplesToCopy = std::min( m_FLACFrame.header.blocksize - m_FramePos, static_cast<uint32_t>( sampleCount - samplesRead ) );
+      const auto first = m_FrameBuffer.begin() + m_FramePos * m_FLACFrame.header.channels;
+      const auto last = first + samplesToCopy * m_FLACFrame.header.channels;
+      const auto dest = buffer + samplesRead * m_FLACFrame.header.channels;
+      std::copy( first, last, dest );
+      m_FramePos += samplesToCopy;
+      samplesRead += samplesToCopy;
+    } else {
+      m_FramePos = 0;
+      m_FLACFrame = {};
+      if ( !process_single() || ( 0 == m_FLACFrame.header.blocksize ) ) {
+        break;
+      }
+    }
 	}
-	
 	return samplesRead;
 }
 
 float DecoderFlac::Seek( const float position )
 {
 	float seekPosition = 0;
-	m_FLACFramePos = 0;
+	m_FramePos = 0;
 	m_FLACFrame = {};
 	if ( ( GetSampleRate() > 0 ) && seek_absolute( static_cast<FLAC__uint64>( position * GetSampleRate() ) ) ) {
-		process_single();
 		seekPosition = static_cast<float>( m_FLACFrame.header.number.sample_number ) / GetSampleRate();
-	}
-	else {
+	}	else {
 		reset();
+    process_until_end_of_metadata();
 	}
 	return seekPosition;
 }
@@ -162,9 +162,15 @@ bool DecoderFlac::eof_callback()
 
 FLAC__StreamDecoderWriteStatus DecoderFlac::write_callback( const FLAC__Frame * frame, const FLAC__int32 *const buffer[] )
 {
-	m_FLACFrame = *frame;
-	m_FLACBuffer = const_cast<FLAC__int32**>( buffer );
-	return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
+  m_FLACFrame = *frame;
+  m_FrameBuffer.resize( m_FLACFrame.header.blocksize * m_FLACFrame.header.channels );
+  uint32_t offset = 0;
+  for ( uint32_t sample = 0; sample < m_FLACFrame.header.blocksize; sample++ ) {
+	  for ( uint32_t channel = 0; channel < m_FLACFrame.header.channels; channel++ ) {
+	  	m_FrameBuffer[ offset++ ] = static_cast<float>( buffer[ channel ][ sample ] ) / ( 1ul << ( m_FLACFrame.header.bits_per_sample - 1ul ) );
+		}
+  }
+  return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
 }
 
 void DecoderFlac::metadata_callback( const FLAC__StreamMetadata * metadata )

@@ -161,7 +161,7 @@ int EncoderOpus::GetBitrate( const std::string& settings )
 	int bitrate = s_DefaultBitrate;
 	try {
 		bitrate = std::stoi( settings );
-	} catch ( ... ) {
+	} catch ( const std::logic_error& ) {
 	}
 	LimitBitrate( bitrate );
 	return bitrate;

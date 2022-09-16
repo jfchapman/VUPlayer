@@ -68,16 +68,18 @@ public:
 	static VUPlayer* Get();
 
 	// Returns (and creates if necessary) the VUPlayer documents folder (with a trailing slash).
-	static std::wstring DocumentsFolder();
+	static std::filesystem::path DocumentsFolder();
+
+	// Returns the application folder.
+	static std::filesystem::path ApplicationFolder();
 
 	// 'instance' - module instance handle.
 	// 'hwnd' - main window handle.
 	// 'startupFilenames' - tracks to play (or the playlist to open) on startup.
 	// 'portable' - whether to run in 'portable' mode (i.e. no persistent database).
-	// 'portableSettings' - the application settings to use when running in 'portable' mode.
 	// 'databaseMode' - database access mode.
 	VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<std::wstring>& startupFilenames,
-		const bool portable, const std::string& portableSettings, const Database::Mode databaseMode );
+		const bool portable, const Database::Mode databaseMode );
 
 	virtual ~VUPlayer();
 
@@ -180,9 +182,6 @@ public:
 	// Returns whether any valid files were received.
 	bool OnCommandLineFiles( const std::list<std::wstring>& filenames );
 
-	// Exports application settings, for use when running in 'portable' mode.
-	void OnExportSettings();
-
 	// Returns the EQ modeless dialog window handle.
 	HWND GetEQ() const;
 
@@ -193,9 +192,6 @@ public:
 	// 'result' - the query result.
 	// 'forceDialog' - whether a dialog should be shown even for a single match.
 	void OnMusicBrainzResult( const MusicBrainz::Result& result, const bool forceDialog );
-
-	// Returns whether MusicBrainz functionality is available.
-	bool IsMusicBrainzAvailable() const;
 
 	// Returns whether MusicBrainz functionality is enabled.
 	bool IsMusicBrainzEnabled();
@@ -280,6 +276,9 @@ private:
 	// Initialises the rebar controls.
 	void InitialiseRebar();
 
+	// Creates a modified accelerator table to use when editing labels.
+	HACCEL CreateModifiedAcceleratorTable() const;
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -287,7 +286,10 @@ private:
 	HWND m_hWnd;
 
 	// Accelerator table.
-	HACCEL m_hAccel;
+	const HACCEL m_hAccel;
+
+	// Modified accelerator table to use when editing labels.
+	const HACCEL m_hAccelEditLabel;
 
 	// Audio format handlers.
 	Handlers m_Handlers;
@@ -418,12 +420,15 @@ private:
 	// Whether high contrast mode is active.
 	bool m_IsHighContrast;
 
-	// Whether the application is running in portable mode.
-	bool m_IsPortableMode;
-
 	// Whether a tree item label is being edited.
 	bool m_IsTreeLabelEdit;
 
 	// A flag to allow first-time initialisation to be performed in the timer handler.
 	bool m_IsFirstTimeStartup;
+
+	// Whether a label is being edited.
+	bool m_IsEditingLabel;
+
+	// Whether the application is currently converting files.
+	bool m_IsConverting;
 };

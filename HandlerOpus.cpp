@@ -46,8 +46,7 @@ std::wstring HandlerOpus::GetDescription() const
 
 std::set<std::wstring> HandlerOpus::GetSupportedFileExtensions() const
 {
-	const std::set<std::wstring> fileTypes = { L"opus" };
-	return fileTypes;
+	return { L"opus" };
 }
 
 bool HandlerOpus::GetTags( const std::wstring& filename, Tags& tags ) const
@@ -302,7 +301,7 @@ std::string HandlerOpus::GainToR128( const std::string& gain )
 		if ( ( r128 >= -32768 ) && ( r128 <= 32767 ) ) {
 			str = std::to_string( r128 );
 		}
-	} catch ( ... ) {
+	} catch ( const std::logic_error& ) {
 	}
 	return str;
 }
@@ -316,7 +315,7 @@ std::string HandlerOpus::R128ToGain( const std::string& gain )
 		if ( ( r128 >= -32768 ) && ( r128 <= 32767 ) ) {
 			str = GainToString( LOUDNESS_REFERENCE - LOUDNESS_R128 + static_cast<float>( r128 ) / 256 );
 		}
-	} catch ( ... ) {
+	} catch ( const std::logic_error& ) {
 	}
 	return str;
 }

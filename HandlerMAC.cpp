@@ -31,8 +31,7 @@ std::wstring HandlerMAC::GetDescription() const
 
 std::set<std::wstring> HandlerMAC::GetSupportedFileExtensions() const
 {
-	const std::set<std::wstring> filetypes = { L"ape", L"apl" };
-	return filetypes;
+	return { L"ape", L"apl" };
 }
 
 bool HandlerMAC::GetTags( const std::wstring& filename, Tags& tags ) const

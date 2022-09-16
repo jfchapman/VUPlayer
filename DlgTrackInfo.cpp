@@ -197,7 +197,9 @@ DWORD WINAPI DlgTrackInfo::SaveThreadProc( LPVOID lpParam )
 	HWND hwnd = static_cast<HWND>( lpParam );
 	DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 	if ( nullptr != dialog ) {
+		CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
 		dialog->SaveThreadHandler( hwnd );
+		CoUninitialize();
 	}
 	return 0;
 }
@@ -689,35 +691,35 @@ void DlgTrackInfo::OnSave( HWND hwnd )
 		Playlist::Item previousItem( item );
 		MediaInfo& info = item.Info;
 		bool updateItem = false;
-		if ( ( m_ClosingInfo.GetArtist() != m_InitialInfo.GetArtist() ) && ( info.GetArtist() != m_ClosingInfo.GetArtist() ) ) {
+		if ( m_ClosingInfo.GetArtist() != m_InitialInfo.GetArtist() ) {
 			info.SetArtist( m_ClosingInfo.GetArtist() );
 			updateItem = true;
 		}
-		if ( ( m_ClosingInfo.GetTitle() != m_InitialInfo.GetTitle() ) && ( info.GetTitle() != m_ClosingInfo.GetTitle() ) ) {
+		if ( m_ClosingInfo.GetTitle() != m_InitialInfo.GetTitle() ) {
 			info.SetTitle( m_ClosingInfo.GetTitle() );
 			updateItem = true;
 		}
-		if ( ( m_ClosingInfo.GetAlbum() != m_InitialInfo.GetAlbum() ) && ( info.GetAlbum() != m_ClosingInfo.GetAlbum() ) ) {
+		if ( m_ClosingInfo.GetAlbum() != m_InitialInfo.GetAlbum() ) {
 			info.SetAlbum( m_ClosingInfo.GetAlbum() );
 			updateItem = true;
 		}
-		if ( ( m_ClosingInfo.GetGenre() != m_InitialInfo.GetGenre() ) && ( info.GetGenre() != m_ClosingInfo.GetGenre() ) ) {
+		if ( m_ClosingInfo.GetGenre() != m_InitialInfo.GetGenre() ) {
 			info.SetGenre( m_ClosingInfo.GetGenre() );
 			updateItem = true;
 		}
-		if ( ( m_ClosingInfo.GetYear() != m_InitialInfo.GetYear() ) && ( info.GetYear() != m_ClosingInfo.GetYear() ) ) {
+		if ( m_ClosingInfo.GetYear() != m_InitialInfo.GetYear() ) {
 			info.SetYear( m_ClosingInfo.GetYear() );
 			updateItem = true;
 		}
-		if ( ( m_ClosingInfo.GetTrack() != m_InitialInfo.GetTrack() ) && ( info.GetTrack() != m_ClosingInfo.GetTrack() ) ) {
+		if ( m_ClosingInfo.GetTrack() != m_InitialInfo.GetTrack() ) {
 			info.SetTrack( m_ClosingInfo.GetTrack() );
 			updateItem = true;
 		}
-		if ( ( m_ClosingInfo.GetComment() != m_InitialInfo.GetComment() ) && ( info.GetComment() != m_ClosingInfo.GetComment() ) ) {
+		if ( m_ClosingInfo.GetComment() != m_InitialInfo.GetComment() ) {
 			info.SetComment( m_ClosingInfo.GetComment() );
 			updateItem = true;
 		}
-		if ( ( m_ClosingInfo.GetArtworkID() != m_InitialInfo.GetArtworkID() ) && ( info.GetArtworkID() != m_ClosingInfo.GetArtworkID() ) ) {
+		if ( m_ClosingInfo.GetArtworkID() != m_InitialInfo.GetArtworkID() ) {
 			info.SetArtworkID( m_ClosingInfo.GetArtworkID() );
 			updateItem = true;
 		}

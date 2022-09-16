@@ -152,57 +152,74 @@ bool ShellMetadata::Set( const std::wstring& filename, const Tags& tags )
 					switch ( tag ) {
 						case Tag::Album : {
 							propKey = PKEY_Music_AlbumTitle;
-							hr = InitPropVariantFromString( value.c_str(), &propVar );
+              if ( !value.empty() ) {
+							  hr = InitPropVariantFromString( value.c_str(), &propVar );
+              }
 							break;
 						}
 						case Tag::Artist : {
 							propKey = PKEY_Music_Artist;
-							hr = InitPropVariantFromString( value.c_str(), &propVar );
+              if ( !value.empty() ) {
+							  hr = InitPropVariantFromString( value.c_str(), &propVar );
+              }
 							break;
 						}
 						case Tag::Comment : {
 							propKey = PKEY_Comment;
-							hr = InitPropVariantFromString( value.c_str(), &propVar );
+              if ( !value.empty() ) {
+							  hr = InitPropVariantFromString( value.c_str(), &propVar );
+              }
 							break;
 						}
 						case Tag::Genre : {
 							propKey = PKEY_Music_Genre;
-							hr = InitPropVariantFromString( value.c_str(), &propVar );
+              if ( !value.empty() ) {
+							  hr = InitPropVariantFromString( value.c_str(), &propVar );
+              }
 							break;
 						}
 						case Tag::Title : {
 							propKey = PKEY_Title;
-							hr = InitPropVariantFromString( value.c_str(), &propVar );
+              if ( !value.empty() ) {
+							  hr = InitPropVariantFromString( value.c_str(), &propVar );
+              }
 							break;
 						}
 						case Tag::Track : {
 							propKey = PKEY_Music_TrackNumber;
-							hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
+              if ( !value.empty() ) {
+                try {
+							    hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
+                } catch ( const std::logic_error& ) {
+                }
+              }
 							break;
 						}
 						case Tag::Year : {
 							propKey = PKEY_Media_Year;
-							hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
+              if ( !value.empty() ) {
+                try {
+							    hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
+                } catch ( const std::logic_error& ) {
+                }
+              }
 							break;
 						}
 						case Tag::Artwork : {
-							// Note that there is no way of removing a thumbnail stream from a property store.
-							updateTag = false;
+							propKey = PKEY_ThumbnailStream;
 							if ( nullptr == thumbnailStream ) {
 								const std::vector<BYTE> imageBytes = Base64Decode( tagIter->second );
 								const ULONG imageSize = static_cast<UINT>( imageBytes.size() );
 								if ( imageSize > 0 ) {
-									propKey = PKEY_ThumbnailStream;
 									hr = CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &thumbnailStream );
 									if ( SUCCEEDED( hr ) ) {
-										hr = thumbnailStream->Write( &imageBytes[ 0 ], imageSize, NULL /*bytesWritten*/ );
+										hr = thumbnailStream->Write( imageBytes.data(), imageSize, NULL /*bytesWritten*/ );
 										if ( SUCCEEDED( hr ) ) {
 											hr = thumbnailStream->Seek( { 0 }, STREAM_SEEK_SET, NULL /*newPosition*/ );
 										}
 										if ( SUCCEEDED( hr ) ) {
 											propVar.vt = VT_STREAM;
 											propVar.pStream = thumbnailStream;
-											updateTag = true;
 										} else {
 											thumbnailStream->Release();
 											thumbnailStream = nullptr;

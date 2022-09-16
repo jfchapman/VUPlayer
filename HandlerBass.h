@@ -64,9 +64,6 @@ private:
 	// 'tags' - out, tag information.
 	bool WriteOggTags( const std::wstring& filename, const Tags& tags ) const;
 
-	// The supported file extensions.
-	static std::set<std::wstring> s_SupportedFileExtensions;
-
 	// Returns a temporary file name.
 	std::wstring GetTemporaryFilename() const;
 

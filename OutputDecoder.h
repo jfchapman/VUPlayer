@@ -24,7 +24,10 @@ public:
 	// Callback function for when the output decoder has finished pre-buffering the playlist item ID.
 	using PreBufferFinishedCallback = std::function<void( const long /*ID*/ )>;
 
-	// Reads sample data.
+  // Returns the number of channels to output for the 'mediaInfo'.
+  static long GetOutputChannels( const MediaInfo& mediaInfo );
+
+  // Reads sample data.
 	// 'buffer' - output buffer (floating point format scaled to +/-1.0f).
 	// 'sampleCount' - number of samples to read.
 	// Returns the number of samples read, or zero if the stream has ended.
@@ -66,7 +69,16 @@ private:
 	// Stops the pre-buffering thread.
 	void StopPreBufferThread();
 
-	// Decoder.
+	// Decodes sample data.
+	// 'buffer' - output buffer (floating point format scaled to +/-1.0f).
+	// 'sampleCount' - number of samples to read.
+	// Returns the number of samples read, or zero if the stream has ended.
+	long Decode( float* buffer, const long sampleCount );
+
+  // Returns the number of channels to output for the 'decoder'.
+  static long GetOutputChannels( const Decoder::Ptr& decoder );
+
+  // Decoder.
 	const Decoder::Ptr m_Decoder;
 
 	// Decoder channels.
