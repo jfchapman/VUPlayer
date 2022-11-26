@@ -348,6 +348,12 @@
     <ClInclude Include="libs\vorbis-tools-1.4.2\vorbiscomment\vcedit.h">
       <Filter>Third Party</Filter>
     </ClInclude>
+    <ClInclude Include="HandlerOpenMPT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DecoderOpenMPT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -649,6 +655,12 @@
     </ClCompile>
     <ClCompile Include="libs\vorbis-tools-1.4.2\vorbiscomment\vcedit.c">
       <Filter>Third Party</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlerOpenMPT.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DecoderOpenMPT.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

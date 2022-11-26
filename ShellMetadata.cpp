@@ -37,7 +37,7 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 				for ( DWORD i = 0; i < propCount; i++ ) {
 					PROPERTYKEY propKey = { 0 };
 					if ( SUCCEEDED( propStore->GetAt( i, &propKey ) ) ) {
-						PROPVARIANT propVar;
+            PROPVARIANT propVar = {};
 						if ( SUCCEEDED( propStore->GetValue( propKey, &propVar ) ) ) {
 							if ( PKEY_Music_AlbumArtist == propKey ) {
 								const std::wstring value = PropertyToString( propVar );

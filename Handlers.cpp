@@ -9,6 +9,7 @@
 #include "HandlerWavpack.h"
 #include "HandlerMAC.h"
 #include "HandlerMPC.h"
+#include "HandlerOpenMPT.h"
 
 #include "Library.h"
 #include "Settings.h"
@@ -26,6 +27,7 @@ Handlers::Handlers() :
 		Handler::Ptr( new HandlerMPC() ),
 		Handler::Ptr( new HandlerMP3() ),
 		Handler::Ptr( new HandlerPCM() ),
+    Handler::Ptr( new HandlerOpenMPT() ),
 		Handler::Ptr( m_HandlerBASS ),
 		Handler::Ptr( m_HandlerFFmpeg )
 		} ),
