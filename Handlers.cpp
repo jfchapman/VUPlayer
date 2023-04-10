@@ -19,7 +19,9 @@
 Handlers::Handlers() :
 	m_HandlerBASS( new HandlerBass() ),
 	m_HandlerFFmpeg( new HandlerFFmpeg() ),
+#ifndef _DEBUG
   m_HandlerOpenMPT( new HandlerOpenMPT() ),
+#endif
 	m_Handlers( {
 		Handler::Ptr( new HandlerFlac() ),
 		Handler::Ptr( new HandlerOpus() ),
@@ -29,7 +31,9 @@ Handlers::Handlers() :
 		Handler::Ptr( new HandlerMP3() ),
 		Handler::Ptr( new HandlerPCM() ),
 		Handler::Ptr( m_HandlerBASS ),
+#ifndef _DEBUG
     Handler::Ptr( m_HandlerOpenMPT ),
+#endif
 		Handler::Ptr( m_HandlerFFmpeg )
 		} ),
 	m_Decoders(),
@@ -202,14 +206,16 @@ void Handlers::SettingsChanged( Settings& settings )
   m_WriteTags = settings.GetWriteFileTags();
   m_PreserveLastModifiedTime = settings.GetPreserveLastModifiedTime();
 
-  std::lock_guard<std::mutex> lock( m_MutexDecoders );
-  auto bassDecoder = std::find( m_Decoders.begin(), m_Decoders.end(), m_HandlerBASS );
-  auto openMPTDecoder = std::find( m_Decoders.begin(), m_Decoders.end(), m_HandlerOpenMPT );
-  if ( ( m_Decoders.end() != bassDecoder ) && ( m_Decoders.end() != openMPTDecoder ) ) {
-    const Settings::MODDecoder preferredDecoder = ( std::distance( bassDecoder, openMPTDecoder ) > 0 ) ? Settings::MODDecoder::BASS : Settings::MODDecoder::OpenMPT;
-    const Settings::MODDecoder preferredSetting = settings.GetMODDecoder();
-    if ( preferredDecoder != preferredSetting ) {
-      std::iter_swap( bassDecoder, openMPTDecoder );
+  if ( m_HandlerOpenMPT ) {
+    std::lock_guard<std::mutex> lock( m_MutexDecoders );
+    auto bassDecoder = std::find( m_Decoders.begin(), m_Decoders.end(), m_HandlerBASS );
+    auto openMPTDecoder = std::find( m_Decoders.begin(), m_Decoders.end(), m_HandlerOpenMPT );
+    if ( ( m_Decoders.end() != bassDecoder ) && ( m_Decoders.end() != openMPTDecoder ) ) {
+      const Settings::MODDecoder preferredDecoder = ( std::distance( bassDecoder, openMPTDecoder ) > 0 ) ? Settings::MODDecoder::BASS : Settings::MODDecoder::OpenMPT;
+      const Settings::MODDecoder preferredSetting = settings.GetMODDecoder();
+      if ( preferredDecoder != preferredSetting ) {
+        std::iter_swap( bassDecoder, openMPTDecoder );
+      }
     }
   }
 }

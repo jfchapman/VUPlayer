@@ -242,3 +242,10 @@ ModelManifest.xml
 .fake/
 /RCa23204
 /CppProperties.json
+
+# Exemptions
+!libs/libopenmpt-0.6.9/lib/*
+!libs/libopenmpt-0.6.9/lib/x86/*
+!libs/libopenmpt-0.6.9/lib/x86/Release/*
+!libs/libopenmpt-0.6.9/lib/x86_64/*
+!libs/libopenmpt-0.6.9/lib/x86_64/Release/*

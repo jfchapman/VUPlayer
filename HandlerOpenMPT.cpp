@@ -1,3 +1,6 @@
+// Due to GitHub file size limits, exclude libopenmpt from debug builds.
+#ifndef _DEBUG
+
 #include "HandlerOpenMPT.h"
 
 #include "DecoderOpenMPT.h"
@@ -95,3 +98,5 @@ bool HandlerOpenMPT::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND 
 void HandlerOpenMPT::SettingsChanged( Settings& /*settings*/ )
 {
 }
+
+#endif // _NDEBUG
