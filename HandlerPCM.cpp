@@ -32,7 +32,7 @@ bool HandlerPCM::SetTags( const std::wstring& /*filename*/, const Tags& /*tags*/
 	return false;
 }
 
-Decoder::Ptr HandlerPCM::OpenDecoder( const std::wstring& /*filename*/ ) const
+Decoder::Ptr HandlerPCM::OpenDecoder( const std::wstring& /*filename*/, const Decoder::Context /*context*/ ) const
 {
 	return nullptr;
 }

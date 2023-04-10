@@ -306,7 +306,7 @@ bool Library::GetFileInfo( const std::wstring& filename, long long& lastModified
 bool Library::GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags )
 {
 	bool success = false;
-	Decoder::Ptr stream = m_Handlers.OpenDecoder( mediaInfo.GetFilename() );
+	Decoder::Ptr stream = m_Handlers.OpenDecoder( mediaInfo.GetFilename(), Decoder::Context::Temporary );
 	if ( stream ) {
 		mediaInfo.SetBitsPerSample( stream->GetBPS() );
 		mediaInfo.SetChannels( stream->GetChannels() );

@@ -3,6 +3,7 @@
 #include "Handler.h"
 
 #include <list>
+#include <mutex>
 
 class Library;
 class MediaInfo;
@@ -17,8 +18,9 @@ public:
 
 	// Opens a decoder.
 	// 'filename' - file to open.
+  // 'context' - context for which the decoder is to be used.
 	// Returns the decoder, or nullptr if the stream could not be opened.
-	Decoder::Ptr OpenDecoder( const std::wstring& filename ) const;
+	Decoder::Ptr OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const;
 
 	// Reads 'tags' from 'filename', returning true if the tags were read.
 	bool GetTags( const std::wstring& filename, Tags& tags ) const;
@@ -32,6 +34,9 @@ public:
 	// Returns the BASS library version.
 	std::wstring GetBassVersion() const;
 
+	// Returns the OpenMPT library version.
+	std::wstring GetOpenMPTVersion() const;
+
 	// Adds a 'handler'.
 	void AddHandler( Handler::Ptr handler );
 
@@ -43,7 +48,7 @@ public:
 	Encoder::Ptr OpenEncoder( const std::wstring& description ) const;
 
 	// Called when the application 'settings' have changed.
-	void SettingsChanged( Settings& settings ) const;
+	void SettingsChanged( Settings& settings );
 
 	// Initialises the handlers with the application 'settings'.
 	void Init( Settings& settings );
@@ -52,8 +57,11 @@ private:
 	// Returns a decoder handler supported by the 'filename' extension, or nullptr of there was no match.
 	Handler::Ptr FindDecoderHandler( const std::wstring& filename ) const;
 
-	// BASS Handler.
+	// BASS handler.
 	Handler::Ptr m_HandlerBASS;
+
+  // OpenMPT handler.
+  Handler::Ptr m_HandlerOpenMPT;
 
 	// FFmpeg handler.
 	Handler::Ptr m_HandlerFFmpeg;
@@ -72,5 +80,8 @@ private:
 
   // Whether to preserve the last modified time when writing metadata tags to file.
   mutable bool m_PreserveLastModifiedTime = false;
+
+  // Decoders mutex (used when swapping decoder order).
+  mutable std::mutex m_MutexDecoders;
 };
 

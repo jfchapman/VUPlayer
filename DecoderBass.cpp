@@ -138,8 +138,8 @@ private:
 	}
 };
 
-DecoderBass::DecoderBass( const std::wstring& filename ) :
-	Decoder(),
+DecoderBass::DecoderBass( const std::wstring& filename, const Context context ) :
+	Decoder( context ),
 	m_Handle( 0 ),
 	m_FadeStartPosition( 0 ),
 	m_FadeEndPosition( 0 ),
@@ -318,14 +318,16 @@ void CALLBACK DecoderBass::MetadataSyncProc( HSYNC /*handle*/, DWORD channel, DW
 void DecoderBass::LoadMusic( const std::wstring& filename )
 {
 	if ( !CheckIT::IsLastSampleCompressedAndTruncated( filename ) ) {
-		DWORD flags = BASS_UNICODE | BASS_SAMPLE_FLOAT | BASS_MUSIC_DECODE | BASS_MUSIC_NOSAMPLE;
-		m_Handle = BASS_MusicLoad( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, flags, 1 /*freq*/ );
+  	VUPlayer* vuplayer = VUPlayer::Get();
+    const uint32_t samplerate = ( nullptr != vuplayer ) ? vuplayer->GetApplicationSettings().GetMODSamplerate() : 48000;
+
+    DWORD flags = BASS_UNICODE | BASS_SAMPLE_FLOAT | BASS_MUSIC_DECODE | BASS_MUSIC_NOSAMPLE;
+		m_Handle = BASS_MusicLoad( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, flags, samplerate );
 		if ( 0 != m_Handle ) {
 			BASS_CHANNELINFO info = {};
 			BASS_ChannelGetInfo( m_Handle, &info );
 			BASS_MusicFree( m_Handle );
 			m_Handle = 0;
-			VUPlayer* vuplayer = VUPlayer::Get();
 			if ( ( BASS_CTYPE_MUSIC_MOD & info.ctype ) && ( nullptr != vuplayer ) ) {
 				// Determine which settings to apply.
 				long long modSettings = 0;

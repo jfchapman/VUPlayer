@@ -1671,3 +1671,68 @@ void Settings::SetPreserveLastModifiedTime( const bool preserve )
 {
 	WriteSetting( "PreserveLastModified", preserve );
 }
+
+Settings::MODDecoder Settings::GetMODDecoder()
+{
+  return std::clamp<MODDecoder>( ReadSetting<MODDecoder>( "MODDecoder" ).value_or( MODDecoder::BASS ), MODDecoder::BASS, MODDecoder::OpenMPT );
+}
+
+void Settings::SetMODDecoder( const MODDecoder decoder )
+{
+  WriteSetting<MODDecoder>( "MODDecoder", decoder );
+}
+
+uint32_t Settings::GetMODSamplerate()
+{
+  constexpr uint32_t kDefaultSamplerate = 48000;
+  uint32_t samplerate = ReadSetting<uint32_t>( "MODSamplerate" ).value_or( kDefaultSamplerate );
+  constexpr auto supportedSampleRates = GetMODSupportedSamplerates();
+  if ( const auto it = std::find( supportedSampleRates.begin(), supportedSampleRates.end(), samplerate ); supportedSampleRates.end() == it ) {
+    samplerate = kDefaultSamplerate;
+  }
+  return samplerate;
+}
+
+void Settings::SetMODSamplerate( const uint32_t samplerate )
+{
+  WriteSetting<uint32_t>( "MODSamplerate", samplerate );
+}
+
+void Settings::GetDefaultOpenMPTSettings( bool& fadeout, long& separation, long& ramping, long& interpolation )
+{
+  fadeout = false;
+  separation = 100;
+  ramping = -1;
+  interpolation = 0;
+}
+
+void Settings::GetOpenMPTSettings( bool& fadeout, long& separation, long& ramping, long& interpolation )
+{
+  GetDefaultOpenMPTSettings( fadeout, separation, ramping, interpolation );
+  if ( const auto setting = ReadSetting<bool>( "openmptFadeout" ) ) {
+    fadeout = *setting;
+  }
+  if ( const auto setting = ReadSetting<long>( "openmptSeparation" ) ) {
+    separation = std::clamp( *setting, 0l, 200l );
+  }
+  if ( const auto setting = ReadSetting<long>( "openmptRamping" ) ) {
+    constexpr auto supportedRamping = GetOpenMPTSupportedRamping();
+    if ( const auto it = std::find( supportedRamping.begin(), supportedRamping.end(), *setting ); supportedRamping.end() != it ) {
+      ramping = *setting;
+    }
+  }
+  if ( const auto setting = ReadSetting<long>( "openmptInterpolation" ) ) {
+    constexpr auto supportedInterpolation = GetOpenMPTSupportedInterpolation();
+    if ( const auto it = std::find( supportedInterpolation.begin(), supportedInterpolation.end(), *setting ); supportedInterpolation.end() != it ) {
+      interpolation = *setting;
+    }
+  }
+}
+
+void Settings::SetOpenMPTSettings( const bool fadeout, const long separation, const long ramping, const long interpolation )
+{
+  WriteSetting<bool>( "openmptFadeout", fadeout );
+  WriteSetting<long>( "openmptSeparation", separation );
+  WriteSetting<long>( "openmptRamping", ramping );
+  WriteSetting<long>( "openmptInterpolation", interpolation ); 
+}

@@ -601,11 +601,11 @@ void Converter::WriteAlbumTags( const std::wstring& filename, const MediaInfo& m
 
 Decoder::Ptr Converter::OpenDecoder( const Playlist::Item& item ) const
 {
-	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
+	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename(), Decoder::Context::Input );
 	if ( !decoder ) {
 		auto duplicate = item.Duplicates.begin();
 		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
-			decoder = m_Handlers.OpenDecoder( *duplicate );
+			decoder = m_Handlers.OpenDecoder( *duplicate, Decoder::Context::Input );
 			++duplicate;
 		}
 	}

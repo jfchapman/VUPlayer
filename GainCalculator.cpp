@@ -231,11 +231,11 @@ Decoder::Ptr GainCalculator::OpenDecoder( const Playlist::Item& item ) const
 {
 	Decoder::Ptr decoder;
 	if ( !IsURL( item.Info.GetFilename() ) ) {
-		decoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
+		decoder = m_Handlers.OpenDecoder( item.Info.GetFilename(), Decoder::Context::Temporary );
 		if ( !decoder ) {
 			auto duplicate = item.Duplicates.begin();
 			while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
-				decoder = m_Handlers.OpenDecoder( *duplicate );
+				decoder = m_Handlers.OpenDecoder( *duplicate, Decoder::Context::Temporary );
 				++duplicate;
 			}
 		}
@@ -247,7 +247,7 @@ std::optional<float> GainCalculator::CalculateTrackGain( const std::wstring& fil
 {
 	std::optional<float> gain;
 	if ( ( nullptr != canContinue ) && !IsURL( filename ) ) {
-		const Decoder::Ptr decoder = handlers.OpenDecoder( filename );
+		const Decoder::Ptr decoder = handlers.OpenDecoder( filename, Decoder::Context::Temporary );
 		if ( decoder ) {
 			gain = decoder->CalculateTrackGain( canContinue );
 		}

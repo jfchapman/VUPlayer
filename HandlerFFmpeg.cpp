@@ -31,11 +31,11 @@ bool HandlerFFmpeg::SetTags( const std::wstring& /*filename*/, const Tags& /*tag
 	return false;
 }
 
-Decoder::Ptr HandlerFFmpeg::OpenDecoder( const std::wstring& filename ) const
+Decoder::Ptr HandlerFFmpeg::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const
 {
 	DecoderFFmpeg* decoderFFmpeg = nullptr;
 	try {
-		decoderFFmpeg = new DecoderFFmpeg( filename );
+		decoderFFmpeg = new DecoderFFmpeg( filename, context );
 	} catch ( const std::runtime_error& ) {
 	}
 	const Decoder::Ptr stream( decoderFFmpeg );

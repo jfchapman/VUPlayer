@@ -9,9 +9,12 @@
 class Decoder
 {
 public:
-	Decoder();
-
-	virtual ~Decoder();
+  // Contexts for which a decoder can be used.
+  enum class Context {
+    Output,     // Decoding to an output device 
+    Input,      // Decoding as an input for conversion
+    Temporary   // Any other usage (information gathering, loudness calculation, etc.) 
+  };
 
 	// Decoder shared pointer type.
 	using Ptr = std::shared_ptr<Decoder>;
@@ -59,7 +62,15 @@ public:
 	virtual std::pair<float /*seconds*/, std::wstring /*title*/> GetStreamTitle();
 
 protected:
-	// Sets the 'duration'.
+  // 'context' - context for which the decoder is to be used.
+  Decoder( const Context context );
+
+	virtual ~Decoder();
+
+  // Returns the context for which the decoder is being used.
+  Context GetContext() const { return m_Context; }
+
+  // Sets the 'duration'.
 	void SetDuration( const float duration );
 
 	// Sets the 'sampleRate'.
@@ -89,4 +100,7 @@ private:
 
 	// Bitrate in kbps (if relevant).
 	std::optional<float> m_Bitrate;
+
+  // Decoder context.
+  const Context m_Context;
 };

@@ -2,8 +2,8 @@
 
 #include "Utility.h"
 
-DecoderMPC::DecoderMPC( const std::wstring& filename ) :
-	Decoder(),
+DecoderMPC::DecoderMPC( const std::wstring& filename, const Context context ) :
+	Decoder( context ),
 	m_file( nullptr ),
 	m_reader(),
 	m_demux(),

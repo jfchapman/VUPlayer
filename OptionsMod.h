@@ -25,32 +25,17 @@ public:
 	void OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM lParam ) override;
 
 private:
-	// Updates controls based on the currently selected format type.
-	// 'hwnd' - dialog window handle.
-	void UpdateControls( const HWND hwnd );
-
 	// Displays a soundfont file chooser dialog.
 	void ChooseSoundFont();
+
+  // Returns the currently selected preferred decoder.
+	// 'hwnd' - dialog window handle.
+  Settings::MODDecoder GetPreferredDecoder( const HWND hwnd ) const;
 
 	// Dialog window handle.
 	HWND m_hWnd;
 
-	// MOD settings.
-	long long m_MODSettings;
-
-	// MTM settings.
-	long long m_MTMSettings;
-
-	// S3M settings.
-	long long m_S3MSettings;
-	
-	// XM settings.
-	long long m_XMSettings;
-
-	// IT settings.
-	long long m_ITSettings;
-
-	// Currently displayed settings.
-	long long* m_CurrentSettings;
+  // Soundfont filename.
+  std::wstring m_SoundFont;
 };
 

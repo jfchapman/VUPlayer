@@ -3,77 +3,70 @@
 #include "resource.h"
 #include "windowsx.h"
 
+#include "DlgModBASS.h"
+#include "DlgModOpenMPT.h"
+
 OptionsMod::OptionsMod( HINSTANCE instance, Settings& settings, Output& output ) :
 	Options( instance, settings, output ),
-	m_hWnd( nullptr ),
-	m_MODSettings( 0 ),
-	m_MTMSettings( 0 ),
-	m_S3MSettings( 0 ),
-	m_XMSettings( 0 ),
-	m_ITSettings( 0 ),
-	m_CurrentSettings( &m_MODSettings )
+	m_hWnd( nullptr )
 {
-	GetSettings().GetMODSettings( m_MODSettings, m_MTMSettings, m_S3MSettings, m_XMSettings, m_ITSettings );
 }
 
 void OptionsMod::OnInit( const HWND hwnd )
 {
 	m_hWnd = hwnd;
 
-	const int bufferSize = MAX_PATH;
-	WCHAR buffer[ bufferSize ];
+  const std::vector<std::pair<Settings::MODDecoder, std::wstring>>modDecoders = {
+	  std::make_pair( Settings::MODDecoder::BASS, GetOutput().GetHandlers().GetBassVersion() ),
+    std::make_pair( Settings::MODDecoder::OpenMPT, GetOutput().GetHandlers().GetOpenMPTVersion() )
+  };
 
-	const HINSTANCE instance = GetInstanceHandle();
+  const auto preferredDecoder = GetSettings().GetMODDecoder();
+	
+	if ( const HWND hwndDecoder = GetDlgItem( hwnd, IDC_OPTIONS_MOD_DECODER ); nullptr != hwndDecoder ) {
+		for ( const auto& [ decoder, name ] : modDecoders ) {
+			ComboBox_AddString( hwndDecoder, name.c_str() );
+			ComboBox_SetItemData( hwndDecoder, ComboBox_GetCount( hwndDecoder ) - 1, static_cast<LPARAM>( decoder ) );
+			if ( decoder == preferredDecoder ) {
+				ComboBox_SetCurSel( hwndDecoder, ComboBox_GetCount( hwndDecoder ) - 1 );
+			}
+  	}
+	}
 
-	// Surround sound combo
-	HWND wndSurround = GetDlgItem( hwnd, IDC_OPTIONS_MOD_SURROUND );
-	LoadString( instance, IDS_SURROUND_OFF, buffer, bufferSize );
-	ComboBox_AddString( wndSurround, buffer );
-	LoadString( instance, IDS_SURROUND_MODE1, buffer, bufferSize );
-	ComboBox_AddString( wndSurround, buffer );
-	LoadString( instance, IDS_SURROUND_MODE2, buffer, bufferSize );
-	ComboBox_AddString( wndSurround, buffer );
+  const auto samplerateSetting = GetSettings().GetMODSamplerate();
 
-	// Ramping combo
-	HWND wndRamping = GetDlgItem( hwnd, IDC_OPTIONS_MOD_RAMPING );
-	LoadString( instance, IDS_RAMPING_OFF, buffer, bufferSize );
-	ComboBox_AddString( wndRamping, buffer );
-	LoadString( instance, IDS_RAMPING_NORMAL, buffer, bufferSize );
-	ComboBox_AddString( wndRamping, buffer );
-	LoadString( instance, IDS_RAMPING_SENSITIVE, buffer, bufferSize );
-	ComboBox_AddString( wndRamping, buffer );
+	if ( const HWND hwndSamplerate = GetDlgItem( hwnd, IDC_OPTIONS_MOD_SAMPLERATE ); nullptr != hwndSamplerate ) {
+    constexpr auto samplerates = Settings::GetMODSupportedSamplerates();
+		const int bufferSize = 16;
+		WCHAR hz[ bufferSize ];
+		const HINSTANCE instance = GetInstanceHandle();
+    LoadString( instance, IDS_UNITS_HZ, hz, bufferSize );
+		for ( const auto samplerate : samplerates ) {
+      const std::wstring str = std::to_wstring( samplerate ) + L" " + hz;
+			ComboBox_AddString( hwndSamplerate, str.c_str() );
+			ComboBox_SetItemData( hwndSamplerate, ComboBox_GetCount( hwndSamplerate ) - 1, static_cast<LPARAM>( samplerate ) );
+			if ( samplerate == samplerateSetting ) {
+				ComboBox_SetCurSel( hwndSamplerate, ComboBox_GetCount( hwndSamplerate ) - 1 );
+			}
+  	}
+	}
 
-	// Interpolation combo
-	HWND wndInterpolation = GetDlgItem( hwnd, IDC_OPTIONS_MOD_INTERPOLATION );
-	LoadString( instance, IDS_INTERPOLATION_OFF, buffer, bufferSize );
-	ComboBox_AddString( wndInterpolation, buffer );
-	LoadString( instance, IDS_INTERPOLATION_LINEAR, buffer, bufferSize );
-	ComboBox_AddString( wndInterpolation, buffer );
-	LoadString( instance, IDS_INTERPOLATION_SINC, buffer, bufferSize );
-	ComboBox_AddString( wndInterpolation, buffer );
-
-	// Looping combo
-	HWND wndLooping = GetDlgItem( hwnd, IDC_OPTIONS_MOD_LOOPING );
-	LoadString( instance, IDS_LOOPING_PREVENT, buffer, bufferSize );
-	ComboBox_AddString( wndLooping, buffer );
-	LoadString( instance, IDS_LOOPING_ALLOW, buffer, bufferSize );
-	ComboBox_AddString( wndLooping, buffer );
-	LoadString( instance, IDS_LOOPING_FADE, buffer, bufferSize );
-	ComboBox_AddString( wndLooping, buffer );
-
-	Button_SetCheck( GetDlgItem( hwnd, IDC_OPTIONS_MOD_TYPEMOD ), BST_CHECKED );
-	UpdateControls( hwnd );
+  m_SoundFont = GetSettings().GetSoundFont();
+  SetWindowText( GetDlgItem( hwnd, IDC_OPTIONS_SOUNDFONT ), m_SoundFont.c_str() );
 }
 
 void OptionsMod::OnSave( const HWND hwnd )
 {
-	if ( nullptr != m_CurrentSettings ) {
-		long long panning = SendMessage( GetDlgItem( hwnd, IDC_OPTIONS_MOD_PAN ), TBM_GETPOS, 0, 0 );
-		panning <<= 32;
-		*m_CurrentSettings &= 0xffffffff;
-		*m_CurrentSettings |= panning;
+  GetSettings().SetMODDecoder( GetPreferredDecoder( hwnd ) );
+
+	if ( const HWND hwndSamplerate = GetDlgItem( hwnd, IDC_OPTIONS_MOD_SAMPLERATE ); nullptr != hwndSamplerate ) {
+		const int selectedSamplerate = ComboBox_GetCurSel( hwndSamplerate );
+		if ( selectedSamplerate >= 0 ) {
+			GetSettings().SetMODSamplerate( static_cast<uint32_t>( ComboBox_GetItemData( hwndSamplerate, selectedSamplerate ) ) );
+		}
 	}
-	GetSettings().SetMODSettings( m_MODSettings, m_MTMSettings, m_S3MSettings, m_XMSettings, m_ITSettings );
+
+	GetSettings().SetSoundFont( m_SoundFont );
 }
 
 void OptionsMod::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /*lParam*/ )
@@ -81,37 +74,21 @@ void OptionsMod::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /
 	const WORD notificationCode = HIWORD( wParam );
 	const WORD controlID = LOWORD( wParam );
 	if ( BN_CLICKED == notificationCode ) {
-		if ( ( nullptr != m_CurrentSettings ) && ( IDC_OPTIONS_SOUNDFONT_BROWSE != controlID ) ) {
-			long long panning = SendMessage( GetDlgItem( hwnd, IDC_OPTIONS_MOD_PAN ), TBM_GETPOS, 0, 0 );
-			panning <<= 32;
-			*m_CurrentSettings &= 0xffffffff;
-			*m_CurrentSettings |= panning;
-		}
 		switch ( controlID ) {
-			case IDC_OPTIONS_MOD_TYPEMOD : {
-				m_CurrentSettings = &m_MODSettings;
-				break;
-			}
-			case IDC_OPTIONS_MOD_TYPEMTM : {
-				m_CurrentSettings = &m_MTMSettings;
-				break;
-			}
-			case IDC_OPTIONS_MOD_TYPES3M : {
-				m_CurrentSettings = &m_S3MSettings;
-				break;
-			}
-			case IDC_OPTIONS_MOD_TYPEXM : {
-				m_CurrentSettings = &m_XMSettings;
-				break;
-			}
-			case IDC_OPTIONS_MOD_TYPEIT : {
-				m_CurrentSettings = &m_ITSettings;
-				break;
-			}
-			case IDC_OPTIONS_MOD_RESET : {
-				GetSettings().GetDefaultMODSettings( m_MODSettings, m_MTMSettings, m_S3MSettings, m_XMSettings, m_ITSettings );
-				break;
-			}
+      case IDC_OPTIONS_MOD_SETTINGS : {
+        const auto preferredDecoder = GetPreferredDecoder( hwnd );
+        switch ( preferredDecoder ) {
+          case Settings::MODDecoder::BASS : {
+				    DlgModBASS dialog( GetInstanceHandle(), hwnd, GetSettings() );
+            break;
+          }
+          case Settings::MODDecoder::OpenMPT : {
+				    DlgModOpenMPT dialog( GetInstanceHandle(), hwnd, GetSettings() );
+            break;
+          }
+        }
+        break;
+      }
 			case IDC_OPTIONS_SOUNDFONT_BROWSE : {
 				ChooseSoundFont();
 				break;
@@ -120,119 +97,19 @@ void OptionsMod::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /
 				break;
 			}
 		}
-		UpdateControls( hwnd );
-	} else if ( CBN_SELCHANGE == notificationCode ) {
-		switch ( controlID ) {
-			case IDC_OPTIONS_MOD_SURROUND : {
-				*m_CurrentSettings &= ~( BASS_MUSIC_SURROUND | BASS_MUSIC_SURROUND2 );
-				const int selected = ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_SURROUND ) );
-				switch ( selected ) {
-					case 1 : {
-						*m_CurrentSettings |= BASS_MUSIC_SURROUND;
-						break;
-					}
-					case 2 : {
-						*m_CurrentSettings |= BASS_MUSIC_SURROUND2;
-						break;
-					}
-				}
-				break;
-			}
-			case IDC_OPTIONS_MOD_RAMPING : {
-				*m_CurrentSettings &= ~( BASS_MUSIC_RAMP | BASS_MUSIC_RAMPS );
-				const int selected = ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_RAMPING ) );
-				switch ( selected ) {
-					case 1 : {
-						*m_CurrentSettings |= BASS_MUSIC_RAMP;
-						break;
-					}
-					case 2 : {
-						*m_CurrentSettings |= BASS_MUSIC_RAMPS;
-						break;
-					}
-				}
-				break;
-			}
-			case IDC_OPTIONS_MOD_INTERPOLATION : {
-				*m_CurrentSettings &= ~( BASS_MUSIC_NONINTER | BASS_MUSIC_SINCINTER );
-				const int selected = ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_INTERPOLATION ) );
-				switch ( selected ) {
-					case 0 : {
-						*m_CurrentSettings |= BASS_MUSIC_NONINTER;
-						break;
-					}
-					case 2 : {
-						*m_CurrentSettings |= BASS_MUSIC_SINCINTER;
-						break;
-					}
-				}
-				break;
-			}
-			case IDC_OPTIONS_MOD_LOOPING : {
-				*m_CurrentSettings &= ~( BASS_MUSIC_STOPBACK | VUPLAYER_MUSIC_FADEOUT );
-				const int selected = ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_LOOPING ) );
-				switch ( selected ) {
-					case 0 : {
-						*m_CurrentSettings |= BASS_MUSIC_STOPBACK;
-						break;
-					}
-					case 2 : {
-						*m_CurrentSettings |= VUPLAYER_MUSIC_FADEOUT;
-						break;
-					}
-				}
-				break;
-			}
-		}
 	}
 }
 
-void OptionsMod::UpdateControls( const HWND hwnd )
+Settings::MODDecoder OptionsMod::GetPreferredDecoder( const HWND hwnd ) const
 {
-	if ( nullptr != m_CurrentSettings ) {
-		int surroundIndex = 0;
-		if ( *m_CurrentSettings & BASS_MUSIC_SURROUND ) {
-			surroundIndex = 1;
-		} else if ( *m_CurrentSettings & BASS_MUSIC_SURROUND2 ) {
-			surroundIndex = 2;
+  Settings::MODDecoder decoder = Settings::MODDecoder::BASS;
+	if ( const HWND hwndDecoder = GetDlgItem( hwnd, IDC_OPTIONS_MOD_DECODER ); nullptr != hwndDecoder ) {
+		const int selectedDecoder = ComboBox_GetCurSel( hwndDecoder );
+		if ( selectedDecoder >= 0 ) {
+			decoder = static_cast<Settings::MODDecoder>( ComboBox_GetItemData( hwndDecoder, selectedDecoder ) );
 		}
-		ComboBox_SetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_SURROUND ), surroundIndex );
-
-		int rampingIndex = 0;
-		if ( *m_CurrentSettings & BASS_MUSIC_RAMP ) {
-			rampingIndex = 1;
-		} else if ( *m_CurrentSettings & BASS_MUSIC_RAMPS ) {
-			rampingIndex = 2;
-		}
-		ComboBox_SetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_RAMPING ), rampingIndex );
-
-		int interpolationIndex = 1;
-		if ( *m_CurrentSettings & BASS_MUSIC_NONINTER ) {
-			interpolationIndex = 0;
-		} else if ( *m_CurrentSettings & BASS_MUSIC_SINCINTER ) {
-			interpolationIndex = 2;
-		}
-		ComboBox_SetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_INTERPOLATION ), interpolationIndex );
-
-		int loopingIndex = 1;
-		if ( *m_CurrentSettings & BASS_MUSIC_STOPBACK ) {
-			loopingIndex = 0;
-		} else if ( *m_CurrentSettings & VUPLAYER_MUSIC_FADEOUT ) {
-			loopingIndex = 2;
-		}
-		ComboBox_SetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_LOOPING ), loopingIndex );
-
-		int panning = static_cast<int>( *m_CurrentSettings >> 32 );
-		if ( panning < 0 ) {
-			panning = 0;
-		} else if ( panning > 100 ) {
-			panning = 100;
-		}
-		SendMessage( GetDlgItem( hwnd, IDC_OPTIONS_MOD_PAN ), TBM_SETPOS, TRUE /*redraw*/, panning );
 	}
-
-	const std::wstring soundFont = GetSettings().GetSoundFont();
-	SetWindowText( GetDlgItem( hwnd, IDC_OPTIONS_SOUNDFONT ), soundFont.c_str() );
+  return decoder;
 }
 
 void OptionsMod::ChooseSoundFont()
@@ -274,9 +151,8 @@ void OptionsMod::ChooseSoundFont()
 	ofn.nMaxFile = MAX_PATH;
 	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
 	if ( FALSE != GetOpenFileName( &ofn ) ) {
-		const std::wstring filename = ofn.lpstrFile;
-		GetSettings().SetSoundFont( filename );
-		GetSettings().SetLastFolder( initialFolderSetting, filename.substr( 0, ofn.nFileOffset ) );
-		UpdateControls( m_hWnd );
+		m_SoundFont = ofn.lpstrFile;
+		GetSettings().SetLastFolder( initialFolderSetting, m_SoundFont.substr( 0, ofn.nFileOffset ) );
+		SetWindowText( GetDlgItem( m_hWnd, IDC_OPTIONS_SOUNDFONT ), m_SoundFont.c_str() );
 	}
 }

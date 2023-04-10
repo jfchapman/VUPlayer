@@ -177,7 +177,7 @@ DWORD WINAPI Output::PreloadDecoderProc( LPVOID lpParam )
 	return 0;
 }
 
-Output::Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handlers, Settings& settings ) :
+Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, Settings& settings ) :
 	m_hInst( instance ),
 	m_Parent( hwnd ),
 	m_Handlers( handlers ),
@@ -1282,7 +1282,7 @@ void Output::EstimateGain( Playlist::Item& item )
 			if ( m_GainEstimateMap.end() != estimateIter ) {
 				item.Info.SetGainTrack( estimateIter->second );
 			} else {
-				const auto tempDecoder = OpenDecoder( item );
+				const auto tempDecoder = OpenDecoder( item, Decoder::Context::Temporary );
 				if ( tempDecoder ) {
 					const auto trackGain = tempDecoder->CalculateTrackGain( [] () { return true; }, s_GainPrecalcTime );
 					item.Info.SetGainTrack( trackGain );
@@ -1304,7 +1304,7 @@ void Output::CalculateCrossfadePoint( const Playlist::Item& item, const float se
 
 void Output::CalculateCrossfadeHandler()
 {
-	const auto decoder = IsURL( m_CrossfadeItem.Info.GetFilename() ) ? nullptr : OpenDecoder( m_CrossfadeItem );
+	const auto decoder = IsURL( m_CrossfadeItem.Info.GetFilename() ) ? nullptr : OpenDecoder( m_CrossfadeItem, Decoder::Context::Temporary );
 	if ( decoder ) {
 		const float duration = decoder->GetDuration();
 		const long channels = decoder->GetChannels();
@@ -1364,7 +1364,7 @@ void Output::CalculateCrossfadeHandler()
 				}
 				if ( MediaInfo::Source::CDDA == nextItem.Info.GetSource() ) {
 					// Pre-cache some CD audio data for the next track, to prevent glitches when crossfading.
-					if ( const auto nextDecoder = OpenDecoder( nextItem ); nextDecoder ) {
+					if ( const auto nextDecoder = OpenDecoder( nextItem, Decoder::Context::Output ); nextDecoder ) {
 						const long kSamplesToRead = 10 * nextDecoder->GetSampleRate();
 						long totalSamplesRead = 0;
 						while ( WAIT_OBJECT_0 != WaitForSingleObject( m_CrossfadeStopEvent, 0 ) ) {
@@ -1593,13 +1593,13 @@ void Output::UpdateEQ( const Settings::EQ& eq )
 	}
 }
 
-Decoder::Ptr Output::OpenDecoder( Playlist::Item& item )
+Decoder::Ptr Output::OpenDecoder( Playlist::Item& item, const Decoder::Context context )
 {
-	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename() );
+	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename(), context );
 	if ( !decoder ) {
 		auto duplicate = item.Duplicates.begin();
 		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
-			decoder = m_Handlers.OpenDecoder( *duplicate );
+			decoder = m_Handlers.OpenDecoder( *duplicate, context );
 			++duplicate;
 		}
 	}
@@ -1626,7 +1626,7 @@ Output::OutputDecoderPtr Output::OpenOutputDecoder( Playlist::Item& item, const 
 	}
 	if ( !outputDecoder ) {
 		try {
-			outputDecoder = std::make_shared<OutputDecoder>( OpenDecoder( item ), item.ID );
+			outputDecoder = std::make_shared<OutputDecoder>( OpenDecoder( item, Decoder::Context::Output ), item.ID );
 		} catch ( const std::runtime_error& ) {
 		}
 	}

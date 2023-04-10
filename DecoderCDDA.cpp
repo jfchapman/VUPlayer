@@ -2,8 +2,8 @@
 
 #include "Utility.h"
 
-DecoderCDDA::DecoderCDDA( const CDDAMedia& cddaMedia, const long track ) :
-	Decoder(),
+DecoderCDDA::DecoderCDDA( const CDDAMedia& cddaMedia, const long track, const Context context ) :
+	Decoder( context ),
 	m_CDDAMedia( cddaMedia ),
 	m_SectorStart( m_CDDAMedia.GetStartSector( track ) ),
 	m_SectorEnd( m_CDDAMedia.GetStartSector( track + 1 ) ),

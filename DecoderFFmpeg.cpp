@@ -8,8 +8,8 @@ extern "C"
 #include <libavformat/avformat.h>
 }
 
-DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename ) :
-	Decoder()
+DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context context ) :
+	Decoder( context )
 {
 	const std::string utf8Filename = WideStringToUTF8( filename );
 

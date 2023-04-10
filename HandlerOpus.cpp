@@ -149,11 +149,11 @@ bool HandlerOpus::SetTags( const std::wstring& filename, const Tags& tags ) cons
 	return success;
 }
 
-Decoder::Ptr HandlerOpus::OpenDecoder( const std::wstring& filename ) const
+Decoder::Ptr HandlerOpus::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const
 {
 	DecoderOpus* streamOpus = nullptr;
 	try {
-		streamOpus = new DecoderOpus( filename );
+		streamOpus = new DecoderOpus( filename, context );
 	} catch ( const std::runtime_error& ) {
 
 	}

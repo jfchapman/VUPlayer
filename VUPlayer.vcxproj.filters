@@ -354,6 +354,21 @@
     <ClInclude Include="DecoderOpenMPT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="libs\libopenmpt-0.6.9\include\libopenmpt.hpp">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\libopenmpt-0.6.9\include\libopenmpt_config.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\libopenmpt-0.6.9\include\libopenmpt_version.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgModBASS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgModOpenMPT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -660,6 +675,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DecoderOpenMPT.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgModBASS.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgModOpenMPT.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

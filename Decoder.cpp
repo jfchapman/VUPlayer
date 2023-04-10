@@ -9,12 +9,13 @@
 #include <random>
 #include <string>
 
-Decoder::Decoder() :
+Decoder::Decoder( const Context context ) :
 	m_Duration( 0 ),
 	m_SampleRate( 0 ),
 	m_Channels( 0 ),
 	m_BPS(),
-	m_Bitrate()
+	m_Bitrate(),
+  m_Context( context )
 {
 }
 

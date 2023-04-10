@@ -94,11 +94,11 @@ bool HandlerMAC::SetTags( const std::wstring& filename, const Tags& tags ) const
 	return success;
 }
 
-Decoder::Ptr HandlerMAC::OpenDecoder( const std::wstring& filename ) const
+Decoder::Ptr HandlerMAC::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const
 {
 	DecoderMAC* decoderMAC = nullptr;
 	try {
-		decoderMAC = new DecoderMAC( filename );
+		decoderMAC = new DecoderMAC( filename, context );
 	} catch ( const std::runtime_error& ) {
 
 	}

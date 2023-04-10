@@ -1764,7 +1764,7 @@ void WndList::OnCommandAddStream()
 	const DlgAddStream dlg( m_hInst, m_hWnd );
 	const std::wstring& url = dlg.GetURL();
 	if ( !url.empty() ) {
-		const auto decoder = IsURL( url ) ? m_Output.GetHandlers().OpenDecoder( url ) : nullptr;
+		const auto decoder = IsURL( url ) ? m_Output.GetHandlers().OpenDecoder( url, Decoder::Context::Temporary ) : nullptr;
 		if ( decoder ) {
 			const bool addToExisting = ( m_Playlist && ( ( Playlist::Type::Streams == m_Playlist->GetType() ) || ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
 			if ( !addToExisting ) {

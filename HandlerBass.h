@@ -26,8 +26,8 @@ public:
 	// Writes 'tags' to 'filename', returning true if the tags were written.
 	bool SetTags( const std::wstring& filename, const Tags& tags ) const override;
 
-	// Returns a decoder for 'filename', or nullptr if a decoder cannot be created.
-	Decoder::Ptr OpenDecoder( const std::wstring& filename ) const override;
+	// Returns a decoder for 'filename' in the specified 'context', or nullptr if a decoder cannot be created.
+	Decoder::Ptr OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const override;
 
 	// Returns an encoder, or nullptr if an encoder cannot be created.
 	Encoder::Ptr OpenEncoder() const override;

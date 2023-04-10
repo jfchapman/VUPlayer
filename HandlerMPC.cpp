@@ -31,11 +31,11 @@ bool HandlerMPC::SetTags( const std::wstring& /*filename*/, const Tags& /*tags*/
 	return false;
 }
 
-Decoder::Ptr HandlerMPC::OpenDecoder( const std::wstring& filename ) const
+Decoder::Ptr HandlerMPC::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const
 {
 	DecoderMPC* decoderMPC = nullptr;
 	try {
-		decoderMPC = new DecoderMPC( filename );
+		decoderMPC = new DecoderMPC( filename, context );
 	} catch ( const std::runtime_error& ) {
 
 	}

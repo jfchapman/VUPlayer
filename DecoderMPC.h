@@ -11,8 +11,9 @@ class DecoderMPC : public Decoder
 {
 public:
 	// 'filename' - file name.
+  // 'context' - context for which the decoder is to be used.
 	// Throws a std::runtime_error exception if the file could not be loaded.
-	DecoderMPC( const std::wstring& filename );
+	DecoderMPC( const std::wstring& filename, const Context context );
 
 	~DecoderMPC() override;
 

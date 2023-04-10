@@ -40,7 +40,7 @@ bool HandlerMP3::SetTags( const std::wstring& filename, const Tags& tags ) const
 	return ShellMetadata::Set( filename, tags );
 }
 
-Decoder::Ptr HandlerMP3::OpenDecoder( const std::wstring& /*filename*/ ) const
+Decoder::Ptr HandlerMP3::OpenDecoder( const std::wstring& /*filename*/, const Decoder::Context /*context*/ ) const
 {
 	return nullptr;
 }

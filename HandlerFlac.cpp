@@ -307,11 +307,11 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) cons
 	return success;
 }
 
-Decoder::Ptr HandlerFlac::OpenDecoder( const std::wstring& filename ) const
+Decoder::Ptr HandlerFlac::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const
 {
 	DecoderFlac* streamFlac = nullptr;
 	try {
-		streamFlac = new DecoderFlac( filename );
+		streamFlac = new DecoderFlac( filename, context );
 	} catch ( const std::runtime_error& ) {
 
 	}

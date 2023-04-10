@@ -11,8 +11,9 @@ class DecoderFlac : public Decoder, public FLAC::Decoder::Stream
 {
 public:
 	// 'filename' - file name.
+  // 'context' - context for which the decoder is to be used.
 	// Throws a std::runtime_error exception if the file could not be loaded.
-	DecoderFlac( const std::wstring& filename );
+	DecoderFlac( const std::wstring& filename, const Context context );
 
 	~DecoderFlac() override;
 

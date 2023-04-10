@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <list>
 #include <optional>
+#include <array>
 
 #include "Database.h"
 #include "Library.h"
@@ -81,6 +82,12 @@ public:
 		Medium,
 		Large
 	};
+
+  // Preferred MOD music decoder
+  enum class MODDecoder {
+    BASS = 0,
+    OpenMPT
+  };
 
 	// EQ settings.
 	struct EQ {
@@ -603,6 +610,36 @@ public:
 
   // Sets whether to preserve the last modified time when writing metadata tags to file.
   void SetPreserveLastModifiedTime( const bool preserve );
+
+  // Returns the preferred MOD music decoder.
+  MODDecoder GetMODDecoder();
+
+  // Sets the preferred MOD music decoder.
+  void SetMODDecoder( const MODDecoder decoder );
+
+  // Gets the MOD music sample rate.
+  uint32_t GetMODSamplerate();
+
+  // Sets the MOD music sample rate.
+  void SetMODSamplerate( const uint32_t samplerate );
+
+  // Returns the supported MOD music sample rates.
+  static constexpr std::array<uint32_t, 4> GetMODSupportedSamplerates() { return { 96000, 48000, 44100, 22050 }; }
+
+  // Gets default OpenMPT settings.
+	void GetDefaultOpenMPTSettings( bool& fadeout, long& separation, long& ramping, long& interpolation );
+
+	// Gets OpenMPT settings.
+	void GetOpenMPTSettings( bool& fadeout, long& separation, long& ramping, long& interpolation );
+
+	// Sets OpenMPT settings.
+	void SetOpenMPTSettings( const bool fadeout, const long separation, const long ramping, const long interpolation );
+
+  // Returns the supported OpenMPT ramping options.
+  static constexpr std::array<long, 12> GetOpenMPTSupportedRamping() { return { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; }
+
+  // Returns the supported OpenMPT interpolation options.
+  static constexpr std::array<long, 5> GetOpenMPTSupportedInterpolation() { return { 0, 1, 2, 4, 8 }; }
 
 private:
 	// Updates the database to the current version if necessary.

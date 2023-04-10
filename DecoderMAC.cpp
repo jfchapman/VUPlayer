@@ -2,8 +2,8 @@
 
 #include "Utility.h"
 
-DecoderMAC::DecoderMAC( const std::wstring& filename ) :
-	Decoder(),
+DecoderMAC::DecoderMAC( const std::wstring& filename, const Context context ) :
+	Decoder( context ),
 	m_decompress( CreateIAPEDecompress( filename.c_str() )  )
 {
 	if ( m_decompress ) {

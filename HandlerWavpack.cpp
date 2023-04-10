@@ -144,11 +144,11 @@ bool HandlerWavpack::SetTags( const std::wstring& filename, const Tags& tags ) c
 	return success;
 }
 
-Decoder::Ptr HandlerWavpack::OpenDecoder( const std::wstring& filename ) const
+Decoder::Ptr HandlerWavpack::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const
 {
 	DecoderWavpack* decoderWavpack = nullptr;
 	try {
-		decoderWavpack = new DecoderWavpack( filename );
+		decoderWavpack = new DecoderWavpack( filename, context );
 	} catch ( const std::runtime_error& ) {
 
 	}

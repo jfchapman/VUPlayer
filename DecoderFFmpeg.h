@@ -13,8 +13,9 @@ class DecoderFFmpeg : public Decoder
 {
 public:
 	// 'filename' - file name.
+  // 'context' - context for which the decoder is to be used.
 	// Throws a std::runtime_error exception if the file could not be loaded.
-	DecoderFFmpeg( const std::wstring& filename );
+	DecoderFFmpeg( const std::wstring& filename, const Context context );
 
 	~DecoderFFmpeg() override;
 

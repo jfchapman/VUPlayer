@@ -19,6 +19,7 @@
 Handlers::Handlers() :
 	m_HandlerBASS( new HandlerBass() ),
 	m_HandlerFFmpeg( new HandlerFFmpeg() ),
+  m_HandlerOpenMPT( new HandlerOpenMPT() ),
 	m_Handlers( {
 		Handler::Ptr( new HandlerFlac() ),
 		Handler::Ptr( new HandlerOpus() ),
@@ -27,8 +28,8 @@ Handlers::Handlers() :
 		Handler::Ptr( new HandlerMPC() ),
 		Handler::Ptr( new HandlerMP3() ),
 		Handler::Ptr( new HandlerPCM() ),
-    Handler::Ptr( new HandlerOpenMPT() ),
 		Handler::Ptr( m_HandlerBASS ),
+    Handler::Ptr( m_HandlerOpenMPT ),
 		Handler::Ptr( m_HandlerFFmpeg )
 		} ),
 	m_Decoders(),
@@ -54,7 +55,8 @@ Handler::Ptr Handlers::FindDecoderHandler( const std::wstring& filename ) const
 {
 	Handler::Ptr handler;
 	const std::wstring extension = GetFileExtension( filename );
-	for ( auto decoder = m_Decoders.begin(); !handler && ( decoder != m_Decoders.end() ); decoder++ ) {
+  std::lock_guard<std::mutex> lock( m_MutexDecoders );
+  for ( auto decoder = m_Decoders.begin(); !handler && ( decoder != m_Decoders.end() ); decoder++ ) {
 		std::set<std::wstring> extensions = decoder->get()->GetSupportedFileExtensions();
 		const auto foundHandler = std::find( extensions.begin(), extensions.end(), extension );
 		if ( extensions.end() != foundHandler ) {
@@ -65,19 +67,19 @@ Handler::Ptr Handlers::FindDecoderHandler( const std::wstring& filename ) const
 	return handler;
 }
 
-Decoder::Ptr Handlers::OpenDecoder( const std::wstring& filename ) const
+Decoder::Ptr Handlers::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const
 {
 	Decoder::Ptr decoder;
 	if ( IsURL( filename ) ) {
-		decoder = m_HandlerBASS ? m_HandlerBASS->OpenDecoder( filename ) : nullptr;
+		decoder = m_HandlerBASS ? m_HandlerBASS->OpenDecoder( filename, context ) : nullptr;
 	} else if ( !filename.empty() ) {
 		Handler::Ptr handler = FindDecoderHandler( filename );
 		if ( handler ) {
-			decoder = handler->OpenDecoder( filename );
+			decoder = handler->OpenDecoder( filename, context );
 		}
 		if ( !decoder && m_HandlerFFmpeg && ( handler != m_HandlerFFmpeg ) ) {
 			// Try the FFmpeg handler as a catch all.
-			decoder = m_HandlerFFmpeg->OpenDecoder( filename );
+			decoder = m_HandlerFFmpeg->OpenDecoder( filename, context );
 		}
 	}
 	return decoder;
@@ -145,6 +147,7 @@ bool Handlers::SetTags( const MediaInfo& mediaInfo, Library& library ) const
 std::set<std::wstring> Handlers::GetAllSupportedFileExtensions() const
 {
 	std::set<std::wstring> fileExtensions;
+  std::lock_guard<std::mutex> lock( m_MutexDecoders );
 	for ( const auto& handler : m_Decoders ) {
 		std::set<std::wstring> handlerExtensions = handler->GetSupportedFileExtensions();
 		fileExtensions.insert( handlerExtensions.begin(), handlerExtensions.end() );
@@ -154,13 +157,13 @@ std::set<std::wstring> Handlers::GetAllSupportedFileExtensions() const
 
 std::wstring Handlers::GetBassVersion() const
 {
-	std::wstring version;
-	for ( const auto& handler : m_Decoders ) {
-		if ( nullptr != dynamic_cast<HandlerBass*>( handler.get() ) ) {
-			version = handler->GetDescription();
-			break;
-		}
-	}
+	const std::wstring version = m_HandlerBASS ? m_HandlerBASS->GetDescription() : std::wstring();
+	return version; 
+}
+
+std::wstring Handlers::GetOpenMPTVersion() const
+{
+	const std::wstring version = m_HandlerOpenMPT ? m_HandlerOpenMPT->GetDescription() : std::wstring();
 	return version; 
 }
 
@@ -169,6 +172,7 @@ void Handlers::AddHandler( Handler::Ptr handler )
 	if ( handler ) {
 		m_Handlers.push_back( handler );
 		if ( handler->IsDecoder() ) {
+      std::lock_guard<std::mutex> lock( m_MutexDecoders );
 			m_Decoders.push_back( handler );
 		}
 		if ( handler->IsEncoder() ) {
@@ -188,7 +192,7 @@ Encoder::Ptr Handlers::OpenEncoder( const std::wstring& /*description*/ ) const
 	return encoder;
 }
 
-void Handlers::SettingsChanged( Settings& settings ) const
+void Handlers::SettingsChanged( Settings& settings )
 {
 	for ( const auto& handler : m_Handlers ) {
 		if ( handler ) {
@@ -197,6 +201,17 @@ void Handlers::SettingsChanged( Settings& settings ) const
 	}
   m_WriteTags = settings.GetWriteFileTags();
   m_PreserveLastModifiedTime = settings.GetPreserveLastModifiedTime();
+
+  std::lock_guard<std::mutex> lock( m_MutexDecoders );
+  auto bassDecoder = std::find( m_Decoders.begin(), m_Decoders.end(), m_HandlerBASS );
+  auto openMPTDecoder = std::find( m_Decoders.begin(), m_Decoders.end(), m_HandlerOpenMPT );
+  if ( ( m_Decoders.end() != bassDecoder ) && ( m_Decoders.end() != openMPTDecoder ) ) {
+    const Settings::MODDecoder preferredDecoder = ( std::distance( bassDecoder, openMPTDecoder ) > 0 ) ? Settings::MODDecoder::BASS : Settings::MODDecoder::OpenMPT;
+    const Settings::MODDecoder preferredSetting = settings.GetMODDecoder();
+    if ( preferredDecoder != preferredSetting ) {
+      std::iter_swap( bassDecoder, openMPTDecoder );
+    }
+  }
 }
 
 void Handlers::Init( Settings& settings )

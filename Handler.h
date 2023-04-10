@@ -28,8 +28,8 @@ public:
 	// Handler shared pointer type.
 	typedef std::shared_ptr<Handler> Ptr;
 
-	// A list of handlers.
-	typedef std::list<Ptr> List;
+	// A vector of handlers.
+	typedef std::vector<Ptr> List;
 
 	// Returns a description of the handler.
 	virtual std::wstring GetDescription() const = 0;
@@ -43,8 +43,8 @@ public:
 	// Writes 'tags' to 'filename', returning true if the tags were written.
 	virtual bool SetTags( const std::wstring& filename, const Tags& tags ) const = 0;
 
-	// Returns a decoder for 'filename', or nullptr if a decoder cannot be created.
-	virtual Decoder::Ptr OpenDecoder( const std::wstring& filename ) const = 0;
+	// Returns a decoder for 'filename' in the specified 'context', or nullptr if a decoder cannot be created.
+	virtual Decoder::Ptr OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const = 0;
 
 	// Returns an encoder, or nullptr if an encoder cannot be created.
 	virtual Encoder::Ptr OpenEncoder() const = 0;

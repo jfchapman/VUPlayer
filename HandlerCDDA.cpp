@@ -39,7 +39,7 @@ bool HandlerCDDA::SetTags( const std::wstring& /*filename*/, const Tags& /*tags*
 	return false;
 }
 
-Decoder::Ptr HandlerCDDA::OpenDecoder( const std::wstring& filename ) const
+Decoder::Ptr HandlerCDDA::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const
 {
 	DecoderCDDA* decoderCDDA = nullptr;
 	try {
@@ -50,7 +50,7 @@ Decoder::Ptr HandlerCDDA::OpenDecoder( const std::wstring& filename ) const
 			const auto driveIter = mediaMap.find( drive );
 			if ( mediaMap.end() != driveIter ) {
 				const auto& media = driveIter->second;
-				decoderCDDA = new DecoderCDDA( media, track );
+				decoderCDDA = new DecoderCDDA( media, track, context );
 			}
 		}
 	} catch ( const std::runtime_error& ) {

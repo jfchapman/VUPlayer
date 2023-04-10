@@ -2,8 +2,8 @@
 
 #include "Utility.h"
 
-DecoderWavpack::DecoderWavpack( const std::wstring& filename ) :
-	Decoder(),
+DecoderWavpack::DecoderWavpack( const std::wstring& filename, const Context context ) :
+	Decoder( context ),
 	m_Context( nullptr )
 {
 	char* error = nullptr;

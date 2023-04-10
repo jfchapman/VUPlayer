@@ -2,8 +2,8 @@
 
 #include "Utility.h"
 
-DecoderOpus::DecoderOpus( const std::wstring& filename ) :
-	Decoder(),
+DecoderOpus::DecoderOpus( const std::wstring& filename, const Context context ) :
+	Decoder( context ),
 	m_OpusFile( nullptr )
 {
 	int error = 0;

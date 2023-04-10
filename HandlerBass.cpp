@@ -129,11 +129,11 @@ bool HandlerBass::SetTags( const std::wstring& filename, const Tags& tags ) cons
 	return success;
 }
 
-Decoder::Ptr HandlerBass::OpenDecoder( const std::wstring& filename ) const
+Decoder::Ptr HandlerBass::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const
 {
 	DecoderBass* streamBass = nullptr;
 	try {
-		streamBass = new DecoderBass( filename );
+		streamBass = new DecoderBass( filename, context );
 	} catch ( const std::runtime_error& ) {
 	}
 	const Decoder::Ptr stream( streamBass );

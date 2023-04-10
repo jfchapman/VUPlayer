@@ -11,8 +11,9 @@ class DecoderCDDA : public Decoder
 public:
 	// 'cddaMedia' - CD audio disc information.
 	// 'track' - track number.
+  // 'context' - context for which the decoder is to be used.
 	// Throws a std::runtime_error exception if the file could not be loaded.
-	DecoderCDDA( const CDDAMedia& cddaMedia, const long track );
+	DecoderCDDA( const CDDAMedia& cddaMedia, const long track, const Context context );
 
 	~DecoderCDDA() override;
 

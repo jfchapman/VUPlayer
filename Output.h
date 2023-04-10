@@ -22,7 +22,7 @@ public:
 	// 'hwnd' - main window handle.
 	// 'handlers' - the available handlers.
 	// 'settings' - application settings.
-	Output( const HINSTANCE instance, const HWND hwnd, const Handlers& handlers, Settings& settings );
+	Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, Settings& settings );
 
 	virtual ~Output();
 
@@ -295,8 +295,8 @@ private:
 	// Sets the output 'queue'.
 	void SetOutputQueue( const Queue& queue );
 
-	// Returns a decoder for the 'item' (and updates the item if necessary), or nullptr if a decoder could not be opened.
-	Decoder::Ptr OpenDecoder( Playlist::Item& item );
+	// Returns a decoder for the 'item' in the specified 'context' (and updates the item if necessary), or nullptr if a decoder could not be opened.
+	Decoder::Ptr OpenDecoder( Playlist::Item& item, const Decoder::Context context );
 
 	// Returns an output decoder for the 'item'.
 	// 'usePreloadedDecoder' - whether to use the preloaded decoder (when available).
@@ -372,7 +372,7 @@ private:
 	const HWND m_Parent;
 
 	// The available handlers.
-	const Handlers& m_Handlers;
+	Handlers& m_Handlers;
 
 	// Application settings.
 	Settings& m_Settings;

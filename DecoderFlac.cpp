@@ -1,7 +1,7 @@
 #include "DecoderFlac.h"
 
-DecoderFlac::DecoderFlac( const std::wstring& filename ) :
-	Decoder(),
+DecoderFlac::DecoderFlac( const std::wstring& filename, const Context context ) :
+	Decoder( context ),
 	FLAC::Decoder::Stream(),
 	m_FileStream(),
 	m_FLACFrame(),

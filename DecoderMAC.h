@@ -12,8 +12,9 @@ class DecoderMAC : public Decoder
 {
 public:
 	// 'filename' - file name.
+  // 'context' - context for which the decoder is to be used.
 	// Throws a std::runtime_error exception if the file could not be loaded.
-	DecoderMAC( const std::wstring& filename );
+	DecoderMAC( const std::wstring& filename, const Context context );
 
 	// Reads sample data.
 	// 'buffer' - output buffer (floating point format scaled to +/-1.0f).
