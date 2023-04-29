@@ -255,6 +255,7 @@ typedef struct {
 #define QMODE_CHANS_UNASSIGNED  0x400   // user specified "..." in --channel-order option
 #define QMODE_IGNORE_LENGTH     0x800   // user specified to ignore length in file header
 #define QMODE_RAW_PCM           0x1000  // user specified raw PCM format (no header present)
+#define QMODE_EVEN_BYTE_DEPTH   0x2000  // user specified to force even byte bit-depth
 
 ////////////// Callbacks used for reading & writing WavPack streams //////////
 
@@ -401,6 +402,7 @@ void WavpackSetFileInformation (WavpackContext *wpc, char *file_extension, unsig
 #define WP_FORMAT_CAF   2       // Apple CoreAudio
 #define WP_FORMAT_DFF   3       // Philips DSDIFF
 #define WP_FORMAT_DSF   4       // Sony DSD Format
+#define WP_FORMAT_AIF   5       // Apple AIFF
 
 int WavpackSetConfiguration (WavpackContext *wpc, WavpackConfig *config, uint32_t total_samples);
 int WavpackSetConfiguration64 (WavpackContext *wpc, WavpackConfig *config, int64_t total_samples, const unsigned char *chan_ids);
