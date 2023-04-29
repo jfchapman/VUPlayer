@@ -1,5 +1,5 @@
 BASSHLS 2.4
-Copyright (c) 2015-2019 Un4seen Developments Ltd. All rights reserved.
+Copyright (c) 2015-2021 Un4seen Developments Ltd. All rights reserved.
 
 Files that you should have found in the BASSHLS package
 =======================================================
@@ -20,8 +20,8 @@ VB\             Visual Basic API...
 DELPHI\         Delphi API...
   BASSHLS.PAS     BASSHLS Delphi unit
 
-MacOSX version
---------------
+macOS version
+-------------
 BASSHLS.TXT     This file
 LIBBASSHLS.DYLIB  BASSHLS module
 BASSHLS.CHM     BASSHLS documentation
@@ -30,18 +30,35 @@ BASSHLS.H       BASSHLS C/C++ header file
 Linux version
 -------------
 BASSHLS.TXT     This file
-LIBBASSHLS.SO   BASSHLS module
 BASSHLS.CHM     BASSHLS documentation
 BASSHLS.H       BASSHLS C/C++ header file
-X64\
-  LIBBASSHLS.SO   64-bit BASSHLS module
+LIBS\           BASSHLS modules
+  ...
+
+Android version
+---------------
+BASSHLS.TXT     This file
+BASSHLS.CHM     BASSHLS documentation
+LIBS\           BASSHLS modules
+  ...
+C\              C/C++ API...
+  BASSHLS.H       BASSHLS C/C++ header file
+JAVA\COM\UN4SEEN\BASS\
+  BASSHLS.JAVA    BASSHLS Java class
+
+iOS version
+-----------
+BASSHLS.TXT     This file
+BASSHLS.XCFRAMEWORK  BASSHLS framework
+BASSHLS.CHM     BASSHLS documentation
+BASSHLS.H       BASSHLS C/C++ header file
 
 
 What's the point?
 =================
-BASSHLS is an extension to the BASS audio library, enabling the playing of
-HLS (HTTP Live Streaming) streams. Local media playlists and segments are
-also supported.
+BASSHLS is an extension to the BASS audio library, enabling the playing of HLS
+(HTTP Live Streaming) streams. Local media playlists and segments are also
+supported.
 
 
 Requirements
@@ -89,19 +106,30 @@ package are the property of their respective owners.
 
 History
 =======
-These are the major (and not so major) changes at each version stage.
-There are of course bug fixes and other little improvements made along
-the way too! To make upgrading simpler, all functions affected by a
-change to the BASSHLS interface are listed.
+These are the major (and not so major) changes in each release, along with the
+functions/options that are introduced/affected by them. There are other little
+tweaks and fixes made along the way too.
+
+2.4.3 - 30/7/2021
+-----------------
+* Support for EXT-X-DISCONTINUITY and EXT-X-MAP playlist tags
+	BASS_HLS_StreamCreateFile/URL
+* Support for EXT-X-MEDIA master playlist tags
+	BASS_HLS_StreamCreateFile/URL
+* MPEG-TS/DVB Service Description Table (SDT) retrieval
+	BASS_TAG_HLS_SDT (BASS_ChannelGetTags type)
+	BASS_SYNC_HLS_SDT (BASS_ChannelSetSync type)
+* Support for a 2nd ID3v2 tag block
+	BASS_TAG_ID3V2_2 (BASS_ChannelGetTags type)
 
 2.4.2 - 12/3/2019
 -----------------
 * Bandwidth/bitrate-based stream selection for master playlists
-	BASS_CONFIG_HLS_BANDWIDTH
+	BASS_CONFIG_HLS_BANDWIDTH (BASS_SetConfig option)
 * Delay control for live streams
-	BASS_CONFIG_HLS_DELAY
+	BASS_CONFIG_HLS_DELAY (BASS_SetConfig option)
 * Receiving ID3v2 tags in DOWNLOADPROCs is now optional
-	BASS_CONFIG_HLS_DOWNLOAD_TAGS
+	BASS_CONFIG_HLS_DOWNLOAD_TAGS (BASS_SetConfig option)
 
 2.4.1 - 31/1/2018
 -----------------
@@ -118,8 +146,8 @@ change to the BASSHLS interface are listed.
 * First release
 
 
-Bug reports, Suggestions, Comments, Enquiries, etc...
-=====================================================
-If you have any of the aforementioned please visit the BASS forum at
-the website.
+Bug reports, Suggestions, Comments, Enquiries, etc
+==================================================
+If you have any of the aforementioned please visit the BASS forum at the
+website.
 

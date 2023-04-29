@@ -145,10 +145,6 @@ void DlgModBASS::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /
 				m_CurrentSettings = &m_XMSettings;
 				break;
 			}
-			case IDC_OPTIONS_MOD_TYPEIT : {
-				m_CurrentSettings = &m_ITSettings;
-				break;
-			}
 			case IDC_OPTIONS_MOD_RESET : {
 				m_Settings.GetDefaultMODSettings( m_MODSettings, m_MTMSettings, m_S3MSettings, m_XMSettings, m_ITSettings );
 				break;

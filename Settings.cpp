@@ -1675,7 +1675,7 @@ void Settings::SetPreserveLastModifiedTime( const bool preserve )
 Settings::MODDecoder Settings::GetMODDecoder()
 {
 #ifndef _DEBUG
-  return std::clamp<MODDecoder>( ReadSetting<MODDecoder>( "MODDecoder" ).value_or( MODDecoder::BASS ), MODDecoder::BASS, MODDecoder::OpenMPT );
+  return std::clamp<MODDecoder>( ReadSetting<MODDecoder>( "MODDecoder" ).value_or( MODDecoder::OpenMPT ), MODDecoder::BASS, MODDecoder::OpenMPT );
 #else
   return MODDecoder::BASS;
 #endif

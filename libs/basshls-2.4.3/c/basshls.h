@@ -1,6 +1,6 @@
 /*
 	BASSHLS 2.4 C/C++ header file
-	Copyright (c) 2015-2019 Un4seen Developments Ltd.
+	Copyright (c) 2015-2021 Un4seen Developments Ltd.
 
 	See the BASSHLS.CHM file for more detailed documentation
 */
@@ -12,6 +12,11 @@
 
 #if BASSVERSION!=0x204
 #error conflicting BASS and BASSHLS versions
+#endif
+
+#ifdef __OBJC__
+typedef int BOOL32;
+#define BOOL BOOL32 // override objc's BOOL
 #endif
 
 #ifdef __cplusplus
@@ -26,14 +31,17 @@ extern "C" {
 #define BASS_CONFIG_HLS_DOWNLOAD_TAGS	0x10900
 #define BASS_CONFIG_HLS_BANDWIDTH		0x10901
 #define BASS_CONFIG_HLS_DELAY			0x10902
+#define BASS_CONFIG_HLS_TSSCAN			0x10903
 
 // additional sync type
 #define BASS_SYNC_HLS_SEGMENT	0x10300
+#define BASS_SYNC_HLS_SDT		0x10301
 
 // additional tag types
 #define BASS_TAG_HLS_EXTINF		0x14000 // segment's EXTINF tag : UTF-8 string
 #define BASS_TAG_HLS_STREAMINF	0x14001 // EXT-X-STREAM-INF tag : UTF-8 string
 #define BASS_TAG_HLS_DATE		0x14002 // EXT-X-PROGRAM-DATE-TIME tag : UTF-8 string
+#define BASS_TAG_HLS_SDT		0x14003 // DVB SDT : variable length block
 
 // additional BASS_StreamGetFilePosition mode
 #define BASS_FILEPOS_HLS_SEGMENT	0x10000	// segment sequence number
@@ -55,6 +63,10 @@ static inline HSTREAM BASS_HLS_StreamCreateURL(const WCHAR *url, DWORD flags, DO
 	return BASS_HLS_StreamCreateURL((const char*)url, flags|BASS_UNICODE, proc, user);
 }
 #endif
+#endif
+
+#ifdef __OBJC__
+#undef BOOL
 #endif
 
 #endif

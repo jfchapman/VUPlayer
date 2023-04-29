@@ -53,7 +53,7 @@ std::wstring HandlerBass::GetDescription() const
 
 std::set<std::wstring> HandlerBass::GetSupportedFileExtensions() const
 {
-	return { L"mod", L"s3m", L"xm", L"it", L"mtm", L"mo3", L"umx", L"mp2", L"mp3", L"ogg", L"wav", L"mid", L"midi", L"dsd", L"dsf", L"wma", L"wmv" };
+	return { L"mod", L"s3m", L"xm", L"mtm", L"mo3", L"umx", L"mp2", L"mp3", L"ogg", L"wav", L"mid", L"midi", L"dsd", L"dsf", L"wma", L"wmv" };
 }
 
 bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const

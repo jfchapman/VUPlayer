@@ -1,5 +1,5 @@
 BASSDSD 2.4
-Copyright (c) 2014-2017 Un4seen Developments Ltd. All rights reserved.
+Copyright (c) 2014-2022 Un4seen Developments Ltd. All rights reserved.
 
 Files that you should have found in the BASSDSD package
 =======================================================
@@ -20,8 +20,8 @@ VB\             Visual Basic API...
 DELPHI\         Delphi API...
   BASSDSD.PAS     BASSDSD Delphi unit
 
-MacOSX version
---------------
+macOS version
+-------------
 BASSDSD.TXT     This file
 LIBBASSDSD.DYLIB  BASSDSD module
 BASSDSD.CHM     BASSDSD documentation
@@ -30,23 +30,40 @@ BASSDSD.H       BASSDSD C/C++ header file
 Linux version
 -------------
 BASSDSD.TXT     This file
-LIBBASSDSD.SO   BASSDSD module
 BASSDSD.CHM     BASSDSD documentation
 BASSDSD.H       BASSDSD C/C++ header file
-X64\
-  LIBBASSDSD.SO   64-bit BASSDSD module
+LIBS\           BASSDSD modules
+  ...
+
+Android version
+---------------
+BASSDSD.TXT     This file
+BASSDSD.CHM     BASSDSD documentation
+LIBS\           BASSDSD modules
+  ...
+C\              C/C++ API...
+  BASSDSD.H       BASSDSD C/C++ header file
+JAVA\COM\UN4SEEN\BASS\
+  BASSDSD.JAVA    BASSDSD Java class
+
+iOS version
+-----------
+BASSDSD.TXT     This file
+BASSDSD.XCFRAMEWORK  BASSDSD framework
+BASSDSD.CHM     BASSDSD documentation
+BASSDSD.H       BASSDSD C/C++ header file
 
 
 What's the point?
 =================
-BASSDSD is an extension to the BASS audio library, enabling the playing of
-DSD (Direct Stream Digital) data in DSDIFF and DSF containers.
+BASSDSD is an extension to the BASS audio library, enabling the playing of DSD
+(Direct Stream Digital) data in DSDIFF and DSF containers.
 
 
 Requirements
 ============
-BASS 2.4 is required. BASSASIO can also be used for playback of raw DSD
-data. The BASSWV add-on can be used to add support for WavPack DSD files.
+BASS 2.4 is required. BASSASIO can also be used for playback of raw DSD data.
+The BASSWV add-on can be used to add support for WavPack DSD files.
 
 
 Using BASSDSD
@@ -89,10 +106,14 @@ package are the property of their respective owners.
 
 History
 =======
-These are the major (and not so major) changes at each version stage.
-There are of course bug fixes and other little improvements made along
-the way too! To make upgrading simpler, all functions affected by a
-change to the BASSDSD interface are listed.
+These are the major (and not so major) changes in each release, along with the
+functions/options that are introduced/affected by them. There are other little
+tweaks and fixes made along the way too.
+
+2.4.1.3 - 22/12/2022
+--------------------
+* Fix for streaming in blocks (BASS_STREAM_BLOCK)
+	BASS_DSD_StreamCreateFileUser/URL
 
 2.4.1 - 13/1/2017
 -----------------
@@ -106,8 +127,8 @@ change to the BASSDSD interface are listed.
 * First release
 
 
-Bug reports, Suggestions, Comments, Enquiries, etc...
-=====================================================
-If you have any of the aforementioned please visit the BASS forum at
-the website.
+Bug reports, Suggestions, Comments, Enquiries, etc
+==================================================
+If you have any of the aforementioned please visit the BASS forum at the
+website.
 
