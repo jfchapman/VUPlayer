@@ -22,8 +22,8 @@ DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context contex
 				if ( ( m_StreamIndex >= 0 ) && ( nullptr != codec ) ) {
 					if ( AVStream* stream = m_FormatContext->streams[ m_StreamIndex ]; nullptr != stream ) {
 						if ( AVCodecParameters* codecParams = stream->codecpar; nullptr != codecParams ) {
-							if ( codecParams->channels > 0 ) {
-								SetChannels( codecParams->channels );
+							if ( codecParams->ch_layout.nb_channels > 0 ) {
+								SetChannels( codecParams->ch_layout.nb_channels );
 								SetSampleRate( codecParams->sample_rate );
 								if ( codecParams->bits_per_coded_sample > 0 ) {
 									SetBPS( codecParams->bits_per_coded_sample );
@@ -90,42 +90,42 @@ void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame, std::vector<float>&
 			// Non-planar sample formats
 			case AV_SAMPLE_FMT_U8 : {
 				uint8_t* data = frame->data[ 0 ];
-				for ( int pos = 0; pos < frame->channels * frame->nb_samples; pos++ ) {
+				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
 					buffer.push_back( Unsigned8ToFloat( data[ pos ] ) );
 				}
 				break;
 			}
 			case AV_SAMPLE_FMT_S16 : {
 				int16_t* data = reinterpret_cast<int16_t*>( frame->data[ 0 ] );
-				for ( int pos = 0; pos < frame->channels * frame->nb_samples; pos++ ) {
+				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
 					buffer.push_back( Signed16ToFloat( data[ pos ] ) );
 				}
 				break;
 			}
 			case AV_SAMPLE_FMT_S32 : {
 				int32_t* data = reinterpret_cast<int32_t*>( frame->data[ 0 ] );
-				for ( int pos = 0; pos < frame->channels * frame->nb_samples; pos++ ) {
+				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
 					buffer.push_back( Signed32ToFloat( data[ pos ] ) );
 				}
 				break;
 			}
 			case AV_SAMPLE_FMT_S64 : {
 				int64_t* data = reinterpret_cast<int64_t*>( frame->data[ 0 ] );
-				for ( int pos = 0; pos < frame->channels * frame->nb_samples; pos++ ) {
+				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
 					buffer.push_back( Signed64ToFloat( data[ pos ] ) );
 				}
 				break;
 			}
 			case AV_SAMPLE_FMT_FLT : {
 				float* data = reinterpret_cast<float*>( frame->data[ 0 ] );
-				for ( int pos = 0; pos < frame->channels * frame->nb_samples; pos++ ) {
+				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
 					buffer.push_back( data[ pos ] );
 				}
 				break;
 			}
 			case AV_SAMPLE_FMT_DBL : {
 				double* data = reinterpret_cast<double*>( frame->data[ 0 ] );
-				for ( int pos = 0; pos < frame->channels * frame->nb_samples; pos++ ) {
+				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
 					buffer.push_back( static_cast<float>( data[ pos ] ) );
 				}
 				break;
@@ -134,7 +134,7 @@ void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame, std::vector<float>&
 			// Planar sample formats
 			case AV_SAMPLE_FMT_U8P : {
 				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->channels; channel++ ) {
+					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
 						uint8_t* data = frame->data[ channel ];
 						buffer.push_back( Unsigned8ToFloat( data[ samplePos ] ) );
 					}					
@@ -143,7 +143,7 @@ void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame, std::vector<float>&
 			}
 			case AV_SAMPLE_FMT_S16P : {
 				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->channels; channel++ ) {
+					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
 						int16_t* data = reinterpret_cast<int16_t*>( frame->data[ channel ] );
 						buffer.push_back( Signed16ToFloat( data[ samplePos ] ) );
 					}					
@@ -152,7 +152,7 @@ void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame, std::vector<float>&
 			}
 			case AV_SAMPLE_FMT_S32P : {
 				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->channels; channel++ ) {
+					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
 						int32_t* data = reinterpret_cast<int32_t*>( frame->data[ channel ] );
 						buffer.push_back( Signed32ToFloat( data[ samplePos ] ) );
 					}					
@@ -161,7 +161,7 @@ void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame, std::vector<float>&
 			}
 			case AV_SAMPLE_FMT_S64P : {
 				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->channels; channel++ ) {
+					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
 						int64_t* data = reinterpret_cast<int64_t*>( frame->data[ channel ] );
 						buffer.push_back( Signed64ToFloat( data[ samplePos ] ) );
 					}					
@@ -170,7 +170,7 @@ void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame, std::vector<float>&
 			}
 			case AV_SAMPLE_FMT_FLTP : {
 				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->channels; channel++ ) {
+					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
 						float* data = reinterpret_cast<float*>( frame->data[ channel ] );
 						buffer.push_back( data[ samplePos ] );
 					}					
@@ -179,7 +179,7 @@ void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame, std::vector<float>&
 			}
 			case AV_SAMPLE_FMT_DBLP : {
 				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->channels; channel++ ) {
+					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
 						double* data = reinterpret_cast<double*>( frame->data[ channel ] );
 						buffer.push_back( static_cast<float>( data[ samplePos ] ) );
 					}					
