@@ -211,7 +211,7 @@ private:
 	// Preloaded decoder information.
 	struct PreloadedDecoder {
 		Playlist::Item		itemToPreload = {};			// Item to preload.
-		Playlist::Item		item = {};								// Preloaded item.
+		Playlist::Item		item = {};							// Preloaded item.
 		OutputDecoderPtr	decoder = {};						// Preloaded decoder.
 	};
 
@@ -247,6 +247,10 @@ private:
 
 	// Gets the interval between the start and end tick count, in seconds.
 	static float GetInterval( const LONGLONG startTick, const LONGLONG endTick );
+
+  // Returns whether a background thread can proceed, after an initial delay.
+  // 'stopEvent' - the event reponsible for stopping the background thread.
+  static bool CanBackgroundThreadProceed( const HANDLE stopEvent );
 
 	// Reads sample data from the current decoder.
 	// 'buffer' - sample buffer.

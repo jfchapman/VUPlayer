@@ -845,7 +845,7 @@ MediaInfo::List Library::GetMediaByArtist( const std::wstring& artist )
 	MediaInfo::List mediaList;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT * FROM Media WHERE Artist=?1 ORDER BY Filename;";
+		const std::string query = "SELECT * FROM Media WHERE Artist=?1 ORDER BY Filename COLLATE NOCASE;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
@@ -867,7 +867,7 @@ MediaInfo::List Library::GetMediaByAlbum( const std::wstring& album )
 	MediaInfo::List mediaList;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT * FROM Media WHERE Album=?1 ORDER BY Filename;";
+		const std::string query = "SELECT * FROM Media WHERE Album=?1 ORDER BY Filename COLLATE NOCASE;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
@@ -889,7 +889,7 @@ MediaInfo::List Library::GetMediaByArtistAndAlbum( const std::wstring& artist, c
 	MediaInfo::List mediaList;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT * FROM Media WHERE Artist=?1 AND Album=?2 ORDER BY Filename;";
+		const std::string query = "SELECT * FROM Media WHERE Artist=?1 AND Album=?2 ORDER BY Filename COLLATE NOCASE;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
@@ -912,7 +912,7 @@ MediaInfo::List Library::GetMediaByGenre( const std::wstring& genre )
 	MediaInfo::List mediaList;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT * FROM Media WHERE Genre=?1 ORDER BY Filename;";
+		const std::string query = "SELECT * FROM Media WHERE Genre=?1 ORDER BY Filename COLLATE NOCASE;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( genre ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
@@ -935,7 +935,7 @@ MediaInfo::List Library::GetMediaByYear( const long year )
 	if ( ( year >= MINYEAR ) && ( year <= MAXYEAR ) ) {
 		sqlite3* database = m_Database.GetDatabase();
 		if ( nullptr != database ) {
-			const std::string query = "SELECT * FROM Media WHERE Year=?1 ORDER BY Filename;";
+			const std::string query = "SELECT * FROM Media WHERE Year=?1 ORDER BY Filename COLLATE NOCASE;";
 			sqlite3_stmt* stmt = nullptr;
 			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 				if ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( year ) ) ) {
@@ -958,7 +958,7 @@ MediaInfo::List Library::GetAllMedia()
 	MediaInfo::List mediaList;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT * FROM Media ORDER BY Filename;";
+		const std::string query = "SELECT * FROM Media ORDER BY Filename COLLATE NOCASE;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {

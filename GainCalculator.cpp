@@ -35,7 +35,7 @@ GainCalculator::~GainCalculator()
 	Stop();
 }
 
-void GainCalculator::Calculate( const Playlist::ItemList& items )
+void GainCalculator::Calculate( const Playlist::Items& items )
 {
 	if ( !items.empty() ) {
 		std::lock_guard<std::mutex> lock( m_Mutex );
@@ -68,11 +68,11 @@ void GainCalculator::AddPending( const Playlist::Item& item )
 	const AlbumKey albumKey = { channels, samplerate, album };
 	auto albumIter = m_AlbumQueue.find( albumKey );
 	if ( m_AlbumQueue.end() == albumIter ) {
-		albumIter = m_AlbumQueue.insert( AlbumMap::value_type( albumKey, Playlist::ItemList() ) ).first;
+		albumIter = m_AlbumQueue.insert( AlbumMap::value_type( albumKey, Playlist::Items() ) ).first;
 	}
 	if ( m_AlbumQueue.end() != albumIter ) {
 		bool addTrack = true;
-		Playlist::ItemList& itemList = albumIter->second;
+		Playlist::Items& itemList = albumIter->second;
 		for ( auto itemIter = itemList.begin(); addTrack && ( itemList.end() != itemIter ); itemIter++ ) {
 			addTrack = ( item.Info.GetFilename() != itemIter->Info.GetFilename() );
 		}
@@ -88,7 +88,7 @@ void GainCalculator::Handler()
 	HANDLE eventHandles[ 2 ] = { m_StopEvent, m_WakeEvent };
 	while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
 		AlbumKey albumKey = {};
-		Playlist::ItemList pendingItems;
+		Playlist::Items pendingItems;
 		{
 			std::lock_guard<std::mutex> lock( m_Mutex );
 			const auto iter = m_AlbumQueue.begin();
@@ -102,11 +102,18 @@ void GainCalculator::Handler()
 		}
 
 		if ( !pendingItems.empty() ) {
-			std::mutex itemMutex;
+      std::reverse( pendingItems.begin(), pendingItems.end() );
+
+			const std::wstring& album = std::get< 2 >( albumKey );
+      const bool calculateAlbumGain = !album.empty();
+
+      std::mutex itemMutex;
 			std::mutex r128StatesMutex;
 
 			std::vector<ebur128_state*> r128States;
-			r128States.reserve( pendingItems.size() );
+      if ( calculateAlbumGain ) {
+			  r128States.reserve( pendingItems.size() );
+      }
 
 			Decoder::CanContinue canContinue( [ stopEvent = m_StopEvent ] ()
 			{
@@ -114,18 +121,18 @@ void GainCalculator::Handler()
 			} );
 
 			// Update track gain for all items.
-			Playlist::ItemList processedItems;
+			Playlist::Items processedItems;
 			const size_t threadCount = std::min<size_t>( pendingItems.size(), std::max<size_t>( 1, std::thread::hardware_concurrency() ) );
 			std::list<std::thread> threads;
 			for ( size_t threadIndex = 0; threadIndex < threadCount; threadIndex++ ) {
-				threads.push_back( std::thread( [ &pendingItems, &processedItems, &itemMutex, &r128States, &r128StatesMutex, canContinue, this ]() 
+				threads.push_back( std::thread( [ &pendingItems, &processedItems, &itemMutex, &r128States, &r128StatesMutex, canContinue, calculateAlbumGain, this ]() 
 				{
 					Playlist::Item item = {};
 					{
 						std::lock_guard<std::mutex> lock( itemMutex );
 						if ( !pendingItems.empty() ) {
-							item = pendingItems.front();
-							pendingItems.pop_front();
+							item = pendingItems.back();
+							pendingItems.pop_back();
 						}
 					}
 
@@ -136,14 +143,16 @@ void GainCalculator::Handler()
 							const unsigned long samplerate = static_cast<unsigned long>( decoder->GetSampleRate() );
 							ebur128_state* r128State = ebur128_init( channels, samplerate, EBUR128_MODE_I );
 							if ( nullptr != r128State ) {
+                bool destroyState = true;
+
 								const long sampleSize = 4096;
 								std::vector<float> buffer( sampleSize * channels );
 
 								int errorState = EBUR128_SUCCESS;
-								long samplesRead = decoder->Read( &buffer[ 0 ], sampleSize );
+								long samplesRead = decoder->Read( buffer.data(), sampleSize );
 								while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) && canContinue() ) {
-									errorState = ebur128_add_frames_float( r128State, &buffer[ 0 ], static_cast<size_t>( samplesRead ) );
-									samplesRead = decoder->Read( &buffer[ 0 ], sampleSize );
+									errorState = ebur128_add_frames_float( r128State, buffer.data(), static_cast<size_t>( samplesRead ) );
+									samplesRead = decoder->Read( buffer.data(), sampleSize );
 								}
 								decoder.reset();
 
@@ -166,10 +175,17 @@ void GainCalculator::Handler()
 										}
 										std::lock_guard<std::mutex> itemLock( itemMutex );
 										processedItems.push_back( item );
-										std::lock_guard<std::mutex> lock( r128StatesMutex );
-										r128States.push_back( r128State );
+
+                    if ( calculateAlbumGain ) {
+										  std::lock_guard<std::mutex> lock( r128StatesMutex );
+										  r128States.push_back( r128State );
+                      destroyState = false;
+                    }
 									}
 								}
+                if ( destroyState ) {
+				          ebur128_destroy( &r128State );
+                }
 							}
 						}
 
@@ -177,8 +193,8 @@ void GainCalculator::Handler()
 						if ( canContinue() ) {
 							std::lock_guard<std::mutex> lock( itemMutex );
 							if ( !pendingItems.empty() ) {
-								item = pendingItems.front();
-								pendingItems.pop_front();
+								item = pendingItems.back();
+								pendingItems.pop_back();
 							}
 						}
 
@@ -190,11 +206,10 @@ void GainCalculator::Handler()
 				thread.join();
 			}
 
-			const std::wstring& album = std::get< 2 >( albumKey );
-			if ( canContinue() && !album.empty() ) {
+			if ( canContinue() && calculateAlbumGain ) {
 				// Update album gain for all items.
 				double loudness = 0;
-				int errorState = ebur128_loudness_global_multiple( &r128States[ 0 ], r128States.size(), &loudness );
+				int errorState = ebur128_loudness_global_multiple( r128States.data(), r128States.size(), &loudness );
 				if ( EBUR128_SUCCESS == errorState ) {
 					const float albumGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
 					for ( auto item = processedItems.begin(); ( processedItems.end() != item ) && canContinue(); item++ ) {

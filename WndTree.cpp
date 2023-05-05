@@ -1117,7 +1117,7 @@ void WndTree::ExportSelectedPlaylist()
 				std::ofstream fileStream;
 				fileStream.open( filename, std::ios::out | std::ios::trunc );
 				if ( fileStream.is_open() ) {
-					const Playlist::ItemList items = playlist->GetItems();
+					const Playlist::Items items = playlist->GetItems();
 					if ( L"pls" == fileExt ) {
 						fileStream << "[playlist]\n";
 						int itemCount = 0;
@@ -1690,7 +1690,7 @@ Playlist::Set WndTree::OnUpdatedMedia( const MediaInfo& previousMediaInfo, const
 	return updatedPlaylists;
 }
 
-void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList )
+void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList, const bool libraryMaintenance )
 {
 	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
 	const Playlist::Ptr selectedPlaylist = GetSelectedPlaylist();
@@ -1704,13 +1704,16 @@ void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList )
 		UpdateAlbums( m_NodeAlbums, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateGenres( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateYears( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-		if ( updateAllTracks ) {
+		if ( updateAllTracks && !libraryMaintenance ) {
 			m_PlaylistAll->RemoveItem( previousMediaInfo );
 		}
 		if ( updateStreams && IsURL( previousMediaInfo.GetFilename() ) ) {
 			m_PlaylistStreams->RemoveItem( previousMediaInfo );
 		}
 	}
+  if ( m_PlaylistAll && libraryMaintenance ) {
+    m_PlaylistAll->RemoveFiles( mediaList );
+  }
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 }
 
@@ -3320,7 +3323,7 @@ void WndTree::StartScratchListUpdateThread( Playlist::Ptr scratchList )
 	StopScratchListUpdateThread();
 	if ( nullptr != m_ScratchListUpdateStopEvent ) {
 		MediaInfo::List mediaList;
-		const Playlist::ItemList items = scratchList->GetItems();
+		const Playlist::Items items = scratchList->GetItems();
 		for ( const auto& item : items ) {
 			mediaList.push_back( item.Info );
 		}

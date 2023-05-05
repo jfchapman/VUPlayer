@@ -204,7 +204,7 @@ DWORD WINAPI DlgTrackInfo::SaveThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-DlgTrackInfo::DlgTrackInfo( HINSTANCE instance, HWND parent, Library& library, Settings& settings, const Playlist::ItemList& items ) :
+DlgTrackInfo::DlgTrackInfo( HINSTANCE instance, HWND parent, Library& library, Settings& settings, const Playlist::Items& items ) :
 	m_hInst( instance ),
 	m_Library( library ),
 	m_Settings( settings ),

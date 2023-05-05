@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include <list>
+#include <map>
 #include <mutex>
 #include <string>
 
@@ -82,14 +83,14 @@ public:
 		std::list<std::wstring> Duplicates = {};
 	};
 
-	// List of playlist items.
-	typedef std::list<Item> ItemList;
+	// Vector of playlist items.
+	using Items = std::vector<Item>;
 
 	// Playlist shared pointer type.
-	typedef std::shared_ptr<Playlist> Ptr;
+	using Ptr = std::shared_ptr<Playlist>;
 
 	// A set of playlists.
-	typedef std::set<Playlist::Ptr> Set;	
+	using Set = std::set<Playlist::Ptr>;	
 
 	// Gets the playlist ID.
 	const std::string& GetID() const;
@@ -101,7 +102,7 @@ public:
 	void SetName( const std::wstring& name );
 
 	// Returns the playlist items.
-	ItemList GetItems();
+	Items GetItems();
 
 	// Returns the pending files.
 	std::list<std::wstring> GetPending();
@@ -119,6 +120,19 @@ public:
 	// 'position' - out, item position.
 	// Returns true if the item/position was returned. 
 	bool GetItem( Item& item, int& position );
+
+  // Gets a playlist item.
+  // 'position' - item position.
+  Item GetItem( const int position );
+
+  // Gets a playlist item ID.
+  // 'position' - item position.
+  long GetItemID( const int position );
+
+  // Gets the position of an item in the playlist.
+  // 'itemID' - playlist item ID.
+  // Returns the item position, or -1 if the item ID was not found.
+  int GetItemPosition( const long itemID );
 
 	// Gets the next playlist item.
 	// 'currentItem' - the current item.
@@ -179,6 +193,10 @@ public:
 	// Returns whether the media information was removed.
 	bool RemoveItem( const MediaInfo& mediaInfo );
 
+  // Removes all filenames in the 'mediaList' from the playlist.
+  // Returns whether any files were removed.
+  bool RemoveFiles( const MediaInfo::List& mediaList );
+
 	// Returns the number of items in the playlist.
 	long GetCount();
 
@@ -225,6 +243,14 @@ public:
 	// Returns whether the playlist contains 'filename'.
 	bool ContainsFilename( const std::wstring& filename );
 
+  // Performs a case insensitive search for a title in the playlist.
+  // 'startIndex' - the index at which to start the search.
+  // 'searchTitle' - the title to search for.
+  // 'partial' - true to match any title which begins with the search string, false to perform an exact match. 
+  // 'wrap' - wraps round to the start of the playlist if a match is not found.
+  // Returns the matching item position, or -1 if there was no match.
+  int FindItem( const int startIndex, const std::wstring& searchTitle, const bool partial, const bool wrap );
+
 private:
 	// Pending file thread proc.
 	static DWORD WINAPI PendingThreadProc( LPVOID lpParam );
@@ -262,6 +288,10 @@ private:
 	// Returns whether any pending files were added to this playlist.
 	bool AddPLS( const std::wstring& filename );
 
+  // Returns the position in the playlist of the 'itemID', or -1 if the item ID was not found.
+  // (Internal method with no lock).
+  int GetPositionNoLock( const long itemID );
+
 	// Playlist ID.
 	const std::string m_ID;
 
@@ -269,7 +299,7 @@ private:
 	std::wstring m_Name;
 
 	// The playlist.
-	ItemList m_Playlist;
+	Items m_Playlist;
 
 	// Pending files to be added to the playlist.
 	std::list<std::wstring> m_Pending;
@@ -308,10 +338,13 @@ private:
 	bool m_MergeDuplicates;
 
 	// A shuffled playlist.
-	ItemList m_ShuffledPlaylist;
+	Items m_ShuffledPlaylist;
 
 	// Shuffled playlist mutex.
 	std::mutex m_MutexShuffled;
+
+  // Maps a playlist item ID to its position in the playlist.
+  std::map<long, size_t> m_ItemIDPositions;
 };
 
 // A list of playlists.

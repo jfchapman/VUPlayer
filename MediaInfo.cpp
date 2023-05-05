@@ -108,7 +108,7 @@ float MediaInfo::GetDuration() const
 
 void MediaInfo::SetDuration( const float duration )
 {
-	m_Duration = duration;
+	m_Duration = ( std::isfinite( duration ) && ( duration > 0 ) ) ? duration : 0;
 }
 
 long MediaInfo::GetSampleRate() const

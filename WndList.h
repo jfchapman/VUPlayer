@@ -125,7 +125,7 @@ public:
 	void EnsureVisible( const Playlist::Item& item, const bool select = true );
 
 	// Returns the list of selected playlist items.
-	Playlist::ItemList GetSelectedPlaylistItems();
+	Playlist::Items GetSelectedPlaylistItems();
 
 	// Returns the number of selected playlist items.
 	int GetSelectedCount() const;
@@ -168,8 +168,9 @@ public:
 	// Selects all list control items (if a list item label is not being edited).
 	void OnSelectAll();
 
-	// Selects, if present, the 'itemID'.
-	void SelectPlaylistItem( const long itemID );
+	// Selects, if present, the 'itemID', and deselects all other items.
+  // Returns whether the item was selected.
+	bool SelectPlaylistItem( const long itemID );
 
 	// Updates the status icon.
 	void UpdateStatusIcon();
@@ -177,6 +178,21 @@ public:
 	// Called on a system colour change event.
 	// 'isHighContrast' - indicates whether high contrast mode is active.
 	void OnSysColorChange( const bool isHighContrast );
+
+  // Called when display information for 'lvItem' needs updating in the virtual list control.
+  void OnDisplayInfo( LVITEM& lvItem );
+
+  // Called when an item needs to be found in the virtual list control.
+  // 'findInfo' - the information to find.
+  // 'startIndex' - the index at which to start the search.
+  // Returns the list control index of the found item, or -1 if there is no match.
+  int OnFindItem( const LVFINDINFO& findInfo, const int startIndex );
+
+  // Refreshes the list control item at the 'itemIndex'.
+  void RefreshItem( const int itemIndex );
+
+  // Refreshes the list control.
+  void RefreshPlaylist();
 
 private:
 	// Column format information.
@@ -229,14 +245,6 @@ private:
 	// Inserts a 'playlistItem' into the list control.
 	// 'position' item position, or -1 to append the item to the end of the list control.
 	void InsertListViewItem( const Playlist::Item& playlistItem, const int position = -1 );
-
-	// Deletes the item at 'itemIndex' from the list view control.
-	void DeleteListViewItem( const int position );
-
-	// Sets the text of a list view item.
-	// 'itemIndex' - list view item index.
-	// 'playlistItem' - playlist item.
-	void SetListViewItemText( int itemIndex, const Playlist::Item& playlistItem );
 
 	// Returns whether the 'column' is shown.
 	bool IsColumnShown( const Playlist::Column& column ) const;
@@ -294,6 +302,9 @@ private:
 
 	// Returns the background colour (which is applied when not in high contrast mode).
 	COLORREF GetBackgroundColour() const;
+
+  // Deselects all list control items.
+  void DeselectAllItems();
 
 	// Column format information.
 	static ColumnFormats s_ColumnFormats;

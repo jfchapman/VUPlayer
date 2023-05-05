@@ -130,127 +130,127 @@ bool ShellMetadata::Set( const std::wstring& filename, const Tags& tags )
 			break;
 		}
 	}
+  if ( !anySupportedTags )
+    return true;
 
 	bool success = false;
-	if ( anySupportedTags ) {
-		IShellItem2* item = nullptr;
-		HRESULT hr = SHCreateItemFromParsingName( filename.c_str(), NULL /*bindContext*/, IID_PPV_ARGS( &item ) );
+	IShellItem2* item = nullptr;
+	HRESULT hr = SHCreateItemFromParsingName( filename.c_str(), NULL /*bindContext*/, IID_PPV_ARGS( &item ) );
+	if ( SUCCEEDED( hr ) ) {
+		IStream* thumbnailStream = nullptr;
+		const GETPROPERTYSTOREFLAGS flags = GPS_READWRITE;
+		IPropertyStore* propStore = nullptr;
+		hr = item->GetPropertyStore( flags, IID_PPV_ARGS( &propStore ) );
 		if ( SUCCEEDED( hr ) ) {
-			IStream* thumbnailStream = nullptr;
-			const GETPROPERTYSTOREFLAGS flags = GPS_READWRITE;
-			IPropertyStore* propStore = nullptr;
-			hr = item->GetPropertyStore( flags, IID_PPV_ARGS( &propStore ) );
-			if ( SUCCEEDED( hr ) ) {
-				success = true;
-				bool propStoreModified = false;
-				for ( auto tagIter = tags.begin(); success && ( tagIter != tags.end() ); tagIter++ ) {
-					const Tag tag = tagIter->first;
-					const std::wstring value = UTF8ToWideString( tagIter->second );
-					PROPERTYKEY propKey = {};
-					PROPVARIANT propVar = {};
-					bool updateTag = true;
-					switch ( tag ) {
-						case Tag::Album : {
-							propKey = PKEY_Music_AlbumTitle;
-              if ( !value.empty() ) {
-							  hr = InitPropVariantFromString( value.c_str(), &propVar );
+			success = true;
+			bool propStoreModified = false;
+			for ( auto tagIter = tags.begin(); success && ( tagIter != tags.end() ); tagIter++ ) {
+				const Tag tag = tagIter->first;
+				const std::wstring value = UTF8ToWideString( tagIter->second );
+				PROPERTYKEY propKey = {};
+				PROPVARIANT propVar = {};
+				bool updateTag = true;
+				switch ( tag ) {
+					case Tag::Album : {
+						propKey = PKEY_Music_AlbumTitle;
+            if ( !value.empty() ) {
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+            }
+						break;
+					}
+					case Tag::Artist : {
+						propKey = PKEY_Music_Artist;
+            if ( !value.empty() ) {
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+            }
+						break;
+					}
+					case Tag::Comment : {
+						propKey = PKEY_Comment;
+            if ( !value.empty() ) {
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+            }
+						break;
+					}
+					case Tag::Genre : {
+						propKey = PKEY_Music_Genre;
+            if ( !value.empty() ) {
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+            }
+						break;
+					}
+					case Tag::Title : {
+						propKey = PKEY_Title;
+            if ( !value.empty() ) {
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+            }
+						break;
+					}
+					case Tag::Track : {
+						propKey = PKEY_Music_TrackNumber;
+            if ( !value.empty() ) {
+              try {
+							  hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
+              } catch ( const std::logic_error& ) {
               }
-							break;
-						}
-						case Tag::Artist : {
-							propKey = PKEY_Music_Artist;
-              if ( !value.empty() ) {
-							  hr = InitPropVariantFromString( value.c_str(), &propVar );
+            }
+						break;
+					}
+					case Tag::Year : {
+						propKey = PKEY_Media_Year;
+            if ( !value.empty() ) {
+              try {
+							  hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
+              } catch ( const std::logic_error& ) {
               }
-							break;
-						}
-						case Tag::Comment : {
-							propKey = PKEY_Comment;
-              if ( !value.empty() ) {
-							  hr = InitPropVariantFromString( value.c_str(), &propVar );
-              }
-							break;
-						}
-						case Tag::Genre : {
-							propKey = PKEY_Music_Genre;
-              if ( !value.empty() ) {
-							  hr = InitPropVariantFromString( value.c_str(), &propVar );
-              }
-							break;
-						}
-						case Tag::Title : {
-							propKey = PKEY_Title;
-              if ( !value.empty() ) {
-							  hr = InitPropVariantFromString( value.c_str(), &propVar );
-              }
-							break;
-						}
-						case Tag::Track : {
-							propKey = PKEY_Music_TrackNumber;
-              if ( !value.empty() ) {
-                try {
-							    hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
-                } catch ( const std::logic_error& ) {
-                }
-              }
-							break;
-						}
-						case Tag::Year : {
-							propKey = PKEY_Media_Year;
-              if ( !value.empty() ) {
-                try {
-							    hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
-                } catch ( const std::logic_error& ) {
-                }
-              }
-							break;
-						}
-						case Tag::Artwork : {
-							propKey = PKEY_ThumbnailStream;
-							if ( nullptr == thumbnailStream ) {
-								const std::vector<BYTE> imageBytes = Base64Decode( tagIter->second );
-								const ULONG imageSize = static_cast<UINT>( imageBytes.size() );
-								if ( imageSize > 0 ) {
-									hr = CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &thumbnailStream );
+            }
+						break;
+					}
+					case Tag::Artwork : {
+						propKey = PKEY_ThumbnailStream;
+						if ( nullptr == thumbnailStream ) {
+							const std::vector<BYTE> imageBytes = Base64Decode( tagIter->second );
+							const ULONG imageSize = static_cast<UINT>( imageBytes.size() );
+							if ( imageSize > 0 ) {
+								hr = CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &thumbnailStream );
+								if ( SUCCEEDED( hr ) ) {
+									hr = thumbnailStream->Write( imageBytes.data(), imageSize, NULL /*bytesWritten*/ );
 									if ( SUCCEEDED( hr ) ) {
-										hr = thumbnailStream->Write( imageBytes.data(), imageSize, NULL /*bytesWritten*/ );
-										if ( SUCCEEDED( hr ) ) {
-											hr = thumbnailStream->Seek( { 0 }, STREAM_SEEK_SET, NULL /*newPosition*/ );
-										}
-										if ( SUCCEEDED( hr ) ) {
-											propVar.vt = VT_STREAM;
-											propVar.pStream = thumbnailStream;
-										} else {
-											thumbnailStream->Release();
-											thumbnailStream = nullptr;
-										}
+										hr = thumbnailStream->Seek( { 0 }, STREAM_SEEK_SET, NULL /*newPosition*/ );
+									}
+									if ( SUCCEEDED( hr ) ) {
+										propVar.vt = VT_STREAM;
+										propVar.pStream = thumbnailStream;
+									} else {
+										thumbnailStream->Release();
+										thumbnailStream = nullptr;
 									}
 								}
 							}
-							break;
 						}
-						default : {
-							updateTag = false;
-							break;
-						}
+						break;
 					}
-					if ( updateTag ) {
-						hr = propStore->SetValue( propKey, propVar );
-						success = SUCCEEDED( hr );
-						propStoreModified = success;
+					default : {
+						updateTag = false;
+						break;
 					}
-					PropVariantClear( &propVar );
 				}
-				if ( propStoreModified ) {
-					hr = propStore->Commit();
+				if ( updateTag ) {
+					hr = propStore->SetValue( propKey, propVar );
 					success = SUCCEEDED( hr );
+					propStoreModified = success;
 				}
-				propStore->Release();
+				PropVariantClear( &propVar );
 			}
-			item->Release();
-			if ( nullptr != thumbnailStream ) {
-				thumbnailStream->Release();
+			if ( propStoreModified ) {
+				hr = propStore->Commit();
+				success = SUCCEEDED( hr );
 			}
+			propStore->Release();
+		}
+		item->Release();
+		if ( nullptr != thumbnailStream ) {
+			thumbnailStream->Release();
 		}
 	}
 	return success;

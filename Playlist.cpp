@@ -77,7 +77,7 @@ void Playlist::SetName( const std::wstring& name )
 	m_Name = name;
 }
 
-Playlist::ItemList Playlist::GetItems()
+Playlist::Items Playlist::GetItems()
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	return m_Playlist;
@@ -106,71 +106,75 @@ bool Playlist::GetItem( Item& item )
 bool Playlist::GetItem( Item& item, int& position )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+  position = GetPositionNoLock( item.ID );
+  if ( position >= 0 ) {
+    item = m_Playlist[ position ];
+    return true;
+  }
+	return false;
+}
 
-	bool success = false;
-	position = 0;
-	for ( const auto& iter : m_Playlist ) {
-		if ( iter.ID == item.ID ) {
-			item = iter;
-			success = true;
-			break;
-		} else {
-			++position;
-		}
-	}
-	return success;
+Playlist::Item Playlist::GetItem( const int position )
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+  if ( static_cast<size_t>( position ) < m_Playlist.size() ) {
+    return m_Playlist[ position ];
+  }
+  return {};
+}
+
+long Playlist::GetItemID( const int position )
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+  if ( static_cast<size_t>( position ) < m_Playlist.size() ) {
+    return m_Playlist[ position ].ID;
+  }
+  return 0;
+}
+
+int Playlist::GetItemPosition( const long itemID )
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+  return GetPositionNoLock( itemID );
+}
+
+int Playlist::GetPositionNoLock( const long itemID )
+{
+  if ( const auto it = m_ItemIDPositions.find( itemID ); ( m_ItemIDPositions.end() != it ) && ( it->second < m_Playlist.size() ) )
+    return static_cast<int>( it->second );
+  return -1;
 }
 
 bool Playlist::GetNextItem( const Item& currentItem, Item& nextItem, const bool wrap )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-
 	bool success = false;
-	const long currentID = currentItem.ID;
-	auto iter = m_Playlist.begin();
-	while ( iter != m_Playlist.end() ) {
-		const long id = iter->ID;
-		++iter;
-		if ( id == currentID ) {
-			if ( iter == m_Playlist.end() ) {
-				if ( wrap ) {
-					nextItem = m_Playlist.front();
-					success = true;
-				}
-			} else {
-				nextItem = *iter;
-				success = true;
-			}
-			break;
-		}
-	}
-	return success;
+  if ( const int currentPosition = GetPositionNoLock( currentItem.ID ); currentPosition >= 0 ) {
+    if ( static_cast<size_t>( 1 + currentPosition ) < m_Playlist.size() ) {
+      nextItem = m_Playlist[ 1 + currentPosition ];
+      success = true;
+    } else if ( wrap ) {
+      nextItem = m_Playlist.front();
+      success = true;
+    }
+  }
+  return success;
 }
 
 bool Playlist::GetPreviousItem( const Item& currentItem, Item& previousItem, const bool wrap )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-
-	bool success = false;
-	const long currentID = currentItem.ID;
-	auto iter = m_Playlist.rbegin();
-	while ( iter != m_Playlist.rend() ) {
-		const long id = iter->ID;
-		++iter;
-		if ( id == currentID ) {
-			if ( iter == m_Playlist.rend() ) {
-				if ( wrap ) {
-					previousItem = m_Playlist.back();
-					success = true;
-				}
-			} else {
-				previousItem = *iter;
-				success = true;
-			}
-			break;
-		}
-	}
-	return success;
+  bool success = false;
+  if ( const int currentPosition = GetPositionNoLock( currentItem.ID ); currentPosition >= 0 ) {
+    if ( currentPosition > 0 ) {
+      previousItem = m_Playlist[ currentPosition - 1 ];
+      success = true;
+    } else if ( wrap ) {
+      previousItem = m_Playlist.back();
+      success = true;
+    }
+  }
+  return success;
 }
 
 Playlist::Item Playlist::GetFirstItem()
@@ -189,8 +193,8 @@ Playlist::Item Playlist::GetRandomItem( const Item& currentItem )
 
 	std::lock_guard<std::mutex> shuffleLock( m_MutexShuffled );
 	while ( !m_ShuffledPlaylist.empty() ) {
-		const Item nextItem = m_ShuffledPlaylist.front();
-		m_ShuffledPlaylist.pop_front();
+		const Item nextItem = m_ShuffledPlaylist.back();
+		m_ShuffledPlaylist.pop_back();
 		if ( ( currentItem.ID != nextItem.ID ) && ContainsItem( nextItem ) ) {
 			result = nextItem;
 			break;
@@ -210,8 +214,8 @@ Playlist::Item Playlist::GetRandomItem( const Item& currentItem )
 		}
 
 		if ( !m_ShuffledPlaylist.empty() ) {
-			result = m_ShuffledPlaylist.front();
-			m_ShuffledPlaylist.pop_front();
+			result = m_ShuffledPlaylist.back();
+			m_ShuffledPlaylist.pop_back();
 		}
 	}
 
@@ -255,6 +259,7 @@ Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position, boo
 		if ( Column::_Undefined == m_SortColumn ) {
 			position = static_cast<int>( m_Playlist.size() );
 			m_Playlist.push_back( item );
+      m_ItemIDPositions[ item.ID ] = static_cast<int>( m_Playlist.size() - 1 );
 		} else {
 			auto insertIter = m_Playlist.begin();
 			while ( insertIter != m_Playlist.end() ) {
@@ -266,6 +271,9 @@ Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position, boo
 				}
 			}
 			m_Playlist.insert( insertIter, item );
+      for ( size_t i = static_cast<size_t>( position ); i < m_Playlist.size(); i++ ) {
+        m_ItemIDPositions[ m_Playlist[ i ].ID ] = i;
+      }
 		}
 	}
 	return item;
@@ -385,20 +393,20 @@ void Playlist::SavePlaylist( const std::wstring& filename )
 bool Playlist::RemoveItem( const Item& item )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	
 	bool removed = false;
-	for ( auto iter = m_Playlist.begin(); iter != m_Playlist.end(); iter++ ) {
-		if ( iter->ID == item.ID ) {
-			m_Playlist.erase( iter );
-			VUPlayer* vuplayer = VUPlayer::Get();
-			if ( nullptr != vuplayer ) {
-				vuplayer->OnPlaylistItemRemoved( this, item );
-			}
-			removed = true;
-			break;
+  if ( const int position = GetPositionNoLock( item.ID ); position >= 0 ) {
+    m_Playlist.erase( m_Playlist.begin() + position );
+    m_ItemIDPositions.erase( item.ID );
+    for ( size_t i = static_cast<size_t>( position ); i < m_Playlist.size(); i++ ) {
+      m_ItemIDPositions[ m_Playlist[ i ].ID ] = i;
+    }
+		VUPlayer* vuplayer = VUPlayer::Get();
+		if ( nullptr != vuplayer ) {
+			vuplayer->OnPlaylistItemRemoved( this, item );
 		}
-	}
-	return removed;
+		removed = true;
+  }
+  return removed;
 }
 
 bool Playlist::RemoveItem( const MediaInfo& mediaInfo )
@@ -409,8 +417,13 @@ bool Playlist::RemoveItem( const MediaInfo& mediaInfo )
 	for ( auto iter = m_Playlist.begin(); iter != m_Playlist.end(); iter++ ) {
 		if ( iter->Info.GetFilename() == mediaInfo.GetFilename() ) {
 			if ( iter->Duplicates.empty() ) {
+        const size_t position = std::distance( m_Playlist.begin(), iter );
 				const Item item = *iter;
 				m_Playlist.erase( iter );
+        m_ItemIDPositions.erase( item.ID );
+        for ( size_t i = position; i < m_Playlist.size(); i++ ) {
+          m_ItemIDPositions[ m_Playlist[ i ].ID ] = i;
+        }
 				VUPlayer* vuplayer = VUPlayer::Get();
 				if ( nullptr != vuplayer ) {
 					vuplayer->OnPlaylistItemRemoved( this, item );
@@ -429,6 +442,29 @@ bool Playlist::RemoveItem( const MediaInfo& mediaInfo )
 		}
 	}
 	return removed;
+}
+
+bool Playlist::RemoveFiles( const MediaInfo::List& mediaList )
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+  std::list<Item> tempList( m_Playlist.begin(), m_Playlist.end() );
+	bool anyItemsRemoved = false;
+  for ( const auto& mediaInfo : mediaList ) {
+    const auto& filename = mediaInfo.GetFilename();
+	  if ( const auto foundItem = std::find_if( tempList.begin(), tempList.end(), [ &filename ] ( const Item& item ) { return filename == item.Info.GetFilename(); } ); tempList.end() != foundItem ) {
+      tempList.erase( foundItem );
+      anyItemsRemoved = true;
+    }
+  }
+  if ( anyItemsRemoved ) {
+    m_Playlist = { tempList.begin(), tempList.end() };
+    m_ItemIDPositions.clear();
+    size_t position = 0;
+    for ( const auto& item : m_Playlist ) {
+      m_ItemIDPositions[ item.ID ] = position++;
+    }
+  }
+	return anyItemsRemoved;
 }
 
 long Playlist::GetCount()
@@ -475,10 +511,15 @@ void Playlist::Sort( const Column column )
 	}
 	if ( Column::_Undefined != m_SortColumn ) {
 		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-		m_Playlist.sort( [ = ] ( const Item& item1, const Item& item2 ) -> bool
+    std::stable_sort( m_Playlist.begin(), m_Playlist.end(), [ = ] ( const Item& item1, const Item& item2 ) -> bool
 		{
 			return m_SortAscending ? LessThan( item1, item2, m_SortColumn ) : GreaterThan( item1, item2, m_SortColumn );
 		} );
+    m_ItemIDPositions.clear();
+    size_t position = 0;
+    for ( const auto& item : m_Playlist ) {
+      m_ItemIDPositions[ item.ID ] = position++;
+    }
 	}
 }
 
@@ -545,7 +586,7 @@ bool Playlist::LessThan( const Item& item1, const Item& item2, const Column colu
 			break;
 		}
 		case Column::Title : {
-			lessThan = _wcsicmp( item1.Info.GetTitle().c_str(), item2.Info.GetTitle().c_str() ) < 0;
+			lessThan = _wcsicmp( item1.Info.GetTitle( true ).c_str(), item2.Info.GetTitle( true ).c_str() ) < 0;
 			break;
 		}
 		case Column::Track : {
@@ -577,7 +618,7 @@ bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 {
 	bool updated = false;
 	VUPlayer* vuplayer = VUPlayer::Get();
-	ItemList itemsToRemove;
+	Items itemsToRemove;
 	std::set<MediaInfo> itemsToAdd;
 	{
 		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
@@ -652,33 +693,32 @@ bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 	return updated;
 }
 
-bool Playlist::MoveItems( const int position, const std::list<long>& items )
+bool Playlist::MoveItems( const int position, const std::list<long>& itemIDs )
 {
 	bool changed = false;
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	if ( !items.empty() ) {
-		auto insertPosition = m_Playlist.begin();
-		if ( position >= static_cast<int>( m_Playlist.size() ) ) {
-			insertPosition = m_Playlist.end();
+  std::list<Item> tempList( m_Playlist.begin(), m_Playlist.end() );
+	if ( !itemIDs.empty() ) {
+		auto insertPosition = tempList.begin();
+		if ( position >= static_cast<int>( tempList.size() ) ) {
+			insertPosition = tempList.end();
 		} else if ( position > 0 ) {
 			std::advance( insertPosition, position );
 		}
 
-		auto itemsToMove = items;
-		auto itemToMove = itemsToMove.begin();
-		for ( auto playlistIter = m_Playlist.begin(); ( playlistIter != m_Playlist.end() ) && ( itemToMove != itemsToMove.end() ); ) {
-			if ( playlistIter->ID == *itemToMove ) {
+		auto itemsToMove = itemIDs;
+		for ( auto playlistIter = tempList.begin(); ( playlistIter != tempList.end() ) && !itemsToMove.empty(); ) {
+			if ( playlistIter->ID == itemsToMove.front() ) {
 				if ( playlistIter == insertPosition ) {
 					++playlistIter;
 					++insertPosition;
 				} else {
 					const Item item = *playlistIter;
-					playlistIter = m_Playlist.erase( playlistIter );
+					playlistIter = tempList.erase( playlistIter );
 					changed = ( playlistIter != insertPosition );			
-					m_Playlist.insert( insertPosition, item );
+					tempList.insert( insertPosition, item );
 				}
 				itemsToMove.pop_front();
-				itemToMove = itemsToMove.begin();
 			} else {
 				++playlistIter;
 			}
@@ -688,6 +728,12 @@ bool Playlist::MoveItems( const int position, const std::list<long>& items )
 	if ( changed ) {
 		m_SortColumn = Column::_Undefined;
 		m_SortAscending = false;
+    m_Playlist = { tempList.begin(), tempList.end() };
+    m_ItemIDPositions.clear();
+    size_t i = 0;
+    for ( const auto& item : m_Playlist ) {
+      m_ItemIDPositions[ item.ID ] = i++;
+    }
 	}
 	return changed;
 }
@@ -725,7 +771,7 @@ void Playlist::MergeDuplicates()
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	VUPlayer* vuplayer = VUPlayer::Get();
-	ItemList itemsRemoved;
+	Items itemsRemoved;
 	auto firstItem = m_Playlist.begin();
 	while ( m_Playlist.end() != firstItem ) {
 		auto secondItem = firstItem;
@@ -754,6 +800,11 @@ void Playlist::MergeDuplicates()
 			vuplayer->OnPlaylistItemRemoved( this, item );
 		}
 	}
+  m_ItemIDPositions.clear();
+  size_t i = 0;
+  for ( const auto& item : m_Playlist ) {
+    m_ItemIDPositions[ item.ID ] = i++;
+  }
 }
 
 void Playlist::SplitDuplicates()
@@ -954,4 +1005,39 @@ bool Playlist::ContainsItem( const Item& item )
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	const auto foundItem = std::find_if( m_Playlist.begin(), m_Playlist.end(), [ id = item.ID ] ( const Item& item ) { return id == item.ID; } );
 	return m_Playlist.end() != foundItem;
+}
+
+int Playlist::FindItem( const int startIndex, const std::wstring& searchTitle, const bool partial, const bool wrap )
+{
+  if ( searchTitle.empty() ) {
+    return -1;
+  }
+
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+  const int start = ( static_cast<size_t>( startIndex ) < m_Playlist.size() ) ? startIndex : 0;
+  auto foundItem = std::find_if( m_Playlist.begin() + start, m_Playlist.end(), [ &searchTitle, partial ] ( const Item& item ) {
+    const auto itemTitle = item.Info.GetTitle( true );
+    if ( partial ) {
+      return 0 == _wcsnicmp( searchTitle.c_str(), itemTitle.c_str(), searchTitle.size() );
+    } else {
+      return ( 0 == _wcsicmp( searchTitle.c_str(), itemTitle.c_str() ) );
+    }
+  } );
+
+  if ( ( m_Playlist.end() == foundItem ) && wrap ) {
+    foundItem = std::find_if( m_Playlist.begin(), m_Playlist.begin() + start, [ &searchTitle, partial ] ( const Item& item ) {
+      const auto itemTitle = item.Info.GetTitle( true );
+      if ( partial ) {
+        return 0 == _wcsnicmp( searchTitle.c_str(), itemTitle.c_str(), searchTitle.size() );
+      } else {
+        return ( 0 == _wcsicmp( searchTitle.c_str(), itemTitle.c_str() ) );
+      }
+    } );
+  }
+
+  if ( m_Playlist.end() != foundItem ) {
+    return static_cast<int>( std::distance( m_Playlist.begin(), foundItem ) );
+  }
+
+  return -1;
 }

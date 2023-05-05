@@ -48,16 +48,6 @@ Database::Database( const std::wstring& filename, const Mode mode ) :
 				}
 			}
 
-			if ( SQLITE_OK == result ) {
-				// Check the database integrity, in case an invalid database was restored.
-				const std::string integrityQuery = "PRAGMA quick_check;";
-				sqlite3_exec( m_Database, integrityQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-				if ( !m_Log.empty() ) {
-					// Just take the first error code.
-					result = m_Log.front().first;
-				}
-			}
-
 			if ( SQLITE_OK != result ) {
 				m_Log.clear();
 				sqlite3_close( m_Database );

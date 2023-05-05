@@ -88,7 +88,7 @@ DWORD WINAPI Converter::EncodeThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-Converter::Converter( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar ) :
+Converter::Converter( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, const Playlist::Items& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_Library( library ),

@@ -14,7 +14,7 @@ static const UINT_PTR s_WndStatusID = 1250;
 static const int s_PartCount = 4;
 
 // Status bar part width.
-static const int s_PartWidth = 110;
+static const int s_PartWidth = 120;
 
 // File added message ID.
 static const UINT MSG_UPDATESTATUS = WM_APP + 147;

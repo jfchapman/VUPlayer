@@ -25,7 +25,7 @@ public:
 	static std::optional<float> CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, Decoder::CanContinue canContinue );
 
 	// Calculates gain values for the playlist 'items'.
-	void Calculate( const Playlist::ItemList& items );
+	void Calculate( const Playlist::Items& items );
 
 	// Stops any pending gain calculations.
 	void Stop();
@@ -35,10 +35,10 @@ public:
 
 private:
 	// Gain album key.
-	typedef std::tuple<long,long,std::wstring> AlbumKey;
+	using AlbumKey = std::tuple<long,long,std::wstring>;
 
 	// Associates an album key with a list of items.
-	typedef std::map<AlbumKey,Playlist::ItemList> AlbumMap;
+	using AlbumMap = std::map<AlbumKey, Playlist::Items>;
 
 	// Calculation thread procedure.
 	static DWORD WINAPI CalcThreadProc( LPVOID lpParam );
