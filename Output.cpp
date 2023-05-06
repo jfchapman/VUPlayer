@@ -1308,7 +1308,7 @@ void Output::CalculateCrossfadeHandler()
     return;
   }
 
-	const auto decoder = IsURL( m_CrossfadeItem.Info.GetFilename() ) ? nullptr : OpenDecoder( m_CrossfadeItem, Decoder::Context::Temporary );
+	const auto decoder = IsURL( m_CrossfadeItem.Info.GetFilename() ) ? nullptr : OpenDecoder( m_CrossfadeItem, Decoder::Context::Input );
 	if ( decoder ) {
 		const float duration = decoder->GetDuration();
 		const long channels = decoder->GetChannels();
