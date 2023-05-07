@@ -464,6 +464,7 @@ void WndVisual::OnContextMenu( const POINT& position )
 void WndVisual::DoRender()
 {
 	InvalidateRect( m_hWnd, NULL /*rect*/, FALSE /*erase*/ );
+  UpdateWindow( m_hWnd );
 }
 
 void WndVisual::OnOscilloscopeColour()
