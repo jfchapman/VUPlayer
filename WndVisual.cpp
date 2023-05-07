@@ -14,13 +14,18 @@
 #include "VUPlayer.h"
 
 // Visual control ID
-static const UINT_PTR s_WndVisualID = 1678;
+static constexpr UINT_PTR s_WndVisualID = 1678;
 
 // Minimum swap chain width/height
-static const UINT s_MinSwapChainSize = 4;
+static constexpr UINT s_MinSwapChainSize = 4;
 
 // Visual window class name
-static const wchar_t s_VisualClass[] = L"VUVisualClass";
+static constexpr wchar_t s_VisualClass[] = L"VUVisualClass";
+
+// Message ID used to repaint the visual.
+// 'wParam' - unused.
+// 'lParam' - unused.
+static constexpr UINT MSG_REPAINT = WM_APP + 73;
 
 // Oscilloscope weights
 static const std::map<UINT,float> s_OscilloscopeWeights = {
@@ -69,6 +74,10 @@ LRESULT CALLBACK WndVisual::VisualProc( HWND hwnd, UINT message, WPARAM wParam, 
 				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 				break;
 			}
+      case MSG_REPAINT : {
+	      RedrawWindow( hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW );
+        return 0;
+      }
 		}
 	}
 	return DefWindowProc( hwnd, message, wParam, lParam );
@@ -463,8 +472,7 @@ void WndVisual::OnContextMenu( const POINT& position )
 
 void WndVisual::DoRender()
 {
-	InvalidateRect( m_hWnd, NULL /*rect*/, FALSE /*erase*/ );
-  UpdateWindow( m_hWnd );
+  PostMessage( m_hWnd, MSG_REPAINT, 0, 0 );
 }
 
 void WndVisual::OnOscilloscopeColour()
