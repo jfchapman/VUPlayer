@@ -1997,21 +1997,32 @@ void Output::LoudnessPrecalcHandler()
 		}
 		auto item = items.begin();
 		while ( ( items.end() != item ) && canContinue() ) {
-			auto gain = item->Info.GetGainTrack();
-			if ( !gain.has_value() ) {
-				m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
-				gain = item->Info.GetGainTrack();
-				if ( !gain.has_value() ) {
-					gain = GainCalculator::CalculateTrackGain( item->Info.GetFilename(), m_Handlers, canContinue );
-					if ( gain.has_value() ) {
-						const MediaInfo previousMediaInfo( item->Info );
-						item->Info.SetGainTrack( gain );
-						std::lock_guard<std::mutex> lock( m_PlaylistMutex );
-						m_Playlist->UpdateItem( *item );
-						m_Playlist->GetLibrary().UpdateTrackGain( previousMediaInfo, item->Info );
-					}
-				}
-			}
+      // Only scan files on local (fixed) drives.
+      bool isLocalFile = false;
+      const auto& filename = item->Info.GetFilename();
+      if ( !filename.empty() ) {
+        std::vector<wchar_t> volumePathName( 1 + filename.size() );
+        if ( GetVolumePathName( filename.c_str(), volumePathName.data(), static_cast<DWORD>( volumePathName.size() ) ) ) {
+          isLocalFile = ( DRIVE_FIXED == GetDriveType( volumePathName.data() ) );
+        }
+      }
+      if ( isLocalFile ) {
+			  auto gain = item->Info.GetGainTrack();
+			  if ( !gain.has_value() ) {
+				  m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
+				  gain = item->Info.GetGainTrack();
+				  if ( !gain.has_value() ) {
+					  gain = GainCalculator::CalculateTrackGain( item->Info.GetFilename(), m_Handlers, canContinue );
+					  if ( gain.has_value() ) {
+						  const MediaInfo previousMediaInfo( item->Info );
+						  item->Info.SetGainTrack( gain );
+						  std::lock_guard<std::mutex> lock( m_PlaylistMutex );
+						  m_Playlist->UpdateItem( *item );
+						  m_Playlist->GetLibrary().UpdateTrackGain( previousMediaInfo, item->Info );
+					  }
+				  }
+			  }
+      }
 			++item;
 		}
 	} while ( WAIT_OBJECT_0 != WaitForSingleObject( m_LoudnessPrecalcStopEvent, interval ) );
