@@ -28,7 +28,7 @@ public:
 	// Sets metadata.
 	// 'filename' - file to set metadata to.
 	// 'tags' - metadata.
-	// Returns true if metadata was set.
+	// Returns true if metadata was set, or if there are no supported tag types in the metadata.
 	static bool Set( const std::wstring& filename, const Tags& tags );
 
 	// Returns the audio sub type description from the 'guid'.

@@ -354,7 +354,7 @@ HMENU WndTray::CreatePlaylistMenu( const Playlist::Ptr playlist )
 {
 	HMENU playlistMenu = NULL;
 	if ( playlist ) {
-		const Playlist::ItemList playlistItems = playlist->GetItems();
+		const Playlist::Items playlistItems = playlist->GetItems();
 		if ( !playlistItems.empty() ) {
 			playlistMenu = CreatePopupMenu();
 			if ( nullptr != playlistMenu ) {

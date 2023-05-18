@@ -112,7 +112,7 @@ int CALLBACK DlgConvert::BrowseCallbackProc( HWND hwnd, UINT uMsg, LPARAM /*lPar
 	return 0;
 }
 
-DlgConvert::DlgConvert( const HINSTANCE instance, const HWND parent, Settings& settings, Handlers& handlers, const Playlist::ItemList& tracks, Playlist::ItemList& selectedTracks ) :
+DlgConvert::DlgConvert( const HINSTANCE instance, const HWND parent, Settings& settings, Handlers& handlers, const Playlist::Items& tracks, Playlist::Items& selectedTracks ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_Settings( settings ),
@@ -379,7 +379,7 @@ void DlgConvert::UpdateCheckedItems( const int itemIndex )
 
 void DlgConvert::UpdateDestinationControls()
 {
-	const Playlist::ItemList selectedTracks = GetSelectedTracks();
+	const Playlist::Items selectedTracks = GetSelectedTracks();
 	const bool enableIndividualTracks = !selectedTracks.empty();
 	bool enableJoinTracks = !selectedTracks.empty();
 	long commonChannels = 0;
@@ -486,13 +486,12 @@ void DlgConvert::OnConfigure()
 	}
 }
 
-Playlist::ItemList DlgConvert::GetSelectedTracks() const
+Playlist::Items DlgConvert::GetSelectedTracks() const
 {
-	Playlist::ItemList selectedTracks;
+	Playlist::Items selectedTracks;
 	const HWND listWnd = GetDlgItem( m_hWnd, IDC_CONVERT_TRACKLIST );
 	if ( nullptr != listWnd ) {
 		int index = 0;
-		auto iter = m_Tracks.begin();
 		for ( const auto& track : m_Tracks ) {
 			if ( FALSE != ListView_GetCheckState( listWnd, ++index ) ) {
 				selectedTracks.push_back( track );

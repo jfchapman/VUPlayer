@@ -25,7 +25,7 @@ public:
 	// 'encoderHandler' - encoder handler to use.
 	// 'joinFilename' - output filename, when joining tracks into a single file.
 	// 'taskbar' - taskbar control.
-	CDDAExtract( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, DiscManager& discManager, const Playlist::ItemList& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar );
+	CDDAExtract( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, DiscManager& discManager, const Playlist::Items& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar );
 
 	virtual ~CDDAExtract();
 
@@ -99,7 +99,7 @@ private:
 	WndTaskbar& m_Taskbar;
 
 	// Tracks to extract.
-	const Playlist::ItemList m_Tracks;
+	const Playlist::Items m_Tracks;
 
 	// Cancel event handle.
 	HANDLE m_CancelEvent;

@@ -299,7 +299,7 @@ bool Output::Play( const long playlistID, const float seek )
 
 	Playlist::Item item( { playlistID, MediaInfo() } );
 	if ( ( 0 == item.ID ) && m_Playlist ) {
-		const Playlist::ItemList items = m_Playlist->GetItems();
+		const Playlist::Items items = m_Playlist->GetItems();
 		if ( !items.empty() ) {
 			item.ID = items.front().ID;
 		}
@@ -1304,7 +1304,11 @@ void Output::CalculateCrossfadePoint( const Playlist::Item& item, const float se
 
 void Output::CalculateCrossfadeHandler()
 {
-	const auto decoder = IsURL( m_CrossfadeItem.Info.GetFilename() ) ? nullptr : OpenDecoder( m_CrossfadeItem, Decoder::Context::Temporary );
+  if ( !CanBackgroundThreadProceed( m_CrossfadeStopEvent ) ) {
+    return;
+  }
+
+	const auto decoder = IsURL( m_CrossfadeItem.Info.GetFilename() ) ? nullptr : OpenDecoder( m_CrossfadeItem, Decoder::Context::Input );
 	if ( decoder ) {
 		const float duration = decoder->GetDuration();
 		const long channels = decoder->GetChannels();
@@ -1973,6 +1977,10 @@ float Output::GetFadeToNextDuration() const
 
 void Output::LoudnessPrecalcHandler()
 {
+  if ( !CanBackgroundThreadProceed( m_LoudnessPrecalcStopEvent ) ) {
+    return;
+  }
+
 	// Playlist might have new items, so check back every so often.
 	constexpr DWORD interval = 30 /*sec*/ * 1000;
 
@@ -1982,28 +1990,39 @@ void Output::LoudnessPrecalcHandler()
 	} );
 
 	do {
-		Playlist::ItemList items;
+		Playlist::Items items;
 		{
 			std::lock_guard<std::mutex> lock( m_PlaylistMutex );
 			items = m_Playlist->GetItems();
 		}
 		auto item = items.begin();
 		while ( ( items.end() != item ) && canContinue() ) {
-			auto gain = item->Info.GetGainTrack();
-			if ( !gain.has_value() ) {
-				m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
-				gain = item->Info.GetGainTrack();
-				if ( !gain.has_value() ) {
-					gain = GainCalculator::CalculateTrackGain( item->Info.GetFilename(), m_Handlers, canContinue );
-					if ( gain.has_value() ) {
-						const MediaInfo previousMediaInfo( item->Info );
-						item->Info.SetGainTrack( gain );
-						std::lock_guard<std::mutex> lock( m_PlaylistMutex );
-						m_Playlist->UpdateItem( *item );
-						m_Playlist->GetLibrary().UpdateTrackGain( previousMediaInfo, item->Info );
-					}
-				}
-			}
+      // Only scan files on local (fixed) drives.
+      bool isLocalFile = false;
+      const auto& filename = item->Info.GetFilename();
+      if ( !filename.empty() ) {
+        std::vector<wchar_t> volumePathName( 1 + filename.size() );
+        if ( GetVolumePathName( filename.c_str(), volumePathName.data(), static_cast<DWORD>( volumePathName.size() ) ) ) {
+          isLocalFile = ( DRIVE_FIXED == GetDriveType( volumePathName.data() ) );
+        }
+      }
+      if ( isLocalFile ) {
+			  auto gain = item->Info.GetGainTrack();
+			  if ( !gain.has_value() ) {
+				  m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
+				  gain = item->Info.GetGainTrack();
+				  if ( !gain.has_value() ) {
+					  gain = GainCalculator::CalculateTrackGain( item->Info.GetFilename(), m_Handlers, canContinue );
+					  if ( gain.has_value() ) {
+						  const MediaInfo previousMediaInfo( item->Info );
+						  item->Info.SetGainTrack( gain );
+						  std::lock_guard<std::mutex> lock( m_PlaylistMutex );
+						  m_Playlist->UpdateItem( *item );
+						  m_Playlist->GetLibrary().UpdateTrackGain( previousMediaInfo, item->Info );
+					  }
+				  }
+			  }
+      }
 			++item;
 		}
 	} while ( WAIT_OBJECT_0 != WaitForSingleObject( m_LoudnessPrecalcStopEvent, interval ) );
@@ -2022,7 +2041,7 @@ void Output::StartLoudnessPrecalcThread()
 			if ( Settings::GainMode::Disabled != gainMode ) {
 				m_LoudnessPrecalcThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, LoudnessPrecalcThreadProc, reinterpret_cast<LPVOID>( this ), 0 /*flags*/, NULL /*threadId*/ );
 				if ( nullptr != m_LoudnessPrecalcThread ) {
-					SetThreadPriority( m_LoudnessPrecalcThread, THREAD_PRIORITY_BELOW_NORMAL );
+					SetThreadPriority( m_LoudnessPrecalcThread, THREAD_MODE_BACKGROUND_BEGIN );
 				}
 			}
 		}
@@ -2032,7 +2051,7 @@ void Output::StartLoudnessPrecalcThread()
 void Output::StopLoudnessPrecalcThread()
 {
 	if ( nullptr != m_LoudnessPrecalcThread ) {
-		SetThreadPriority( m_LoudnessPrecalcThread, THREAD_PRIORITY_NORMAL );
+		SetThreadPriority( m_LoudnessPrecalcThread, THREAD_MODE_BACKGROUND_END );
 		SetEvent( m_LoudnessPrecalcStopEvent );
 		WaitForSingleObject( m_LoudnessPrecalcThread, INFINITE );
 		CloseHandle( m_LoudnessPrecalcThread );
@@ -2164,4 +2183,10 @@ void Output::SetEndSync( const HSTREAM stream )
 		BASS_ChannelSetSync( mixerStream, BASS_SYNC_STALL | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
 		m_MixerStreamHasEndSync = true;
 	}
+}
+
+bool Output::CanBackgroundThreadProceed( const HANDLE stopEvent )
+{
+  constexpr DWORD kStartupDelayMsec = static_cast<DWORD>( 1000 * 2 * s_BufferLength );
+  return ( WAIT_TIMEOUT == WaitForSingleObject( stopEvent, kStartupDelayMsec ) );
 }

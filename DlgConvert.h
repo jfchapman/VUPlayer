@@ -13,7 +13,7 @@ public:
 	// 'handlers' - audio format handlers.
 	// 'tracks' - the available tracks to convert.
 	// 'selectedTracks' - in/out, the selected tracks.
-	DlgConvert( const HINSTANCE instance, const HWND parent, Settings& settings, Handlers& handlers, const Playlist::ItemList& tracks, Playlist::ItemList& selectedTracks );
+	DlgConvert( const HINSTANCE instance, const HWND parent, Settings& settings, Handlers& handlers, const Playlist::Items& tracks, Playlist::Items& selectedTracks );
 
 	virtual ~DlgConvert();
 
@@ -64,7 +64,7 @@ private:
 	void OnConfigure();
 
 	// Returns the selected tracks.
-	Playlist::ItemList GetSelectedTracks() const;
+	Playlist::Items GetSelectedTracks() const;
 
 	// Returns the filename to use when joining files into a single track, or an empty string if a filename was not chosen.
 	std::wstring ChooseJoinFilename() const;
@@ -88,10 +88,10 @@ private:
 	Handlers& m_Handlers;
 
 	// The available tracks.
-	const Playlist::ItemList& m_Tracks;
+	const Playlist::Items& m_Tracks;
 
 	// The selected tracks to convert.
-	Playlist::ItemList& m_SelectedTracks;
+	Playlist::Items& m_SelectedTracks;
 
 	// The set of checked items.
 	std::set<long> m_CheckedItems;

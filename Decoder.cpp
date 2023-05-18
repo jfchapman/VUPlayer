@@ -6,7 +6,6 @@
 
 #include <windows.h>
 
-#include <random>
 #include <string>
 
 Decoder::Decoder( const Context context ) :

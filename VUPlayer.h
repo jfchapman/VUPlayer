@@ -47,6 +47,11 @@
 // 'lParam' : pointer to updated MediaInfo, to be deleted by the message handler.
 static constexpr UINT MSG_MEDIAUPDATED = WM_APP + 77;
 
+// Message ID for signalling that media library maintenance has finished.
+// 'wParam' : pointer to MediaInfo::List of items removed from the library, to be deleted by the message handler.
+// 'lParam' : unused.
+static constexpr UINT MSG_LIBRARYREFRESHED = WM_APP + 78;
+
 // Message ID for signalling that the list of available optical discs has been refreshed.
 // 'wParam' : unused.
 // 'lParam' : unused.
@@ -121,10 +126,14 @@ public:
 	// 'updatedMediaInfo' - the updated media information.
 	void OnMediaUpdated( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo );
 
-	// Handles the update of 'previousMediaInfo' to 'updatedMediaInfo', from the main thread.
+  // Handles the update of 'previousMediaInfo' to 'updatedMediaInfo', from the main thread.
 	void OnHandleMediaUpdate( const MediaInfo* previousMediaInfo, const MediaInfo* updatedMediaInfo );
 
-	// Handles the refreshing of available optical discs.
+  // Handles the updating of playlists when media library maintenance has finished, from the main thread.
+  // 'removedFiles' - files that have been removed from the media library.
+	void OnHandleLibraryRefreshed( const MediaInfo::List* removedFiles );
+
+  // Handles the refreshing of available optical discs.
 	void OnHandleDiscRefreshed();
 
 	// Restarts playback from a playlist 'itemID'.

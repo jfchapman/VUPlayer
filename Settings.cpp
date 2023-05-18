@@ -729,7 +729,7 @@ void Settings::SavePlaylist( Playlist& playlist )
 			sqlite3_stmt* stmt = nullptr;
 			if ( SQLITE_OK == sqlite3_prepare_v2( database, insertFileQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 				bool pending = false;
-				const Playlist::ItemList itemList = playlist.GetItems();
+				const Playlist::Items itemList = playlist.GetItems();
 				for ( const auto& iter : itemList ) {
 					const std::string filename = WideStringToUTF8( iter.Info.GetFilename() );
 					if ( !filename.empty() ) {

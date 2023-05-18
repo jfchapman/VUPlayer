@@ -93,8 +93,9 @@ public:
 	// Returns the playlists that have been updated.
 	Playlist::Set OnUpdatedMedia( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo );
 
-	// Called when the 'mediaList' has been removed from the media library.
-	void OnRemovedMedia( const MediaInfo::List& mediaList );
+	// Called when 'mediaList' has been deleted from the current playlist and removed from the media library.
+  // 'libraryMaintenance' - whether files have been removed from the library as a result of library maintenance.
+	void OnRemovedMedia( const MediaInfo::List& mediaList, const bool libraryMaintenance = false );
 
 	// Called when the optical disc drives need to be updated.
 	void OnRefreshDiscDrives();
