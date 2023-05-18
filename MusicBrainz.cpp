@@ -637,7 +637,7 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 							if ( const auto discs = medium.find( "discs" ); ( medium.end() != discs ) && discs->is_array() ) {
 								for ( const auto& disc : *discs ) {
 									if ( const auto discID = disc.find( "id" ); ( disc.end() != discID ) && discID->is_string() ) {
-										exactMatch = ( result.DiscID == *discID );
+										exactMatch = ( result.DiscID == std::string( *discID ) );
 										if ( exactMatch ) {
 											releaseAlbums.clear();
 										}
