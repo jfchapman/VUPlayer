@@ -217,6 +217,9 @@ public:
 	// Called when the application taskbar button has been created.
 	void OnTaskbarButtonCreated();
 
+  // Called when a power management event 'type' has occurred.
+  void OnPowerBroadcast( const WPARAM type );
+
 private:
 	// Main application instance.
 	static VUPlayer* s_VUPlayer;

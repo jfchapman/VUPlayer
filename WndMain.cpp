@@ -324,6 +324,12 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
+    case WM_POWERBROADCAST : {
+			if ( nullptr != vuplayer ) {
+				vuplayer->OnPowerBroadcast( wParam );
+			}
+      return TRUE;
+    }
 		case WM_COPYDATA : {
 			if ( nullptr != vuplayer ) {
 				COPYDATASTRUCT* copyData = reinterpret_cast<COPYDATASTRUCT*>( lParam );

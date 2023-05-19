@@ -2108,3 +2108,10 @@ HACCEL VUPlayer::CreateModifiedAcceleratorTable() const
 	}
 	return modifiedAcceleratorTable;
 }
+
+void VUPlayer::OnPowerBroadcast( const WPARAM type )
+{
+  if ( PBT_APMSUSPEND == type ) {
+	  m_Output.Stop();
+  }
+}
