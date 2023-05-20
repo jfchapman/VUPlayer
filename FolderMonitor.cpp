@@ -68,9 +68,13 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 												const std::wstring newFilename = monitorInfo->DirectoryPath + std::wstring( notifyInfo->FileName, notifyInfo->FileNameLength / 2 );
 												const DWORD attributes = GetFileAttributes( newFilename.c_str() );
 												if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
-                          // Delay the callback.
-													std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
-												  monitorInfo->Pending.push_back( std::make_tuple( PendingAction::FileRenamed, currentTime, newFilename, filename ) );
+                          if ( ChangeType::FolderChange == monitorInfo->ChangeType ) {
+                            monitorInfo->Callback( FolderMonitor::Event::FolderRenamed, filename, newFilename );
+                          } else {
+                            // Delay the callback.
+													  std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
+												    monitorInfo->Pending.push_back( std::make_tuple( PendingAction::FileRenamed, currentTime, newFilename, filename ) );
+                          }
 												}
 											}
 										}
