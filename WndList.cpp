@@ -1080,12 +1080,9 @@ void WndList::OnFileRemoved( Playlist* playlist, const Playlist::Item& item )
 	}
 }
 
-void WndList::RemoveFileHandler( const long removedItemID )
+void WndList::RemoveFileHandler( const long /*removedItemID*/ )
 {
-	if ( const int itemIndex = FindItemIndex( removedItemID ); itemIndex >= 0 ) {
-    ListView_SetItemState( m_hWnd, itemIndex, 0, LVIS_SELECTED | LVIS_FOCUSED );
-		RefreshPlaylist();
-	}
+	RefreshPlaylist();
 }
 
 void WndList::OnItemUpdated( Playlist* playlist, const Playlist::Item& item )
