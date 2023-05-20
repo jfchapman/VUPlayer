@@ -611,6 +611,12 @@ public:
   // Sets whether to preserve the last modified time when writing metadata tags to file.
   void SetPreserveLastModifiedTime( const bool preserve );
 
+  // Returns whether to allow file deletion from folder-based playlists.
+  bool GetAllowFileDeletion();
+
+  // Sets whether to allow file deletion from folder-based playlists.
+  void SetAllowFileDeletion( const bool allow );
+
   // Returns the preferred MOD music decoder.
   MODDecoder GetMODDecoder();
 

@@ -1197,6 +1197,8 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 	if ( nullptr != menu ) {
 		// File menu
 		Playlist::Ptr playlist = m_List.GetPlaylist();
+    const auto playlistType = playlist ? playlist->GetType() : Playlist::Type::_Undefined;
+
 		const bool selectedItems = ( m_List.GetSelectedCount() > 0 );
 		const UINT deletePlaylistEnabled = m_Tree.IsPlaylistDeleteEnabled() ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_DELETEPLAYLIST, MF_BYCOMMAND | deletePlaylistEnabled );
@@ -1207,20 +1209,18 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDFOLDER, MF_BYCOMMAND | MF_ENABLED );
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | MF_ENABLED );
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDSTREAM, MF_BYCOMMAND | MF_ENABLED );
-		const UINT removeFilesEnabled = ( playlist && selectedItems && ( Playlist::Type::CDDA != playlist->GetType() ) && ( Playlist::Type::Folder != playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
-		EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
-		const UINT addToFavouritesEnabled = ( playlist && ( Playlist::Type::Favourites != playlist->GetType() ) && ( Playlist::Type::CDDA != playlist->GetType() ) && selectedItems ) ? MF_ENABLED : MF_DISABLED;
+		const UINT addToFavouritesEnabled = ( ( Playlist::Type::Favourites != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) && selectedItems ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | addToFavouritesEnabled );
 		const UINT gainCalculatorEnabled = selectedItems ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | gainCalculatorEnabled );
 		const UINT refreshLibraryEnabled = m_Maintainer.IsActive() ? MF_DISABLED : MF_ENABLED;
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
-		const UINT musicbrainzEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) && IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
+		const UINT musicbrainzEnabled = ( ( Playlist::Type::CDDA == playlistType ) && IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
-		const int bufferSize = 64;
+		const int bufferSize = 256;
 		WCHAR buffer[ bufferSize ] = {};
-		const bool isCDDAPlaylist = playlist && ( Playlist::Type::CDDA == playlist->GetType() );
+		const bool isCDDAPlaylist = ( Playlist::Type::CDDA == playlistType );
 		if ( 0 != GetMenuString( menu, ID_FILE_CONVERT, buffer, bufferSize, MF_BYCOMMAND ) ) {
 			const std::wstring originalMenuStr = buffer;
 			LoadString( m_hInst, isCDDAPlaylist ? IDS_EXTRACT_TRACKS_MENU : IDS_CONVERT_TRACKS_MENU, buffer, bufferSize );
@@ -1230,6 +1230,17 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		}
 		const UINT convertEnabled = ( playlist && playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_CONVERT, MF_BYCOMMAND | convertEnabled );
+
+		if ( 0 != GetMenuString( menu, ID_FILE_PLAYLISTREMOVEFILES, buffer, bufferSize, MF_BYCOMMAND ) ) {
+			const std::wstring originalMenuStr = buffer;
+      const bool isDeleteFiles = ( Playlist::Type::Folder == playlistType );
+			LoadString( m_hInst, isDeleteFiles ? IDS_DELETE_FILES_MENU : IDS_REMOVE_TRACKS_MENU, buffer, bufferSize );
+			const size_t accelDelimiter = originalMenuStr.find( '\t' );
+			const std::wstring removeMenuStr = ( std::wstring::npos == accelDelimiter ) ? buffer : ( buffer + originalMenuStr.substr( accelDelimiter ) );
+			ModifyMenu( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | MF_STRING, ID_FILE_PLAYLISTREMOVEFILES, removeMenuStr.c_str() );
+		}
+	  const UINT removeFilesEnabled = ( selectedItems && ( ( Playlist::Type::Folder == playlistType ) ? m_Settings.GetAllowFileDeletion() : ( ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) ) ) ) ? MF_ENABLED : MF_DISABLED;
+	  EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
 
 		// View menu
 		CheckMenuItem( menu, ID_TREEMENU_FAVOURITES, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_FAVOURITES ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1608,6 +1619,8 @@ void VUPlayer::OnOptions()
 		m_Taskbar.SetToolbarButtonColour( m_Settings );
 	}
 	m_Taskbar.EnableProgressBar( m_Settings.GetTaskbarShowProgress() );
+
+  m_ToolbarPlaylist.OnSettingsChanged( m_Settings );
 }
 
 Settings& VUPlayer::GetApplicationSettings()

@@ -708,20 +708,23 @@ void WndList::OnContextMenu( const POINT& position )
 				EnableMenuItem( listmenu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_ENABLED );
 			}
 
+      const auto playlistType = m_Playlist ? m_Playlist->GetType() : Playlist::Type::_Undefined;
 			const bool hasItems = ( ListView_GetItemCount( m_hWnd ) > 0 );
 			const bool hasSelectedItems = ( ListView_GetSelectedCount( m_hWnd ) > 0 );
-			const bool allowPaste = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
-			const bool allowCut = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
-			const bool allowCopy = ( m_Playlist && ( Playlist::Type::CDDA != m_Playlist->GetType() ) );
-			const bool allowAddStream = ( m_Playlist && ( ( Playlist::Type::Streams == m_Playlist->GetType() ) || ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
+			const bool allowPaste = ( Playlist::Type::User == playlistType ) || ( Playlist::Type::All == playlistType ) || ( Playlist::Type::Favourites == playlistType );
+			const bool allowCut = hasSelectedItems && ( ( Playlist::Type::User == playlistType ) || ( Playlist::Type::Favourites == playlistType ) );
+			const bool allowCopy = hasSelectedItems && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
+			const bool allowAddStream = ( Playlist::Type::Streams == playlistType ) || ( Playlist::Type::User == playlistType ) || ( Playlist::Type::All == playlistType ) || ( Playlist::Type::Favourites == playlistType );
+      const bool allowAddToFavourites = hasSelectedItems && ( Playlist::Type::Favourites != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
+      const bool allowRemoveFiles = hasSelectedItems && ( ( Playlist::Type::Folder == playlistType ) ? m_Settings.GetAllowFileDeletion() : ( ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) ) );
 
 			const UINT enablePaste = ( allowPaste && ( IsClipboardFormatAvailable( CF_TEXT ) || IsClipboardFormatAvailable( CF_UNICODETEXT ) || IsClipboardFormatAvailable( CF_HDROP ) ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PASTE, MF_BYCOMMAND | enablePaste );
 
-			const UINT enableCut = ( allowCut && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableCut = allowCut ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_CUT, MF_BYCOMMAND | enableCut );
 
-			const UINT enableCopy = ( allowCopy && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableCopy = allowCopy ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_COPY, MF_BYCOMMAND | enableCopy );
 
 			const UINT enableSelectAll = hasItems ? MF_ENABLED : MF_DISABLED;
@@ -735,27 +738,33 @@ void WndList::OnContextMenu( const POINT& position )
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | enableAddFiles );
 			const UINT enableAddStream = allowAddStream ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDSTREAM, MF_BYCOMMAND | enableAddStream );
-			const UINT enableRemoveFiles = ( m_Playlist && hasSelectedItems && ( Playlist::Type::CDDA != m_Playlist->GetType() ) && ( Playlist::Type::Folder != m_Playlist->GetType() ) ) ? MF_ENABLED : MF_DISABLED;
-			EnableMenuItem( listmenu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | enableRemoveFiles );
-			const UINT enableAddToFavourites = ( m_Playlist && ( Playlist::Type::Favourites != m_Playlist->GetType() ) && ( Playlist::Type::CDDA != m_Playlist->GetType() ) && hasSelectedItems ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableAddToFavourites = allowAddToFavourites ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | enableAddToFavourites );
 
-			if ( m_Playlist && ( Playlist::Type::CDDA == m_Playlist->GetType() ) ) {		
-				const int bufferSize = 64;
+			if ( Playlist::Type::CDDA == playlistType ) {		
+				const int bufferSize = 256;
 				WCHAR buffer[ bufferSize ] = {};
 				LoadString( m_hInst, IDS_EXTRACT_TRACKS, buffer, bufferSize );
 				ModifyMenu( menu, ID_FILE_CONVERT, MF_BYCOMMAND | MF_STRING, ID_FILE_CONVERT, buffer );
 			}
-
-			const UINT enableExtract = ( m_Playlist && m_Playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
+      const UINT enableExtract = ( m_Playlist && m_Playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
+
+			if ( Playlist::Type::Folder == playlistType ) {		
+				const int bufferSize = 256;
+				WCHAR buffer[ bufferSize ] = {};
+				LoadString( m_hInst, IDS_DELETE_FILES, buffer, bufferSize );
+				ModifyMenu( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | MF_STRING, ID_FILE_PLAYLISTREMOVEFILES, buffer );
+			}
+			const UINT enableRemoveFiles = allowRemoveFiles ? MF_ENABLED : MF_DISABLED;
+			EnableMenuItem( listmenu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | enableRemoveFiles );
 
 			const UINT enableGainCalculator = hasSelectedItems ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | enableGainCalculator );
 
 			VUPlayer* vuplayer = VUPlayer::Get();
 
-			const UINT musicbrainzEnabled = ( m_Playlist && ( Playlist::Type::CDDA == m_Playlist->GetType() ) && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT musicbrainzEnabled = ( ( Playlist::Type::CDDA == playlistType ) && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
 			const UINT enableColourChoice = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;
@@ -903,7 +912,9 @@ void WndList::RefreshListViewItemText()
 
 void WndList::DeleteSelectedItems()
 {
-	if ( m_Playlist && ( Playlist::Type::Folder != m_Playlist->GetType() ) && ( Playlist::Type::CDDA != m_Playlist->GetType() ) ) {
+  const auto playlistType = m_Playlist ? m_Playlist->GetType() : Playlist::Type::_Undefined;
+  const bool allowDelete = ( Playlist::Type::Folder == playlistType ) ? m_Settings.GetAllowFileDeletion() : ( ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) );
+	if ( allowDelete ) {
 		MediaInfo::List deletedMedia;
 
 		SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
@@ -928,33 +939,53 @@ void WndList::DeleteSelectedItems()
 					}
 				}
 			}
-      ListView_SetItemState( m_hWnd, itemIndex, 0, LVIS_SELECTED | LVIS_FOCUSED );
-			itemIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
+      if ( Playlist::Type::Folder != m_Playlist->GetType() ) {
+        ListView_SetItemState( m_hWnd, itemIndex, 0, LVIS_SELECTED | LVIS_FOCUSED );
+      }
+			itemIndex = ListView_GetNextItem( m_hWnd, itemIndex, LVNI_SELECTED );
 		}
-    for ( const auto& item : itemsToDelete ) {
-			m_Playlist->RemoveItem( item );
+
+    bool filesDeleted = false;
+    if ( Playlist::Type::Folder == playlistType ) {
+      // Delete files.
+      std::set<std::filesystem::path> filesToDelete;
+      for ( const auto& item : itemsToDelete ) {
+        filesToDelete.insert( item.Info.GetFilename() );
+      }
+      filesDeleted = DeleteFiles( filesToDelete, m_hWnd );
+    } else {
+      // Remove files from playlist.
+      for ( const auto& item : itemsToDelete ) {
+			  m_Playlist->RemoveItem( item );
+      }
+      RefreshPlaylist();
+      const int itemCount = ListView_GetItemCount( m_hWnd );
+		  ListView_SetItemState( m_hWnd, ( ( selectItem < itemCount ) ? selectItem : ( itemCount - 1 ) ), LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
     }
-    RefreshPlaylist();
-    const int itemCount = ListView_GetItemCount( m_hWnd );
-		ListView_SetItemState( m_hWnd, ( ( selectItem < itemCount ) ? selectItem : ( itemCount - 1 ) ), LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+
 		SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 
-		const Playlist::Type type = m_Playlist->GetType();
-		switch ( type ) {
-			case Playlist::Type::All :
-			case Playlist::Type::Artist :
-			case Playlist::Type::Album :
-			case Playlist::Type::Genre :
-			case Playlist::Type::Year : {
-				VUPlayer* vuplayer = VUPlayer::Get();
-				if ( nullptr != vuplayer ) {
-					vuplayer->OnRemoveFromLibrary( deletedMedia );
-				}
-				break;
-			}
-			default : {
-				break;
-			}
+		VUPlayer* vuplayer = VUPlayer::Get();
+		if ( nullptr != vuplayer ) {
+		  switch ( playlistType ) {
+			  case Playlist::Type::All :
+			  case Playlist::Type::Artist :
+			  case Playlist::Type::Album :
+			  case Playlist::Type::Genre :
+			  case Playlist::Type::Year : {
+				  vuplayer->OnRemoveFromLibrary( deletedMedia );
+				  break;
+			  }
+        case Playlist::Type::Folder : {
+          if ( filesDeleted ) {
+				    vuplayer->OnRemoveFromLibrary( deletedMedia );
+          }
+				  break;
+        }
+			  default : {
+				  break;
+			  }
+      }
 		}
 	}
 }
@@ -1821,7 +1852,6 @@ void WndList::OnCutCopy( const bool cut )
 			CloseClipboard();
 		}
 	}
-
 }
 
 void WndList::OnPaste()

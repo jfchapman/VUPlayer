@@ -9,6 +9,7 @@
 #include <VersionHelpers.h>
 #include "objbase.h"
 #include "uiautomation.h"
+#include <shellapi.h>
 
 #include <array>
 #include <chrono>
@@ -757,4 +758,25 @@ void SetLastModifiedTime( const std::filesystem::path& filepath, const FILETIME 
 		SetFileTime( handle, nullptr, nullptr, &lastModified );
 		CloseHandle( handle );
 	}
+}
+
+bool DeleteFiles( const std::set<std::filesystem::path> files, const HWND hwnd )
+{
+  std::error_code ec;
+  std::vector<wchar_t> filenameBuffer;
+  for ( const auto& file : files ) {
+    if ( file.is_absolute() && std::filesystem::exists( file, ec ) ) {
+      filenameBuffer.insert( filenameBuffer.end(), file.native().begin(), file.native().end() );
+      filenameBuffer.push_back( '\0' );
+    }
+  }
+  if ( !filenameBuffer.empty() ) {
+    filenameBuffer.push_back( '\0' );
+    SHFILEOPSTRUCT fileOp = {};
+    fileOp.hwnd = hwnd;
+    fileOp.wFunc = FO_DELETE;
+    fileOp.pFrom = filenameBuffer.data();
+    return ( 0 == SHFileOperation( &fileOp ) );
+  }
+  return false;
 }

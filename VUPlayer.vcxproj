@@ -545,6 +545,7 @@ copy "$(ProjectDir)libs\ffmpeg-6.0\bin\x64\swresample-4.dll" $(OutDir)swresample
     <Image Include="res\computer.ico" />
     <Image Include="res\convert.ico" />
     <Image Include="res\crossfade.ico" />
+    <Image Include="res\delete.ico" />
     <Image Include="res\disk.ico" />
     <Image Include="res\eq.ico" />
     <Image Include="res\fade_out.ico" />

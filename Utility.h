@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <random>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -170,6 +171,10 @@ FILETIME GetLastModifiedTime( const std::filesystem::path& filepath );
 
 // Sets the last modified time for a file.
 void SetLastModifiedTime( const std::filesystem::path& filepath, const FILETIME lastModified );
+
+// Deletes the 'files' (which must be fully qualified paths), using the parent 'hwnd' window handle.
+// Returns whether the delete file operation proceeded.
+bool DeleteFiles( const std::set<std::filesystem::path> files, const HWND hwnd );
 
 // Converts a floating point sample 'value' to 24-bit (clamping any value outside the range -1.0 to +1.0).
 inline int32_t FloatTo24( const float value )
