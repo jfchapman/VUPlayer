@@ -336,9 +336,6 @@
     <ClInclude Include="libs\json-3.11.2\json.hpp">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="libs\sqlite-3.39.3\sqlite3.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
     <ClInclude Include="libs\libebur128-1.2.6\ebur128.h">
       <Filter>Third Party</Filter>
     </ClInclude>
@@ -368,6 +365,9 @@
     </ClInclude>
     <ClInclude Include="DlgModOpenMPT.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\sqlite-3.42.0\sqlite3.h">
+      <Filter>Third Party</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -662,9 +662,6 @@
     <ClCompile Include="CDDACache.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.39.3\sqlite3.c">
-      <Filter>Third Party</Filter>
-    </ClCompile>
     <ClCompile Include="libs\libebur128-1.2.6\ebur128.c">
       <Filter>Third Party</Filter>
     </ClCompile>
@@ -682,6 +679,9 @@
     </ClCompile>
     <ClCompile Include="DlgModOpenMPT.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\sqlite-3.42.0\sqlite3.c">
+      <Filter>Third Party</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
