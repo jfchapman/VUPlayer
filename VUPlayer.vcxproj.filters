@@ -807,9 +807,6 @@
     <Image Include="res\balance.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="res\delete.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="res\version.manifest">

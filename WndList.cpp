@@ -716,7 +716,7 @@ void WndList::OnContextMenu( const POINT& position )
 			const bool allowCopy = hasSelectedItems && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
 			const bool allowAddStream = ( Playlist::Type::Streams == playlistType ) || ( Playlist::Type::User == playlistType ) || ( Playlist::Type::All == playlistType ) || ( Playlist::Type::Favourites == playlistType );
       const bool allowAddToFavourites = hasSelectedItems && ( Playlist::Type::Favourites != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
-      const bool allowRemoveFiles = hasSelectedItems && ( ( Playlist::Type::Folder == playlistType ) ? m_Settings.GetAllowFileDeletion() : ( ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) ) );
+      const bool allowRemoveFiles = hasSelectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
 
 			const UINT enablePaste = ( allowPaste && ( IsClipboardFormatAvailable( CF_TEXT ) || IsClipboardFormatAvailable( CF_UNICODETEXT ) || IsClipboardFormatAvailable( CF_HDROP ) ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PASTE, MF_BYCOMMAND | enablePaste );
@@ -750,12 +750,6 @@ void WndList::OnContextMenu( const POINT& position )
       const UINT enableExtract = ( m_Playlist && m_Playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
-			if ( Playlist::Type::Folder == playlistType ) {		
-				const int bufferSize = 256;
-				WCHAR buffer[ bufferSize ] = {};
-				LoadString( m_hInst, IDS_DELETE_FILES, buffer, bufferSize );
-				ModifyMenu( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | MF_STRING, ID_FILE_PLAYLISTREMOVEFILES, buffer );
-			}
 			const UINT enableRemoveFiles = allowRemoveFiles ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | enableRemoveFiles );
 
@@ -913,7 +907,7 @@ void WndList::RefreshListViewItemText()
 void WndList::DeleteSelectedItems()
 {
   const auto playlistType = m_Playlist ? m_Playlist->GetType() : Playlist::Type::_Undefined;
-  const bool allowDelete = ( Playlist::Type::Folder == playlistType ) ? m_Settings.GetAllowFileDeletion() : ( ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) );
+  const bool allowDelete = ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
 	if ( allowDelete ) {
 		MediaInfo::List deletedMedia;
 

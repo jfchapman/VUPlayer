@@ -70,11 +70,6 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		Button_SetCheck( hwndRetainPitchBalance, ( retainPitchBalance ? BST_CHECKED : BST_UNCHECKED ) );
 	}
 
-  const bool allowFileDeletion = GetSettings().GetAllowFileDeletion();
-  if ( const HWND hwndAllowFileDeletion = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_ALLOW_DELETE ); nullptr != hwndAllowFileDeletion ) {
-    Button_SetCheck( hwndAllowFileDeletion, ( allowFileDeletion ? BST_CHECKED : BST_UNCHECKED ) );
-  }
-
 	// Remote settings
 	if ( const HWND hwndMusicBrainz = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MUSICBRAINZ_ENABLE ); nullptr != hwndMusicBrainz ) {
 		const bool musicbrainzEnabled = GetSettings().GetMusicBrainzEnabled();
@@ -122,9 +117,6 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 
 	const bool retainPitchBalance = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_RETAIN_PITCHBALANCE ) ) );
 	GetSettings().SetRetainPitchBalance( retainPitchBalance );
-
-	const bool allowFileDeletion = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_ALLOW_DELETE ) ) );
-	GetSettings().SetAllowFileDeletion( allowFileDeletion );
 
   // Remote settings
 	const bool musicbrainzEnabled = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MUSICBRAINZ_ENABLE ) ) );

@@ -1672,16 +1672,6 @@ void Settings::SetPreserveLastModifiedTime( const bool preserve )
 	WriteSetting( "PreserveLastModified", preserve );
 }
 
-bool Settings::GetAllowFileDeletion()
-{
-  return ReadSetting<bool>( "AllowFileDeletion" ).value_or( false );
-}
-
-void Settings::SetAllowFileDeletion( const bool allow )
-{
-	WriteSetting( "AllowFileDeletion", allow );
-}
-
 Settings::MODDecoder Settings::GetMODDecoder()
 {
 #ifndef _DEBUG

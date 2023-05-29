@@ -1231,15 +1231,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const UINT convertEnabled = ( playlist && playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_CONVERT, MF_BYCOMMAND | convertEnabled );
 
-		if ( 0 != GetMenuString( menu, ID_FILE_PLAYLISTREMOVEFILES, buffer, bufferSize, MF_BYCOMMAND ) ) {
-			const std::wstring originalMenuStr = buffer;
-      const bool isDeleteFiles = ( Playlist::Type::Folder == playlistType );
-			LoadString( m_hInst, isDeleteFiles ? IDS_DELETE_FILES_MENU : IDS_REMOVE_TRACKS_MENU, buffer, bufferSize );
-			const size_t accelDelimiter = originalMenuStr.find( '\t' );
-			const std::wstring removeMenuStr = ( std::wstring::npos == accelDelimiter ) ? buffer : ( buffer + originalMenuStr.substr( accelDelimiter ) );
-			ModifyMenu( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | MF_STRING, ID_FILE_PLAYLISTREMOVEFILES, removeMenuStr.c_str() );
-		}
-	  const UINT removeFilesEnabled = ( selectedItems && ( ( Playlist::Type::Folder == playlistType ) ? m_Settings.GetAllowFileDeletion() : ( ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) ) ) ) ? MF_ENABLED : MF_DISABLED;
+	  const UINT removeFilesEnabled = ( selectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) ) ? MF_ENABLED : MF_DISABLED;
 	  EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
 
 		// View menu
@@ -1619,8 +1611,6 @@ void VUPlayer::OnOptions()
 		m_Taskbar.SetToolbarButtonColour( m_Settings );
 	}
 	m_Taskbar.EnableProgressBar( m_Settings.GetTaskbarShowProgress() );
-
-  m_ToolbarPlaylist.OnSettingsChanged( m_Settings );
 }
 
 Settings& VUPlayer::GetApplicationSettings()
