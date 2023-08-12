@@ -635,6 +635,12 @@ public:
 	// Sets OpenMPT settings.
 	void SetOpenMPTSettings( const bool fadeout, const long separation, const long ramping, const long interpolation );
 
+  // Returns whether loudness normalisation is enabled.
+  bool GetLoudnessNormalisation();
+
+  // Sets whether to loudness normalisation is enabled.
+  void SetLoudnessNormalisation( const bool enable );
+
   // Returns the supported OpenMPT ramping options.
   static constexpr std::array<long, 12> GetOpenMPTSupportedRamping() { return { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; }
 

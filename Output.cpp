@@ -204,6 +204,7 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, S
 	m_GainMode( Settings::GainMode::Disabled ),
 	m_LimitMode( Settings::LimitMode::None ),
 	m_GainPreamp( 0 ),
+  m_LoudnessNormalisation( m_Settings.GetLoudnessNormalisation() ),
 	m_RetainStopAtTrackEnd( m_Settings.GetRetainStopAtTrackEnd() ),
 	m_StopAtTrackEnd( m_RetainStopAtTrackEnd ? m_Settings.GetStopAtTrackEnd() : false ),
 	m_Muted( false ),
@@ -1095,6 +1096,22 @@ void Output::SetCrossfade( const bool enabled )
 	}
 }
 
+bool Output::GetLoudnessNormalisation() const
+{
+  return m_LoudnessNormalisation;
+}
+
+void Output::SetLoudnessNormalisation( const bool enabled )
+{
+  m_LoudnessNormalisation = enabled;
+  if ( m_LoudnessNormalisation ) {
+	  EstimateGain( m_CurrentItemDecoding );
+	  if ( State::Stopped != GetState() ) {
+		  StartLoudnessPrecalcThread();
+	  }
+  }
+}
+
 bool Output::OnUpdatedMedia( const MediaInfo& mediaInfo )
 {
 	std::lock_guard<std::mutex> lock( m_PlaylistMutex );
@@ -1206,10 +1223,6 @@ void Output::SettingsChanged()
 		m_GainMode = gainMode;
 		m_LimitMode = limitMode;
 		m_GainPreamp = gainPreamp;
-		EstimateGain( m_CurrentItemDecoding );
-		if ( State::Stopped != GetState() ) {
-			StartLoudnessPrecalcThread();
-		}
 	}
 
 	m_RetainStopAtTrackEnd = m_Settings.GetRetainStopAtTrackEnd();
@@ -1270,9 +1283,9 @@ void Output::InitialiseBass()
 
 void Output::EstimateGain( Playlist::Item& item )
 {
-	if ( ( Settings::GainMode::Disabled != m_GainMode ) && !IsURL( item.Info.GetFilename() ) ) {
+	if ( m_LoudnessNormalisation && !IsURL( item.Info.GetFilename() ) ) {
 		auto gain = item.Info.GetGainAlbum();
-		if ( !gain.has_value() || ( Settings::GainMode::Track == m_GainMode ) ) {
+		if ( !gain.has_value() || ( Settings::GainMode::Album != m_GainMode ) ) {
 			if ( const auto trackGain = item.Info.GetGainTrack(); trackGain.has_value() ) {
 				gain = trackGain;
 			}
@@ -1470,12 +1483,12 @@ void Output::ApplyGain( float* buffer, const long sampleCount, const Playlist::I
 {
 	const bool eqEnabled = m_EQEnabled;
 	const long channels = OutputDecoder::GetOutputChannels( item.Info );
-	if ( ( 0 != sampleCount ) && ( channels > 0 ) && ( ( Settings::GainMode::Disabled != m_GainMode ) || eqEnabled ) ) {
+	if ( ( 0 != sampleCount ) && ( channels > 0 ) && ( m_LoudnessNormalisation || eqEnabled ) ) {
 		float preamp = eqEnabled ? m_EQPreamp : 0;
 
-		if ( Settings::GainMode::Disabled != m_GainMode ) {
+		if ( m_LoudnessNormalisation ) {
 			auto gain = item.Info.GetGainAlbum();
-			if ( !gain.has_value() || ( Settings::GainMode::Track == m_GainMode ) ) {
+			if ( !gain.has_value() || ( Settings::GainMode::Album != m_GainMode ) ) {
 				if ( const auto trackGain = item.Info.GetGainTrack(); trackGain.has_value() ) {
 					gain = trackGain;
 				}
@@ -2033,16 +2046,10 @@ void Output::StartLoudnessPrecalcThread()
 	StopLoudnessPrecalcThread();
 	if ( nullptr != m_LoudnessPrecalcStopEvent ) {
 		ResetEvent( m_LoudnessPrecalcStopEvent );
-		if ( m_Playlist && ( Playlist::Type::CDDA != m_Playlist->GetType() ) ) {
-			Settings::GainMode gainMode = Settings::GainMode::Disabled;
-			Settings::LimitMode limitMode = Settings::LimitMode::None;
-			float preamp = 0;
-			m_Settings.GetGainSettings( gainMode, limitMode, preamp );
-			if ( Settings::GainMode::Disabled != gainMode ) {
-				m_LoudnessPrecalcThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, LoudnessPrecalcThreadProc, reinterpret_cast<LPVOID>( this ), 0 /*flags*/, NULL /*threadId*/ );
-				if ( nullptr != m_LoudnessPrecalcThread ) {
-					SetThreadPriority( m_LoudnessPrecalcThread, THREAD_MODE_BACKGROUND_BEGIN );
-				}
+		if ( m_LoudnessNormalisation && m_Playlist && ( Playlist::Type::CDDA != m_Playlist->GetType() ) ) {
+			m_LoudnessPrecalcThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, LoudnessPrecalcThreadProc, reinterpret_cast<LPVOID>( this ), 0 /*flags*/, NULL /*threadId*/ );
+			if ( nullptr != m_LoudnessPrecalcThread ) {
+				SetThreadPriority( m_LoudnessPrecalcThread, THREAD_MODE_BACKGROUND_BEGIN );
 			}
 		}
 	}

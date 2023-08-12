@@ -22,11 +22,6 @@ static constexpr UINT s_MinSwapChainSize = 4;
 // Visual window class name
 static constexpr wchar_t s_VisualClass[] = L"VUVisualClass";
 
-// Message ID used to repaint the visual.
-// 'wParam' - unused.
-// 'lParam' - unused.
-static constexpr UINT MSG_REPAINT = WM_APP + 73;
-
 // Oscilloscope weights
 static const std::map<UINT,float> s_OscilloscopeWeights = {
 		{ ID_OSCILLOSCOPE_WEIGHT_FINE, 1.0f },
@@ -74,10 +69,6 @@ LRESULT CALLBACK WndVisual::VisualProc( HWND hwnd, UINT message, WPARAM wParam, 
 				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 				break;
 			}
-      case MSG_REPAINT : {
-	      RedrawWindow( hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW );
-        return 0;
-      }
 		}
 	}
 	return DefWindowProc( hwnd, message, wParam, lParam );
@@ -472,7 +463,7 @@ void WndVisual::OnContextMenu( const POINT& position )
 
 void WndVisual::DoRender()
 {
-  PostMessage( m_hWnd, MSG_REPAINT, 0, 0 );
+  InvalidateRect( m_hWnd, nullptr, FALSE );
 }
 
 void WndVisual::OnOscilloscopeColour()

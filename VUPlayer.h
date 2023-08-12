@@ -36,6 +36,7 @@
 #include "WndToolbarPlaylist.h"
 #include "WndToolbarTrackEnd.h"
 #include "WndToolbarVolume.h"
+#include "WndToolbarLoudness.h"
 #include "WndTrackbarSeek.h"
 #include "WndTrackbarVolume.h"
 #include "WndTray.h"
@@ -81,7 +82,7 @@ public:
 	// 'instance' - module instance handle.
 	// 'hwnd' - main window handle.
 	// 'startupFilenames' - tracks to play (or the playlist to open) on startup.
-	// 'portable' - whether to run in 'portable' mode (i.e. no persistent database).
+	// 'portable' - whether to run in 'portable' mode (i.e. no persistent metadata).
 	// 'databaseMode' - database access mode.
 	VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<std::wstring>& startupFilenames,
 		const bool portable, const Database::Mode databaseMode );
@@ -389,6 +390,9 @@ private:
 
 	// Toolbar (volume/pitch).
 	WndToolbarVolume m_ToolbarVolume;
+
+  // Toolbar (loudness normalisation)
+  WndToolbarLoudness m_ToolbarLoudness;
 
 	// Counter control.
 	WndCounter m_Counter;

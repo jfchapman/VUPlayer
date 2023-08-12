@@ -147,7 +147,7 @@
     <ClInclude Include="OptionsGeneral.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="OptionsMod.h">
+    <ClInclude Include="OptionsMixing.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WndTray.h">
@@ -276,9 +276,6 @@
     <ClInclude Include="OpusComment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="OptionsLoudness.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="GainCalculator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -368,6 +365,9 @@
     </ClInclude>
     <ClInclude Include="libs\sqlite-3.42.0\sqlite3.h">
       <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="WndToolbarLoudness.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -485,7 +485,7 @@
     <ClCompile Include="OptionsGeneral.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="OptionsMod.cpp">
+    <ClCompile Include="OptionsMixing.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WndTray.cpp">
@@ -608,9 +608,6 @@
     <ClCompile Include="OpusComment.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="OptionsLoudness.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="GainCalculator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -682,6 +679,9 @@
     </ClCompile>
     <ClCompile Include="libs\sqlite-3.42.0\sqlite3.c">
       <Filter>Third Party</Filter>
+    </ClCompile>
+    <ClCompile Include="WndToolbarLoudness.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -805,6 +805,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\balance.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\loudness.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

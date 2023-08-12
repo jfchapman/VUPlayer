@@ -1740,3 +1740,20 @@ void Settings::SetOpenMPTSettings( const bool fadeout, const long separation, co
   WriteSetting<long>( "openmptRamping", ramping );
   WriteSetting<long>( "openmptInterpolation", interpolation ); 
 }
+
+bool Settings::GetLoudnessNormalisation()
+{
+  bool enabled = false;
+  if ( const auto setting = ReadSetting<bool>( "LoudnessNormalisation" ) ) {
+    enabled = *setting;
+  } else if ( const auto gainMode = ReadSetting<GainMode>( "GainMode" ) ) {
+    // If the loudness normalisation setting is not present, initialise it based on the gain mode.
+	  enabled = ( GainMode::Track == *gainMode ) || ( GainMode::Album == *gainMode );
+  }
+  return enabled;
+}
+
+void Settings::SetLoudnessNormalisation( const bool enable )
+{
+	WriteSetting( "LoudnessNormalisation", enable );
+}

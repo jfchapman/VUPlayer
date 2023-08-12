@@ -138,7 +138,13 @@ public:
 	// Sets whether crossfade is enabled.
 	void SetCrossfade( const bool enabled );
 
-	// Called when 'mediaInfo' is updated.
+	// Gets whether loudness normalisation is enabled.
+	bool GetLoudnessNormalisation() const;
+
+	// Sets whether loudness normalisation is enabled.
+	void SetLoudnessNormalisation( const bool enabled );
+
+  // Called when 'mediaInfo' is updated.
 	// Returns whether the currently playing item has changed.
 	bool OnUpdatedMedia( const MediaInfo& mediaInfo );
 
@@ -446,6 +452,9 @@ private:
 
 	// Gain preamp in dB.
 	float m_GainPreamp;
+
+  // Indicates whether loudness normalisation is enabled.
+  bool m_LoudnessNormalisation;
 
 	// Indicates whether the 'stop at track end' setting should be reset when playback ends.
 	bool m_RetainStopAtTrackEnd;

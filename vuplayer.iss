@@ -3,7 +3,7 @@
 
 #define MyAppName "VUPlayer"
 #define MyAppVersion "4.16"
-#define MyAppFullVersion "4.16.0.0"
+#define MyAppFullVersion "4.17.0.0"
 #define MyAppMainVersion "4"
 #define MyAppDefaultDir "VUPlayer 4"
 #define MyAppPublisher "James Chapman"

@@ -3,8 +3,7 @@
 #include "OptionsArtwork.h"
 #include "OptionsGeneral.h"
 #include "OptionsHotkeys.h"
-#include "OptionsMod.h"
-#include "OptionsLoudness.h"
+#include "OptionsMixing.h"
 #include "OptionsTaskbar.h"
 
 #include "resource.h"
@@ -77,14 +76,13 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	m_Settings( settings ),
 	m_Output( output )
 {
-	const UINT pageCount = 6;
+	const UINT pageCount = 5;
 	std::vector<HPROPSHEETPAGE> pages( pageCount );
 
 	OptionsGeneral optionsGeneral( instance, settings, output );
 	OptionsTaskbar optionsTaskbar( instance, settings, output );
 	OptionsHotkeys optionsHotkeys( instance, settings, output );
-	OptionsMod optionsMod( instance, settings, output );
-	OptionsLoudness optionsLoudness( instance, settings, output );
+	OptionsMixing optionsMixing( instance, settings, output );
 	OptionsArtwork optionsArtwork( instance, settings, output );
 
 	// General property page
@@ -117,25 +115,15 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propPageHotkeys.lParam = reinterpret_cast<LPARAM>( &optionsHotkeys );
 	pages.at( 2 ) = CreatePropertySheetPage( &propPageHotkeys );
 
-	// MOD Music property page
-	PROPSHEETPAGE propPageMODMusic = {};
-	propPageMODMusic.dwSize = sizeof( PROPSHEETPAGE );
-	propPageMODMusic.dwFlags = PSP_DEFAULT;
-	propPageMODMusic.hInstance = instance;
-	propPageMODMusic.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_MOD );
-	propPageMODMusic.pfnDlgProc = OptionsProc;
-	propPageMODMusic.lParam = reinterpret_cast<LPARAM>( &optionsMod );
-	pages.at( 3 ) = CreatePropertySheetPage( &propPageMODMusic );
-
-	// Loudness property page
-	PROPSHEETPAGE propPageLoudness = {};
-	propPageLoudness.dwSize = sizeof( PROPSHEETPAGE );
-	propPageLoudness.dwFlags = PSP_DEFAULT;
-	propPageLoudness.hInstance = instance;
-	propPageLoudness.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_GAIN );
-	propPageLoudness.pfnDlgProc = OptionsProc;
-	propPageLoudness.lParam = reinterpret_cast<LPARAM>( &optionsLoudness );
-	pages.at( 4 ) = CreatePropertySheetPage( &propPageLoudness );
+	// Mixing property page
+	PROPSHEETPAGE propPageMixing = {};
+	propPageMixing.dwSize = sizeof( PROPSHEETPAGE );
+	propPageMixing.dwFlags = PSP_DEFAULT;
+	propPageMixing.hInstance = instance;
+	propPageMixing.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_MIXING );
+	propPageMixing.pfnDlgProc = OptionsProc;
+	propPageMixing.lParam = reinterpret_cast<LPARAM>( &optionsMixing );
+	pages.at( 3 ) = CreatePropertySheetPage( &propPageMixing );
 
 	// Artwork property page
 	PROPSHEETPAGE propPageArtwork = {};
@@ -145,7 +133,7 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propPageArtwork.pszTemplate = MAKEINTRESOURCE( IDD_OPTIONS_ARTWORK );
 	propPageArtwork.pfnDlgProc = OptionsProc;
 	propPageArtwork.lParam = reinterpret_cast<LPARAM>( &optionsArtwork );
-	pages.at( 5 ) = CreatePropertySheetPage( &propPageArtwork );
+	pages.at( 4 ) = CreatePropertySheetPage( &propPageArtwork );
 
 	PROPSHEETHEADER propSheetHeader = {};
 	propSheetHeader.dwSize = sizeof( PROPSHEETHEADER );

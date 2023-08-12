@@ -91,6 +91,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_ToolbarConvert( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
 	m_ToolbarTrackEnd( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
 	m_ToolbarVolume( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
+  m_ToolbarLoudness( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
 	m_Counter( m_hInst, m_Rebar.GetWindowHandle(), m_Settings, m_Output ),
 	m_Splitter( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Tree.GetWindowHandle(), m_Visual.GetWindowHandle(), m_List.GetWindowHandle(), m_Settings ),
 	m_Tray( m_hInst, m_hWnd, m_Library, m_Settings, m_Output, m_Tree, m_List ),
@@ -533,6 +534,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_ToolbarOptions.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarInfo.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarCrossfade.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
+    m_ToolbarLoudness.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarFlow.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarPlayback.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarTrackEnd.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
@@ -876,6 +878,10 @@ void VUPlayer::OnCommand( const int commandID )
 			m_Output.SetCrossfade( !m_Output.GetCrossfade() );
 			break;
 		}
+		case ID_CONTROL_LOUDNESS : {
+			m_Output.SetLoudnessNormalisation( !m_Output.GetLoudnessNormalisation() );
+			break;
+		}
 		case ID_CONTROL_RANDOMPLAY : {
 			m_Output.SetRandomPlay( !m_Output.GetRandomPlay() );
 			break;
@@ -1152,6 +1158,7 @@ void VUPlayer::OnCommand( const int commandID )
 		case ID_TOOLBAR_INFO :
 		case ID_TOOLBAR_EQ :
 		case ID_TOOLBAR_CROSSFADE :
+    case ID_TOOLBAR_LOUDNESS :
 		case ID_TOOLBAR_TRACKEND :
 		case ID_TOOLBAR_FLOW :
 		case ID_TOOLBAR_PLAYBACK : {
@@ -1259,6 +1266,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		CheckMenuItem( menu, ID_TOOLBAR_INFO, m_Settings.GetToolbarEnabled( m_ToolbarInfo.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
 		CheckMenuItem( menu, ID_TOOLBAR_EQ, m_Settings.GetToolbarEnabled( m_ToolbarEQ.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
 		CheckMenuItem( menu, ID_TOOLBAR_CROSSFADE, m_Settings.GetToolbarEnabled( m_ToolbarCrossfade.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
+		CheckMenuItem( menu, ID_TOOLBAR_LOUDNESS, m_Settings.GetToolbarEnabled( m_ToolbarLoudness.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
 		CheckMenuItem( menu, ID_TOOLBAR_TRACKEND, m_Settings.GetToolbarEnabled( m_ToolbarTrackEnd.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
 		CheckMenuItem( menu, ID_TOOLBAR_FLOW, m_Settings.GetToolbarEnabled( m_ToolbarFlow.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
 		CheckMenuItem( menu, ID_TOOLBAR_PLAYBACK, m_Settings.GetToolbarEnabled( m_ToolbarPlayback.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
@@ -1365,11 +1373,14 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const UINT checkFadeOut = isFadeOut ? MF_CHECKED : MF_UNCHECKED;
 		const UINT checkFadeToNext = isFadeToNext ? MF_CHECKED : MF_UNCHECKED;
 		const UINT checkCrossfade = isCrossfade ? MF_CHECKED : MF_UNCHECKED;
+    const UINT checkLoudness = m_Output.GetLoudnessNormalisation() ? MF_CHECKED : MF_UNCHECKED;
+    
 		CheckMenuItem( menu, ID_CONTROL_STOPTRACKEND, MF_BYCOMMAND | checkStopAtTrackEnd );
 		CheckMenuItem( menu, ID_CONTROL_MUTE, MF_BYCOMMAND | checkMuted );
 		CheckMenuItem( menu, ID_CONTROL_FADEOUT, MF_BYCOMMAND | checkFadeOut );
 		CheckMenuItem( menu, ID_CONTROL_FADETONEXT, MF_BYCOMMAND | checkFadeToNext );
 		CheckMenuItem( menu, ID_CONTROL_CROSSFADE, MF_BYCOMMAND | checkCrossfade );
+    CheckMenuItem( menu, ID_CONTROL_LOUDNESS, MF_BYCOMMAND | checkLoudness );
 
 		const UINT enableSkip = ( Output::State::Stopped != outputState ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_CONTROL_SKIPBACKWARDS, MF_BYCOMMAND | enableSkip );
@@ -2005,6 +2016,7 @@ void VUPlayer::SaveSettings()
 	m_Settings.SetVolume( m_Output.GetVolume() );
 	m_Settings.SetPlaybackSettings( m_Output.GetRandomPlay(), m_Output.GetRepeatTrack(), m_Output.GetRepeatPlaylist(), m_Output.GetCrossfade() );
 	m_Settings.SetOutputControlType( static_cast<int>( m_VolumeControl.GetType() ) );
+  m_Settings.SetLoudnessNormalisation( m_Output.GetLoudnessNormalisation() );
 
 	m_Settings.SetStopAtTrackEnd( m_Settings.GetRetainStopAtTrackEnd() ? m_Output.GetStopAtTrackEnd() : false );
 
@@ -2039,6 +2051,7 @@ void VUPlayer::InitialiseRebar()
 	m_Rebar.AddItem( &m_ToolbarInfo );
 	m_Rebar.AddItem( &m_ToolbarEQ );
 	m_Rebar.AddItem( &m_ToolbarCrossfade );
+  m_Rebar.AddItem( &m_ToolbarLoudness );
 	m_Rebar.AddItem( &m_ToolbarTrackEnd );
 	m_Rebar.AddItem( &m_ToolbarFlow );
 	m_Rebar.AddItem( &m_ToolbarPlayback );
