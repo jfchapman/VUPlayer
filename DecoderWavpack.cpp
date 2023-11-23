@@ -42,9 +42,9 @@ long DecoderWavpack::Read( float* buffer, const long sampleCount )
 	return samplesRead;
 }
 
-float DecoderWavpack::Seek( const float position )
+double DecoderWavpack::Seek( const double position )
 {
-	float seekPosition = position;
+	double seekPosition = position;
 	const int64_t samplePosition = static_cast<int64_t>( position * GetSampleRate() );
 	if ( 0 == WavpackSeekSample64( m_Context, samplePosition ) ) {
 		seekPosition = 0;

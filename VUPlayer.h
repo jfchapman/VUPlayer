@@ -195,8 +195,8 @@ public:
 	// Returns the EQ modeless dialog window handle.
 	HWND GetEQ() const;
 
-	// Performs a MusicBrainz query for the current Audio CD.
-	void OnMusicBrainzQuery();
+	// Performs a MusicBrainz query for the current Audio CD, or a specific 'playlist'.
+	void OnMusicBrainzQuery( Playlist* const playlist = nullptr );
 
 	// Called when a MusicBrainz query is received.
 	// 'result' - the query result.

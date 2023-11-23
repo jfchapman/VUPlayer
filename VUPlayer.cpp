@@ -127,8 +127,11 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	if ( OnCommandLineFiles( startupFilenames ) ) {
 		m_List.SetPlaylist( m_Tree.GetSelectedPlaylist() );
 	} else {
-		const std::wstring initialFilename = m_Settings.GetStartupFilename();
-		m_List.SetPlaylist( m_Tree.GetSelectedPlaylist(), false, initialFilename );
+		const auto& [ initialFilename, cueStart, cueEnd ] = m_Settings.GetStartupFile();
+    MediaInfo startupInfo( initialFilename );
+    startupInfo.SetCueStart( cueStart );
+    startupInfo.SetCueEnd( cueEnd );
+		m_List.SetPlaylist( m_Tree.GetSelectedPlaylist(), false, startupInfo );
 	}
 
 	m_Status.SetPlaylist( m_List.GetPlaylist() );
@@ -583,14 +586,14 @@ void VUPlayer::OnPlaylistItemAdded( Playlist* playlist, const Playlist::Item& it
 		if ( Playlist::Type::All != playlist->GetType() ) {
 			const Playlist::Ptr playlistAll = m_Tree.GetPlaylistAll();
 			if ( playlistAll ) {
-				playlistAll->AddPending( item.Info.GetFilename() );
+				playlistAll->AddPending( item.Info );
 			}
 		}
 
 		if ( IsURL( item.Info.GetFilename() ) ) {
 			const Playlist::Ptr playlistStreams = m_Tree.GetPlaylistStreams();
 			if ( playlistStreams ) {
-				playlistStreams->AddPending( item.Info.GetFilename() );
+				playlistStreams->AddPending( item.Info );
 			}
 		}
 
@@ -800,7 +803,7 @@ void VUPlayer::OnCommand( const int commandID )
 				const Output::State state = m_Output.GetState();
 				if ( ( Output::State::Playing == state ) || ( Output::State::Paused == state ) ) {
 					const Output::Item item = m_Output.GetCurrentPlaying();
-					float position = item.Position - s_SkipDuration;
+					const double position = item.Position - s_SkipDuration;
 					if ( position < 0 ) {
 						m_Output.Previous( true /*forcePrevious*/, -s_SkipDuration );
 					} else {
@@ -816,7 +819,7 @@ void VUPlayer::OnCommand( const int commandID )
 				const Output::State state = m_Output.GetState();
 				if ( ( Output::State::Playing == state ) || ( Output::State::Paused == state ) ) {
 					const Output::Item item = m_Output.GetCurrentPlaying();
-					float position = item.Position + s_SkipDuration;
+					const double position = item.Position + s_SkipDuration;
 					if ( position > item.PlaylistItem.Info.GetDuration() ) {
 						m_Output.Next();
 					} else {
@@ -982,7 +985,7 @@ void VUPlayer::OnCommand( const int commandID )
 			m_Maintainer.Start( 
         [ playlistAll = m_Tree.GetPlaylistAll() ] ( const std::filesystem::path& file ) {
 				  if ( playlistAll ) {
-					  playlistAll->AddPending( file );
+					  playlistAll->AddPending( MediaInfo( file ) );
 				  }
 			  },
         [ this ] ( const MediaInfo::List& removedFiles ) {
@@ -1222,7 +1225,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | gainCalculatorEnabled );
 		const UINT refreshLibraryEnabled = m_Maintainer.IsActive() ? MF_DISABLED : MF_ENABLED;
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
-		const UINT musicbrainzEnabled = ( ( Playlist::Type::CDDA == playlistType ) && IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
+		const UINT musicbrainzEnabled = ( playlist && playlist->AllowMusicBrainzQueries() && IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
 		const int bufferSize = 256;
@@ -1693,7 +1696,7 @@ void VUPlayer::OnAddToFavourites()
 	if ( favourites ) {
 		const Playlist::Items selectedItems = m_List.GetSelectedPlaylistItems();
 		for ( const auto& item : selectedItems ) {
-			favourites->AddPending( item.Info.GetFilename() );
+			favourites->AddPending( item.Info );
 		}
 	}
 }
@@ -1706,7 +1709,7 @@ void VUPlayer::OnAddToPlaylist( const UINT command )
 		if ( playlist ) {
 			const Playlist::Items selectedItems = m_List.GetSelectedPlaylistItems();
 			for ( const auto& item : selectedItems ) {
-				playlist->AddPending( item.Info.GetFilename() );
+				playlist->AddPending( item.Info );
 			}
 		}
 	}
@@ -1729,7 +1732,7 @@ void VUPlayer::InsertAddToPlaylists( const HMENU menu, const UINT insertAfterIte
 				const Playlist::Ptr currentPlaylist = m_List.GetPlaylist();
 				const bool enableMenu = ( m_List.GetSelectedCount() > 0 ) && currentPlaylist && ( Playlist::Type::CDDA != currentPlaylist->GetType() );
 				if ( enableMenu ) {
-					const Playlists playlists = m_Tree.GetPlaylists();
+					const Playlists playlists = m_Tree.GetUserPlaylists();
 					for ( const auto& playlist : playlists ) {
 						if ( playlist ) {
 							m_AddToPlaylistMenuMap.insert( PlaylistMenuMap::value_type( commandID, playlist ) );
@@ -1839,22 +1842,31 @@ void VUPlayer::ScrobblerAuthorise()
 	m_Scrobbler.Authorise();
 }
 
-void VUPlayer::OnMusicBrainzQuery()
+void VUPlayer::OnMusicBrainzQuery( Playlist* const cueList )
 {
-	const Playlist::Ptr playlist = m_List.GetPlaylist();
-	if ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) {
-		const Playlist::Items playlistItems = playlist->GetItems();
-		if ( !playlistItems.empty() ) {
-			const long cddbID = playlistItems.front().Info.GetCDDB();
-			const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
-			for ( const auto& drive : drives ) {
-				if ( cddbID == drive.second.GetCDDB() ) {
-					const auto [ discID, toc ] = drives.begin()->second.GetMusicBrainzID();
-					m_MusicBrainz.Query( discID, toc, true /*forceDialog*/ );
-					break;
-				}
-			}
-		}
+  if ( !IsMusicBrainzEnabled() )
+    return;
+
+  if ( nullptr != cueList ) {
+    if ( const auto id = CDDAMedia::GetMusicBrainzID( cueList ) ) {
+      m_MusicBrainz.Query( id->first, id->second, true /*forceDialog*/, cueList->GetID() );
+    }
+  } else if ( const Playlist::Ptr playlist = m_List.GetPlaylist(); playlist ) {
+    if ( Playlist::Type::CDDA == playlist->GetType() ) {
+		  if ( const Playlist::Items playlistItems = playlist->GetItems(); !playlistItems.empty() ) {
+			  const long cddbID = playlistItems.front().Info.GetCDDB();
+			  const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
+			  for ( const auto& drive : drives ) {
+				  if ( cddbID == drive.second.GetCDDB() ) {
+					  const auto [ discID, toc ] = drives.begin()->second.GetMusicBrainzID();
+					  m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, playlist->GetID() );
+					  break;
+				  }
+			  }
+      }
+    } else if ( const auto id = CDDAMedia::GetMusicBrainzID( playlist.get() ) ) {
+      m_MusicBrainz.Query( id->first, id->second, true /*forceDialog*/, playlist->GetID() );
+    }
 	}
 }
 
@@ -1862,40 +1874,57 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
 {
 	const int selectedResult = ( ( 1 == result.Albums.size() ) && !forceDialog ) ? 0 : m_MusicBrainz.ShowMatchesDialog( result );
 	if ( ( selectedResult >= 0 ) && ( selectedResult < static_cast<int>( result.Albums.size() ) ) ) {
-		const MusicBrainz::Album& album = result.Albums[ selectedResult ];
-		const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
-		for ( const auto& drive : drives ) {
-			const auto [ discID, toc ] = drive.second.GetMusicBrainzID();
-			if ( result.DiscID == discID ) {
-				const CDDAMedia& cddaMedia = drive.second;
-				const Playlist::Ptr playlist = cddaMedia.GetPlaylist();
-				if ( playlist ) {
-					const Playlist::Items items = playlist->GetItems();
-					for ( const auto& item : items ) {
-						const MediaInfo previousMediaInfo( item.Info );
-						MediaInfo mediaInfo( item.Info );
-						mediaInfo.SetAlbum( album.Title );
-						mediaInfo.SetArtist( album.Artist );
-						mediaInfo.SetYear( album.Year );
+    Playlist::Ptr playlist;
+    
+    const auto userPlaylists = m_Tree.GetUserPlaylists();
+    for ( const auto& userPlaylist : userPlaylists ) {
+      if ( userPlaylist && ( userPlaylist->GetID() == result.PlaylistID ) ) {
+        playlist = userPlaylist;
+        break;
+      }
+    }
 
-						mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
+    if ( !playlist ) {
+		  const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
+		  for ( const auto& drive : drives ) {
+			  const auto [ discID, toc ] = drive.second.GetMusicBrainzID();
+			  if ( result.DiscID == discID ) {
+			  	const CDDAMedia& cddaMedia = drive.second;
+				  playlist = cddaMedia.GetPlaylist();
+        }
+      }
+    }
 
-						const auto trackIter = album.Tracks.find( mediaInfo.GetTrack() );
-						if ( album.Tracks.end() != trackIter ) {
-							const auto& [ trackTitle, trackArtist, trackYear ] = trackIter->second;
-							mediaInfo.SetTitle( trackTitle );
-							if ( !trackArtist.empty() ) {
-								mediaInfo.SetArtist( trackArtist );
-							}
-							if ( trackYear > 0 ) {
-								mediaInfo.SetYear( trackYear );
-							}
-						}
-						m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
+		if ( playlist ) {
+  		const MusicBrainz::Album& album = result.Albums[ selectedResult ];
+			const Playlist::Items items = playlist->GetItems();
+			for ( const auto& item : items ) {
+				const MediaInfo previousMediaInfo( item.Info );
+				MediaInfo mediaInfo( item.Info );
+				mediaInfo.SetAlbum( album.Title );
+				mediaInfo.SetArtist( album.Artist );
+				mediaInfo.SetYear( album.Year );
+
+				mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
+
+				const auto trackIter = album.Tracks.find( mediaInfo.GetTrack() );
+				if ( album.Tracks.end() != trackIter ) {
+					const auto& [ trackTitle, trackArtist, trackYear ] = trackIter->second;
+					mediaInfo.SetTitle( trackTitle );
+					if ( !trackArtist.empty() ) {
+						mediaInfo.SetArtist( trackArtist );
+					}
+					if ( trackYear > 0 ) {
+						mediaInfo.SetYear( trackYear );
 					}
 				}
-				break;
+				m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
 			}
+
+      if ( ( Playlist::Type::User == playlist->GetType() ) && ( !album.Title.empty() && ( playlist->GetName() != album.Title ) ) ) {
+        playlist->SetName( album.Title );
+        m_Tree.RefreshUserPlaylistLabel( playlist );
+      }
 		}
 	}
 }
@@ -2011,7 +2040,7 @@ void VUPlayer::SaveSettings()
 
 	m_Tree.SaveStartupPlaylist( playlist );
 
-	m_Settings.SetStartupFilename( info.GetFilename() );
+	m_Settings.SetStartupFile( info.GetFilename(), info.GetCueStart(), info.GetCueEnd() );
 
 	m_Settings.SetVolume( m_Output.GetVolume() );
 	m_Settings.SetPlaybackSettings( m_Output.GetRandomPlay(), m_Output.GetRepeatTrack(), m_Output.GetRepeatPlaylist(), m_Output.GetCrossfade() );

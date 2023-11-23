@@ -356,7 +356,7 @@ void WndVisual::OnPaint( const PAINTSTRUCT& ps )
 		visual->OnPaint();
 #ifdef DEBUG_PERFORMANCE
 		QueryPerformanceCounter( &perf2 );
-		const float msec = 1000 * float( perf2.QuadPart - perf1.QuadPart ) / perfFreq.QuadPart;
+		const float msec = 1000 * static_cast<float>( perf2.QuadPart - perf1.QuadPart ) / perfFreq.QuadPart;
 		const std::wstring debugStr = L"WndVisual::OnPaint - " + std::to_wstring( msec ) + L"ms\r\n";
 		OutputDebugString( debugStr.c_str() );
 #endif

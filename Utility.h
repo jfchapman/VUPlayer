@@ -48,7 +48,7 @@ std::wstring FilesizeToString( const HINSTANCE instance, const long long filesiz
 // 'instance' - module instance handle.
 // 'duration' - duration to convert.
 // 'colonDelimited' - true to delimit with colons, false to delimit with resource strings.
-std::wstring DurationToString( const HINSTANCE instance, const float duration, const bool colonDelimited );
+std::wstring DurationToString( const HINSTANCE instance, const double duration, const bool colonDelimited );
 
 // Converts a byte array to a base64 encoded string.
 // 'bytes' - byte array.
@@ -243,3 +243,23 @@ inline long long GetCurrentTimestamp()
 	GetSystemTimeAsFileTime( &fileTime );
 	return ( static_cast<long long>( fileTime.dwHighDateTime ) << 32 ) + fileTime.dwLowDateTime;
 }
+
+// Returns 'str' stripped of any leading or trailing whitespace.
+template <typename T>
+T StripWhitespace( const T& str )
+{
+  const T kWhitespace { ' ', '\t' };
+  const auto start = str.find_first_not_of( kWhitespace );
+  const auto end = str.find_last_not_of( kWhitespace );
+  if ( ( T::npos != start ) && ( T::npos != end ) )
+    return str.substr( start, 1 + end - start );
+  return {};
+}
+
+// Returns 'str' stripped of any enclosing double quotes.
+template <typename T>
+T StripQuotes( const T& str )
+{
+  return ( ( str.size() >= 2 ) && str.starts_with( '"' ) && str.ends_with( '"' ) ) ? str.substr( 1, str.size() - 2 ) : str;
+}
+

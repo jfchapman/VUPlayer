@@ -127,9 +127,9 @@ long DecoderOpus::Read( float* buffer, const long sampleCount )
 	return samplesRead;
 }
 
-float DecoderOpus::Seek( const float position )
+double DecoderOpus::Seek( const double position )
 {
 	const ogg_int64_t offset = static_cast<ogg_int64_t>( position * GetSampleRate() );
-	const float seekPosition = ( 0 == op_pcm_seek( m_OpusFile, offset ) ) ? position : 0;
+	const double seekPosition = ( 0 == op_pcm_seek( m_OpusFile, offset ) ) ? position : 0;
 	return seekPosition;
 }

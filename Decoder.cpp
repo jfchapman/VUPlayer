@@ -81,7 +81,7 @@ std::optional<float> Decoder::CalculateTrackGain( CanContinue canContinue, const
 		QueryPerformanceFrequency( &perfFreq );
 		QueryPerformanceCounter( &perfStart );
 
-		if ( secondsLimit > 0 ) {
+		if ( ( secondsLimit > 0 ) && !m_SampleStart ) {
 			Seek( m_Duration * 0.33f );
 		}
 
@@ -89,7 +89,7 @@ std::optional<float> Decoder::CalculateTrackGain( CanContinue canContinue, const
 		if ( nullptr != r128State ) {
 			const long sampleSize = 4096;
 			std::vector<float> buffer( sampleSize * m_Channels );
-			long samplesRead = Read( buffer.data(), sampleSize );
+			long samplesRead = ReadSamples( buffer.data(), sampleSize );
 			int errorState = EBUR128_SUCCESS;
 			while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) && canContinue() ) {
 				errorState = ebur128_add_frames_float( r128State, buffer.data(), static_cast<size_t>( samplesRead ) );
@@ -100,7 +100,7 @@ std::optional<float> Decoder::CalculateTrackGain( CanContinue canContinue, const
 						break;
 					}
 				}
-				samplesRead = Read( buffer.data(), sampleSize );
+				samplesRead = ReadSamples( buffer.data(), sampleSize );
 			}
 
 			if ( ( EBUR128_SUCCESS == errorState ) && canContinue() ) {
@@ -121,7 +121,7 @@ void Decoder::SkipSilence()
 	if ( m_Channels > 0 ) {
 		std::vector<float> buffer( m_Channels );
 		bool silence = true;
-		while ( silence && Read( buffer.data(), 1 /*sampleCount*/ ) > 0 ) {
+		while ( silence && ReadSamples( buffer.data(), 1 /*sampleCount*/ ) > 0 ) {
 			for ( auto sample = buffer.begin(); silence && ( sample != buffer.end() ); sample++ ) {
 				silence = ( 0 == *sample );
 			}
@@ -137,4 +137,42 @@ bool Decoder::SupportsStreamTitles() const
 std::pair<float /*seconds*/, std::wstring /*title*/> Decoder::GetStreamTitle()
 {
 	return {};
+}
+
+long Decoder::ReadSamples( float* buffer, const long requestedSamples )
+{
+  const long samplesToRead = m_SamplesRemaining ? static_cast<long>( std::min<int64_t>( requestedSamples, *m_SamplesRemaining ) ) : requestedSamples;
+  const long samplesRead = Read( buffer, samplesToRead );
+  if ( m_SamplesRemaining ) {
+    *m_SamplesRemaining -= samplesRead;
+  }
+  return samplesRead;
+}
+
+double Decoder::SetPosition( const double position )
+{
+  double offset = 0;
+  if ( m_SampleStart && ( GetSampleRate() > 0 ) ) {
+    m_SamplesRemaining.reset();
+    offset = static_cast<double>( *m_SampleStart ) / GetSampleRate();
+    if ( m_SampleEnd && ( *m_SampleEnd >= *m_SampleStart ) ) {
+      if ( const int64_t sampleCount = *m_SampleEnd - *m_SampleStart - static_cast<int64_t>( position * GetSampleRate() ); sampleCount > 0 ) {
+        m_SamplesRemaining = sampleCount;
+      }
+    }
+  }
+  return Seek( position + offset ) - offset;
+}
+
+void Decoder::SetCues( const std::optional<long>& cueStart, const std::optional<long>& cueEnd )
+{
+  // This should really be done in the constructor, but I've lazily put it here.
+  m_SampleStart = cueStart ? std::make_optional( static_cast<int64_t>( *cueStart ) * GetSampleRate() / 75 ) : std::nullopt;
+  m_SampleEnd = cueEnd ? std::make_optional( static_cast<int64_t>( *cueEnd ) * GetSampleRate() / 75 ) : std::nullopt;
+  if ( m_SampleStart && m_SampleEnd && ( *m_SampleEnd >= *m_SampleStart ) ) {
+    m_SamplesRemaining = *m_SampleEnd - *m_SampleStart;
+  }
+  if ( m_SampleStart ) {
+    SetPosition( 0 );
+  }
 }

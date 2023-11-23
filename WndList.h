@@ -52,8 +52,8 @@ public:
 
 	// Sets the current 'playlist'.
 	// 'initSelection' - whether to select the first playlist item (or the currently playing item if it's in the list).
-	// 'filename' - the filename to select.
-	void SetPlaylist( const Playlist::Ptr playlist, const bool initSelection = true, const std::wstring& filename = std::wstring() );
+	// 'fileToSelect' - the file to select.
+	void SetPlaylist( const Playlist::Ptr playlist, const bool initSelection = true, const std::optional<MediaInfo>& fileToSelect = std::nullopt );
 
 	// Called when an 'item' is added to the 'playlist' at a (0-based) 'position'.
 	void OnFileAdded( Playlist* playlist, const Playlist::Item& item, const int position );
@@ -207,7 +207,7 @@ private:
 
 	// Added item information.
 	struct AddedItem {
-		Playlist* Playlist;	// Playlist pointer.
+		Playlist* Playlist;   // Playlist pointer.
 		Playlist::Item Item;	// Playlist item.
 		int Position;					// Added item position (0-based).
 	};
@@ -221,8 +221,8 @@ private:
 	// Maps a column type to the column format.
 	using ColumnFormats = std::map<Playlist::Column,ColumnFormat>;
 
-	// Maps a filename to an item ID collection.
-	using FilenameToIDs = std::map<std::wstring, std::set<long>>;
+	// Maps a filename (with optional cues) to an item ID collection.
+	using FilenameToIDs = std::map<std::tuple<std::wstring /*filename*/, std::optional<long> /*cueStart*/, std::optional<long> /*cueEnd*/>, std::set<long>>;
 
 	// Maps an output state to an icon index.
 	using IconMap = std::map<Output::State, int>;
@@ -363,11 +363,11 @@ private:
 	// Cursor to set back when a drag operation finishes.
 	HCURSOR m_OldCursor;
 
-	// Maps a filename to an item ID collection.
+	// Maps a filename (with optional cues) to an item ID collection.
 	FilenameToIDs m_FilenameToIDs;
 
-	// The filename to select when setting the playlist.
-	std::wstring m_FilenameToSelect;
+	// The file to select when setting the playlist.
+	std::optional<MediaInfo> m_FileToSelect;
 
 	// Maps an output state to an icon index.
 	IconMap m_IconMap;

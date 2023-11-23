@@ -115,9 +115,9 @@ HWND WndCounter::GetWindowHandle()
 void WndCounter::Refresh()
 {
 	const Output::Item item = m_Output.GetCurrentPlaying();
-	float position = item.Position;
+	double position = item.Position;
 	if ( m_ShowRemaining ) {
-		const float duration = item.PlaylistItem.Info.GetDuration();
+		const double duration = item.PlaylistItem.Info.GetDuration();
 		if ( duration > position ) {
 			position = duration - position;
 		} else {
@@ -328,7 +328,7 @@ void WndCounter::SetWidth( Settings& settings )
 {
 	m_Width = std::nullopt;
 	if ( const auto widthIter = s_CounterWidths.find( settings.GetToolbarSize() ); s_CounterWidths.end() != widthIter ) {
-		m_Width = int( widthIter->second * GetDPIScaling() );
+		m_Width = static_cast<int>( widthIter->second * GetDPIScaling() );
 	}
 }
 

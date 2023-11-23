@@ -26,7 +26,7 @@ public:
 
 	// Seeks to a 'position' in the stream, in seconds.
 	// Returns the new position in seconds.
-	float Seek( const float position ) override;
+	double Seek( const double position ) override;
 
 	// Returns the track gain, in dB, or nullopt if the calculation failed.
 	// 'canContinue' - callback which returns whether the calculation can continue.

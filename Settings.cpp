@@ -234,15 +234,15 @@ void Settings::UpdatePlaylistTable( const std::string& table )
 		// Create the playlists table (if necessary).
 		std::string createTableQuery = "CREATE TABLE IF NOT EXISTS \"";
 		createTableQuery += table;
-		createTableQuery += "\"(File,Pending);";
+		createTableQuery += "\"(File,Pending,CueStart,CueEnd);";
 		sqlite3_exec( database, createTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 
 		// Check the columns in the playlists table.
-		std::string columnsInfoQuery = "PRAGMA table_info('";
+    std::set<std::string> missingColumns = { "File", "Pending", "CueStart", "CueEnd" };
+    std::string columnsInfoQuery = "PRAGMA table_info('";
 		columnsInfoQuery += table + "')";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, columnsInfoQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			std::set<std::string> columns;
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
 				const int columnCount = sqlite3_column_count( stmt );
 				for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
@@ -250,7 +250,7 @@ void Settings::UpdatePlaylistTable( const std::string& table )
 					if ( columnName == "name" ) {
 						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
 						  const std::string name = reinterpret_cast<const char*>( text );
-						  columns.insert( name );
+						  missingColumns.erase( name );
             }
 						break;
 					}
@@ -258,12 +258,10 @@ void Settings::UpdatePlaylistTable( const std::string& table )
 			}
 			sqlite3_finalize( stmt );
 
-			if ( ( columns.find( "File" ) == columns.end() ) || ( columns.find( "Pending" ) == columns.end() ) ) {
-				// Drop the table and recreate
-				std::string dropTableQuery = "DROP TABLE \"";
-				dropTableQuery += table + "\";";
-				sqlite3_exec( database, dropTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-				sqlite3_exec( database, createTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+			for ( auto column = missingColumns.rbegin(); missingColumns.rend() != column; column++ ) {
+		    std::string addColumnQuery = "ALTER TABLE \"" + table + "\" ADD COLUMN ";
+			  addColumnQuery += *column + ";";
+				sqlite3_exec( database, addColumnQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 			}
 		}
 	}
@@ -649,27 +647,37 @@ void Settings::ReadPlaylistFiles( Playlist& playlist )
 			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
 					bool pending = false;
-					std::wstring filename;
+					MediaInfo mediaInfo;
 					const int columnCount = sqlite3_column_count( stmt );
 					for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 						const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 						if ( columnName == "File" ) {
 							if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
-								filename = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
+								mediaInfo.SetFilename( UTF8ToWideString( reinterpret_cast<const char*>( text ) ) );
 							}
 						} else if ( columnName == "Pending" ) {
 							pending = ( 0 != sqlite3_column_int( stmt, columnIndex ) );
-						}
+						} else if ( columnName == "CueStart" ) {
+              if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
+                mediaInfo.SetCueStart( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
+              }              
+						} else if ( columnName == "CueEnd" ) {
+              if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
+                mediaInfo.SetCueEnd( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
+              }              
+            }
 					}
-					if ( !filename.empty() ) {
+					if ( !mediaInfo.GetFilename().empty() ) {
 						if ( pending ) {
-							playlist.AddPending( filename, false /*startPendingThread*/ );
+							playlist.AddPending( mediaInfo, false /*startPendingThread*/ );
 						} else {
-							MediaInfo mediaInfo( filename );
 							if ( m_Library.GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
 								playlist.AddItem( mediaInfo );
+              } else if ( mediaInfo.GetCueStart() ) {
+                m_Library.GetDecoderInfo( mediaInfo, false /*getTags*/ );
+								playlist.AddItem( mediaInfo );
 							} else {
-								playlist.AddPending( filename, false /*startPendingThread*/ );
+								playlist.AddPending( mediaInfo, false /*startPendingThread*/ );
 							}
 						}
 					}
@@ -725,7 +733,7 @@ void Settings::SavePlaylist( Playlist& playlist )
 			sqlite3_exec( database, "BEGIN TRANSACTION;", NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 			std::string insertFileQuery = "INSERT INTO \"";
 			insertFileQuery += playlistID;
-			insertFileQuery += "\" (File, Pending) VALUES (?1,?2);";
+			insertFileQuery += "\" (File,Pending,CueStart,CueEnd) VALUES (?1,?2,?3,?4);";
 			sqlite3_stmt* stmt = nullptr;
 			if ( SQLITE_OK == sqlite3_prepare_v2( database, insertFileQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 				bool pending = false;
@@ -735,17 +743,37 @@ void Settings::SavePlaylist( Playlist& playlist )
 					if ( !filename.empty() ) {
 						sqlite3_bind_text( stmt, 1 /*param*/, filename.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 						sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( pending ) );
+            if ( iter.Info.GetCueStart() ) {
+              sqlite3_bind_int64( stmt, 3 /*param*/, *iter.Info.GetCueStart() );
+            } else {
+              sqlite3_bind_null( stmt, 3 /*param*/ );
+            }
+            if ( iter.Info.GetCueEnd() ) {
+              sqlite3_bind_int64( stmt, 4 /*param*/, *iter.Info.GetCueEnd() );
+            } else {
+              sqlite3_bind_null( stmt, 4 /*param*/ );
+            }
 						sqlite3_step( stmt );
 						sqlite3_reset( stmt );
 					}
 				}
 				pending = true;
-				const std::list<std::wstring> pendingList = playlist.GetPending();
+				const std::list<MediaInfo> pendingList = playlist.GetPending();
 				for ( const auto& iter : pendingList ) {
-					const std::string filename = WideStringToUTF8( iter );
+					const std::string filename = WideStringToUTF8( iter.GetFilename() );
 					if ( !filename.empty() ) {
 						sqlite3_bind_text( stmt, 1 /*param*/, filename.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 						sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( pending ) );
+            if ( iter.GetCueStart() ) {
+              sqlite3_bind_int64( stmt, 3 /*param*/, *iter.GetCueStart() );
+            } else {
+              sqlite3_bind_null( stmt, 3 /*param*/ );
+            }
+            if ( iter.GetCueEnd() ) {
+              sqlite3_bind_int64( stmt, 4 /*param*/, *iter.GetCueEnd() );
+            } else {
+              sqlite3_bind_null( stmt, 4 /*param*/ );
+            }
 						sqlite3_step( stmt );
 						sqlite3_reset( stmt );
 					}
@@ -936,14 +964,19 @@ void Settings::SetStartupPlaylist( const std::wstring& playlist )
   WriteSetting( "StartupPlaylist", playlist );
 }
 
-std::wstring Settings::GetStartupFilename()
+std::tuple<std::wstring, long, long> Settings::GetStartupFile()
 {
-  return ReadSetting<std::wstring>( "StartupFilename" ).value_or( std::wstring() );
+  const auto filename = ReadSetting<std::wstring>( "StartupFilename" ).value_or( std::wstring() );
+  const auto cueStart = ReadSetting<long>( "StartupCueStart" ).value_or( -1 );
+  const auto cueEnd = ReadSetting<long>( "StartupCueEnd" ).value_or( -1 );
+  return std::make_tuple( filename, cueStart, cueEnd );
 }
 
-void Settings::SetStartupFilename( const std::wstring& filename )
+void Settings::SetStartupFile( const std::wstring& filename, const std::optional<long>& cueStart, const std::optional<long>& cueEnd )
 {
   WriteSetting( "StartupFilename", filename );
+  WriteSetting( "StartupCueStart", cueStart.value_or( -1 ) );
+  WriteSetting( "StartupCueEnd", cueEnd.value_or( -1 ) );
 }
 
 void Settings::GetCounterSettings( LOGFONT& font, COLORREF& fontColour, bool& showRemaining )

@@ -105,7 +105,7 @@ public:
 	Items GetItems();
 
 	// Returns the pending files.
-	std::list<std::wstring> GetPending();
+	std::list<MediaInfo> GetPending();
 
 	// Returns the number of pending files.
 	int GetPendingCount();
@@ -163,9 +163,9 @@ public:
 	// 'addedAsDuplicate' - out, whether the item was added as a duplicate of an existing item (which is returned).
 	Item AddItem( const MediaInfo& mediaInfo, int& position, bool& addedAsDuplicate );
 
-	// Adds 'filename' to the list of pending files to be added to the playlist.
+	// Adds 'mediaInfo' to the list of pending media to be added to the playlist.
 	// 'startPendingThread' - whether to start the background thread to process pending files.
-	void AddPending( const std::wstring& filename, const bool startPendingThread = true );
+	void AddPending( const MediaInfo& mediaInfo, const bool startPendingThread = true );
 
 	// Adds a playlist 'filename' to this playlist.
 	// 'startPendingThread' - whether to start the background thread to process pending files.
@@ -240,8 +240,8 @@ public:
 	// Returns true if the item is in the playlist. 
 	bool ContainsItem( const Item& item );
 
-	// Returns whether the playlist contains 'filename'.
-	bool ContainsFilename( const std::wstring& filename );
+	// Returns whether the playlist contains 'filename' (with optional start & end cues).
+	bool ContainsFile( const std::wstring& filename, const std::optional<long>& cueStart = std::nullopt, const std::optional<long>& cueEnd = std::nullopt );
 
   // Performs a case insensitive search for a title in the playlist.
   // 'startIndex' - the index at which to start the search.
@@ -250,6 +250,9 @@ public:
   // 'wrap' - wraps round to the start of the playlist if a match is not found.
   // Returns the matching item position, or -1 if there was no match.
   int FindItem( const int startIndex, const std::wstring& searchTitle, const bool partial, const bool wrap );
+
+  // Returns whether MusicBrainz queries can be performed using this playlist.
+  bool AllowMusicBrainzQueries();
 
 private:
 	// Pending file thread proc.
@@ -288,6 +291,10 @@ private:
 	// Returns whether any pending files were added to this playlist.
 	bool AddPLS( const std::wstring& filename );
 
+  // Adds a CUE playlist 'filename' to this playlist.
+  // Returns whether any files were added to this playlist.
+  bool AddCUE( const std::wstring& filename );
+
   // Returns the position in the playlist of the 'itemID', or -1 if the item ID was not found.
   // (Internal method with no lock).
   int GetPositionNoLock( const long itemID );
@@ -301,25 +308,25 @@ private:
 	// The playlist.
 	Items m_Playlist;
 
-	// Pending files to be added to the playlist.
-	std::list<std::wstring> m_Pending;
+	// Pending media to be added to the playlist.
+	std::list<MediaInfo> m_Pending;
 
 	// Playlist mutex.
 	std::mutex m_MutexPlaylist;
 
-	// Pending files mutex.
+	// Pending media mutex.
 	std::mutex m_MutexPending;
 
-	// The thread for adding pending files to the playlist.
+	// The thread for adding pending media to the playlist.
 	HANDLE m_PendingThread;
 
-	// Event handle for terminating the pending file thread.
+	// Event handle for terminating the pending media thread.
 	HANDLE m_PendingStopEvent;
 
-	// Event handle for waking the pending file thread.
+	// Event handle for waking the pending media thread.
 	HANDLE m_PendingWakeEvent;
 
-	// Indicates whether the pending files thread should be restarted.
+	// Indicates whether the pending media thread should be restarted.
 	std::atomic<bool> m_RestartPendingThread;
 
 	// Media library.

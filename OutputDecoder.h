@@ -35,7 +35,7 @@ public:
 
 	// Seeks to a 'position' in the stream, in seconds.
 	// Returns the new position in seconds.
-	float Seek( const float position );
+	double Seek( const double position );
 
 	// Returns the sample rate.
 	long GetSampleRate() const;

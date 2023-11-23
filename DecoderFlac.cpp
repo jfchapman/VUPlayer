@@ -54,13 +54,13 @@ long DecoderFlac::Read( float* buffer, const long sampleCount )
 	return samplesRead;
 }
 
-float DecoderFlac::Seek( const float position )
+double DecoderFlac::Seek( const double position )
 {
-	float seekPosition = 0;
+	double seekPosition = 0;
 	m_FramePos = 0;
 	m_FLACFrame = {};
 	if ( ( GetSampleRate() > 0 ) && seek_absolute( static_cast<FLAC__uint64>( position * GetSampleRate() ) ) ) {
-		seekPosition = static_cast<float>( m_FLACFrame.header.number.sample_number ) / GetSampleRate();
+		seekPosition = static_cast<double>( m_FLACFrame.header.number.sample_number ) / GetSampleRate();
 	}	else {
 		reset();
     process_until_end_of_metadata();

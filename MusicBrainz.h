@@ -29,8 +29,9 @@ public:
 	// Query result.
 	struct Result
 	{
-		std::string DiscID;		// MusicBrainz Disc ID.
-		Albums Albums;				// Matching albums.
+		std::string DiscID;     // MusicBrainz Disc ID.
+    std::string PlaylistID; // Playlist ID.
+		Albums Albums;				  // Matching albums.
 	};
 
 	// 'instance' - module instance handle.
@@ -41,10 +42,11 @@ public:
 	virtual ~MusicBrainz();
 
 	// Performs a MusicBrainz query.
-	// 'discID' - MusicBrainz Disc ID
+	// 'discID' - MusicBrainz Disc ID.
 	// 'toc' - CD table of contents.
 	// 'forceDialog' - whether to show a dialog even for an exact match.
-	void Query( const std::string& discID, const std::string& toc, const bool forceDialog );
+  // 'playlistID' - playlist ID.
+  void Query( const std::string& discID, const std::string& toc, const bool forceDialog, const std::string& playlistID );
 
 	// Displays a dialog allowing one of the matches to be selected from the 'result'.
 	// Returns the album index of the selected match, or -1 if a match was not selected.
@@ -69,12 +71,13 @@ private:
 	// Query ID.
 	struct QueryID
 	{
-		std::string DiscID;		// MusicBrainz Disc ID.
-		std::string TOC;			// CD table of contents.
+		std::string DiscID;		  // MusicBrainz Disc ID.
+		std::string TOC;			  // CD table of contents.
+    std::string PlaylistID; // Playlist ID.
 	};
 
 	// Pairs a query ID with a flag to indicate whether a dialog should be shown even for a single match.
-	using PendingQuery = std::pair<QueryID,bool>;
+	using PendingQuery = std::pair<QueryID, bool>;
 
 	// A list of pending queries.
 	using PendingQueryList = std::list<PendingQuery>;

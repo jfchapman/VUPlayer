@@ -51,6 +51,21 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "Artwork", Column::Artwork )
 	} )
 {
+  m_CueColumns = m_MediaColumns;
+  m_CueColumns.insert( { "CueStart", Column::CueStart } );
+  m_CueColumns.insert( { "CueEnd", Column::CueEnd } );
+
+  // Generate the matching fields for union queries (note that cue columns is a superset of media columns).
+  for ( const auto& [ columnName, columnType ] : m_CueColumns ) {
+    m_CueFields += columnName + ',';
+    if ( const auto column = m_MediaColumns.find( columnName ); m_MediaColumns.end() == column ) {
+      m_MediaFields += "NULL AS ";
+    }
+    m_MediaFields += columnName + ',';
+  }
+  m_CueFields.pop_back();
+  m_MediaFields.pop_back();
+
 	UpdateDatabase();
 }
 
@@ -69,30 +84,40 @@ Library::~Library()
 
 void Library::UpdateDatabase()
 {
-	UpdateMediaTable();
+	UpdateMediaTable( false /*cuesTable*/ );
+  UpdateMediaTable( true /*cuesTable*/ );
 	UpdateCDDATable();
 	UpdateArtworkTable();
 	CreateIndices();
 }
 
-void Library::UpdateMediaTable()
+void Library::UpdateMediaTable(const bool cuesTable)
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		// Create the media table (if necessary).
-		std::string createTableQuery = "CREATE TABLE IF NOT EXISTS Media(";
-		for ( const auto& iter : m_MediaColumns ) {
-			const std::string& columnName = iter.first;
-			createTableQuery += columnName + ",";
-		}
-		createTableQuery += "PRIMARY KEY(Filename ASC));";
+    // Create the appropriate table, if necessary.
+    const std::string tableName = cuesTable ? "Cues" : "Media";
+	  std::string createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + "(";
+    if ( cuesTable ) {
+		  for ( const auto& iter : m_CueColumns ) {
+			  const std::string& columnName = iter.first;
+			  createTableQuery += columnName + ",";
+		  }
+		  createTableQuery += "PRIMARY KEY(Filename,CueStart));";
+    } else {
+		  for ( const auto& iter : m_MediaColumns ) {
+			  const std::string& columnName = iter.first;
+			  createTableQuery += columnName + ",";
+		  }
+		  createTableQuery += "PRIMARY KEY(Filename));";
+    }
 		sqlite3_exec( database, createTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 
 		// Check the columns in the media table.
-		const std::string tableInfoQuery = "PRAGMA table_info('Media')";
+		const std::string tableInfoQuery = "PRAGMA table_info('" + tableName + "')";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, tableInfoQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			Columns missingColumns( m_MediaColumns );
+			Columns missingColumns( cuesTable ? m_CueColumns : m_MediaColumns );
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
 				const int columnCount = sqlite3_column_count( stmt );
 				for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
@@ -111,12 +136,12 @@ void Library::UpdateMediaTable()
 			if ( !missingColumns.empty() ) {
 				if ( missingColumns.find( "Filename" ) != missingColumns.end() ) {
 					// No primary index, just drop the table and recreate.
-					const std::string dropTableQuery = "DROP TABLE Media;";
+					const std::string dropTableQuery = "DROP TABLE " + tableName + ";";
 					sqlite3_exec( database, dropTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 					sqlite3_exec( database, createTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 				} else {
 					for ( const auto& iter : missingColumns ) {
-						std::string addColumnQuery = "ALTER TABLE Media ADD COLUMN ";
+						std::string addColumnQuery = "ALTER TABLE " + tableName + " ADD COLUMN ";
 						addColumnQuery += iter.first + ";";
 						sqlite3_exec( database, addColumnQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 					}
@@ -230,13 +255,29 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		MediaInfo info( mediaInfo );
-		const std::string query = ( MediaInfo::Source::CDDA == info.GetSource() ) ? "SELECT * FROM CDDA WHERE CDDB=?1 AND Track=?2;" : "SELECT * FROM Media WHERE Filename=?1;";
+		std::string query;
+    if ( MediaInfo::Source::CDDA == info.GetSource() ) {
+      query = "SELECT * FROM CDDA WHERE CDDB=?1 AND Track=?2;";
+    } else {
+      if ( mediaInfo.GetCueStart() ) {
+        query = "SELECT * FROM Cues WHERE Filename=?1 AND CueStart=?2 AND CueEnd=?3;";
+      } else {
+        query = "SELECT * FROM Media WHERE Filename=?1;";
+      }
+    }
 		sqlite3_stmt* stmt = nullptr;
 		success = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) );
 		if ( success ) {
-			success = ( MediaInfo::Source::CDDA == mediaInfo.GetSource() ) ?
-				( ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( info.GetCDDB() ) ) ) && ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( info.GetTrack() ) ) ) ) :
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( info.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+      if ( MediaInfo::Source::CDDA == info.GetSource() ) {
+        success = ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( info.GetCDDB() ) ) ) && ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( info.GetTrack() ) ) );
+      } else {
+        if ( mediaInfo.GetCueStart() ) {
+          success = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( info.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) && 
+            ( SQLITE_OK == sqlite3_bind_int64( stmt, 2 /*param*/, *info.GetCueStart() ) ) && ( SQLITE_OK == sqlite3_bind_int64( stmt, 3 /*param*/, info.GetCueEnd().value_or( -1 ) ) );
+        } else {
+          success = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( info.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+        }
+      }
 			if ( success ) {
 				// Should be a maximum of one entry.
 				const int result = sqlite3_step( stmt );
@@ -261,7 +302,10 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 						if ( success && sendNotification ) {
 							VUPlayer* vuplayer = VUPlayer::Get();
 							if ( nullptr != vuplayer ) {
-								vuplayer->OnMediaUpdated( mediaInfo /*previousInfo*/, info /*updatedInfo*/ );
+                MediaInfo previousInfo( mediaInfo.GetFilename() );
+                previousInfo.SetCueStart( mediaInfo.GetCueStart() );
+                previousInfo.SetCueEnd( mediaInfo.GetCueEnd() );
+								vuplayer->OnMediaUpdated( previousInfo, info /*updatedInfo*/ );
 							}
 						}
 					} else if ( removeMissing ) {
@@ -306,7 +350,7 @@ bool Library::GetFileInfo( const std::wstring& filename, long long& lastModified
 bool Library::GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags )
 {
 	bool success = false;
-	Decoder::Ptr stream = m_Handlers.OpenDecoder( mediaInfo.GetFilename(), Decoder::Context::Temporary );
+	Decoder::Ptr stream = m_Handlers.OpenDecoder( mediaInfo, Decoder::Context::Temporary, false /*applyCues*/ );
 	if ( stream ) {
 		mediaInfo.SetBitsPerSample( stream->GetBPS() );
 		mediaInfo.SetChannels( stream->GetChannels() );
@@ -336,7 +380,8 @@ void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 {
 	if ( nullptr != stmt ) {
 		const int columnCount = sqlite3_column_count( stmt );
-		const Columns& columns = GetColumns( mediaInfo.GetSource() );
+    // Use cue columns (as a superset of media columns).
+		const Columns& columns = m_CueColumns;
 		for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 			const auto columnIter = columns.find( sqlite3_column_name( stmt, columnIndex ) );
 			if ( columnIter != columns.end() ) {
@@ -441,6 +486,18 @@ void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 						}
 						break;
 					}
+          case Column::CueStart : {
+						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
+              mediaInfo.SetCueStart( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
+            }
+            break;
+          }
+          case Column::CueEnd : {
+						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
+              mediaInfo.SetCueEnd( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
+            }
+            break;
+          }
 				}
 			}
 		}
@@ -454,8 +511,8 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 
-		const Columns& columnMap = GetColumns( mediaInfo.GetSource() );
-		const std::string tableName = ( MediaInfo::Source::CDDA == mediaInfo.GetSource() ) ? "CDDA" : "Media";
+		const Columns& columnMap = GetColumns( mediaInfo );
+		const std::string tableName = ( MediaInfo::Source::CDDA == mediaInfo.GetSource() ) ? "CDDA" : ( mediaInfo.GetCueStart() ? "Cues" : "Media" );
 
 		std::string columns = " (";
 		std::string values = " VALUES (";
@@ -498,7 +555,7 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						break;
 					}
 					case Column::Duration : {
-						sqlite3_bind_double( stmt, ++param, mediaInfo.GetDuration() );
+						sqlite3_bind_double( stmt, ++param, mediaInfo.GetDuration( false /*applyCues*/ ) );
 						break;
 					}
 					case Column::Filename : {
@@ -572,6 +629,17 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						}
 						break;
 					}
+          case Column::CueStart : {
+						const auto cue = mediaInfo.GetCueStart();
+						sqlite3_bind_int64( stmt, ++param, cue.value_or( -1 ) );
+						break;
+          }
+          case Column::CueEnd : {
+            // Cues are part of the primary key in the Cues table, so use a negative value to indicate no cue, rather than null.
+						const auto cue = mediaInfo.GetCueEnd();
+						sqlite3_bind_int64( stmt, ++param, cue.value_or( -1 ) );
+						break;
+          }
 					default : {
 						break;
 					}
@@ -613,7 +681,7 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
 
 void Library::WriteFileTags( MediaInfo& mediaInfo )
 {
-	if ( MediaInfo::Source::File == mediaInfo.GetSource() ) {
+	if ( ( MediaInfo::Source::File == mediaInfo.GetSource() ) && !mediaInfo.GetCueStart() ) {
 		const std::wstring& filename = mediaInfo.GetFilename();
 		SetRecentlyWrittenTag( filename );
 		if ( m_Handlers.SetTags( mediaInfo, *this ) ) {
@@ -730,7 +798,7 @@ std::set<std::wstring> Library::GetArtists()
 	std::set<std::wstring> artists;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT DISTINCT Artist FROM Media;";
+		const std::string query = "SELECT Artist FROM Media UNION SELECT Artist FROM Cues;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
@@ -753,7 +821,7 @@ std::set<std::wstring> Library::GetAlbums()
 	std::set<std::wstring> albums;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT DISTINCT Album FROM Media;";
+		const std::string query = "SELECT Album FROM Media UNION SELECT Album FROM Cues;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
@@ -776,7 +844,7 @@ std::set<std::wstring> Library::GetAlbums( const std::wstring artist )
 	std::set<std::wstring> albums;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT Album FROM Media WHERE Artist=?1;";
+		const std::string query = "SELECT Album FROM Media WHERE Artist=?1 UNION SELECT Album FROM Cues WHERE Artist=?1;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
@@ -801,7 +869,7 @@ std::set<std::wstring> Library::GetGenres()
 	std::set<std::wstring> genres;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT DISTINCT Genre FROM Media;";
+		const std::string query = "SELECT Genre FROM Media UNION SELECT Genre FROM Cues;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
@@ -824,7 +892,7 @@ std::set<long> Library::GetYears()
 	std::set<long> years;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT DISTINCT Year FROM Media;";
+		const std::string query = "SELECT Year FROM Media UNION SELECT Year FROM Cues;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
@@ -845,7 +913,7 @@ MediaInfo::List Library::GetMediaByArtist( const std::wstring& artist )
 	MediaInfo::List mediaList;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT * FROM Media WHERE Artist=?1 ORDER BY Filename COLLATE NOCASE;";
+		const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Artist=?1 UNION SELECT " + m_CueFields + " FROM Cues WHERE Artist=?1 ORDER BY Filename,CueStart COLLATE NOCASE;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
@@ -867,7 +935,7 @@ MediaInfo::List Library::GetMediaByAlbum( const std::wstring& album )
 	MediaInfo::List mediaList;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT * FROM Media WHERE Album=?1 ORDER BY Filename COLLATE NOCASE;";
+		const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Album=?1 UNION SELECT " + m_CueFields + " FROM Cues WHERE Album=?1 ORDER BY Filename,CueStart COLLATE NOCASE;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
@@ -889,7 +957,7 @@ MediaInfo::List Library::GetMediaByArtistAndAlbum( const std::wstring& artist, c
 	MediaInfo::List mediaList;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT * FROM Media WHERE Artist=?1 AND Album=?2 ORDER BY Filename COLLATE NOCASE;";
+		const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Artist=?1 AND Album=?2 UNION SELECT " + m_CueFields + " FROM Cues WHERE Artist=?1 AND Album=?2 ORDER BY Filename,CueStart COLLATE NOCASE;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
@@ -912,7 +980,7 @@ MediaInfo::List Library::GetMediaByGenre( const std::wstring& genre )
 	MediaInfo::List mediaList;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT * FROM Media WHERE Genre=?1 ORDER BY Filename COLLATE NOCASE;";
+		const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Genre=?1 UNION SELECT " + m_CueFields + " FROM Cues WHERE Genre=?1 ORDER BY Filename,CueStart COLLATE NOCASE;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( genre ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
@@ -935,7 +1003,7 @@ MediaInfo::List Library::GetMediaByYear( const long year )
 	if ( ( year >= MINYEAR ) && ( year <= MAXYEAR ) ) {
 		sqlite3* database = m_Database.GetDatabase();
 		if ( nullptr != database ) {
-			const std::string query = "SELECT * FROM Media WHERE Year=?1 ORDER BY Filename COLLATE NOCASE;";
+		  const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Year=?1 UNION SELECT " + m_CueFields + " FROM Cues WHERE Year=?1 ORDER BY Filename,CueStart COLLATE NOCASE;";
 			sqlite3_stmt* stmt = nullptr;
 			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 				if ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( year ) ) ) {
@@ -958,7 +1026,7 @@ MediaInfo::List Library::GetAllMedia()
 	MediaInfo::List mediaList;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT * FROM Media ORDER BY Filename COLLATE NOCASE;";
+		const std::string query = "SELECT " + m_MediaFields + " FROM Media UNION SELECT " + m_CueFields + " FROM Cues ORDER BY Filename,CueStart COLLATE NOCASE;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
@@ -998,7 +1066,7 @@ bool Library::GetArtistExists( const std::wstring& artist )
 	bool exists = false;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT 1 FROM Media WHERE EXISTS( SELECT 1 FROM Media WHERE Artist=?1 );";
+		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE Artist=?1) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE Artist=?1);";
 		sqlite3_stmt* stmt = nullptr;
 		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
 				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
@@ -1013,7 +1081,7 @@ bool Library::GetAlbumExists( const std::wstring& album )
 	bool exists = false;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT 1 FROM Media WHERE EXISTS( SELECT 1 FROM Media WHERE Album=?1 );";
+		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE Album=?1) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE Album=?1);";
 		sqlite3_stmt* stmt = nullptr;
 		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
 				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
@@ -1028,7 +1096,7 @@ bool Library::GetArtistAndAlbumExists( const std::wstring& artist, const std::ws
 	bool exists = false;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT 1 FROM Media WHERE EXISTS( SELECT 1 FROM Media WHERE Artist=?1 AND Album=?2 );";
+		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE Artist=?1 AND Album=?2) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE Artist=?1 AND Album=?2);";
 		sqlite3_stmt* stmt = nullptr;
 		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
 				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
@@ -1044,7 +1112,7 @@ bool Library::GetGenreExists( const std::wstring& genre )
 	bool exists = false;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string query = "SELECT 1 FROM Media WHERE EXISTS( SELECT 1 FROM Media WHERE Genre=?1 );";
+		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE Genre=?1) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE Genre=?1);";
 		sqlite3_stmt* stmt = nullptr;
 		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
 				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( genre ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
@@ -1060,7 +1128,7 @@ bool Library::GetYearExists( const long year )
 	if ( ( year >= MINYEAR ) && ( year <= MAXYEAR ) ) {
 		sqlite3* database = m_Database.GetDatabase();
 		if ( nullptr != database ) {
-			const std::string query = "SELECT 1 FROM Media WHERE EXISTS( SELECT 1 FROM Media WHERE Year=?1 );";
+			const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE Year=?1) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE Year=?1);";
 			sqlite3_stmt* stmt = nullptr;
 			exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
 					( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( year ) ) ) &&
@@ -1077,10 +1145,17 @@ bool Library::RemoveFromLibrary( const MediaInfo& mediaInfo )
 	sqlite3* database = m_Database.GetDatabase();
 	const std::wstring& filename = mediaInfo.GetFilename();
 	if ( ( nullptr != database ) && !filename.empty() && ( MediaInfo::Source::File == mediaInfo.GetSource() ) ) {
-		const std::string query = "DELETE FROM Media WHERE Filename=?1;";
+		const std::string query = mediaInfo.GetCueStart() ? "DELETE FROM Cues WHERE Filename=?1 AND CueStart=?2 AND CueEnd=?3;" : "DELETE FROM Media WHERE Filename=?1;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
+      bool ok = false;
+      if ( mediaInfo.GetCueStart() ) {
+        ok = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+          ( SQLITE_OK == sqlite3_bind_int64( stmt, 2 /*param*/, *mediaInfo.GetCueStart() ) ) && ( SQLITE_OK == sqlite3_bind_int64( stmt, 3 /*param*/, mediaInfo.GetCueEnd().value_or( -1 ) ) );
+      } else {
+        ok = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+      }
+			if ( ok ) {
 				// Should be a maximum of one entry.
 				removed = ( SQLITE_DONE == sqlite3_step( stmt ) );
 			}
@@ -1090,17 +1165,21 @@ bool Library::RemoveFromLibrary( const MediaInfo& mediaInfo )
 	return removed;
 }
 
-const Library::Columns& Library::GetColumns( const MediaInfo::Source source ) const
+const Library::Columns& Library::GetColumns( const MediaInfo& mediaInfo ) const
 {
-	const Columns& columns = ( MediaInfo::Source::CDDA == source ) ? m_CDDAColumns : m_MediaColumns;
+	const Columns& columns = ( MediaInfo::Source::CDDA == mediaInfo.GetSource() ) ? m_CDDAColumns : ( mediaInfo.GetCueStart() ? m_CueColumns : m_MediaColumns );
 	return columns;
 }
 
 void Library::UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Tags& tags )
 {
 	for ( const auto& iter : tags ) {
-		const std::wstring value = UTF8ToWideString( iter.second );
-		switch ( iter.first ) {
+    const auto tagType = iter.first;
+    if ( mediaInfo.GetCueStart() && ( Tag::Version != tagType ) && ( Tag::Artwork != tagType ) )
+      continue;
+    
+    const std::wstring value = UTF8ToWideString( iter.second );
+		switch ( tagType ) {
 			case Tag::Album : {
 				mediaInfo.SetAlbum( value );
 				break;
@@ -1198,9 +1277,16 @@ bool Library::UpdateTrackGain( const MediaInfo& previousInfo, const MediaInfo& u
 	if ( previousInfo.GetGainTrack() != updatedInfo.GetGainTrack() ) {
 		sqlite3* database = m_Database.GetDatabase();
 		if ( nullptr != database ) {
-			const std::string query = ( MediaInfo::Source::CDDA == updatedInfo.GetSource() ) ?
-				"UPDATE CDDA SET GainTrack=?1 WHERE CDDB=?2 AND Track=?3;" :
-				"UPDATE Media SET GainTrack=?1 WHERE Filename=?2;";
+			std::string query;
+      if ( MediaInfo::Source::CDDA == updatedInfo.GetSource() ) {
+        query = "UPDATE CDDA SET GainTrack=?1 WHERE CDDB=?2 AND Track=?3;";
+      } else {
+        if ( updatedInfo.GetCueStart() ) {
+				  query = "UPDATE Cues SET GainTrack=?1 WHERE Filename=?2 AND CueStart=?3 AND CueEnd=?4;";
+        } else {
+				  query = "UPDATE Media SET GainTrack=?1 WHERE Filename=?2;";
+        }
+      }
 			sqlite3_stmt* stmt = nullptr;
 			updated = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) );
 			if ( updated ) {
@@ -1211,7 +1297,12 @@ bool Library::UpdateTrackGain( const MediaInfo& previousInfo, const MediaInfo& u
 						updated = ( ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( updatedInfo.GetCDDB() ) ) ) &&
 							( SQLITE_OK == sqlite3_bind_int( stmt, 3 /*param*/, static_cast<int>( updatedInfo.GetTrack() ) ) ) );
 					} else {
-						updated = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( updatedInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+            if ( updatedInfo.GetCueStart() ) {
+						  updated = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( updatedInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+                ( SQLITE_OK == sqlite3_bind_int64( stmt, 3 /*param*/, *updatedInfo.GetCueStart() ) ) && ( SQLITE_OK == sqlite3_bind_int64( stmt, 4 /*param*/, updatedInfo.GetCueEnd().value_or( -1 ) ) );
+            } else {
+						  updated = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( updatedInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+            }
 					}
 					if ( updated ) {
 						updated = ( SQLITE_DONE == sqlite3_step( stmt ) );

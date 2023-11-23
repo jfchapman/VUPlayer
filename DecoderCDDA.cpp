@@ -47,10 +47,10 @@ long DecoderCDDA::Read( float* buffer, const long sampleCount )
 	return samplesRead;
 }
 
-float DecoderCDDA::Seek( const float position )
+double DecoderCDDA::Seek( const double position )
 {
-	float seekPosition = 0;
-	const float duration = GetDuration();
+	double seekPosition = 0;
+	const double duration = GetDuration();
 	if ( duration > 0 ) {
 		const long seekSector = m_SectorStart + static_cast<long>( ( m_SectorEnd - m_SectorStart ) * ( position / duration ) );
 		if ( ( seekSector >= m_SectorStart ) && ( seekSector < m_SectorEnd ) ) {

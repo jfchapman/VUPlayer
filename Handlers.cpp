@@ -11,6 +11,8 @@
 #include "HandlerMPC.h"
 #include "HandlerOpenMPT.h"
 
+#include "DecoderBin.h"
+
 #include "Library.h"
 #include "Settings.h"
 #include "ShellMetadata.h"
@@ -71,20 +73,31 @@ Handler::Ptr Handlers::FindDecoderHandler( const std::wstring& filename ) const
 	return handler;
 }
 
-Decoder::Ptr Handlers::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const
+Decoder::Ptr Handlers::OpenDecoder( const MediaInfo& mediaInfo, const Decoder::Context context, const bool applyCues ) const
 {
 	Decoder::Ptr decoder;
+  const auto& filename = mediaInfo.GetFilename();
 	if ( IsURL( filename ) ) {
 		decoder = m_HandlerBASS ? m_HandlerBASS->OpenDecoder( filename, context ) : nullptr;
 	} else if ( !filename.empty() ) {
-		Handler::Ptr handler = FindDecoderHandler( filename );
-		if ( handler ) {
-			decoder = handler->OpenDecoder( filename, context );
-		}
-		if ( !decoder && m_HandlerFFmpeg && ( handler != m_HandlerFFmpeg ) ) {
-			// Try the FFmpeg handler as a catch all.
-			decoder = m_HandlerFFmpeg->OpenDecoder( filename, context );
-		}
+    if ( mediaInfo.GetCueStart() && ( L"bin" == GetFileExtension( filename ) ) ) {
+      // Use the built-in raw data reader.
+      try {
+        decoder = std::make_shared<DecoderBin>( filename, context );
+      } catch ( const std::runtime_error& ) {}  
+    } else {
+		  Handler::Ptr handler = FindDecoderHandler( filename );
+		  if ( handler ) {
+			  decoder = handler->OpenDecoder( filename, context );
+		  }
+		  if ( !decoder && m_HandlerFFmpeg && ( handler != m_HandlerFFmpeg ) ) {
+			  // Try the FFmpeg handler as a catch all.
+			  decoder = m_HandlerFFmpeg->OpenDecoder( filename, context );
+		  }
+    }
+    if ( decoder && applyCues ) {
+      decoder->SetCues( mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() );
+    }
 	}
 	return decoder;
 }
@@ -109,7 +122,7 @@ bool Handlers::SetTags( const MediaInfo& mediaInfo, Library& library ) const
 {
 	bool success = true;
   const auto& filename = mediaInfo.GetFilename();
-	if ( m_WriteTags && ( MediaInfo::Source::File == mediaInfo.GetSource() ) && !IsURL( filename ) ) {
+	if ( m_WriteTags && ( MediaInfo::Source::File == mediaInfo.GetSource() ) && !IsURL( filename ) && !mediaInfo.GetCueStart() ) {
     Tags tagsToWrite = library.GetTags( mediaInfo );
 
     Tags fileTags;

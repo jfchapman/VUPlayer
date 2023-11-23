@@ -78,9 +78,9 @@ long DecoderMAC::Read( float* destBuffer, const long sampleCount )
 	return samplesRead;
 }
 
-float DecoderMAC::Seek( const float position )
+double DecoderMAC::Seek( const double position )
 {
 	const long long blockOffset = static_cast<long long>( GetSampleRate() * position );
 	m_decompress->Seek( blockOffset );
-	return static_cast<float>( m_decompress->GetInfo( APE::APE_DECOMPRESS_CURRENT_MS ) ) / 1000;
+	return static_cast<double>( m_decompress->GetInfo( APE::APE_DECOMPRESS_CURRENT_MS ) ) / 1000;
 }

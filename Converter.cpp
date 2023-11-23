@@ -273,7 +273,7 @@ void Converter::EncodeHandler()
 							int r128Error = EBUR128_SUCCESS;
 							bool continueEncoding = true;
 							while ( !Cancelled() && continueEncoding ) {
-								const long samplesRead = decoder->Read( sampleBuffer.data(), sampleCount );
+								const long samplesRead = decoder->ReadSamples( sampleBuffer.data(), sampleCount );
 								if ( samplesRead > 0 ) {
 									if ( ( nullptr != r128State ) && ( EBUR128_SUCCESS == r128Error ) ) {
 										r128Error = ebur128_add_frames_float( r128State, sampleBuffer.data(), static_cast<size_t>( samplesRead ) );
@@ -414,7 +414,7 @@ std::wstring Converter::GetOutputFilename( const MediaInfo& mediaInfo ) const
 	std::wstring album = mediaInfo.GetAlbum().empty() ? emptyAlbum : mediaInfo.GetAlbum();
 	WideStringReplaceInvalidFilenameCharacters( album, L"_", true /*replaceFolderDelimiters*/ );
 
-	const std::wstring sourceFilename = std::filesystem::path( mediaInfo.GetFilename() ).stem();
+	const std::wstring sourceFilename = mediaInfo.GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
 
 	std::wstringstream ss;
 	ss << std::setfill( static_cast<wchar_t>( '0' ) ) << std::setw( 2 ) << mediaInfo.GetTrack();
@@ -601,11 +601,13 @@ void Converter::WriteAlbumTags( const std::wstring& filename, const MediaInfo& m
 
 Decoder::Ptr Converter::OpenDecoder( const Playlist::Item& item ) const
 {
-	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename(), Decoder::Context::Input );
+	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info, Decoder::Context::Input );
 	if ( !decoder ) {
 		auto duplicate = item.Duplicates.begin();
 		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
-			decoder = m_Handlers.OpenDecoder( *duplicate, Decoder::Context::Input );
+      MediaInfo duplicateInfo( item.Info );
+      duplicateInfo.SetFilename( *duplicate );
+			decoder = m_Handlers.OpenDecoder( duplicateInfo, Decoder::Context::Input );
 			++duplicate;
 		}
 	}

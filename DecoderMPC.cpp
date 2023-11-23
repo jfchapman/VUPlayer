@@ -72,7 +72,7 @@ long DecoderMPC::Read( float* destBuffer, const long sampleCount )
 	return samplesRead;
 }
 
-float DecoderMPC::Seek( const float position )
+double DecoderMPC::Seek( const double position )
 {
 	m_bufferpos = 0;
 	m_buffercount = 0;

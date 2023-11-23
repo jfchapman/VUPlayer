@@ -86,7 +86,7 @@ void WndTrackbarSeek::Update( Output& output, const Playlist::Ptr playlist, cons
 		const float duration = m_OutputItem.PlaylistItem.Info.GetDuration();
 		SetEnabled( duration > 0.0f );
 		if ( duration > 0.0f ) {
-			const float position = m_OutputItem.Position;
+			const double position = m_OutputItem.Position;
 			const int seekPos = static_cast<int>( position * s_RangeMax / duration );
 			SetPosition( seekPos );
 		} else {

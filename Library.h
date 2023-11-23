@@ -40,18 +40,26 @@ public:
 		Artwork = 20,
 		CDDB = 21,
 		Bitrate = 22,
+    CueStart = 23,
+    CueEnd = 24,
 
 		_Undefined
 	};
 
 	// Gets media information.
-	// 'mediaInfo' - in/out, media information containing the filename to query.
+	// 'mediaInfo' - in/out, media information containing the filename (with optional cues) to query.
 	// 'checkFileAttributes' - whether to check if the time/size of the file matches any existing entry.
 	// 'scanMedia' - whether to scan the file specified in 'mediaInfo' if no matching database entry is found.
 	// 'sendNotification' - whether to notify the main app if 'mediaInfo' has changed.
 	// 'removeMissing' - whether to remove media information from the library if the file specified in 'mediaInfo' cannot be opened.
 	// Returns true if media information was returned.
 	bool GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes = true, const bool scanMedia = true, const bool sendNotification = true, const bool removeMissing = false );
+
+	// Queries the available decoders for media information.
+	// 'mediaInfo' - in/out, media information containing the filename to query.
+  // 'getTags' - whether to read file tags.
+	// Returns true if the file was successfully opened by a decoder.
+	bool GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags );
 
 	// Updates media information and writes out tag information to file.
 	// 'previousMediaInfo' - previous media information.
@@ -151,7 +159,8 @@ private:
 	void UpdateDatabase();
 
 	// Updates the media table if necessary.
-	void UpdateMediaTable();
+  // 'cuesTable' - whether to update the cues table, rather than the main media table.
+	void UpdateMediaTable(const bool cuesTable = false);
 
 	// Updates the CDDA table if necessary.
 	void UpdateCDDATable();
@@ -164,12 +173,6 @@ private:
 
 	// Gets the 'lastModified' time and 'fileSize' of 'filename', returning true if the file could be opened.
 	bool GetFileInfo( const std::wstring& filename, long long& lastModified, long long& fileSize ) const;
-
-	// Queries the decoders for media information.
-	// 'mediaInfo' - in/out, media information containing the filename to query.
-  // 'getTags' - whether to read file tags.
-	// Returns true if the file was successfully opened by a decoder.
-	bool GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags );
 
 	// Updates the media library.
 	// 'mediaInfo' - media information.
@@ -192,8 +195,8 @@ private:
 	// Sets 'mediaInfo' from a SQLite 'stmt'.
 	void ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo );
 
-	// Returns the library columns corresponding to 'source'.
-	const Columns& GetColumns( const MediaInfo::Source source ) const;
+	// Returns the library columns corresponding to 'mediaInfo'.
+	const Columns& GetColumns( const MediaInfo& mediaInfo ) const;
 
 	// Updates 'mediaInfo' with the 'tags'.
 	void UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Tags& tags );
@@ -224,4 +227,13 @@ private:
 
 	// CD audio columns.
 	Columns m_CDDAColumns;
+
+  // Cue columns.
+  Columns m_CueColumns;
+
+  // Fields from the media table, when combined with the cues table (for use in union queries).
+  std::string m_MediaFields;
+
+  // Fields from the cues table, when combined with the media table (for use in union queries).
+  std::string m_CueFields;
 };

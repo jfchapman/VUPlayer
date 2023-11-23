@@ -40,22 +40,22 @@ WndList::ColumnFormats WndList::s_ColumnFormats = {
 UINT_PTR WndList::s_WndListID = 1000;
 
 // File added message ID.
-static const UINT MSG_FILEADDED = WM_APP + 100;
+static constexpr UINT MSG_FILEADDED = WM_APP + 100;
 
 // File removed message ID.
-static const UINT MSG_FILEREMOVED = WM_APP + 101;
+static constexpr UINT MSG_FILEREMOVED = WM_APP + 101;
 
 // Message ID for reordering the dummy column after a drag operation.
-static const UINT MSG_REORDERDUMMY = WM_APP + 102;
+static constexpr UINT MSG_REORDERDUMMY = WM_APP + 102;
 
 // Item updated message ID.
-static const UINT MSG_ITEMUPDATED = WM_APP + 103;
+static constexpr UINT MSG_ITEMUPDATED = WM_APP + 103;
 
 // Drag timer ID.
-static const UINT_PTR s_DragTimerID = 1010;
+static constexpr UINT_PTR s_DragTimerID = 1010;
 
 // Drag timer millisecond interval.
-static const UINT s_DragTimerInterval = 20;
+static constexpr UINT s_DragTimerInterval = 20;
 
 LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -216,7 +216,6 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	m_DragImage( NULL ),
 	m_OldCursor( NULL ),
 	m_FilenameToIDs(),
-	m_FilenameToSelect(),
 	m_IconMap(),
 	m_IconStatus( { -1, Output::State::Stopped } ),
 	m_EnableStatusIcon( false ),
@@ -424,8 +423,8 @@ void WndList::AddFileToPlaylist( const std::wstring& filename )
 	if ( m_Playlist ) {
 		if ( Playlist::IsSupportedPlaylist( filename ) ) {
 			m_Playlist->AddPlaylist( filename );
-		} else {		
-			m_Playlist->AddPending( filename );
+		} else {
+			m_Playlist->AddPending( MediaInfo::ExtractCues( filename ) );
 		}
 	}
 }
@@ -475,7 +474,7 @@ void WndList::InsertListViewItem( const Playlist::Item& playlistItem, const int 
 	  ListView_InsertItem( m_hWnd, &item );
   }
   RefreshPlaylist();
-  if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( playlistItem.Info.GetFilename(), {} ) ).first; m_FilenameToIDs.end() != filename ) {
+  if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( playlistItem.Info.GetFilename(), playlistItem.Info.GetCueStart(), playlistItem.Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != filename ) {
 		filename->second.insert( playlistItem.ID );
   }
 }
@@ -539,8 +538,9 @@ void WndList::OnDisplayInfo( LVITEM& lvItem )
 				    break;
 			    }
 			    case Playlist::Column::Filepath : {
-				    text = mediaInfo.GetFilename();
-				    if ( !playlistItem.Duplicates.empty() ) {
+            if ( playlistItem.Duplicates.empty() ) {
+				      text = mediaInfo.GetFilenameWithCues( true /*fullPath*/ );
+            } else {
 					    const int bufSize = 32;
 					    WCHAR buffer[ bufSize ] = {};
 					    LoadString( m_hInst, IDS_MULTIPLE_SOURCES, buffer, bufSize );
@@ -549,9 +549,9 @@ void WndList::OnDisplayInfo( LVITEM& lvItem )
 				    break;
 			    }
 			    case Playlist::Column::Filename : {
-				    const auto filename = std::filesystem::path( mediaInfo.GetFilename() ).filename();
-				    text = filename.native();
-				    if ( !playlistItem.Duplicates.empty() ) {
+            if ( playlistItem.Duplicates.empty() ) {
+				      text = mediaInfo.GetFilenameWithCues( false /*fullPath*/ );
+            } else {
 					    const int bufSize = 32;
 					    WCHAR buffer[ bufSize ] = {};
 					    LoadString( m_hInst, IDS_MULTIPLE_SOURCES, buffer, bufSize );
@@ -560,7 +560,7 @@ void WndList::OnDisplayInfo( LVITEM& lvItem )
 				    break;
 			    }
 			    case Playlist::Column::Filesize : {
-				    text = FilesizeToString( m_hInst, mediaInfo.GetFilesize() );
+				    text = FilesizeToString( m_hInst, mediaInfo.GetFilesize( true /*applyCues*/ ) );
 				    break;
 			    }
 			    case Playlist::Column::Filetime : {
@@ -717,6 +717,7 @@ void WndList::OnContextMenu( const POINT& position )
 			const bool allowAddStream = ( Playlist::Type::Streams == playlistType ) || ( Playlist::Type::User == playlistType ) || ( Playlist::Type::All == playlistType ) || ( Playlist::Type::Favourites == playlistType );
       const bool allowAddToFavourites = hasSelectedItems && ( Playlist::Type::Favourites != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
       const bool allowRemoveFiles = hasSelectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
+      const bool allowMusicBrainzQueries = m_Playlist && m_Playlist->AllowMusicBrainzQueries();
 
 			const UINT enablePaste = ( allowPaste && ( IsClipboardFormatAvailable( CF_TEXT ) || IsClipboardFormatAvailable( CF_UNICODETEXT ) || IsClipboardFormatAvailable( CF_HDROP ) ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PASTE, MF_BYCOMMAND | enablePaste );
@@ -758,7 +759,7 @@ void WndList::OnContextMenu( const POINT& position )
 
 			VUPlayer* vuplayer = VUPlayer::Get();
 
-			const UINT musicbrainzEnabled = ( ( Playlist::Type::CDDA == playlistType ) && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT musicbrainzEnabled = ( allowMusicBrainzQueries && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
 			const UINT enableColourChoice = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;
@@ -926,7 +927,7 @@ void WndList::DeleteSelectedItems()
 					deletedMedia.push_back( mediaInfo );
 				}
         itemsToDelete.push_back( playlistItem );
-				if ( auto filename = m_FilenameToIDs.find( playlistItem.Info.GetFilename() ); m_FilenameToIDs.end() != filename ) {
+        if ( auto filename = m_FilenameToIDs.find( std::tie( playlistItem.Info.GetFilename(), playlistItem.Info.GetCueStart(), playlistItem.Info.GetCueEnd() ) ); m_FilenameToIDs.end() != filename ) {
 					filename->second.erase( playlistItem.ID );
 					if ( filename->second.empty() ) {
 						m_FilenameToIDs.erase( filename );
@@ -984,11 +985,11 @@ void WndList::DeleteSelectedItems()
 	}
 }
 
-void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelection, const std::wstring& filenameToSelect )
+void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelection, const std::optional<MediaInfo>& fileToSelect )
 {
 	m_FilenameToIDs.clear();
 	m_IconStatus = {};
-	m_FilenameToSelect = filenameToSelect;
+	m_FileToSelect = fileToSelect;
 	if ( m_Playlist != playlist ) {
 		m_Playlist = playlist;
 	}
@@ -998,17 +999,17 @@ void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelectio
 		int selectedIndex = -1;
 		const Playlist::Items playlistItems = m_Playlist->GetItems();
 		for ( auto item = playlistItems.begin(); playlistItems.end() != item; item++ ) {
-  		if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( item->Info.GetFilename(), {} ) ).first; m_FilenameToIDs.end() != filename ) {
+      if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != filename ) {
 	  		filename->second.insert( item->ID );
 	  	}
-      if ( ( -1 == selectedIndex ) && ( item->Info.GetFilename() == m_FilenameToSelect ) ) {
+      if ( ( -1 == selectedIndex ) && m_FileToSelect && ( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ) == std::tie( m_FileToSelect->GetFilename(), m_FileToSelect->GetCueStart(), m_FileToSelect->GetCueEnd() ) ) ) {
 				selectedIndex = static_cast<int>( std::distance( playlistItems.begin(), item ) );
 			}
 		}
 		if ( -1 != selectedIndex ) {
 			ListView_SetItemState( m_hWnd, selectedIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 			ListView_EnsureVisible( m_hWnd, selectedIndex, FALSE /*partialOK*/ );	
-			m_FilenameToSelect.clear();
+			m_FileToSelect.reset();
 		}
 	}
 	if ( initSelection ) {
@@ -1079,19 +1080,20 @@ void WndList::AddFileHandler( const AddedItem* addedItem )
 
 			int selectedIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
 
-			if ( m_FilenameToSelect.empty() ) {
+			if ( !m_FileToSelect ) {
 				if ( ( -1 == selectedIndex ) && ( 1 == ListView_GetItemCount( m_hWnd ) ) ) {
 					ListView_SetItemState( m_hWnd, 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 				}
 			} else {
 				if ( -1 == selectedIndex ) {
-					if ( addedItem->Item.Info.GetFilename() == m_FilenameToSelect ) {
+          const auto& info = addedItem->Item.Info;
+					if ( std::tie( info.GetFilename(), info.GetCueStart(), info.GetCueEnd() ) == std::tie( m_FileToSelect->GetFilename(), m_FileToSelect->GetCueStart(), m_FileToSelect->GetCueEnd() ) ) {
 						ListView_SetItemState( m_hWnd, addedItem->Position, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 						ListView_EnsureVisible( m_hWnd, addedItem->Position, FALSE /*partialOK*/ );
-						m_FilenameToSelect.clear();
+						m_FileToSelect.reset();
 					}
 				} else {
-					m_FilenameToSelect.clear();
+					m_FileToSelect.reset();
 				}
 			}
 		}
@@ -1418,13 +1420,13 @@ void WndList::RepositionEditControl( WINDOWPOS* position )
 void WndList::OnUpdatedMedia( const MediaInfo& mediaInfo )
 {
 	if ( m_Playlist ) {
-		if ( const auto itemFilename = m_FilenameToIDs.find( mediaInfo.GetFilename() ); m_FilenameToIDs.end() != itemFilename ) {
+    if ( const auto itemFilename = m_FilenameToIDs.find( std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() ) ); m_FilenameToIDs.end() != itemFilename ) {
 			const auto& itemIDs = itemFilename->second;
 			for ( const auto itemID : itemIDs ) {
-				if ( Playlist::Item item = { itemID }; m_Playlist->GetItem( item ) && ( item.Info.GetFilename() == itemFilename->first ) ) {
-					if ( const int itemIndex = FindItemIndex( itemID ); itemIndex >= 0 ) {
+        if ( Playlist::Item item = { itemID }; m_Playlist->GetItem( item ) && ( std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) == itemFilename->first ) ) {
+ 					if ( const int itemIndex = FindItemIndex( itemID ); itemIndex >= 0 ) {
             RefreshItem( itemIndex );
-					}
+          }
 				}
 			}
 		}
@@ -1821,7 +1823,7 @@ void WndList::OnCutCopy( const bool cut )
 		if ( !items.empty() ) {
 			std::wstringstream stream;
 			for ( const auto& item : items ) {
-				stream << item.Info.GetFilename() << L"\r\n";
+				stream << item.Info.GetFilenameWithCues( true /*fullPath*/ ) << L"\r\n";
 			}
 			clipboardText = stream.str();
 			haveClipboardText = true;
@@ -1853,32 +1855,26 @@ void WndList::OnPaste()
 	if ( OpenClipboard( m_hWnd ) ) {
 		bool clipboardHasText = false;
 		std::wstring clipboardText;
-		HANDLE handle = GetClipboardData( CF_UNICODETEXT );
-		if ( nullptr != handle ) {
+    HANDLE handle = nullptr;
+    if ( handle = GetClipboardData( CF_UNICODETEXT ); nullptr != handle ) {
 			LPCWSTR str = static_cast<LPCWSTR>( GlobalLock( handle ) );
 			if ( nullptr != str ) {
 				clipboardText = str;
 				GlobalUnlock( handle );
 				clipboardHasText = true;
 			}	
-		} else {
-			handle = GetClipboardData( CF_TEXT );
-			if ( nullptr != handle ) {
-				LPCSTR str = static_cast<LPCSTR>( GlobalLock( handle ) );
-				if ( nullptr != str ) {
-					clipboardText = AnsiCodePageToWideString( str );
-					GlobalUnlock( handle );
-					clipboardHasText = true;
-				}	
-			} else {
-				handle = GetClipboardData( CF_HDROP );
-				if ( nullptr != handle ) {
-					if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr == editControl ) {
-						OnDropFiles( HDROP( handle ) );
-					}
-				}
+    } else if ( handle = GetClipboardData( CF_TEXT ); nullptr != handle ) {
+			LPCSTR str = static_cast<LPCSTR>( GlobalLock( handle ) );
+			if ( nullptr != str ) {
+				clipboardText = AnsiCodePageToWideString( str );
+				GlobalUnlock( handle );
+				clipboardHasText = true;
+			}	
+    } else if ( handle = GetClipboardData( CF_HDROP ); nullptr != handle ) {
+		  if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr == editControl ) {
+			  OnDropFiles( static_cast<HDROP>( handle ) );
 			}
-		}
+    }
 		CloseClipboard();
 
 		if ( clipboardHasText ) {

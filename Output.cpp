@@ -294,7 +294,7 @@ Output::~Output()
 	BASS_Free();
 }
 
-bool Output::Play( const long playlistID, const float seek )
+bool Output::Play( const long playlistID, const double seek )
 {
 	Stop();
 
@@ -320,7 +320,7 @@ bool Output::Play( const long playlistID, const float seek )
 
 			m_DecoderSampleRate = m_DecoderStream->GetSampleRate();
 			const DWORD freq = static_cast<DWORD>( m_DecoderSampleRate );
-			float seekPosition = seek;
+			double seekPosition = seek;
 			if ( 0.0f != seekPosition ) {
 				if ( seekPosition < 0 ) {
 					seekPosition = item.Info.GetDuration() + seekPosition;
@@ -637,7 +637,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 			long samplesToRead = static_cast<long>( byteCount ) / ( channels * 4 );
 
 			if ( GetCrossfade() && !GetFadeOut() && !GetFadeToNext() && !GetStopAtTrackEnd() ) {
-				const float crossfadePosition = GetCrossfadePosition();			
+				const double crossfadePosition = GetCrossfadePosition();			
 				if ( crossfadePosition > 0 ) {
 					bool checkCrossFade = ( GetRandomPlay() || GetRepeatTrack() );
 					if ( !checkCrossFade ) {
@@ -649,8 +649,8 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 						// Ensure we don't read past the crossfade point.
 						const long sampleRate = m_DecoderStream->GetSampleRate();
 						if ( sampleRate > 0 ) {
-							const float trackPos = GetDecodePosition() - m_LastTransitionPosition - m_LeadInSeconds;
-							const float secondsTillCrossfade = crossfadePosition - trackPos;
+							const double trackPos = GetDecodePosition() - m_LastTransitionPosition - m_LeadInSeconds;
+							const double secondsTillCrossfade = crossfadePosition - trackPos;
 							const long samplesTillCrossfade = static_cast<long>( secondsTillCrossfade * sampleRate );
 							if ( samplesTillCrossfade < samplesToRead ) {
 								samplesToRead = samplesTillCrossfade;
@@ -1119,7 +1119,7 @@ bool Output::OnUpdatedMedia( const MediaInfo& mediaInfo )
 	bool changed = false;
 	State state = GetState();
 	if ( State::Stopped == state ) {
-		if ( m_CurrentSelectedPlaylistItem.Info.GetFilename() == mediaInfo.GetFilename() ) {
+		if ( std::tie( m_CurrentSelectedPlaylistItem.Info.GetFilename(), m_CurrentSelectedPlaylistItem.Info.GetCueStart(), m_CurrentSelectedPlaylistItem.Info.GetCueEnd() ) == std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() ) ) {
 			m_CurrentSelectedPlaylistItem.Info = mediaInfo;
 			changed = true;
 		}
@@ -1127,7 +1127,7 @@ bool Output::OnUpdatedMedia( const MediaInfo& mediaInfo )
 		const Item currentPlaying = GetCurrentPlaying();
 		Queue queue = GetOutputQueue();
 		for ( auto& iter : queue ) {
-			if ( iter.PlaylistItem.Info.GetFilename() == mediaInfo.GetFilename() ) {
+			if ( std::tie( iter.PlaylistItem.Info.GetFilename(), iter.PlaylistItem.Info.GetCueStart(), iter.PlaylistItem.Info.GetCueEnd() ) == std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() ) ) {
 				iter.PlaylistItem.Info = mediaInfo;
 				if ( currentPlaying.PlaylistItem.ID == iter.PlaylistItem.ID ) {
 					changed = true;
@@ -1306,7 +1306,7 @@ void Output::EstimateGain( Playlist::Item& item )
 	}
 }
 
-void Output::CalculateCrossfadePoint( const Playlist::Item& item, const float seekOffset )
+void Output::CalculateCrossfadePoint( const Playlist::Item& item, const double seekOffset )
 {
 	StopCrossfadeThread();
 	ResetEvent( m_CrossfadeStopEvent );
@@ -1331,11 +1331,11 @@ void Output::CalculateCrossfadeHandler()
 				decoder->SkipSilence();
 			}
 
-			float position = 0;
+			double position = 0;
 			if ( m_CrossfadeSeekOffset > 0 ) {
-				position = decoder->Seek( m_CrossfadeSeekOffset );
+				position = decoder->SetPosition( m_CrossfadeSeekOffset );
 			}
-			float crossfadePosition = 0;
+			double crossfadePosition = 0;
 
 			int64_t cumulativeCount = 0;
 			double cumulativeTotal = 0;
@@ -1346,7 +1346,7 @@ void Output::CalculateCrossfadeHandler()
 			std::vector<float> buffer( windowSize * channels );
 
 			while ( WAIT_OBJECT_0 != WaitForSingleObject( m_CrossfadeStopEvent, 0 ) ) {
-				long sampleCount = decoder->Read( buffer.data(), windowSize );
+				long sampleCount = decoder->ReadSamples( buffer.data(), windowSize );
 				if ( sampleCount > 0 ) {
 					auto sampleIter = buffer.begin();
 					double windowTotal = 0;
@@ -1360,7 +1360,7 @@ void Output::CalculateCrossfadeHandler()
 
 					const double windowRMS = sqrt( windowTotal / ( sampleCount * channels ) );
 					cumulativeRMS = sqrt( cumulativeTotal / cumulativeCount );
-					position += static_cast<float>( sampleCount ) / samplerate;
+					position += static_cast<double>( sampleCount ) / samplerate;
 
 					if ( windowRMS > cumulativeRMS ) {
 						crossfadePosition = position;
@@ -1385,7 +1385,7 @@ void Output::CalculateCrossfadeHandler()
 						const long kSamplesToRead = 10 * nextDecoder->GetSampleRate();
 						long totalSamplesRead = 0;
 						while ( WAIT_OBJECT_0 != WaitForSingleObject( m_CrossfadeStopEvent, 0 ) ) {
-							const long samplesRead = nextDecoder->Read( buffer.data(), windowSize );
+							const long samplesRead = nextDecoder->ReadSamples( buffer.data(), windowSize );
 							totalSamplesRead += samplesRead;
 							if ( ( totalSamplesRead >= kSamplesToRead ) || ( samplesRead <= 0 ) ) {
 								break;
@@ -1411,12 +1411,12 @@ void Output::StopCrossfadeThread()
 	m_CrossfadeItem = {};
 }
 
-float Output::GetCrossfadePosition() const
+double Output::GetCrossfadePosition() const
 {
 	return m_CrossfadePosition;
 }
 
-void Output::SetCrossfadePosition( const float position )
+void Output::SetCrossfadePosition( const double position )
 {
 	m_CrossfadePosition = position;
 }
@@ -1612,11 +1612,13 @@ void Output::UpdateEQ( const Settings::EQ& eq )
 
 Decoder::Ptr Output::OpenDecoder( Playlist::Item& item, const Decoder::Context context )
 {
-	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info.GetFilename(), context );
+	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info, context );
 	if ( !decoder ) {
 		auto duplicate = item.Duplicates.begin();
 		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
-			decoder = m_Handlers.OpenDecoder( *duplicate, context );
+      MediaInfo duplicateInfo( item.Info );
+      duplicateInfo.SetFilename( *duplicate );
+			decoder = m_Handlers.OpenDecoder( duplicateInfo, context );
 			++duplicate;
 		}
 	}
@@ -1631,7 +1633,8 @@ Output::OutputDecoderPtr Output::OpenOutputDecoder( Playlist::Item& item, const 
 	OutputDecoderPtr outputDecoder;
 	if ( usePreloadedDecoder ) {
 		std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
-		if ( m_PreloadedDecoder.decoder && ( m_PreloadedDecoder.item.Info.GetFilename() == item.Info.GetFilename() ) && ( m_PreloadedDecoder.item.Info.GetFiletime() == item.Info.GetFiletime() ) ) {
+    const auto& info = m_PreloadedDecoder.item.Info;
+		if ( m_PreloadedDecoder.decoder && ( std::tie( info.GetFilename(), info.GetCueStart(), info.GetCueEnd() ) == std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) ) && ( info.GetFiletime() == item.Info.GetFiletime() ) ) {
 			outputDecoder = m_PreloadedDecoder.decoder;
 			m_PreloadedDecoder.decoder.reset();
 			m_PreloadedDecoder.item = {};
@@ -1963,7 +1966,7 @@ DWORD Output::ApplyLeadIn( float* buffer, const DWORD byteCount, HSTREAM handle 
 	DWORD bytesPadded = 0;
 	if ( m_LeadInSeconds > 0 ) {
 		const QWORD bytePos = BASS_ChannelGetPosition( handle, BASS_POS_BYTE );
-		const float position = static_cast<float>( BASS_ChannelBytes2Seconds( handle, bytePos ) );
+		const double position = BASS_ChannelBytes2Seconds( handle, bytePos );
 		if ( position < m_LeadInSeconds ) {
 			BASS_CHANNELINFO info = {};
 			if ( ( TRUE == BASS_ChannelGetInfo( handle, &info ) ) && ( info.freq > 0 ) && ( info.chans > 0 ) ) {
@@ -2012,8 +2015,7 @@ void Output::LoudnessPrecalcHandler()
 		while ( ( items.end() != item ) && canContinue() ) {
       // Only scan files on local (fixed) drives.
       bool isLocalFile = false;
-      const auto& filename = item->Info.GetFilename();
-      if ( !filename.empty() ) {
+      if ( const auto& filename = item->Info.GetFilename(); !filename.empty() ) {
         std::vector<wchar_t> volumePathName( 1 + filename.size() );
         if ( GetVolumePathName( filename.c_str(), volumePathName.data(), static_cast<DWORD>( volumePathName.size() ) ) ) {
           isLocalFile = ( DRIVE_FIXED == GetDriveType( volumePathName.data() ) );
@@ -2025,7 +2027,7 @@ void Output::LoudnessPrecalcHandler()
 				  m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
 				  gain = item->Info.GetGainTrack();
 				  if ( !gain.has_value() ) {
-					  gain = GainCalculator::CalculateTrackGain( item->Info.GetFilename(), m_Handlers, canContinue );
+					  gain = GainCalculator::CalculateTrackGain( *item, m_Handlers, canContinue );
 					  if ( gain.has_value() ) {
 						  const MediaInfo previousMediaInfo( item->Info );
 						  item->Info.SetGainTrack( gain );

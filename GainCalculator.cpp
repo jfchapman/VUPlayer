@@ -74,7 +74,7 @@ void GainCalculator::AddPending( const Playlist::Item& item )
 		bool addTrack = true;
 		Playlist::Items& itemList = albumIter->second;
 		for ( auto itemIter = itemList.begin(); addTrack && ( itemList.end() != itemIter ); itemIter++ ) {
-			addTrack = ( item.Info.GetFilename() != itemIter->Info.GetFilename() );
+			addTrack = std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) != std::tie( itemIter->Info.GetFilename(), itemIter->Info.GetCueStart(), itemIter->Info.GetCueEnd() );
 		}
 		if ( addTrack ) {
 			itemList.push_back( item );
@@ -149,10 +149,10 @@ void GainCalculator::Handler()
 								std::vector<float> buffer( sampleSize * channels );
 
 								int errorState = EBUR128_SUCCESS;
-								long samplesRead = decoder->Read( buffer.data(), sampleSize );
+								long samplesRead = decoder->ReadSamples( buffer.data(), sampleSize );
 								while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) && canContinue() ) {
 									errorState = ebur128_add_frames_float( r128State, buffer.data(), static_cast<size_t>( samplesRead ) );
-									samplesRead = decoder->Read( buffer.data(), sampleSize );
+									samplesRead = decoder->ReadSamples( buffer.data(), sampleSize );
 								}
 								decoder.reset();
 
@@ -246,11 +246,13 @@ Decoder::Ptr GainCalculator::OpenDecoder( const Playlist::Item& item ) const
 {
 	Decoder::Ptr decoder;
 	if ( !IsURL( item.Info.GetFilename() ) ) {
-		decoder = m_Handlers.OpenDecoder( item.Info.GetFilename(), Decoder::Context::Temporary );
+		decoder = m_Handlers.OpenDecoder( item.Info, Decoder::Context::Temporary );
 		if ( !decoder ) {
 			auto duplicate = item.Duplicates.begin();
 			while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
-				decoder = m_Handlers.OpenDecoder( *duplicate, Decoder::Context::Temporary );
+        MediaInfo duplicateInfo( item.Info );
+        duplicateInfo.SetFilename( *duplicate );
+				decoder = m_Handlers.OpenDecoder( duplicateInfo, Decoder::Context::Temporary );
 				++duplicate;
 			}
 		}
@@ -258,11 +260,11 @@ Decoder::Ptr GainCalculator::OpenDecoder( const Playlist::Item& item ) const
 	return decoder;
 }
 
-std::optional<float> GainCalculator::CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, Decoder::CanContinue canContinue )
+std::optional<float> GainCalculator::CalculateTrackGain( const Playlist::Item& item, const Handlers& handlers, Decoder::CanContinue canContinue )
 {
 	std::optional<float> gain;
-	if ( ( nullptr != canContinue ) && !IsURL( filename ) ) {
-		const Decoder::Ptr decoder = handlers.OpenDecoder( filename, Decoder::Context::Temporary );
+	if ( ( nullptr != canContinue ) && !IsURL( item.Info.GetFilename() ) ) {
+		const Decoder::Ptr decoder = handlers.OpenDecoder( item.Info, Decoder::Context::Temporary );
 		if ( decoder ) {
 			gain = decoder->CalculateTrackGain( canContinue );
 		}

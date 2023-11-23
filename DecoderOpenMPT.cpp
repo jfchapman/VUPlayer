@@ -78,11 +78,11 @@ long DecoderOpenMPT::Read( float* buffer, const long sampleCount )
 	return samplesRead;
 }
 
-float DecoderOpenMPT::Seek( const float position )
+double DecoderOpenMPT::Seek( const double position )
 {
-  float seekPosition = position;
+  double seekPosition = position;
   try {
-    seekPosition = static_cast<float>( m_module.set_position_seconds( position ) );
+    seekPosition = m_module.set_position_seconds( position );
   } catch ( const openmpt::exception& ) {
   }
   return seekPosition;

@@ -234,7 +234,7 @@ long DecoderFFmpeg::Read( float* output, const long sampleCount )
 	return samplesRead;
 }
 
-float DecoderFFmpeg::Seek( const float position )
+double DecoderFFmpeg::Seek( const double position )
 {
 	m_Buffer.clear();
 	m_BufferPosition = 0;

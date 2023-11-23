@@ -175,13 +175,7 @@ long CDDAMedia::GetCDDB() const
 
 long CDDAMedia::GetStartSector( const long track ) const
 {
-	long trackOffset = 0;
-	if ( ( track >= static_cast<long>( m_TOC.FirstTrack ) ) && ( track <= static_cast<long>( m_TOC.LastTrack + 1 ) ) ) {
-		if ( const unsigned long index = track - m_TOC.FirstTrack; index < MAXIMUM_NUMBER_TRACKS ) {
-			trackOffset = ( m_TOC.TrackData[ index ].Address[ 1 ] * 60 * 75 ) + ( m_TOC.TrackData[ index ].Address[ 2 ] * 75 ) + ( m_TOC.TrackData[ index ].Address[ 3 ] );
-		}
-	}
-	return trackOffset;
+	return GetStartSector( m_TOC, track );
 }
 
 long CDDAMedia::GetSectorCount( const long track ) const
@@ -282,7 +276,7 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 
 		if ( success && isNewMedia ) {
 			const auto [ discID, toc ] = GetMusicBrainzID();
-			m_MusicBrainz.Query( discID, toc, false /*forceDialog*/ );	
+			m_MusicBrainz.Query( discID, toc, false /*forceDialog*/, m_Playlist->GetID() );	
 		}
 	}
 	return success;
@@ -472,19 +466,24 @@ void CDDAMedia::GetDataBlockText( const CDROM_TOC_CD_TEXT_DATA& data, const int 
 
 std::pair<std::string /*discid*/, std::string /*toc*/> CDDAMedia::GetMusicBrainzID() const
 {
-	std::stringstream toc;
-	toc << static_cast<long>( m_TOC.FirstTrack ) << '+' << static_cast<long>( m_TOC.LastTrack ) << '+' << GetStartSector( 1 + m_TOC.LastTrack );
+  return GetMusicBrainzID( m_TOC );
+}
+
+std::pair<std::string /*discid*/, std::string /*toc*/> CDDAMedia::GetMusicBrainzID( const CDROM_TOC& toc )
+{
+	std::stringstream ss;
+	ss << static_cast<long>( toc.FirstTrack ) << '+' << static_cast<long>( toc.LastTrack ) << '+' << GetStartSector( toc, 1 + toc.LastTrack );
 
 	std::stringstream hash;
-	hash << std::hex << std::setfill( '0' ) << std::setw( 2 ) << std::uppercase << static_cast<long>( m_TOC.FirstTrack );
-	hash << std::hex << std::setfill( '0' ) << std::setw( 2 ) << std::uppercase << static_cast<long>( m_TOC.LastTrack );
-	hash << std::hex << std::setfill( '0' ) << std::setw( 8 ) << std::uppercase << GetStartSector( 1 + m_TOC.LastTrack );
+	hash << std::hex << std::setfill( '0' ) << std::setw( 2 ) << std::uppercase << static_cast<long>( toc.FirstTrack );
+	hash << std::hex << std::setfill( '0' ) << std::setw( 2 ) << std::uppercase << static_cast<long>( toc.LastTrack );
+	hash << std::hex << std::setfill( '0' ) << std::setw( 8 ) << std::uppercase << GetStartSector( toc, 1 + toc.LastTrack );
 
-	for ( long track = m_TOC.FirstTrack; track <= m_TOC.LastTrack; track++ ) {
-		toc << '+' << GetStartSector( track );
-		hash << std::hex << std::setfill( '0' ) << std::setw( 8 ) << std::uppercase << GetStartSector( track );
+	for ( long track = toc.FirstTrack; track <= toc.LastTrack; track++ ) {
+		ss << '+' << GetStartSector( toc, track );
+		hash << std::hex << std::setfill( '0' ) << std::setw( 8 ) << std::uppercase << GetStartSector( toc, track );
 	}
-	for ( long track = 1 + m_TOC.LastTrack - m_TOC.FirstTrack; track < MAXIMUM_NUMBER_TRACKS - 1; track++ ) {
+	for ( long track = 1 + toc.LastTrack - toc.FirstTrack; track < MAXIMUM_NUMBER_TRACKS - 1; track++ ) {
 		hash << std::setfill( '0' ) << std::setw( 8 ) << 0l;
 	}
 	auto discid = CalculateHash( hash.str(), CALG_SHA1, true /*base64encode*/ );
@@ -492,5 +491,79 @@ std::pair<std::string /*discid*/, std::string /*toc*/> CDDAMedia::GetMusicBrainz
 	std::replace( discid.begin(), discid.end(), '/', '_' );
 	std::replace( discid.begin(), discid.end(), '=', '-' );
 
-	return { discid, toc.str() };
+	return { discid, ss.str() };
+}
+
+long CDDAMedia::GetStartSector( const CDROM_TOC& toc, const long track )
+{
+	long trackOffset = 0;
+	if ( ( track >= static_cast<long>( toc.FirstTrack ) ) && ( track <= static_cast<long>( toc.LastTrack + 1 ) ) ) {
+		if ( const unsigned long index = track - toc.FirstTrack; index < MAXIMUM_NUMBER_TRACKS ) {
+			trackOffset = ( toc.TrackData[ index ].Address[ 1 ] * 60 * 75 ) + ( toc.TrackData[ index ].Address[ 2 ] * 75 ) + ( toc.TrackData[ index ].Address[ 3 ] );
+		}
+	}
+	return trackOffset;
+}
+
+std::optional<std::pair<std::string /*discid*/, std::string /*toc*/>> CDDAMedia::GetMusicBrainzID( Playlist* const playlist )
+{
+  const auto items = playlist->GetItems();
+  if ( items.empty() || ( items.size() >= MAXIMUM_NUMBER_TRACKS ) )
+    return std::nullopt;
+
+  // All playlist items should use the same source file.
+  std::set<std::wstring> filenames;
+  for ( const auto& item : items ) {
+    filenames.insert( item.Info.GetFilename() );
+  }
+  if ( 1 != filenames.size() )
+    return std::nullopt;
+
+  // All the playlist items should contain start & end cues, except for the last item (for which the source file duration will be used).
+  long endCue = static_cast<long>( items.front().Info.GetDuration( false /*applyCues*/ ) * 75 );
+
+  std::set<std::pair<long /*startCue*/, long /*endCue*/>> cues;
+  for ( const auto& item : items ) {
+    if ( !item.Info.GetCueStart() )
+      return std::nullopt;
+    cues.insert( std::make_pair( *item.Info.GetCueStart(), item.Info.GetCueEnd().value_or( endCue ) ) );
+  }
+
+  // Restrict queries to playlists with a start cue of zero and an end cue of the source file duration.   
+  if ( ( 0 != cues.begin()->first ) || ( endCue != cues.rbegin()->second ) )
+    return std::nullopt;
+  
+  for ( auto cue = cues.begin(); cue != cues.end(); cue++ ) {
+    auto next = cue;
+    ++next;
+    if ( cues.end() != next ) {
+      // All the cues should be contiguous.
+      if ( cue->second != next->first )
+        return std::nullopt;
+    } else {
+      // Check the cues for the last track.
+      if ( cue->second < cue->first )
+        return std::nullopt;
+    }
+  }
+
+  // Generate a minimal table of contents (not all the fields are required to generate a query ID).
+  CDROM_TOC toc = {};
+  toc.FirstTrack = 1;
+  toc.LastTrack = static_cast<unsigned char>( cues.size() );
+  unsigned char track = 0;
+  for ( const auto& cue : cues ) {
+    const long address = PREGAP + cue.first;
+    toc.TrackData[ track ].TrackNumber = track;
+    toc.TrackData[ track ].Address[ 1 ] = static_cast<unsigned char>( address / 75 / 60 );
+    toc.TrackData[ track ].Address[ 2 ] = static_cast<unsigned char>( address / 75 % 60 );
+    toc.TrackData[ track ].Address[ 3 ] = static_cast<unsigned char>( address % 75 );
+    ++track;
+  }
+  endCue += PREGAP;
+  toc.TrackData[ track ].Address[ 1 ] = static_cast<unsigned char>( endCue / 75 / 60 );
+  toc.TrackData[ track ].Address[ 2 ] = static_cast<unsigned char>( endCue / 75 % 60 );
+  toc.TrackData[ track ].Address[ 3 ] = static_cast<unsigned char>( endCue % 75 );
+
+  return GetMusicBrainzID( toc );
 }

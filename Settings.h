@@ -297,11 +297,11 @@ public:
 	// Sets the startup 'playlist'.
 	void SetStartupPlaylist( const std::wstring& playlist );
 
-	// Gets the startup filename.
-	std::wstring GetStartupFilename();
+	// Gets the startup filename (with start & end cues).
+	std::tuple<std::wstring /*filename*/, long /*startCue*/, long /*endCue*/> GetStartupFile();
 
-	// Sets the startup 'filename'.
-	void SetStartupFilename( const std::wstring& filename );
+	// Sets the startup 'filename' (with optional start & end cues).
+	void SetStartupFile( const std::wstring& filename, const std::optional<long>& cueStart = std::nullopt, const std::optional<long>& cueEnd = std::nullopt );
 
 	// Gets the counter settings.
 	// 'font' - out, counter font.

@@ -127,20 +127,22 @@ long DecoderBass::Read( float* buffer, const long sampleCount )
 	return samplesRead;
 }
 
-float DecoderBass::Seek( const float position )
+double DecoderBass::Seek( const double position )
 {
 	DWORD flags = BASS_POS_BYTE;
 	BASS_CHANNELINFO info = {};
 	BASS_ChannelGetInfo( m_Handle, &info );
 	if ( BASS_CTYPE_MUSIC_MOD & info.ctype ) {
 		flags |= BASS_POS_DECODETO;
-	}
-	float seconds = 0;
+	} else {
+    flags |= BASS_POS_SCAN;
+  }
+	double seconds = 0;
 	if ( QWORD bytes = BASS_ChannelSeconds2Bytes( m_Handle, position ); -1 != bytes ) {
 		if ( BASS_ChannelSetPosition( m_Handle, bytes, flags ) ) {
 			bytes = BASS_ChannelGetPosition( m_Handle, BASS_POS_BYTE );
 			if ( -1 != bytes ) {
-				seconds = static_cast<float>( BASS_ChannelBytes2Seconds( m_Handle, bytes ) );
+				seconds = BASS_ChannelBytes2Seconds( m_Handle, bytes );
 				if ( seconds < 0 ) {
 					seconds = 0;
 				} else if ( m_FadeEndPosition > 0 ) {

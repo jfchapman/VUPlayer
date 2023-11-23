@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <set>
 #include <tuple>
+#include <regex>
 
 MediaInfo::MediaInfo( const std::wstring& filename ) :
 	m_Filename( filename )
@@ -24,11 +25,11 @@ bool MediaInfo::operator<( const MediaInfo& o ) const
 	const bool lessThan = 
 		std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate, 
 			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, 
-			m_Source, m_CDDB, m_GainTrack, m_GainAlbum ) <
+			m_Source, m_CDDB, m_GainTrack, m_GainAlbum, m_CueStart, m_CueEnd ) <
 
 		std::tie( o.m_Filename, o.m_Filetime, o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_BitsPerSample, o.m_Channels, o.m_Bitrate,
 			o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year, o.m_Comment, o.m_Track, o.m_Version, o.m_ArtworkID,
-			o.m_Source, o.m_CDDB, o.m_GainTrack, o.m_GainAlbum );
+			o.m_Source, o.m_CDDB, o.m_GainTrack, o.m_GainAlbum, o.m_CueStart, o.m_CueEnd );
 
 	return lessThan;
 }
@@ -91,8 +92,13 @@ void MediaInfo::SetFiletime( const long long filetime )
 	m_Filetime = filetime;
 }
 
-long long MediaInfo::GetFilesize() const
+long long MediaInfo::GetFilesize( const bool applyCues ) const
 {
+  if ( m_CueStart && applyCues && ( m_Duration > 0 ) ) {
+    const float start = *m_CueStart / 75.f;
+    const float end = m_CueEnd ? ( *m_CueEnd / 75.f ) : m_Duration;
+    return std::clamp( static_cast<long long>( m_Filesize * ( end - start ) / m_Duration ), 0ll, m_Filesize );
+  }
 	return m_Filesize;
 }
 
@@ -101,8 +107,13 @@ void MediaInfo::SetFilesize( const long long filesize )
 	m_Filesize = filesize;
 }
 
-float MediaInfo::GetDuration() const
+float MediaInfo::GetDuration( const bool applyCues ) const
 {
+  if ( m_CueStart && applyCues ) {
+    const float start = *m_CueStart / 75.f;
+    const float end = m_CueEnd ? ( *m_CueEnd / 75.f ) : m_Duration;
+    return ( start <= end ) ? ( end - start ) : 0.f;
+  }
 	return m_Duration;
 }
 
@@ -244,8 +255,8 @@ std::wstring MediaInfo::GetTitle( const bool filenameAsTitle ) const
 {
 	std::wstring title = m_Title;
 	if ( title.empty() && filenameAsTitle ) {
-		const std::filesystem::path path( m_Filename );
-		title = IsURL( m_Filename ) ? path.filename() : path.stem();
+	  const std::filesystem::path path( m_Filename );
+	  title = IsURL( m_Filename ) ? path.filename().native() : GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
 	}
 	return title;
 }
@@ -302,6 +313,32 @@ void MediaInfo::SetArtworkID( const std::wstring& id )
 	m_ArtworkID = id;
 }
 
+const std::optional<long>& MediaInfo::GetCueStart() const
+{
+  return m_CueStart;
+}
+
+void MediaInfo::SetCueStart( const std::optional<long>& frames )
+{
+  m_CueStart = ( frames.has_value() && ( frames.value() < 0 ) ) ? std::nullopt : frames;
+}
+
+const std::optional<long>& MediaInfo::GetCueEnd() const
+{
+  return m_CueEnd;
+}
+
+void MediaInfo::SetCueEnd( const std::optional<long>& frames )
+{
+  m_CueEnd = ( frames.has_value() && ( frames.value() < 0 ) ) ? std::nullopt : frames;
+}
+
+std::wstring MediaInfo::GetFilenameWithCues( const bool fullPath, const bool removeExtension ) const
+{
+  const auto filepath = ( fullPath && !removeExtension ) ? std::filesystem::path( m_Filename ) : std::filesystem::path( m_Filename ).filename();
+  return FormatCues( m_CueStart, m_CueEnd, removeExtension ? filepath.stem() : filepath );
+}
+
 MediaInfo::Source MediaInfo::GetSource() const
 {
 	return m_Source;
@@ -317,11 +354,11 @@ bool MediaInfo::IsDuplicate( const MediaInfo& o ) const
 	const bool isDuplicate = 
 		std::tie( m_Filesize, m_Duration, m_SampleRate, m_Channels,
 			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID,
-			m_Source, m_CDDB, m_GainTrack, m_GainAlbum ) ==
+			m_Source, m_CDDB, m_GainTrack, m_GainAlbum, m_CueStart, m_CueEnd ) ==
 
 		std::tie( o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_Channels,
 			o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year, o.m_Comment, o.m_Track, o.m_Version, o.m_ArtworkID,
-			o.m_Source, o.m_CDDB, o.m_GainTrack, o.m_GainAlbum );
+			o.m_Source, o.m_CDDB, o.m_GainTrack, o.m_GainAlbum, o.m_CueStart, o.m_CueEnd );
 	return isDuplicate;
 }
 
@@ -389,4 +426,41 @@ bool MediaInfo::GetCommonInfo( const List& mediaList, MediaInfo& commonInfo )
 	}
 
 	return hasCommonInfo;
+}
+
+std::wstring MediaInfo::FormatCues( const std::optional<long>& cueStart, const std::optional<long>& cueEnd, const std::wstring& value )
+{
+  if ( !cueStart )
+    return value;
+
+  const int startMinutes = *cueStart / 75 / 60;
+  const int startSeconds = *cueStart / 75 % 60;
+  const int startFrames = *cueStart % 75;
+  const int endMinutes = cueEnd ? ( *cueEnd / 75 / 60 ) : 99;
+  const int endSeconds = cueEnd ? ( *cueEnd / 75 % 60 ) : 99;
+  const int endFrames = cueEnd ? ( *cueEnd % 75 ) : 99;
+  return std::format( LR"({} [{:02}:{:02}:{:02} - {:02}:{:02}:{:02}])", value, startMinutes, startSeconds, startFrames, endMinutes, endSeconds, endFrames ); 
+}
+
+MediaInfo MediaInfo::ExtractCues( const std::wstring& filepath )
+{
+  const std::wregex kCues( LR"((.+)\[(\d{2}):(\d{2}):(\d{2}) - (\d{2}):(\d{2}):(\d{2})\]$)" );
+  std::wsmatch match;
+  if ( std::regex_match( filepath, match, kCues ) && ( 8 == match.size() ) ) {
+    try {
+      MediaInfo info( StripWhitespace( match[ 1 ].str() ) );
+      const int startMinutes = std::stoi( match[ 2 ] );
+      const int startSeconds = std::stoi( match[ 3 ] );
+      const int startFrames = std::stoi( match[ 4 ] );
+      const int endMinutes = std::stoi( match[ 5 ] );
+      const int endSeconds = std::stoi( match[ 6 ] );
+      const int endFrames = std::stoi( match[ 7 ] );
+      info.SetCueStart( startMinutes * 60 * 75 + startSeconds * 75 + startFrames );
+      if ( !( ( 99 == endMinutes ) && ( 99 == endSeconds ) && ( 99 == endFrames ) ) ) {
+        info.SetCueEnd( endMinutes * 60 * 75 + endSeconds * 75 + endFrames );
+      }
+      return info;
+    } catch ( const std::logic_error& ) {}
+  }  
+  return filepath;
 }

@@ -168,10 +168,10 @@ std::wstring FilesizeToString( const HINSTANCE instance, const long long filesiz
 	return str;
 }
 
-std::wstring DurationToString( const HINSTANCE instance, const float fDuration, const bool colonDelimited )
+std::wstring DurationToString( const HINSTANCE instance, const double _duration, const bool colonDelimited )
 {
 	std::wstringstream ss;
-	const long duration = static_cast<long>( fDuration );
+	const long duration = static_cast<long>( _duration );
 	const long days = duration / 86400;
 	if ( days > 0 ) {
 		ss << days;

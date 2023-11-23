@@ -18,11 +18,11 @@ public:
 	virtual ~GainCalculator();
 
 	// Calculates track gain for a single file.
-	// 'filename' - media filename.
+	// 'item' - playlist item.
 	// 'handlers' - media handlers.
 	// 'canContinue' - callback which returns whether the calculation can continue.
 	// Returns the track gain, or nullopt if the calculation failed or was cancelled.
-	static std::optional<float> CalculateTrackGain( const std::wstring& filename, const Handlers& handlers, Decoder::CanContinue canContinue );
+	static std::optional<float> CalculateTrackGain( const Playlist::Item& item, const Handlers& handlers, Decoder::CanContinue canContinue );
 
 	// Calculates gain values for the playlist 'items'.
 	void Calculate( const Playlist::Items& items );

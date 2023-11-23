@@ -200,7 +200,7 @@ void WndTray::OnContextMenuCommand( const UINT command )
 	const auto menuItemIter = m_PlaylistMenuItems.find( command );
 	if ( m_PlaylistMenuItems.end() != menuItemIter ) {
 		Playlist::Item playlistItem = { menuItemIter->second, MediaInfo() };
-		Playlists playlists = m_Tree.GetPlaylists();
+		Playlists playlists = m_Tree.GetUserPlaylists();
 		playlists.push_back( m_Tree.GetPlaylistFavourites() );
 		playlists.push_back( m_Tree.GetPlaylistStreams() );
 		playlists.push_back( GetActivePlaylist() );
@@ -311,7 +311,7 @@ void WndTray::ShowContextMenu()
 			for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
 				HMENU playlistsMenu = GetSubMenu( traymenu, itemIndex );
 				if ( ( nullptr != playlistsMenu ) && ( ID_TRAYMENU_PLAYLISTS == GetMenuItemID( playlistsMenu, 0 /*itemIndex*/ ) ) ) {
-					const Playlists playlists = m_Tree.GetPlaylists();
+					const Playlists playlists = m_Tree.GetUserPlaylists();
 					if ( playlists.empty() ) {
 						EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_DISABLED );
 					} else {

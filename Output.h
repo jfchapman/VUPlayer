@@ -36,8 +36,8 @@ public:
 	// Output item information.
 	struct Item {
 		Playlist::Item PlaylistItem;	// Playlist item.
-		float Position;								// Position in seconds.
-		float InitialSeek;						// Initial seek time for the item.
+		double Position;							// Position in seconds.
+		double InitialSeek;						// Initial seek time for the item.
 		std::wstring StreamTitle;			// Current stream title.
 	};
 
@@ -51,7 +51,7 @@ public:
 	// 'startID' - Playlist ID at which to start playback (or zero to start playback at the first playlist item).
 	// 'seek' - Initial start position in seconds (negative value to seek relative to the end of the track).
 	// Returns true if playback was started.
-	bool Play( const long startID = 0, const float seek = 0.0f );
+	bool Play( const long startID = 0, const double seek = 0 );
 
 	// Stops playback.
 	void Stop();
@@ -285,16 +285,16 @@ private:
 
 	// Calculates the crossfade point for the 'item'.
 	// 'seekOffset' - indicates the initial seek position of 'item', in seconds.
-	void CalculateCrossfadePoint( const Playlist::Item& item, const float seekOffset = 0.0f );
+	void CalculateCrossfadePoint( const Playlist::Item& item, const double seekOffset = 0 );
 
 	// Terminates the crossfade calculation thread.
 	void StopCrossfadeThread();
 
 	// Returns the crossfade position for the current track, in seconds.
-	float GetCrossfadePosition() const;
+	double GetCrossfadePosition() const;
 
 	// Sets the crossfade 'position' for the current track, in seconds.
-	void SetCrossfadePosition( const float position );
+	void SetCrossfadePosition( const double position );
 
 	// Applies gain (and EQ preamp) to an output 'buffer' containing 'sampleCount' samples, using 'item' information and 'softClipState'.
 	void ApplyGain( float* buffer, const long sampleCount, const Playlist::Item& item, std::vector<float>& softClipState );
@@ -481,7 +481,7 @@ private:
 	float m_LastTransitionPosition;
 
 	// Crossfade position for the current track, in seconds.
-	float m_CrossfadePosition;
+	double m_CrossfadePosition;
 
 	// Item for which to calculate the crossfade position.
 	Playlist::Item m_CrossfadeItem;
@@ -523,7 +523,7 @@ private:
 	std::vector<float> m_SoftClipStateCrossfading;
 
 	// Indicates an offset to subtract from the crossfade calculation, in seconds.
-	float m_CrossfadeSeekOffset;
+	double m_CrossfadeSeekOffset;
 
 	// Gain estimates.
 	GainEstimateMap m_GainEstimateMap;

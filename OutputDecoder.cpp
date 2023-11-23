@@ -60,12 +60,12 @@ long OutputDecoder::Read( float* buffer, const long sampleCount )
 	return samplesRead;
 }
 
-float OutputDecoder::Seek( const float position )
+double OutputDecoder::Seek( const double position )
 {
 	if ( m_UsePreBuffer ) {
 		StopPreBufferThread();
 	}
-	const float result = m_Decoder->Seek( position );
+	const double result = m_Decoder->SetPosition( position );
 	if ( m_UsePreBuffer ) {
 		StartPreBufferThread();
 	}
@@ -96,7 +96,7 @@ void OutputDecoder::SkipSilence()
 {
 	if ( m_UsePreBuffer ) {
 		StopPreBufferThread();
-		m_Decoder->Seek( 0 );
+		m_Decoder->SetPosition( 0 );
 	}
 	m_Decoder->SkipSilence();
 	if ( m_UsePreBuffer ) {
@@ -203,7 +203,7 @@ long OutputDecoder::GetOutputChannels( const MediaInfo& mediaInfo )
 
 long OutputDecoder::Decode( float* buffer, const long sampleCount )
 {
-  const long samplesRead = m_Decoder->Read( buffer, sampleCount );
+  const long samplesRead = m_Decoder->ReadSamples( buffer, sampleCount );
   if ( ( 7 == m_Decoder->GetChannels() ) && ( 8 == m_Channels ) ) {
     // Copy the back centre channel to the back left & back right channels.
     for ( long sample = sampleCount - 1; sample >= 0; sample-- ) {

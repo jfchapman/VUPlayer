@@ -6,12 +6,13 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <regex>
 
 // Next available playlist item ID.
 long Playlist::s_NextItemID = 0;
 
 // Supported playlist file extensions.
-constexpr std::array s_SupportedExtensions { L"vpl", L"m3u", L"m3u8", L"pls" };
+constexpr std::array s_SupportedExtensions { L"vpl", L"m3u", L"m3u8", L"pls", L"cue" };
 
 DWORD WINAPI Playlist::PendingThreadProc( LPVOID lpParam )
 {
@@ -83,7 +84,7 @@ Playlist::Items Playlist::GetItems()
 	return m_Playlist;
 }
 
-std::list<std::wstring> Playlist::GetPending()
+std::list<MediaInfo> Playlist::GetPending()
 {
 	std::lock_guard<std::mutex> lock( m_MutexPending );
 	return m_Pending;
@@ -238,7 +239,7 @@ Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position, boo
 	position = 0;
 	addedAsDuplicate = false;
 
-	if ( m_MergeDuplicates ) {	
+	if ( m_MergeDuplicates && !mediaInfo.GetCueStart() ) {	
 		for ( auto& itemIter : m_Playlist ) {
 			if ( itemIter.Info.IsDuplicate( mediaInfo ) ) {
 				if ( itemIter.Info.GetFilename() != mediaInfo.GetFilename() ) {
@@ -279,11 +280,11 @@ Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position, boo
 	return item;
 }
 
-void Playlist::AddPending( const std::wstring& filename, const bool startPendingThread )
+void Playlist::AddPending( const MediaInfo& media, const bool startPendingThread )
 {
 	{
 		std::lock_guard<std::mutex> lock( m_MutexPending );
-		m_Pending.push_back( filename );
+		m_Pending.push_back( media );
 	}
 	if ( startPendingThread ) {
 		StartPendingThread();
@@ -297,7 +298,7 @@ void Playlist::OnPendingThreadHandler()
 	HANDLE eventHandles[ 2 ] = { m_PendingStopEvent, m_PendingWakeEvent };
 
 	while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, timeout ) != WAIT_OBJECT_0 ) {
-		std::wstring filename;
+		MediaInfo mediaInfo;
 		{
 			std::lock_guard<std::mutex> lock( m_MutexPending );
 			if ( m_Pending.empty() ) {
@@ -310,19 +311,18 @@ void Playlist::OnPendingThreadHandler()
 					break;
 				}
 			} else {
-				filename = m_Pending.front();
+				mediaInfo = m_Pending.front();
 				m_Pending.pop_front();
 			}
 		}
 
-		if ( !filename.empty() ) {
+		if ( !mediaInfo.GetFilename().empty() ) {
 			bool addItem = true;
 			const Type type = GetType();
 			if ( ( Type::All == type ) || ( Type::Favourites == type ) || ( Type::Folder == type ) || ( Type::Streams == type ) ) {
-				addItem = !ContainsFilename( filename );
+				addItem = !ContainsFile( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() );
 			}
 			if ( addItem ) {
-				MediaInfo mediaInfo( filename );
 				if ( m_Library.GetMediaInfo( mediaInfo ) ) {
 					int position = 0;
 					bool addedAsDuplicate = false;
@@ -415,7 +415,7 @@ bool Playlist::RemoveItem( const MediaInfo& mediaInfo )
 	
 	bool removed = false;
 	for ( auto iter = m_Playlist.begin(); iter != m_Playlist.end(); iter++ ) {
-		if ( iter->Info.GetFilename() == mediaInfo.GetFilename() ) {
+		if ( std::tie( iter->Info.GetFilename(), iter->Info.GetCueStart(), iter->Info.GetCueEnd() ) == std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() ) ) {
 			if ( iter->Duplicates.empty() ) {
         const size_t position = std::distance( m_Playlist.begin(), iter );
 				const Item item = *iter;
@@ -434,7 +434,7 @@ bool Playlist::RemoveItem( const MediaInfo& mediaInfo )
 				iter->Duplicates.pop_front();
 			}
 			break;
-		} else if ( !iter->Duplicates.empty() ) {
+		} else if ( !iter->Duplicates.empty() && !iter->Info.GetCueStart() ) {
 			auto duplicate = std::find( iter->Duplicates.begin(), iter->Duplicates.end(), mediaInfo.GetFilename() );
 			if ( iter->Duplicates.end() != duplicate ) {
 				iter->Duplicates.erase( duplicate );
@@ -451,7 +451,11 @@ bool Playlist::RemoveFiles( const MediaInfo::List& mediaList )
 	bool anyItemsRemoved = false;
   for ( const auto& mediaInfo : mediaList ) {
     const auto& filename = mediaInfo.GetFilename();
-	  if ( const auto foundItem = std::find_if( tempList.begin(), tempList.end(), [ &filename ] ( const Item& item ) { return filename == item.Info.GetFilename(); } ); tempList.end() != foundItem ) {
+    const auto& cueStart = mediaInfo.GetCueStart();
+    const auto& cueEnd = mediaInfo.GetCueEnd();
+	  if ( const auto foundItem = std::find_if( tempList.begin(), tempList.end(), [ &filename, &cueStart, &cueEnd ] ( const Item& item ) { 
+      return std::tie( filename, cueStart, cueEnd ) == std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() );
+    } ); tempList.end() != foundItem ) {
       tempList.erase( foundItem );
       anyItemsRemoved = true;
     }
@@ -490,7 +494,7 @@ long long Playlist::GetFilesize()
 	long long filesize = 0;
 	for ( const auto& iter : m_Playlist ) {
 		const MediaInfo& mediaInfo = iter.Info;
-		filesize += mediaInfo.GetFilesize();
+		filesize += mediaInfo.GetFilesize( true /*applyCues*/ );
 	}
 	return filesize;
 }
@@ -552,13 +556,27 @@ bool Playlist::LessThan( const Item& item1, const Item& item2, const Column colu
 			break;
 		}
 		case Column::Filepath : {
-			lessThan = _wcsicmp( item1.Info.GetFilename().c_str(), item2.Info.GetFilename().c_str() ) < 0;
+      const auto cmp = _wcsicmp( item1.Info.GetFilename().c_str(), item2.Info.GetFilename().c_str() );
+      if ( ( 0 == cmp ) && ( item1.Info.GetCueStart() || item2.Info.GetCueStart() ) ) {
+        const auto cue1 = item1.Info.GetCueStart().value_or( -1 );
+        const auto cue2 = item2.Info.GetCueStart().value_or( -1 );
+        lessThan = ( cue1 < cue2 );
+      } else {
+			  lessThan = ( cmp < 0 );
+      }
 			break;
 		}
 		case Column::Filename : {
 			const auto filename1 = std::filesystem::path( item1.Info.GetFilename() ).filename();
 			const auto filename2 = std::filesystem::path( item2.Info.GetFilename() ).filename();
-			lessThan = _wcsicmp( filename1.c_str(), filename2.c_str() ) < 0;
+      const auto cmp = _wcsicmp( filename1.c_str(), filename2.c_str() );
+      if ( ( 0 == cmp ) && ( item1.Info.GetCueStart() || item2.Info.GetCueStart() ) ) {
+        const auto cue1 = item1.Info.GetCueStart().value_or( -1 );
+        const auto cue2 = item2.Info.GetCueStart().value_or( -1 );
+        lessThan = ( cue1 < cue2 );
+      } else {
+			  lessThan = ( cmp < 0 );
+      }
 			break;
 		}
 		case Column::Filesize : {
@@ -623,11 +641,11 @@ bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 	{
 		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 		for ( auto& item : m_Playlist ) {
-			if ( item.Info.GetFilename() == mediaInfo.GetFilename() ) {
+			if ( std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) == std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() ) ) {
 				item.Info = mediaInfo;
 				updated = true;
 
-				if ( m_MergeDuplicates ) {
+				if ( m_MergeDuplicates && !mediaInfo.GetCueStart() ) {
 					// Split out any duplicates from the top level item, and add them back later as new items.
 					for ( const auto& duplicate : item.Duplicates ) {
 						MediaInfo itemToAdd( duplicate );
@@ -645,7 +663,7 @@ bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 						}
 					}
 				}
-			} else if ( m_MergeDuplicates ) {
+			} else if ( m_MergeDuplicates && !mediaInfo.GetCueStart() ) {
 				// If a duplicate of a top level item has been updated, split it out and add it back later as a new item.
 				for ( auto duplicate = item.Duplicates.begin(); item.Duplicates.end() != duplicate; duplicate++ ) {
 					if ( *duplicate == mediaInfo.GetFilename() ) {
@@ -663,7 +681,7 @@ bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 		}
 	}
 
-	if ( m_MergeDuplicates ) {
+	if ( m_MergeDuplicates && !mediaInfo.GetCueStart() ) {
 		for ( const auto& itemToRemove : itemsToRemove ) {
 			RemoveItem( itemToRemove );
 			vuplayer->OnPlaylistItemRemoved( this, itemToRemove );
@@ -743,13 +761,13 @@ Playlist::Type Playlist::GetType() const
 	return m_Type;
 }
 
-bool Playlist::ContainsFilename( const std::wstring& filename )
+bool Playlist::ContainsFile( const std::wstring& filename, const std::optional<long>& cueStart, const std::optional<long>& cueEnd )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	bool containsFilename = false;
 	auto iter = m_Playlist.begin();
 	while ( !containsFilename && ( m_Playlist.end() != iter ) ) {
-		containsFilename = ( filename == iter->Info.GetFilename() );
+		containsFilename = std::tie( filename, cueStart, cueEnd ) == std::tie( iter->Info.GetFilename(), iter->Info.GetCueStart(), iter->Info.GetCueEnd() );
 		++iter;
 	}
 	return containsFilename;
@@ -774,25 +792,27 @@ void Playlist::MergeDuplicates()
 	Items itemsRemoved;
 	auto firstItem = m_Playlist.begin();
 	while ( m_Playlist.end() != firstItem ) {
-		auto secondItem = firstItem;
-		++secondItem;
-		bool itemModified = false;
-		while ( m_Playlist.end() != secondItem ) {
-			if ( firstItem->Info.IsDuplicate( secondItem->Info ) ) {
-				itemsRemoved.push_back( *secondItem );
-				const auto foundDuplicate = std::find( firstItem->Duplicates.begin(), firstItem->Duplicates.end(), secondItem->Info.GetFilename() );
-				if ( firstItem->Duplicates.end() == foundDuplicate ) {
-					firstItem->Duplicates.push_back( secondItem->Info.GetFilename() );
-				}
-				secondItem = m_Playlist.erase( secondItem );
-				itemModified = true;
-			} else {
-				++secondItem;
-			}
-		}
-		if ( itemModified && ( nullptr != vuplayer ) ) {
-			vuplayer->OnPlaylistItemUpdated( this, *firstItem );
-		}
+    if ( !firstItem->Info.GetCueStart() ) {
+		  auto secondItem = firstItem;
+		  ++secondItem;
+		  bool itemModified = false;
+		  while ( m_Playlist.end() != secondItem ) {
+			  if ( firstItem->Info.IsDuplicate( secondItem->Info ) ) {
+				  itemsRemoved.push_back( *secondItem );
+				  const auto foundDuplicate = std::find( firstItem->Duplicates.begin(), firstItem->Duplicates.end(), secondItem->Info.GetFilename() );
+				  if ( firstItem->Duplicates.end() == foundDuplicate ) {
+					  firstItem->Duplicates.push_back( secondItem->Info.GetFilename() );
+				  }
+				  secondItem = m_Playlist.erase( secondItem );
+				  itemModified = true;
+			  } else {
+				  ++secondItem;
+			  }
+		  }
+		  if ( itemModified && ( nullptr != vuplayer ) ) {
+			  vuplayer->OnPlaylistItemUpdated( this, *firstItem );
+		  }
+    }
 		++firstItem;
 	}
 	if ( nullptr != vuplayer ) {
@@ -879,7 +899,9 @@ bool Playlist::AddPlaylist( const std::wstring& filename, const bool startPendin
 		added = AddM3U( filename );
 	} else if ( L"pls" == fileExt ) {
 		added = AddPLS( filename );
-	}
+	} else if ( L"cue" == fileExt ) {
+    added = AddCUE( filename );
+  }
 	if ( added && startPendingThread ) {
 		StartPendingThread();
 	}
@@ -912,7 +934,7 @@ bool Playlist::AddM3U( const std::wstring& filename )
 	bool added = false;
 	std::ifstream stream;
 	stream.open( filename, std::ios::in );
-	if ( stream.is_open() ) {
+	if ( stream.good() ) {
 		std::filesystem::path playlistPath( filename );
 		playlistPath = playlistPath.parent_path();
 		do {
@@ -930,14 +952,13 @@ bool Playlist::AddM3U( const std::wstring& filename )
 							filePath = playlistPath / filePath;
 						}
 						if ( std::filesystem::exists( filePath ) ) {
-							AddPending( filePath, false /*startPendingThread*/ );
+							AddPending( MediaInfo( filePath ), false /*startPendingThread*/ );
 							added = true;
 						}
 					}
 				}
 			}
 		} while ( !stream.eof() );
-		stream.close();
 	}
 	return added;
 }
@@ -947,7 +968,7 @@ bool Playlist::AddPLS( const std::wstring& filename )
 	bool added = false;
 	std::ifstream stream;
 	stream.open( filename, std::ios::in );
-	if ( stream.is_open() ) {
+	if ( stream.good() ) {
 		std::filesystem::path playlistPath( filename );
 		playlistPath = playlistPath.parent_path();
 		do {
@@ -968,16 +989,174 @@ bool Playlist::AddPLS( const std::wstring& filename )
 							filePath = playlistPath / filePath;
 						}
 						if ( std::filesystem::exists( filePath ) ) {
-							AddPending( filePath, false /*startPendingThread*/ );
+							AddPending( MediaInfo( filePath ), false /*startPendingThread*/ );
 							added = true;
 						}
 					}
 				}
 			}
 		} while ( !stream.eof() );
-		stream.close();
 	}
 	return added;
+}
+
+static std::vector<std::wstring> GetMatches( const std::string& line, const std::regex& regex )
+{
+  std::smatch match;
+  if ( std::regex_match( line, match, regex ) ) {
+    std::vector<std::wstring> matches;
+    matches.reserve( match.size() );
+    for ( size_t i = 1; i < match.size(); i++ ) {
+      matches.emplace_back( UTF8ToWideString( StripQuotes( match.str( i ) ) ) );
+    }
+    return matches;
+  }
+  return {};
+}
+
+static bool SetCueStart( const std::string& line, MediaInfo& mediaInfo )
+{
+  const std::regex kIndex( R"(INDEX\s+(\d+)\s+(\d+):(\d{2}):(\d{2}))" );
+  std::smatch match;
+  if ( std::regex_match( line, match, kIndex ) && ( 5 == match.size() ) ) {
+    try {
+      if ( const long index = std::stol( match[ 1 ] ); index == 1 ) {
+        const long minutes = std::stol( match[ 2 ] );
+        const long seconds = std::stol( match[ 3 ] );
+        const long frames = std::stol( match[ 4 ] );
+        mediaInfo.SetCueStart( minutes * 60 * 75 + seconds * 75 + frames );
+        return true;
+      }
+    } catch ( const std::logic_error& ) {}
+  }
+  return false;
+}
+
+bool Playlist::AddCUE( const std::wstring& filename )
+{
+  bool added = false;
+  std::ifstream stream( filename );
+  if ( stream.good() ) {
+		std::filesystem::path playlistPath( filename );
+		playlistPath = playlistPath.parent_path();
+
+    const std::regex kPerformer( R"(PERFORMER\s+(.+))" );
+    const std::regex kTitle( R"(TITLE\s+(.+))" );
+    const std::regex kGenre( R"(REM\s+GENRE\s+(.+))" );
+    const std::regex kComment( R"(REM\s+COMMENT\s+(.+))" );
+    const std::regex kDate( R"(REM\s+DATE\s+(.+))" );
+    const std::regex kFile( R"-(FILE\s*"(.+)"\s*(.+))-" );
+    const std::regex kTrack( R"(TRACK\s+(\d+)\s+(.+))" );
+
+    std::wstring albumArtist;
+    std::wstring albumTitle;
+    std::wstring albumGenre;
+    std::wstring albumComment;
+    long albumYear = 0;
+    
+    std::filesystem::path currentFile;
+    bool currentFileExists = false;
+
+    std::map<long /*trackNumber*/, std::pair<bool /*isAudio*/, MediaInfo>> tracks;
+    auto currentTrack = tracks.end();
+
+    std::vector<std::wstring> matches;
+		do {
+			std::string line;
+			std::getline( stream, line );
+      line = StripWhitespace( line );
+      
+      if ( tracks.empty() ) {
+        if ( matches = GetMatches( line, kPerformer ); !matches.empty() ) {
+          albumArtist = matches.front();
+        } else if ( matches = GetMatches( line, kTitle ); !matches.empty() ) {
+          albumTitle = matches.front();
+        } else if ( matches = GetMatches( line, kGenre ); !matches.empty() ) {
+          albumGenre = matches.front();
+        } else if ( matches = GetMatches( line, kComment ); !matches.empty() ) {
+          albumComment = matches.front();
+        } else if ( matches = GetMatches( line, kDate ); !matches.empty() ) {
+          try {
+            albumYear = std::stol( matches.front() );
+          } catch ( const std::logic_error& ) {}
+        }
+      }
+
+      if ( matches = GetMatches( line, kFile ); matches.size() >= 2 ) {
+        if ( matches[ 1 ] == L"MOTOROLA" ) {
+          // Big-endian raw data is not supported.
+          currentFileExists = false;
+        } else {
+          currentFile = playlistPath / matches.front();
+          currentFileExists = std::filesystem::exists( currentFile );
+        }
+      }
+
+      if ( currentFileExists ) {
+        if ( matches = GetMatches( line, kTrack ); !matches.empty() ) {
+          try {
+            const long track = std::stol( matches.front() );
+            const bool isAudio = ( matches.size() >= 2 ) && ( matches[ 1 ] == L"AUDIO" );  
+            currentTrack = tracks.insert( { track, std::make_pair( isAudio, MediaInfo( currentFile ) ) } ).first;
+            if ( isAudio ) {
+              MediaInfo& info = currentTrack->second.second;
+              info.SetTrack( track );
+              info.SetArtist( albumArtist );
+              info.SetAlbum( albumTitle );
+              info.SetGenre( albumGenre );
+              info.SetComment( albumComment );
+              info.SetYear( albumYear );
+            }
+          } catch ( const std::logic_error& ) {
+            currentTrack = tracks.end();
+          }
+        }
+
+        if ( tracks.end() != currentTrack ) {
+          MediaInfo& info = currentTrack->second.second;
+          if ( matches = GetMatches( line, kPerformer ); !matches.empty() ) {
+            info.SetArtist( matches.front() );
+          } else if ( matches = GetMatches( line, kTitle ); !matches.empty() ) {
+            info.SetTitle( matches.front() );
+          } else {
+            SetCueStart( line, info );
+          }
+        }
+      }
+		} while ( !stream.eof() );
+
+    // Strip out any tracks without cues.
+    for ( auto track = tracks.begin(); track != tracks.end(); ) {
+      const auto& info = track->second.second;
+      if ( info.GetCueStart() ) {
+        ++track;
+      } else {
+        track = tracks.erase( track );
+      }
+    }
+
+    for ( auto track = tracks.begin(); track != tracks.end(); track++ ) {
+      const bool isAudio = track->second.first;
+      MediaInfo& info = track->second.second;
+      if ( isAudio ) {
+        if ( auto nextTrack = track; ++nextTrack != tracks.end() ) {
+          const MediaInfo& nextInfo = nextTrack->second.second;
+          info.SetCueEnd( nextInfo.GetCueStart() );
+        }
+        if ( m_Library.GetMediaInfo( info ) ) {
+          AddItem( info );
+          added = true;
+        }
+      }
+    }
+
+    if ( added ) {
+			if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
+        vuplayer->OnMusicBrainzQuery( this );
+      }
+    }
+  }
+  return added;
 }
 
 std::set<std::wstring> Playlist::GetSupportedPlaylistExtensions()
@@ -1040,4 +1219,12 @@ int Playlist::FindItem( const int startIndex, const std::wstring& searchTitle, c
   }
 
   return -1;
+}
+
+bool Playlist::AllowMusicBrainzQueries()
+{
+  if ( Type::CDDA == m_Type )
+    return true;
+
+  return CDDAMedia::GetMusicBrainzID( this ).has_value();
 }

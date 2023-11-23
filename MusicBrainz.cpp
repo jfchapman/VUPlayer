@@ -185,18 +185,18 @@ INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM w
 	return FALSE;
 }
 
-void MusicBrainz::Query( const std::string& discID, const std::string& toc, const bool forceDialog )
+void MusicBrainz::Query( const std::string& discID, const std::string& toc, const bool forceDialog, const std::string& playlistID )
 {
 	std::lock_guard<std::mutex> lock( m_PendingQueriesMutex );
 	bool addPending = true;
 	auto pendingQuery = m_PendingQueries.begin();
 	while ( addPending && ( m_PendingQueries.end() != pendingQuery ) ) {
-		const auto& [ pendingDiscID, pendingTOC ] = pendingQuery->first;
+		const auto& [ pendingDiscID, pendingTOC, _ ] = pendingQuery->first;
 		addPending = ( discID != pendingDiscID );
 		++pendingQuery;
 	}
 	if ( addPending ) {
-		m_PendingQueries.push_back( { { discID, toc }, forceDialog } );
+		m_PendingQueries.push_back( { { discID, toc, playlistID }, forceDialog } );
 		SetEvent( m_WakeEvent );
 	}
 }
@@ -220,12 +220,13 @@ void MusicBrainz::QueryHandler()
 			}
 		}
 
-		const auto& [ discID, toc ] = pendingQuery.first;
+		const auto& [ discID, toc, playlistID ] = pendingQuery.first;
 		const bool forceDialog = pendingQuery.second;
 
 		if ( !discID.empty() && !toc.empty() ) {
 			Result* result = new Result();
 			result->DiscID = discID;
+      result->PlaylistID = playlistID;
 
 			if ( m_Settings.GetMusicBrainzEnabled() ) {
 				m_ActiveQuery = true;
@@ -245,7 +246,7 @@ void MusicBrainz::QueryHandler()
 		std::lock_guard<std::mutex> lock( m_PendingQueriesMutex );
 		auto pendingIter = m_PendingQueries.begin();
 		while ( m_PendingQueries.end() != pendingIter ) {
-			const auto& [ pendingDiscID, pendingTOC ] = pendingIter->first;
+			const auto& [ pendingDiscID, pendingTOC, _ ] = pendingIter->first;
 			if ( pendingDiscID == toc ) {
 				pendingIter = m_PendingQueries.erase( pendingIter );
 			} else {

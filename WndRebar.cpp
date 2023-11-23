@@ -136,7 +136,7 @@ void WndRebar::RearrangeItems()
 			const int rebarHeight = maxItemHeight + borderSize;
 			SetWindowPos( m_hWnd, nullptr /*insertAfter*/, 0 /*x*/, 0 /*y*/, rebarWidth, rebarHeight, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER );
 
-			const int minimumItemWidth = int( minimumItemSize * GetDPIScaling() );
+			const int minimumItemWidth = static_cast<int>( minimumItemSize * GetDPIScaling() );
 			std::map<const WndRebarItem*, int> itemWidths;
 			int availableWidth = rebarWidth;
 			for ( const auto& item : m_Items ) {

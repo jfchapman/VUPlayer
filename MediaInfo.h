@@ -7,20 +7,20 @@
 #include "Tag.h"
 
 // Minimum valid year.
-static const long MINYEAR = 1000;
+static constexpr long MINYEAR = 1000;
 
 // Maximum valid year.
-static const long MAXYEAR = 9999;
+static constexpr long MAXYEAR = 9999;
 
 // Loudness reference level in LUFS.
-static const float LOUDNESS_REFERENCE = -18.0f;
+static constexpr float LOUDNESS_REFERENCE = -18.0f;
 
 // Media information.
 class MediaInfo
 {
 public:
 	// A list of media information.
-	typedef std::list<MediaInfo> List;
+	using List = std::list<MediaInfo>;
 
 	// Source types.
 	enum class Source {
@@ -40,10 +40,10 @@ public:
 	// Tags cast operator.
 	operator Tags() const;
 
-	// Returns the filename.
+	// Returns the filename (full path).
 	const std::wstring& GetFilename() const;
 
-	// Sets the filename.
+	// Sets the filename (full path).
 	void SetFilename( const std::wstring& filename );
 
 	// Returns the last modified timestamp.
@@ -53,13 +53,15 @@ public:
 	void SetFiletime( const long long filetime );
 
 	// Returns the filesize, in bytes.
-	long long GetFilesize() const;
+  // 'applyCues' - true to return the estimated track filesize with cues applied (if present), false to return the underlying filesize.
+	long long GetFilesize( const bool applyCues = false ) const;
 
 	// Sets the filesize, in bytes.
 	void SetFilesize( const long long filesize );
 
 	// Returns the duration, in seconds.
-	float GetDuration() const;
+  // 'applyCues' - true to return the track duration with cues applied (if present), false to return the underlying file duration.
+	float GetDuration( const bool applyCues = true ) const;
 
 	// Sets the duration, in seconds.
 	void SetDuration( const float duration );
@@ -160,7 +162,24 @@ public:
 	// Sets the artwork ID.
 	void SetArtworkID( const std::wstring& id );
 
-	// Returns the media source.
+  // Gets the start position (for tracks from cue files), in frames (where there are 75 frames per second).
+  const std::optional<long>& GetCueStart() const;
+
+  // Sets the start position (for tracks from cue files), in frames (where there are 75 frames per second).
+  void SetCueStart( const std::optional<long>& frames );
+
+  // Gets the end position (for tracks from cue files), in frames (where there are 75 frames per second).
+  const std::optional<long>& GetCueEnd() const;
+
+  // Sets the end position (for tracks from cue files), in frames (where there are 75 frames per second).
+  void SetCueEnd( const std::optional<long>& frames );
+
+	// Returns the filename, including cues (if present).
+  // 'fullPath' - whether to return the full path, or just the filename component.
+  // 'removeExtension' - whether to return just the filename component with no extension.
+	std::wstring GetFilenameWithCues( const bool fullPath = false, const bool removeExtension = false ) const;
+
+  // Returns the media source.
 	Source GetSource() const;
 
 	// Returns the CDDB ID.
@@ -174,6 +193,12 @@ public:
 	// 'commonInfo' - out, common media information.
 	// Returns whether any common information was retrieved.
 	static bool GetCommonInfo( const List& mediaList, MediaInfo& commonInfo );
+
+  // Returns the string value with embedded cues, if present (used for display and copy & paste operations).
+  static std::wstring FormatCues( const std::optional<long>& cueStart, const std::optional<long>& cueEnd, const std::wstring& value );
+
+  // Returns media information from a filepath containing optional embedded cues (used for paste operations).
+  static MediaInfo ExtractCues( const std::wstring& filepath );
 
 private:
 	std::wstring m_Filename = {};
@@ -197,5 +222,7 @@ private:
 	std::optional<float> m_Bitrate = std::nullopt;
 	std::optional<float> m_GainTrack = std::nullopt;
 	std::optional<float> m_GainAlbum = std::nullopt;
+  std::optional<long> m_CueStart = std::nullopt;
+  std::optional<long> m_CueEnd = std::nullopt;
 };
 

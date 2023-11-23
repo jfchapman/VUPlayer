@@ -83,6 +83,9 @@ public:
 	// Returns the MusicBrainz ID for disc queries.
 	std::pair<std::string /*discid*/, std::string /*toc*/> GetMusicBrainzID() const;
 
+  // Returns the MusicBrainz ID for a 'playlist' (if it is suitable for a query).
+  static std::optional<std::pair<std::string /*discid*/, std::string /*toc*/>> GetMusicBrainzID( Playlist* const playlist );
+
 private:
 	// A string pair.
 	using StringPair = std::pair<std::wstring, std::wstring>;
@@ -114,7 +117,13 @@ private:
 	// Sets the 'text' and any 'extraTitles' using the CD-Text 'data' at the 'descriptorIndex'.
 	void GetDataBlockText( const CDROM_TOC_CD_TEXT_DATA& data, const int descriptorIndex, std::wstring& text, StringMap& extraTitles ) const;
 
-	// CD-ROM drive path.
+	// Returns the MusicBrainz ID for the 'toc'.
+	static std::pair<std::string /*discid*/, std::string /*toc*/> GetMusicBrainzID( const CDROM_TOC& toc );
+
+	// Returns the start sector of the CD audio 'track' from the 'toc'.
+	static long GetStartSector( const CDROM_TOC& toc, const long track );
+
+  // CD-ROM drive path.
 	const std::wstring m_DrivePath;
 
 	// Media library.

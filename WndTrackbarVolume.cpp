@@ -304,7 +304,7 @@ void WndTrackbarVolume::SetWidth( Settings& settings )
 	m_Width = std::nullopt;
 	const auto toolbarSize = settings.GetToolbarSize();
 	if ( const auto iter = s_TrackbarWidths.find( toolbarSize ); s_TrackbarWidths.end() != iter ) {
-		m_Width = int( iter->second * GetDPIScaling() );
+		m_Width = static_cast<int>( iter->second * GetDPIScaling() );
 	}
 }
 

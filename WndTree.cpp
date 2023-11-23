@@ -328,7 +328,7 @@ HTREEITEM WndTree::GetStartupItem()
 
 		if ( nullptr == selectedItem ) {
 			if ( const UINT driveType = GetDriveType( startupPlaylist.c_str() ); ( DRIVE_CDROM == driveType ) ) {
-				const std::wstring startupFilename = m_Settings.GetStartupFilename();
+				const auto& [ startupFilename, cueStart, cueEnd ] = m_Settings.GetStartupFile();
 				for ( const auto& cddaDrive : m_CDDAMap ) {
 					if ( cddaDrive.second ) {
 						const auto playlistItems = cddaDrive.second->GetItems();
@@ -566,7 +566,7 @@ void WndTree::OnContextMenu( const POINT& position )
 			EnableMenuItem( treemenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
 			VUPlayer* vuplayer = VUPlayer::Get();
-			const UINT musicbrainzEnabled = ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT musicbrainzEnabled = ( playlist && playlist->AllowMusicBrainzQueries() && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( treemenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
 			const UINT enableColourChoice = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;
@@ -935,7 +935,7 @@ void WndTree::OnDestroy()
 	SaveSettings();
 }
 
-Playlists WndTree::GetPlaylists()
+Playlists WndTree::GetUserPlaylists()
 {
 	Playlists playlists;
 	HTREEITEM hPlaylistItem = TreeView_GetChild( m_hWnd, m_NodePlaylists );
@@ -1700,6 +1700,8 @@ void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList, const bool libra
 	for ( const auto& previousMediaInfo : mediaList ) {
 		Playlist::Set updatedPlaylists;
 		MediaInfo updatedMediaInfo( previousMediaInfo.GetFilename() );
+    updatedMediaInfo.SetCueStart( previousMediaInfo.GetCueStart() );
+    updatedMediaInfo.SetCueEnd( previousMediaInfo.GetCueEnd() );
 		UpdateArtists( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateAlbums( m_NodeAlbums, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateGenres( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
@@ -2999,7 +3001,7 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 							Playlist::Ptr playlist = playlistIter->second;
 							if ( playlist ) {
 							  playlist->RemoveItem( MediaInfo( oldFilename ) );
-                if ( playlist->ContainsFilename( newFilename ) ) {
+                if ( playlist->ContainsFile( newFilename ) ) {
 				          std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
 				          m_FilesModified.insert( newFilename );
 				          SetEvent( m_FileModifiedWakeEvent );
@@ -3023,7 +3025,7 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 						if ( m_FolderPlaylistMap.end() != playlistIter ) {
 							Playlist::Ptr playlist = playlistIter->second;
 							if ( playlist ) {
-                if ( playlist->ContainsFilename( newFilename ) ) {
+                if ( playlist->ContainsFile( newFilename ) ) {
 				          std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
 				          m_FilesModified.insert( newFilename );
 				          SetEvent( m_FileModifiedWakeEvent );
@@ -3682,7 +3684,7 @@ void WndTree::InsertAddToPlaylists( const HMENU menu, const UINT insertAfterItem
 				}
 
 				if ( enableMenu ) {
-					const Playlists playlists = GetPlaylists();
+					const Playlists playlists = GetUserPlaylists();
 					for ( const auto& playlist : playlists ) {
 						if ( playlist ) {
 							m_AddToPlaylistMenuMap.insert( PlaylistMenuMap::value_type( commandID, playlist ) );
@@ -3724,7 +3726,7 @@ void WndTree::OnAddToPlaylist( const UINT command )
 				case Playlist::Type::Streams : {
 					const auto items = sourcePlaylist->GetItems();
 					for ( const auto& item : items ) {
-						targetPlaylist->AddPending( item.Info.GetFilename() );
+						targetPlaylist->AddPending( item.Info );
 					}
 					break;
 				}
@@ -3732,7 +3734,7 @@ void WndTree::OnAddToPlaylist( const UINT command )
 					const auto& artist = sourcePlaylist->GetName();
 					const auto items = m_Library.GetMediaByArtist( artist );
 					for ( const auto& item : items ) {
-						targetPlaylist->AddPending( item.GetFilename() );
+						targetPlaylist->AddPending( item );
 					}
 					break;
 				}
@@ -3740,7 +3742,7 @@ void WndTree::OnAddToPlaylist( const UINT command )
 					for ( const auto& entry : std::filesystem::recursive_directory_iterator( sourcePlaylist->GetName() ) ) {
 						std::error_code errorCode = {};
 						if ( entry.is_regular_file( errorCode ) && !entry.is_directory( errorCode ) ) {
-							targetPlaylist->AddPending( entry.path() );
+							targetPlaylist->AddPending( MediaInfo( entry.path() ) );
 						}
 					}
 					break;
@@ -3752,4 +3754,18 @@ void WndTree::OnAddToPlaylist( const UINT command )
 			SelectPlaylist( targetPlaylist );
 		}
 	}
+}
+
+void WndTree::RefreshUserPlaylistLabel( const Playlist::Ptr playlist )
+{
+  if ( !playlist )
+    return;
+
+  for ( const auto& [ itemNode, itemPlaylist ] : m_PlaylistMap ) {
+    if ( itemPlaylist == playlist ) {
+      SetItemLabel( itemNode, playlist->GetName() );
+      TreeView_SortChildren( m_hWnd, m_NodePlaylists, FALSE /*recurse*/ );
+      break;
+    }
+  }
 }

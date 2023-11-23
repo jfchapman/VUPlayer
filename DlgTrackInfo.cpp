@@ -306,7 +306,7 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		m_InitialInfo.SetArtworkID( artworkID );
 	} else if ( !m_Items.empty() ) {
 		m_InitialInfo = m_Items.begin()->Info;
-		SetDlgItemText( hwnd, IDC_TRACKINFO_FILENAME, m_InitialInfo.GetFilename().c_str() );
+		SetDlgItemText( hwnd, IDC_TRACKINFO_FILENAME, m_InitialInfo.GetFilenameWithCues( true /*fullPath*/).c_str() );
 	}
 
 	SetDlgItemText( hwnd, IDC_TRACKINFO_ARTIST, m_InitialInfo.GetArtist().c_str() );

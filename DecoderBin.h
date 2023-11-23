@@ -2,19 +2,18 @@
 
 #include "Decoder.h"
 
-#include "All.h"
-#include "maclib.h"
-#include "APETag.h"
-
 #include <string>
+#include <fstream>
+#include <vector>
 
-class DecoderMAC : public Decoder
+// Decoder for raw audio data from bin/cue files (44100Hz, 16-bit, stereo).
+class DecoderBin : public Decoder
 {
 public:
 	// 'filename' - file name.
   // 'context' - context for which the decoder is to be used.
 	// Throws a std::runtime_error exception if the file could not be loaded.
-	DecoderMAC( const std::wstring& filename, const Context context );
+	DecoderBin( const std::wstring& filename, const Context context );
 
 	// Reads sample data.
 	// 'buffer' - output buffer (floating point format scaled to +/-1.0f).
@@ -27,6 +26,9 @@ public:
 	double Seek( const double position ) override;
 
 private:
-	// APE decompressor.
-	std::unique_ptr<APE::IAPEDecompress> m_decompress;
+	// File stream.
+	std::ifstream m_Stream;
+
+  // Scratch buffer.
+  std::vector<char> m_Buffer;
 };

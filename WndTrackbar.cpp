@@ -330,7 +330,7 @@ void WndTrackbar::OnSize()
 	RECT rect = {};
 	GetClientRect( m_hHostWnd, &rect );
 	const int width = rect.right - rect.left;
-	const int height = int( s_TrackbarHeight * GetDPIScaling() );
+	const int height = static_cast<int>( s_TrackbarHeight * GetDPIScaling() );
 	const int x = 0;
 	int y = rect.bottom - rect.top - height;
 	y -= y / 2;

@@ -262,6 +262,7 @@ copy "$(ProjectDir)libs\ffmpeg-6.0\bin\x64\swresample-4.dll" $(OutDir)swresample
     <ClInclude Include="Artwork.h" />
     <ClInclude Include="CDDACache.h" />
     <ClInclude Include="CDDAExtract.h" />
+    <ClInclude Include="DecoderBin.h" />
     <ClInclude Include="DecoderOpenMPT.h" />
     <ClInclude Include="DiscManager.h" />
     <ClInclude Include="CDDAMedia.h" />
@@ -379,6 +380,7 @@ copy "$(ProjectDir)libs\ffmpeg-6.0\bin\x64\swresample-4.dll" $(OutDir)swresample
     <ClCompile Include="Artwork.cpp" />
     <ClCompile Include="CDDACache.cpp" />
     <ClCompile Include="CDDAExtract.cpp" />
+    <ClCompile Include="DecoderBin.cpp" />
     <ClCompile Include="DecoderOpenMPT.cpp" />
     <ClCompile Include="DiscManager.cpp" />
     <ClCompile Include="CDDAMedia.cpp">

@@ -369,6 +369,9 @@
     <ClInclude Include="WndToolbarLoudness.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DecoderBin.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VUPlayer.cpp">
@@ -681,6 +684,9 @@
       <Filter>Third Party</Filter>
     </ClCompile>
     <ClCompile Include="WndToolbarLoudness.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DecoderBin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

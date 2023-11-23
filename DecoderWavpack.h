@@ -24,7 +24,7 @@ public:
 
 	// Seeks to a 'position' in the stream, in seconds.
 	// Returns the new position in seconds.
-	float Seek( const float position ) override;
+	double Seek( const double position ) override;
 
 private:
 	// WavPack context.

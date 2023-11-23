@@ -50,8 +50,8 @@ public:
 	// Called when the window is destroyed.
 	void OnDestroy();
 
-	// Gets the playlists.
-	Playlists GetPlaylists();
+	// Gets the user playlists.
+	Playlists GetUserPlaylists();
 
 	// Adds a 'playlist'.
 	void AddPlaylist( const Playlist::Ptr playlist );
@@ -200,6 +200,9 @@ public:
 
 	// Selects all text (only when a tree item label is being edited).
 	void OnSelectAll();
+
+  // Refreshes the tree item label for the user 'playlist'.
+  void RefreshUserPlaylistLabel( const Playlist::Ptr playlist );
 
 private:
 	// Window procedure

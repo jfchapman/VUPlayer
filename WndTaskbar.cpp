@@ -111,8 +111,8 @@ void WndTaskbar::UpdateProgress( Output& output )
 {
 	if ( nullptr != m_TaskbarList ) {
 		const Output::Item item = output.GetCurrentPlaying();
-		const float position = item.Position;
-		const float duration = item.PlaylistItem.Info.GetDuration();
+		const auto position = item.Position;
+		const auto duration = item.PlaylistItem.Info.GetDuration();
 		const auto outputState = output.GetState();
 
 		TBPFLAG progressState = TBPF_NOPROGRESS;

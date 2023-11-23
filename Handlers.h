@@ -19,8 +19,9 @@ public:
 	// Opens a decoder.
 	// 'filename' - file to open.
   // 'context' - context for which the decoder is to be used.
+  // 'applyCues' - whether to apply any cues (if present) when opening the decoder.
 	// Returns the decoder, or nullptr if the stream could not be opened.
-	Decoder::Ptr OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const;
+	Decoder::Ptr OpenDecoder( const MediaInfo& mediaInfo, const Decoder::Context context, const bool applyCues = true ) const;
 
 	// Reads 'tags' from 'filename', returning true if the tags were read.
 	bool GetTags( const std::wstring& filename, Tags& tags ) const;
