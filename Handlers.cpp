@@ -7,8 +7,6 @@
 #include "HandlerOpus.h"
 #include "HandlerPCM.h"
 #include "HandlerWavpack.h"
-#include "HandlerMAC.h"
-#include "HandlerMPC.h"
 #include "HandlerOpenMPT.h"
 
 #include "DecoderBin.h"
@@ -28,8 +26,6 @@ Handlers::Handlers() :
 		Handler::Ptr( new HandlerFlac() ),
 		Handler::Ptr( new HandlerOpus() ),
 		Handler::Ptr( new HandlerWavpack() ),
-		Handler::Ptr( new HandlerMAC() ),
-		Handler::Ptr( new HandlerMPC() ),
 		Handler::Ptr( new HandlerMP3() ),
 		Handler::Ptr( new HandlerPCM() ),
 		Handler::Ptr( m_HandlerBASS ),
@@ -112,7 +108,10 @@ bool Handlers::GetTags( const std::wstring& filename, Tags& tags ) const
 			success = handler->GetTags( filename, tags );
 		}
 		if ( !success ) {
-			success = ShellMetadata::Get( filename, tags );
+		  success = ShellMetadata::Get( filename, tags );
+      if ( !success ) {
+        success = GetAPETags( filename, tags );
+      }
 		}
 	}
 	return success;

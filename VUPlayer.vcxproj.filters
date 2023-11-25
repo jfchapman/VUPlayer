@@ -285,19 +285,7 @@
     <ClInclude Include="DlgAdvancedASIO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DecoderMAC.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="HandlerMAC.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="DlgAddStream.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DecoderMPC.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="HandlerMPC.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MusicBrainz.h">
@@ -620,19 +608,7 @@
     <ClCompile Include="DlgAdvancedASIO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DecoderMAC.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="HandlerMAC.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DlgAddStream.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DecoderMPC.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="HandlerMPC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MusicBrainz.cpp">
@@ -687,6 +663,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DecoderBin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tag.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

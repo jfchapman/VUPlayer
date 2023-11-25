@@ -19,4 +19,7 @@ enum class Tag {
 };
 
 // Maps a tag type to the UTF-8 encoded tag content.
-typedef std::map<Tag,std::string> Tags;
+using Tags = std::map<Tag, std::string>;
+
+// Gets any APE 'tags' from 'filename', returning true if any tags were retrieved.
+bool GetAPETags( const std::wstring& filename, Tags& tags );

@@ -21,7 +21,6 @@ ShellMetadata::~ShellMetadata()
 
 bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 {
-	bool success = false;
 	tags.clear();
 	IShellItem2* item = nullptr;
 	HRESULT hr = SHCreateItemFromParsingName( filename.c_str(), NULL /*bindContext*/, IID_PPV_ARGS( &item ) );
@@ -30,7 +29,6 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 		IPropertyStore* propStore = nullptr;
 		hr = item->GetPropertyStore( flags, IID_PPV_ARGS( &propStore ) );
 		if ( SUCCEEDED( hr ) ) {
-			success = true;
 			DWORD propCount = 0;
 			hr = propStore->GetCount( &propCount );
 			if ( SUCCEEDED( hr ) ) {
@@ -117,7 +115,7 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 		}
 		item->Release();
 	}
-	return success;
+	return !tags.empty();
 }
 
 bool ShellMetadata::Set( const std::wstring& filename, const Tags& tags )
