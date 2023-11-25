@@ -141,6 +141,18 @@ std::unique_ptr<FLAC::Metadata::VorbisComment> EncoderFlac::CreateVorbisComment(
 					field = "REPLAYGAIN_TRACK_GAIN";
 					break;
 				}
+        case Tag::Composer : {
+          field = "COMPOSER";
+          break;
+        }
+        case Tag::Conductor : {
+          field = "CONDUCTOR";
+          break;
+        }
+        case Tag::Publisher : {
+          field = "PUBLISHER";
+          break;
+        }
 				default : {
 					break;
 				}

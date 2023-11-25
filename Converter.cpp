@@ -563,6 +563,18 @@ void Converter::WriteTrackTags( const std::wstring& filename, const MediaInfo& m
 	if ( !comment.empty() ) {
 		tags.insert( Tags::value_type( Tag::Comment, WideStringToUTF8( comment ) ) );
 	}
+	const std::wstring& composer = mediaInfo.GetComposer();
+	if ( !composer.empty() ) {
+		tags.insert( Tags::value_type( Tag::Composer, WideStringToUTF8( composer ) ) );
+	}
+	const std::wstring& conductor = mediaInfo.GetConductor();
+	if ( !conductor.empty() ) {
+		tags.insert( Tags::value_type( Tag::Conductor, WideStringToUTF8( conductor ) ) );
+	}
+	const std::wstring& publisher = mediaInfo.GetPublisher();
+	if ( !publisher.empty() ) {
+		tags.insert( Tags::value_type( Tag::Publisher, WideStringToUTF8( publisher ) ) );
+	}
 	const std::string track = ( mediaInfo.GetTrack() > 0 ) ? std::to_string( mediaInfo.GetTrack() ) : std::string();
 	if ( !track.empty() ) {
 		tags.insert( Tags::value_type( Tag::Track, track ) );

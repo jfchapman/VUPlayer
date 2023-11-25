@@ -33,7 +33,10 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "GainTrack", Column::GainTrack ),
 		Columns::value_type( "GainAlbum", Column::GainAlbum ),
 		Columns::value_type( "Artwork", Column::Artwork ),
-		Columns::value_type( "Bitrate", Column::Bitrate )
+		Columns::value_type( "Bitrate", Column::Bitrate ),
+		Columns::value_type( "Composer", Column::Composer ),
+		Columns::value_type( "Conductor", Column::Conductor ),
+		Columns::value_type( "Publisher", Column::Publisher )
 	} ),
 	m_CDDAColumns( {
 		Columns::value_type( "CDDB", Column::CDDB ),
@@ -48,7 +51,10 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "Comment", Column::Comment ),
 		Columns::value_type( "GainTrack", Column::GainTrack ),
 		Columns::value_type( "GainAlbum", Column::GainAlbum ),
-		Columns::value_type( "Artwork", Column::Artwork )
+		Columns::value_type( "Artwork", Column::Artwork ),
+		Columns::value_type( "Composer", Column::Composer ),
+		Columns::value_type( "Conductor", Column::Conductor ),
+		Columns::value_type( "Publisher", Column::Publisher )
 	} )
 {
   m_CueColumns = m_MediaColumns;
@@ -103,7 +109,7 @@ void Library::UpdateMediaTable(const bool cuesTable)
 			  const std::string& columnName = iter.first;
 			  createTableQuery += columnName + ",";
 		  }
-		  createTableQuery += "PRIMARY KEY(Filename,CueStart));";
+		  createTableQuery += "PRIMARY KEY(Filename,CueStart,CueEnd));";
     } else {
 		  for ( const auto& iter : m_MediaColumns ) {
 			  const std::string& columnName = iter.first;
@@ -498,6 +504,24 @@ void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
             }
             break;
           }
+					case Column::Composer : {						
+						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
+							mediaInfo.SetComposer( UTF8ToWideString( text ) );
+						}
+						break;
+					}
+					case Column::Conductor : {						
+						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
+							mediaInfo.SetConductor( UTF8ToWideString( text ) );
+						}
+						break;
+					}
+					case Column::Publisher : {						
+						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
+							mediaInfo.SetPublisher( UTF8ToWideString( text ) );
+						}
+						break;
+					}
 				}
 			}
 		}
@@ -640,6 +664,18 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						sqlite3_bind_int64( stmt, ++param, cue.value_or( -1 ) );
 						break;
           }
+					case Column::Composer : {
+						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetComposer() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+						break;
+					}
+					case Column::Conductor : {
+						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetConductor() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+						break;
+					}
+					case Column::Publisher : {
+						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetPublisher() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+						break;
+					}
 					default : {
 						break;
 					}
@@ -665,7 +701,10 @@ void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaIn
     ( previousMediaInfo.GetYear() != updatedMediaInfo.GetYear() ) ||
     ( previousMediaInfo.GetGainAlbum() != updatedMediaInfo.GetGainAlbum() ) ||
     ( previousMediaInfo.GetGainTrack() != updatedMediaInfo.GetGainTrack() ) ||
-    ( previousMediaInfo.GetArtworkID() != updatedMediaInfo.GetArtworkID() );
+    ( previousMediaInfo.GetArtworkID() != updatedMediaInfo.GetArtworkID() ) ||
+    ( previousMediaInfo.GetComposer() != updatedMediaInfo.GetComposer() ) ||
+    ( previousMediaInfo.GetConductor() != updatedMediaInfo.GetConductor() ) ||
+    ( previousMediaInfo.GetPublisher() != updatedMediaInfo.GetPublisher() );
 
 	if ( updateTags ) {
 		MediaInfo mediaInfo( updatedMediaInfo );
@@ -1204,6 +1243,18 @@ void Library::UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Tags& tags )
 				mediaInfo.SetTitle( value );
 				break;
 			}
+      case Tag::Composer : {
+        mediaInfo.SetComposer( value );
+        break;
+      }
+      case Tag::Conductor : {
+        mediaInfo.SetConductor( value );
+        break;
+      }
+      case Tag::Publisher : {
+        mediaInfo.SetPublisher( value );
+        break;
+      }
 			case Tag::GainAlbum : {
 				try {
 					mediaInfo.SetGainAlbum( std::stof( iter.second ) );

@@ -15,7 +15,10 @@ enum class Tag {
 	Version,
 	GainTrack,
 	GainAlbum,
-	Artwork
+	Artwork,
+  Composer,
+  Conductor,
+  Publisher
 };
 
 // Maps a tag type to the UTF-8 encoded tag content.

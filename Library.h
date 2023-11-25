@@ -42,6 +42,9 @@ public:
 		Bitrate = 22,
     CueStart = 23,
     CueEnd = 24,
+    Composer = 25,
+    Conductor = 26,
+    Publisher = 27,
 
 		_Undefined
 	};

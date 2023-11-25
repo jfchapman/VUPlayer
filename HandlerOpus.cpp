@@ -13,7 +13,7 @@
 #include "Utility.h"
 
 // R128 reference level in LUFS.
-static const float LOUDNESS_R128 = -23.0f;
+static constexpr float LOUDNESS_R128 = -23.0f;
 
 // Supported tags and their Opus field names.
 static const std::map<Tag,std::string> s_SupportedTags = {
@@ -25,7 +25,10 @@ static const std::map<Tag,std::string> s_SupportedTags = {
 	{ Tag::Genre,				"GENRE" },
 	{ Tag::Title,				"TITLE" },
 	{ Tag::Track,				"TRACKNUMBER" },
-	{ Tag::Year,				"DATE" }
+	{ Tag::Year,				"DATE" },
+	{ Tag::Composer,		"COMPOSER" },
+	{ Tag::Conductor,		"CONDUCTOR" },
+	{ Tag::Publisher,		"PUBLISHER" }
 };
 
 HandlerOpus::HandlerOpus() :
@@ -70,12 +73,27 @@ bool HandlerOpus::GetTags( const std::wstring& filename, Tags& tags ) const
 					tags.insert( Tags::value_type( Tag::Album, value ) );
 				} else if ( 0 == _stricmp( field.c_str(), "GENRE" ) ) {
 					tags.insert( Tags::value_type( Tag::Genre, value ) );
-				} else if ( ( 0 == _stricmp( field.c_str(), "YEAR" ) ) || ( 0 == _stricmp( field.c_str(), "DATE" ) ) ) {
+				} else if ( 0 == _stricmp( field.c_str(), "YEAR" ) ) {
 					tags.insert( Tags::value_type( Tag::Year, value ) );
+        } else if ( 0 == _stricmp( field.c_str(), "DATE" ) ) {
+          // Prefer 'date' over 'year' (both map to the same tag type).
+					tags[ Tag::Year ] = value;
 				} else if ( 0 == _stricmp( field.c_str(), "COMMENT" ) ) {
 					tags.insert( Tags::value_type( Tag::Comment, value ) );
-				} else if ( ( 0 == _stricmp( field.c_str(), "TRACK" ) ) || ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) ) {
+				} else if ( 0 == _stricmp( field.c_str(), "TRACK" ) ) {
 					tags.insert( Tags::value_type( Tag::Track, value ) );
+        } else if ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) {
+          // Prefer 'tracknumber' over 'track' (both map to the same tag type).
+					tags[ Tag::Track ] = value;
+				} else if ( 0 == _stricmp( field.c_str(), "COMPOSER" ) ) {
+					tags.insert( Tags::value_type( Tag::Composer, value ) );
+				} else if ( 0 == _stricmp( field.c_str(), "CONDUCTOR" ) ) {
+					tags.insert( Tags::value_type( Tag::Conductor, value ) );
+				} else if ( 0 == _stricmp( field.c_str(), "LABEL" ) ) {
+					tags.insert( Tags::value_type( Tag::Publisher, value ) );
+				} else if ( 0 == _stricmp( field.c_str(), "PUBLISHER" ) ) {
+          // Prefer 'publisher' over 'label' (both map to the same tag type).
+					tags[ Tag::Publisher ] = value;
 				} else if ( 0 == _stricmp( field.c_str(), "R128_ALBUM_GAIN" ) ) {
 					const std::string gain = R128ToGain( value );
 					if ( !gain.empty() ) {

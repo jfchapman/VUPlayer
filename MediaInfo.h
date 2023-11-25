@@ -105,7 +105,25 @@ public:
 	// Sets the genre.
 	void SetGenre( const std::wstring& genre );
 
-	// Returns the year.
+	// Returns the composer.
+	const std::wstring& GetComposer() const;
+
+	// Sets the composer.
+	void SetComposer( const std::wstring& composer );
+
+	// Returns the conductor.
+	const std::wstring& GetConductor() const;
+
+	// Sets the conductor.
+	void SetConductor( const std::wstring& conductor );
+
+	// Returns the publisher.
+	const std::wstring& GetPublisher() const;
+
+	// Sets the publisher.
+	void SetPublisher( const std::wstring& publisher );
+
+  // Returns the year.
 	long GetYear() const;
 
 	// Sets the year.
@@ -211,6 +229,9 @@ private:
 	std::wstring m_Title = {};
 	std::wstring m_Album = {};
 	std::wstring m_Genre = {};
+  std::wstring m_Composer = {};
+  std::wstring m_Conductor = {};
+  std::wstring m_Publisher = {};
 	long m_Year = 0;
 	std::wstring m_Comment= {};
 	long m_Track = 0;

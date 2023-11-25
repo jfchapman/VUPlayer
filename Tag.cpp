@@ -4,7 +4,9 @@
 
 #include <fstream>
 #include <array>
+#include <set>
 
+// All supported APE tag names (note that some names map to same tag type).
 static const std::map<std::string, Tag> kSupportedAPETags = {
 	{ "album",                  Tag::Album },
 	{ "artist",                 Tag::Artist },
@@ -18,8 +20,15 @@ static const std::map<std::string, Tag> kSupportedAPETags = {
 	{ "tracknumber",            Tag::Track },
 	{ "track",                  Tag::Track },
 	{ "date",                   Tag::Year },
-	{ "year",                   Tag::Year }
+	{ "year",                   Tag::Year },
+	{ "composer",               Tag::Composer },
+	{ "conductor",              Tag::Conductor },
+	{ "publisher",              Tag::Publisher },
+	{ "label",                  Tag::Publisher }
 };
+
+// Preferred APE tag names (from the supported types).
+static const std::set<std::string> kPreferredAPETags = { "album", "artist", "comment", "replaygain_album_gain", "replaygain_track_gain", "genre", "title", "track", "year", "composer", "conductor", "publisher" }; 
 
 bool GetAPETags( const std::wstring& filename, Tags& tags )
 {
@@ -74,14 +83,20 @@ bool GetAPETags( const std::wstring& filename, Tags& tags )
       stream.get( c );
     }
 
-    const auto tagType = kSupportedAPETags.find( StringToLower( key ) );
-    if ( ( header.flags & kFlagsNonUTF8 ) || ( header.value_size > kMaxValueSize ) || ( kSupportedAPETags.end() == tagType ) ) {
+    const auto tagInfo = kSupportedAPETags.find( StringToLower( key ) );
+    if ( ( header.flags & kFlagsNonUTF8 ) || ( header.value_size > kMaxValueSize ) || ( kSupportedAPETags.end() == tagInfo ) ) {
       stream.seekg( header.value_size, std::ios::cur );
     } else {
       std::string value( 1 + header.value_size, 0 );
       stream.read( value.data(), header.value_size );
       if ( stream.good() ) {
-        tags.insert( { tagType->second, value } );
+        const auto& tagName = tagInfo->first;
+        const auto tagType = tagInfo->second;
+        if ( const auto preferredTag = kPreferredAPETags.find( tagName ); kPreferredAPETags.end() != preferredTag ) {
+          tags[ tagType ] = value;
+        } else {
+          tags.insert( { tagType, value } );
+        }
       }
     }
   }

@@ -24,8 +24,11 @@ WndList::ColumnFormats WndList::s_ColumnFormats = {
 	{ Playlist::Column::Channels, ColumnFormat( {				ID_SHOWCOLUMNS_CHANNELS,			ID_SORTPLAYLIST_CHANNELS,				IDS_COLUMN_CHANNELS,			LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
 	{ Playlist::Column::Artist, ColumnFormat( {					ID_SHOWCOLUMNS_ARTIST,				ID_SORTPLAYLIST_ARTIST,					IDS_COLUMN_ARTIST,				LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
 	{ Playlist::Column::Title, ColumnFormat( {					ID_SHOWCOLUMNS_TITLE,					ID_SORTPLAYLIST_TITLE,					IDS_COLUMN_TITLE,					LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Album, ColumnFormat( {					ID_SHOWCOLUMNS_ALBUM,					ID_SORTPLAYLIST_ALBUM,					IDS_COLUMN_ALBUM,					LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Genre, ColumnFormat( {					ID_SHOWCOLUMNS_GENRE,					ID_SORTPLAYLIST_GENRE,					IDS_COLUMN_GENRE,					LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
+	{ Playlist::Column::Album, ColumnFormat( {					ID_SHOWCOLUMNS_ALBUM,					ID_SORTPLAYLIST_ALBUM,					IDS_COLUMN_ALBUM,					LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
+	{ Playlist::Column::Composer, ColumnFormat( {				ID_SHOWCOLUMNS_COMPOSER,			ID_SORTPLAYLIST_COMPOSER,				IDS_COLUMN_COMPOSER,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
+	{ Playlist::Column::Conductor, ColumnFormat( {			ID_SHOWCOLUMNS_CONDUCTOR,			ID_SORTPLAYLIST_CONDUCTOR,			IDS_COLUMN_CONDUCTOR,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
+	{ Playlist::Column::Publisher, ColumnFormat( {			ID_SHOWCOLUMNS_PUBLISHER,			ID_SORTPLAYLIST_PUBLISHER,			IDS_COLUMN_PUBLISHER,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
+  { Playlist::Column::Genre, ColumnFormat( {					ID_SHOWCOLUMNS_GENRE,					ID_SORTPLAYLIST_GENRE,					IDS_COLUMN_GENRE,					LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
 	{ Playlist::Column::Year, ColumnFormat( {						ID_SHOWCOLUMNS_YEAR,					ID_SORTPLAYLIST_YEAR,						IDS_COLUMN_YEAR,					LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		true /*canEdit*/ } ) },
 	{ Playlist::Column::Track, ColumnFormat( {					ID_SHOWCOLUMNS_TRACK,					ID_SORTPLAYLIST_TRACK,					IDS_COLUMN_TRACK,					LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		true /*canEdit*/ } ) },
 	{ Playlist::Column::Type, ColumnFormat( {						ID_SHOWCOLUMNS_TYPE,					ID_SORTPLAYLIST_TYPE,						IDS_COLUMN_TYPE,					LVCFMT_LEFT,		static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
@@ -647,6 +650,18 @@ void WndList::OnDisplayInfo( LVITEM& lvItem )
 				    text = ( year > 0 ) ? std::to_wstring( year ) : std::wstring();
 				    break;
 			    }
+			    case Playlist::Column::Composer : {
+				    text = mediaInfo.GetComposer();
+				    break;
+			    }
+			    case Playlist::Column::Conductor : {
+				    text = mediaInfo.GetConductor();
+				    break;
+			    }
+			    case Playlist::Column::Publisher : {
+				    text = mediaInfo.GetPublisher();
+				    break;
+			    }
 			    default : {
 				    break;
 			    }
@@ -783,6 +798,9 @@ void WndList::OnCommand( const UINT command )
 		case ID_SHOWCOLUMNS_ARTIST :
 		case ID_SHOWCOLUMNS_ALBUM :
 		case ID_SHOWCOLUMNS_GENRE :
+    case ID_SHOWCOLUMNS_COMPOSER :
+    case ID_SHOWCOLUMNS_CONDUCTOR :
+    case ID_SHOWCOLUMNS_PUBLISHER :
 		case ID_SHOWCOLUMNS_YEAR :
 		case ID_SHOWCOLUMNS_TRACK :
 		case ID_SHOWCOLUMNS_TYPE :
@@ -805,6 +823,9 @@ void WndList::OnCommand( const UINT command )
 		case ID_SORTPLAYLIST_ARTIST :
 		case ID_SORTPLAYLIST_ALBUM :
 		case ID_SORTPLAYLIST_GENRE :
+    case ID_SORTPLAYLIST_COMPOSER :
+    case ID_SORTPLAYLIST_CONDUCTOR :
+    case ID_SORTPLAYLIST_PUBLISHER :
 		case ID_SORTPLAYLIST_YEAR :
 		case ID_SORTPLAYLIST_TRACK :
 		case ID_SORTPLAYLIST_TYPE :
@@ -1349,6 +1370,21 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 								}
 								libraryColumnID = Library::Column::Year;
 								playlistItem.Info.SetYear( year );
+								break;
+							}
+							case Playlist::Column::Composer : {
+								libraryColumnID = Library::Column::Composer;
+								playlistItem.Info.SetComposer( item.pszText );
+								break;
+							}
+							case Playlist::Column::Conductor : {
+								libraryColumnID = Library::Column::Conductor;
+								playlistItem.Info.SetConductor( item.pszText );
+								break;
+							}
+							case Playlist::Column::Publisher : {
+								libraryColumnID = Library::Column::Publisher;
+								playlistItem.Info.SetPublisher( item.pszText );
 								break;
 							}
 							default : {

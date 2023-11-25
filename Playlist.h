@@ -72,6 +72,9 @@ public:
 		GainAlbum,
 		Bitrate,
 		Filename,
+    Composer,
+    Conductor,
+    Publisher,
 
 		_Undefined
 	};

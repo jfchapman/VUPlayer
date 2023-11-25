@@ -59,17 +59,32 @@ bool HandlerFlac::GetTags( const std::wstring& filename, Tags& tags ) const
 									tags.insert( Tags::value_type( Tag::Album, entry.get_field_value() ) );
 								} else if ( 0 == _stricmp( field, "GENRE" ) ) {
 									tags.insert( Tags::value_type( Tag::Genre, entry.get_field_value() ) );
-								} else if ( ( 0 == _stricmp( field, "YEAR" ) ) || ( 0 == _stricmp( field, "DATE" ) ) ) {
+								} else if ( 0 == _stricmp( field, "YEAR" ) ) {
 									tags.insert( Tags::value_type( Tag::Year, entry.get_field_value() ) );
+                } else if ( 0 == _stricmp( field, "DATE" ) ) {
+                  // Prefer 'date' over 'year' (both map to the same tag type).
+									tags[ Tag::Year ] = entry.get_field_value();
 								} else if ( 0 == _stricmp( field, "COMMENT" ) ) {
 									tags.insert( Tags::value_type( Tag::Comment, entry.get_field_value() ) );
-								} else if ( ( 0 == _stricmp( field, "TRACK" ) ) || ( 0 == _stricmp( field, "TRACKNUMBER" ) ) ) {
+								} else if ( 0 == _stricmp( field, "TRACK" ) ) {
 									tags.insert( Tags::value_type( Tag::Track, entry.get_field_value() ) );
+                } else if ( 0 == _stricmp( field, "TRACKNUMBER" ) ) {
+                  // Prefer 'tracknumber' over 'track' (both map to the same tag type).
+									tags[ Tag::Track ] = entry.get_field_value();
 								} else if ( 0 == _stricmp( field, "REPLAYGAIN_TRACK_GAIN" ) ) {
 									tags.insert( Tags::value_type( Tag::GainTrack, entry.get_field_value() ) );
 								} else if ( 0 == _stricmp( field, "REPLAYGAIN_ALBUM_GAIN" ) ) {
 									tags.insert( Tags::value_type( Tag::GainAlbum, entry.get_field_value() ) );
-								}
+					      } else if ( 0 == _stricmp( field, "COMPOSER" ) ) {
+						      tags.insert( Tags::value_type( Tag::Composer, entry.get_field_value() ) );
+					      } else if ( 0 == _stricmp( field, "CONDUCTOR" ) ) {
+						      tags.insert( Tags::value_type( Tag::Conductor, entry.get_field_value() ) );
+					      } else if ( 0 == _stricmp( field, "LABEL" ) ) {
+						      tags.insert( Tags::value_type( Tag::Publisher, entry.get_field_value() ) );
+					      } else if ( 0 == _stricmp( field, "PUBLISHER" ) ) {
+                  // Prefer 'publisher' over 'label' (both map to the same tag type).
+						      tags[ Tag::Publisher ] = entry.get_field_value();
+					      }
 							}
 						}
 					}
@@ -124,7 +139,10 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) cons
 					case Tag::Track :
 					case Tag::Year :
 					case Tag::GainAlbum :
-					case Tag::GainTrack : {
+					case Tag::GainTrack :
+          case Tag::Composer :
+          case Tag::Conductor :
+          case Tag::Publisher : {
 						updateVorbisComment = true;
 						break;
 					}
@@ -205,6 +223,18 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) cons
 												field = "REPLAYGAIN_TRACK_GAIN";
 												break;
 											}
+								      case Tag::Composer : {
+									      field = "COMPOSER";
+									      break;
+								      }
+								      case Tag::Conductor : {
+									      field = "CONDUCTOR";
+									      break;
+								      }
+								      case Tag::Publisher : {
+									      field = "PUBLISHER";
+									      break;
+								      }
 											default : {
 												break;
 											}

@@ -86,7 +86,22 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 								if ( !value.empty() ) {
 									tags.insert( Tags::value_type( Tag::Track, WideStringToUTF8( value ) ) );
 								}
-							} else if ( PKEY_ThumbnailStream == propKey ) {
+							} else if ( PKEY_Music_Composer == propKey ) {
+								const std::wstring value = PropertyToString( propVar );
+								if ( !value.empty() ) {
+									tags.insert( Tags::value_type( Tag::Composer, WideStringToUTF8( value ) ) );
+								}
+							} else if ( PKEY_Music_Conductor == propKey ) {
+								const std::wstring value = PropertyToString( propVar );
+								if ( !value.empty() ) {
+									tags.insert( Tags::value_type( Tag::Conductor, WideStringToUTF8( value ) ) );
+								}
+							} else if ( PKEY_Media_Publisher == propKey ) {
+								const std::wstring value = PropertyToString( propVar );
+								if ( !value.empty() ) {
+									tags.insert( Tags::value_type( Tag::Publisher, WideStringToUTF8( value ) ) );
+								}           
+              } else if ( PKEY_ThumbnailStream == propKey ) {
 								if ( VT_STREAM == propVar.vt ) {
 									IStream* stream = propVar.pStream;
 									if ( nullptr != stream ) {
@@ -120,7 +135,7 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 
 bool ShellMetadata::Set( const std::wstring& filename, const Tags& tags )
 {
-	const std::set<Tag> supportedTags = { Tag::Album, Tag::Artist, Tag::Comment, Tag::Genre, Tag::Title, Tag::Track, Tag::Year, Tag::Artwork };
+	const std::set<Tag> supportedTags = { Tag::Album, Tag::Artist, Tag::Comment, Tag::Genre, Tag::Title, Tag::Track, Tag::Year, Tag::Artwork, Tag::Composer, Tag::Conductor, Tag::Publisher };
 	bool anySupportedTags = false;
 	for ( const auto& tag : tags ) {
 		if ( supportedTags.end() != supportedTags.find( tag.first ) ) {
@@ -184,7 +199,28 @@ bool ShellMetadata::Set( const std::wstring& filename, const Tags& tags )
             }
 						break;
 					}
-					case Tag::Track : {
+					case Tag::Composer : {
+						propKey = PKEY_Music_Composer;
+            if ( !value.empty() ) {
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+            }
+						break;
+					}
+					case Tag::Conductor : {
+						propKey = PKEY_Music_Conductor;
+            if ( !value.empty() ) {
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+            }
+						break;
+					}
+					case Tag::Publisher : {
+						propKey = PKEY_Media_Publisher;
+            if ( !value.empty() ) {
+							hr = InitPropVariantFromString( value.c_str(), &propVar );
+            }
+						break;
+					}       
+          case Tag::Track : {
 						propKey = PKEY_Music_TrackNumber;
             if ( !value.empty() ) {
               try {

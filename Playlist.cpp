@@ -623,6 +623,18 @@ bool Playlist::LessThan( const Item& item1, const Item& item2, const Column colu
 			lessThan = item1.Info.GetYear() < item2.Info.GetYear();
 			break;
 		}
+    case Column::Composer : {
+      lessThan = _wcsicmp( item1.Info.GetComposer().c_str(), item2.Info.GetComposer().c_str() ) < 0;
+      break;
+    }
+    case Column::Conductor : {
+      lessThan = _wcsicmp( item1.Info.GetConductor().c_str(), item2.Info.GetConductor().c_str() ) < 0;
+      break;
+    }
+    case Column::Publisher : {
+      lessThan = _wcsicmp( item1.Info.GetPublisher().c_str(), item2.Info.GetPublisher().c_str() ) < 0;
+      break;
+    }
 	}
 	return lessThan;
 }

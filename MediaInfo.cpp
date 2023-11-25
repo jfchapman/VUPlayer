@@ -24,11 +24,11 @@ bool MediaInfo::operator<( const MediaInfo& o ) const
 {
 	const bool lessThan = 
 		std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate, 
-			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, 
+			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, m_Composer, m_Conductor, m_Publisher,
 			m_Source, m_CDDB, m_GainTrack, m_GainAlbum, m_CueStart, m_CueEnd ) <
 
 		std::tie( o.m_Filename, o.m_Filetime, o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_BitsPerSample, o.m_Channels, o.m_Bitrate,
-			o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year, o.m_Comment, o.m_Track, o.m_Version, o.m_ArtworkID,
+			o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year, o.m_Comment, o.m_Track, o.m_Version, o.m_ArtworkID, o.m_Composer, o.m_Conductor, o.m_Publisher,
 			o.m_Source, o.m_CDDB, o.m_GainTrack, o.m_GainAlbum, o.m_CueStart, o.m_CueEnd );
 
 	return lessThan;
@@ -54,6 +54,15 @@ MediaInfo::operator Tags() const
 	}
   if ( !m_Version.empty() ) {
     tags.insert( Tags::value_type( Tag::Version, WideStringToUTF8( m_Version ) ) );
+  }
+  if ( !m_Composer.empty() ) {
+    tags.insert( Tags::value_type( Tag::Composer, WideStringToUTF8( m_Composer ) ) );
+  }
+  if ( !m_Conductor.empty() ) {
+    tags.insert( Tags::value_type( Tag::Conductor, WideStringToUTF8( m_Conductor ) ) );
+  }
+  if ( !m_Publisher.empty() ) {
+    tags.insert( Tags::value_type( Tag::Publisher, WideStringToUTF8( m_Publisher ) ) );
   }
 	if ( m_Track > 0 ) {
 		tags.insert( Tags::value_type( Tag::Track, std::to_string( m_Track ) ) );
@@ -185,6 +194,36 @@ const std::wstring& MediaInfo::GetGenre() const
 void MediaInfo::SetGenre( const std::wstring& genre )
 {
 	m_Genre = genre;
+}
+
+const std::wstring& MediaInfo::GetComposer() const
+{
+	return m_Composer;
+}
+
+void MediaInfo::SetComposer( const std::wstring& composer )
+{
+	m_Composer = composer;
+}
+
+const std::wstring& MediaInfo::GetConductor() const
+{
+	return m_Conductor;
+}
+
+void MediaInfo::SetConductor( const std::wstring& conductor )
+{
+	m_Conductor = conductor;
+}
+
+const std::wstring& MediaInfo::GetPublisher() const
+{
+	return m_Publisher;
+}
+
+void MediaInfo::SetPublisher( const std::wstring& publisher )
+{
+	m_Publisher = publisher;
 }
 
 long MediaInfo::GetYear() const
@@ -353,11 +392,11 @@ bool MediaInfo::IsDuplicate( const MediaInfo& o ) const
 {
 	const bool isDuplicate = 
 		std::tie( m_Filesize, m_Duration, m_SampleRate, m_Channels,
-			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID,
+			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, m_Composer, m_Conductor, m_Publisher,
 			m_Source, m_CDDB, m_GainTrack, m_GainAlbum, m_CueStart, m_CueEnd ) ==
 
 		std::tie( o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_Channels,
-			o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year, o.m_Comment, o.m_Track, o.m_Version, o.m_ArtworkID,
+			o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year, o.m_Comment, o.m_Track, o.m_Version, o.m_ArtworkID, o.m_Composer, o.m_Conductor, o.m_Publisher,
 			o.m_Source, o.m_CDDB, o.m_GainTrack, o.m_GainAlbum, o.m_CueStart, o.m_CueEnd );
 	return isDuplicate;
 }
@@ -372,6 +411,9 @@ bool MediaInfo::GetCommonInfo( const List& mediaList, MediaInfo& commonInfo )
 	std::set<std::wstring> genres;
 	std::set<std::wstring> comments;
 	std::set<std::wstring> artworks;
+  std::set<std::wstring> composers;
+  std::set<std::wstring> conductors;
+  std::set<std::wstring> publishers;
 	std::set<long> years;
 	std::set<long> tracks;
 
@@ -382,10 +424,14 @@ bool MediaInfo::GetCommonInfo( const List& mediaList, MediaInfo& commonInfo )
 		genres.insert( mediaInfo.GetGenre() );
 		comments.insert( mediaInfo.GetComment() );
 		artworks.insert( mediaInfo.GetArtworkID() );
+    composers.insert( mediaInfo.GetComposer() );
+    conductors.insert( mediaInfo.GetConductor() );
+    publishers.insert( mediaInfo.GetPublisher() );
 		years.insert( mediaInfo.GetYear() );
 		tracks.insert( mediaInfo.GetTrack() );
 
-		if ( ( artists.size() > 1 ) && ( titles.size() > 1 ) && ( albums.size() > 1 ) && ( genres.size() > 1 ) && ( comments.size() > 1 ) && ( artworks.size() > 1 ) && ( years.size() > 1 ) && ( tracks.size() > 1 ) ) {
+		if ( ( artists.size() > 1 ) && ( titles.size() > 1 ) && ( albums.size() > 1 ) && ( genres.size() > 1 ) && ( comments.size() > 1 ) && ( artworks.size() > 1 ) &&
+        ( composers.size() > 1 ) && ( conductors.size() > 1 ) && ( publishers.size() > 1 ) && ( years.size() > 1 ) && ( tracks.size() > 1 ) ) {
 			break;
 		}
 	}
@@ -414,6 +460,18 @@ bool MediaInfo::GetCommonInfo( const List& mediaList, MediaInfo& commonInfo )
 	}
 	if ( ( 1 == artworks.size() ) && !artworks.begin()->empty() ) {
 		commonInfo.SetArtworkID( *artworks.begin() );
+		hasCommonInfo = true;
+	}
+	if ( ( 1 == composers.size() ) && !composers.begin()->empty() ) {
+		commonInfo.SetComposer( *composers.begin() );
+		hasCommonInfo = true;
+	}
+	if ( ( 1 == conductors.size() ) && !conductors.begin()->empty() ) {
+		commonInfo.SetConductor( *conductors.begin() );
+		hasCommonInfo = true;
+	}
+	if ( ( 1 == publishers.size() ) && !publishers.begin()->empty() ) {
+		commonInfo.SetPublisher( *publishers.begin() );
 		hasCommonInfo = true;
 	}
 	if ( 1 == years.size() ) {

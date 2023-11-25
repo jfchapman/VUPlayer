@@ -185,18 +185,33 @@ void HandlerBass::ReadOggTags( const char* oggTags, Tags& tags ) const
 						tags.insert( Tags::value_type( Tag::Album, value ) );
 					} else if ( 0 == _stricmp( field.c_str(), "GENRE" ) ) {
 						tags.insert( Tags::value_type( Tag::Genre, value ) );
-					} else if ( ( 0 == _stricmp( field.c_str(), "YEAR" ) ) || ( 0 == _stricmp( field.c_str(), "DATE" ) ) ) {
+					} else if ( 0 == _stricmp( field.c_str(), "YEAR" ) ) {
 						tags.insert( Tags::value_type( Tag::Year, value ) );
+          } else if ( 0 == _stricmp( field.c_str(), "DATE" ) ) {
+            // Prefer 'date' over 'year' (both map to the same tag type).
+						tags[ Tag::Year ] = value;
 					} else if ( 0 == _stricmp( field.c_str(), "COMMENT" ) ) {
 						tags.insert( Tags::value_type( Tag::Comment, value ) );
-					} else if ( ( 0 == _stricmp( field.c_str(), "TRACK" ) ) || ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) ) {
+					} else if ( 0 == _stricmp( field.c_str(), "TRACK" ) ) {
 						tags.insert( Tags::value_type( Tag::Track, value ) );
+          } else if ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) {
+            // Prefer 'tracknumber' over 'track' (both map to the same tag type).
+						tags[ Tag::Track ] = value;
 					} else if ( 0 == _stricmp( field.c_str(), "REPLAYGAIN_TRACK_GAIN" ) ) {
 						tags.insert( Tags::value_type( Tag::GainTrack, value ) );
 					} else if ( 0 == _stricmp( field.c_str(), "REPLAYGAIN_ALBUM_GAIN" ) ) {
 						tags.insert( Tags::value_type( Tag::GainAlbum, value ) );
-					}			
-				}
+					} else if ( 0 == _stricmp( field.c_str(), "COMPOSER" ) ) {
+						tags.insert( Tags::value_type( Tag::Composer, value ) );
+					} else if ( 0 == _stricmp( field.c_str(), "CONDUCTOR" ) ) {
+						tags.insert( Tags::value_type( Tag::Conductor, value ) );
+					} else if ( 0 == _stricmp( field.c_str(), "LABEL" ) ) {
+						tags.insert( Tags::value_type( Tag::Publisher, value ) );
+					} else if ( 0 == _stricmp( field.c_str(), "PUBLISHER" ) ) {
+            // Prefer 'publisher' over 'label' (both map to the same tag type).
+						tags[ Tag::Publisher ] = value;
+					}
+        }
 			}
 			currentTag += 1 + tagLength;
 		}
@@ -219,7 +234,10 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 			case Tag::Genre :
 			case Tag::Title :
 			case Tag::Track :
-			case Tag::Year : {
+			case Tag::Year :
+			case Tag::Composer :
+			case Tag::Conductor :
+			case Tag::Publisher : {
 				handled = false;
 				break;
 			}
@@ -248,60 +266,72 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 						for ( const auto& tagIter : tags ) {
 							const Tag tag = tagIter.first;
 							const std::string& tagValue = tagIter.second;
-							std::list<std::string> tagFields;
+							std::string tagField;
 							switch ( tag ) {
 								case Tag::Album : {
-									tagFields = { "ALBUM" };
+									tagField = "ALBUM";
 									break;
 								}
 								case Tag::Artist : {
-									tagFields = { "ARTIST" };
+									tagField = "ARTIST";
 									break;
 								}
 								case Tag::Comment : {
-									tagFields = { "COMMENT" };
+									tagField = "COMMENT";
 									break;								
 								}
 								case Tag::Genre : {
-									tagFields = { "GENRE" };
+									tagField = "GENRE";
 									break;
 								}
 								case Tag::Title : {
-									tagFields = { "TITLE" };
+									tagField = "TITLE";
 									break;
 								}
 								case Tag::Track : {
-									tagFields = { "TRACKNUMBER", "TRACK" };
+									tagField = "TRACKNUMBER";
 									break;
 								}
 								case Tag::Year : {
-									tagFields = { "DATE", "YEAR" };
+									tagField = "DATE";
 									break;
 								}
 								case Tag::GainAlbum : {
-									tagFields = { "REPLAYGAIN_ALBUM_GAIN" };
+									tagField = "REPLAYGAIN_ALBUM_GAIN";
 									break;
 								}
 								case Tag::GainTrack : {
-									tagFields = { "REPLAYGAIN_TRACK_GAIN" };
+									tagField = "REPLAYGAIN_TRACK_GAIN";
+									break;
+								}
+								case Tag::Composer : {
+									tagField = "COMPOSER";
+									break;
+								}
+								case Tag::Conductor : {
+									tagField = "CONDUCTOR";
+									break;
+								}
+								case Tag::Publisher : {
+									tagField = "PUBLISHER";
 									break;
 								}
 								default : {
 									break;
 								}
 							}
-							if ( !tagFields.empty() ) {
+							if ( !tagField.empty() ) {
 								for ( int index = 0; index < originalComments->comments; ++index ) {
 									const std::string comment = originalComments->user_comments[ index ];
 									const size_t delimiter = comment.find( '=' );
 									if ( ( std::string::npos != delimiter ) && ( delimiter > 0 ) ) {
 										const std::string field = StringToUpper( comment.substr( 0 /*offset*/, delimiter /*count*/ ) );
-										if ( tagFields.end() != std::find( tagFields.begin(), tagFields.end(), field ) ) {
+										if ( tagField == field ) {
 											originalCommentsToDrop.insert( index );						
 										}
 									}
 								}
-								const std::string comment = tagFields.front() + '=' + tagValue;
+								const std::string comment = tagField + '=' + tagValue;
 								vorbis_comment_add( &modifiedComments, comment.c_str() );							
 							}			
 						}

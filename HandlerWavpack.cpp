@@ -8,17 +8,41 @@
 #include <array>
 #include <fstream>
 
-// Supported tags and their WavPack equivalents.
-static const std::map<Tag,std::string> s_SupportedTags = {
-	{ Tag::Album,				"ALBUM" },
-	{ Tag::Artist,			"ARTIST" },
-	{ Tag::Comment,			"COMMENT" },
-	{ Tag::GainAlbum,		"REPLAYGAIN_ALBUM_GAIN" },
-	{ Tag::GainTrack,		"REPLAYGAIN_TRACK_GAIN" },
-	{ Tag::Genre,				"GENRE" },
-	{ Tag::Title,				"TITLE" },
-	{ Tag::Track,				"TRACKNUMBER" },
-	{ Tag::Year,				"DATE" }
+// All supported WavPack tag names (note that some names map to same tag type).
+static const std::map<std::string, Tag> kSupportedTagsByName = {
+	{ "ALBUM",                  Tag::Album },
+	{ "ARTIST",                 Tag::Artist },
+	{ "COMMENT",                Tag::Comment },
+	{ "REPLAYGAIN_ALBUM_GAIN",  Tag::GainAlbum },
+	{ "REPLAY GAIN (ALBUM)",    Tag::GainAlbum },
+	{ "REPLAYGAIN_TRACK_GAIN",  Tag::GainTrack },
+	{ "REPLAY GAIN (RADIO)",    Tag::GainTrack },
+	{ "GENRE",                  Tag::Genre },
+	{ "TITLE",                  Tag::Title },
+	{ "TRACKNUMBER",            Tag::Track },
+	{ "TRACK",                  Tag::Track },
+	{ "DATE",                   Tag::Year },
+	{ "YEAR",                   Tag::Year },
+	{ "COMPOSER",               Tag::Composer },
+	{ "CONDUCTOR",              Tag::Conductor },
+	{ "PUBLISHER",              Tag::Publisher },
+	{ "LABEL",                  Tag::Publisher }
+};
+
+// Preferred WavPack tag names.
+static const std::map<Tag, std::string> kSupportedTagsByType = {
+	{ Tag::Album,               "ALBUM" },
+	{ Tag::Artist,              "ARTIST"  },
+	{ Tag::Comment,             "COMMENT" },
+	{ Tag::GainAlbum,           "REPLAYGAIN_ALBUM_GAIN" },
+	{ Tag::GainTrack,           "REPLAYGAIN_TRACK_GAIN" },
+	{ Tag::Genre,               "GENRE" },
+	{ Tag::Title,               "TITLE" },
+	{ Tag::Track,               "TRACKNUMBER" },
+	{ Tag::Year,                "DATE" },
+	{ Tag::Composer,            "COMPOSER" },
+	{ Tag::Conductor,           "CONDUCTOR" },
+	{ Tag::Publisher,           "PUBLISHER" }
 };
 
 HandlerWavpack::HandlerWavpack()
@@ -57,16 +81,26 @@ bool HandlerWavpack::GetTags( const std::wstring& filename, Tags& tags ) const
 		const int offset = 0;
 		WavpackContext* context = WavpackOpenFileInput( WideStringToUTF8( filename ).c_str(), error, flags, offset );
 		if ( nullptr != context ) {
-			for ( const auto& tagIter : s_SupportedTags ) {
-				const std::string& tagField = tagIter.second;
-				const int tagLength = WavpackGetTagItem( context, tagField.c_str(), nullptr /*buffer*/, 0 /*bufferSize*/ );
-				if ( tagLength > 0 ) {
-					std::vector<char> buffer( tagLength + 1, 0 );
-					if ( tagLength == WavpackGetTagItem( context, tagField.c_str(), buffer.data(), tagLength + 1 ) ) {
-						tags.insert( Tags::value_type( tagIter.first, buffer.data() ) );
-					}
-				}
-			}
+      const int tagCount = WavpackGetNumTagItems( context );
+      for ( int i = 0; i < tagCount; i++ ) {
+        if ( const int tagKeyLength = WavpackGetTagItemIndexed( context, i, nullptr /*item*/, 0 /*itemSize*/ ); tagKeyLength > 0 ) {
+          std::vector<char> tagKey( 1 + tagKeyLength, 0 );
+          if ( tagKeyLength == WavpackGetTagItemIndexed( context, i, tagKey.data(), 1 + tagKeyLength ) ) {
+            if ( const int tagValueLength = WavpackGetTagItem( context, tagKey.data(), nullptr /*value*/, 0 /*valueSize*/ ); tagValueLength > 0 ) {
+              std::vector<char> tagValue( 1 + tagValueLength, 0 );
+              if ( tagValueLength == WavpackGetTagItem( context, tagKey.data(), tagValue.data(), 1 + tagValueLength ) ) {
+                if ( const auto tagType = kSupportedTagsByName.find( StringToUpper( tagKey.data() ) ); kSupportedTagsByName.end() != tagType ) {
+                  if ( const auto preferredTagType = kSupportedTagsByType.find( tagType->second ); kSupportedTagsByType.end() != preferredTagType ) {
+                    tags[ tagType->second ] = tagValue.data();
+                  } else {
+                    tags.insert( { tagType->second, tagValue.data() } );
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
 
 			const unsigned char format = WavpackGetFileFormat( context );
 			UINT stringID = 0;
@@ -123,8 +157,7 @@ bool HandlerWavpack::SetTags( const std::wstring& filename, const Tags& tags ) c
 		bool writeTags = false;
 		for ( const auto& tagIter : tags ) {
 			const Tag tagField = tagIter.first;
-			const auto mapIter = s_SupportedTags.find( tagField );
-			if ( s_SupportedTags.end() != mapIter ) {
+			if ( const auto mapIter = kSupportedTagsByType.find( tagField ); kSupportedTagsByType.end() != mapIter ) {
 				const std::string& fieldName = mapIter->second;
 				const std::string& value = tagIter.second;
 				if ( value.empty() ) {
