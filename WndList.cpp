@@ -717,7 +717,6 @@ void WndList::OnContextMenu( const POINT& position )
 			const bool allowAddStream = ( Playlist::Type::Streams == playlistType ) || ( Playlist::Type::User == playlistType ) || ( Playlist::Type::All == playlistType ) || ( Playlist::Type::Favourites == playlistType );
       const bool allowAddToFavourites = hasSelectedItems && ( Playlist::Type::Favourites != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
       const bool allowRemoveFiles = hasSelectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
-      const bool allowMusicBrainzQueries = m_Playlist && m_Playlist->AllowMusicBrainzQueries();
 
 			const UINT enablePaste = ( allowPaste && ( IsClipboardFormatAvailable( CF_TEXT ) || IsClipboardFormatAvailable( CF_UNICODETEXT ) || IsClipboardFormatAvailable( CF_HDROP ) ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PASTE, MF_BYCOMMAND | enablePaste );
@@ -758,8 +757,7 @@ void WndList::OnContextMenu( const POINT& position )
 			EnableMenuItem( listmenu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | enableGainCalculator );
 
 			VUPlayer* vuplayer = VUPlayer::Get();
-
-			const UINT musicbrainzEnabled = ( allowMusicBrainzQueries && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT musicbrainzEnabled = ( ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() && m_Playlist && m_Playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
 			const UINT enableColourChoice = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;

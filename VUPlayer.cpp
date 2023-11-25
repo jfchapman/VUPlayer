@@ -1225,7 +1225,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | gainCalculatorEnabled );
 		const UINT refreshLibraryEnabled = m_Maintainer.IsActive() ? MF_DISABLED : MF_ENABLED;
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
-		const UINT musicbrainzEnabled = ( playlist && playlist->AllowMusicBrainzQueries() && IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
+		const UINT musicbrainzEnabled = ( IsMusicBrainzEnabled() && playlist && playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
 		const int bufferSize = 256;
@@ -1899,26 +1899,28 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
   		const MusicBrainz::Album& album = result.Albums[ selectedResult ];
 			const Playlist::Items items = playlist->GetItems();
 			for ( const auto& item : items ) {
-				const MediaInfo previousMediaInfo( item.Info );
-				MediaInfo mediaInfo( item.Info );
-				mediaInfo.SetAlbum( album.Title );
-				mediaInfo.SetArtist( album.Artist );
-				mediaInfo.SetYear( album.Year );
+        if ( item.Info.GetCueStart() ) {
+				  const MediaInfo previousMediaInfo( item.Info );
+				  MediaInfo mediaInfo( item.Info );
+				  mediaInfo.SetAlbum( album.Title );
+				  mediaInfo.SetArtist( album.Artist );
+				  mediaInfo.SetYear( album.Year );
 
-				mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
+				  mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
 
-				const auto trackIter = album.Tracks.find( mediaInfo.GetTrack() );
-				if ( album.Tracks.end() != trackIter ) {
-					const auto& [ trackTitle, trackArtist, trackYear ] = trackIter->second;
-					mediaInfo.SetTitle( trackTitle );
-					if ( !trackArtist.empty() ) {
-						mediaInfo.SetArtist( trackArtist );
-					}
-					if ( trackYear > 0 ) {
-						mediaInfo.SetYear( trackYear );
-					}
-				}
-				m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
+				  const auto trackIter = album.Tracks.find( mediaInfo.GetTrack() );
+				  if ( album.Tracks.end() != trackIter ) {
+					  const auto& [ trackTitle, trackArtist, trackYear ] = trackIter->second;
+					  mediaInfo.SetTitle( trackTitle );
+					  if ( !trackArtist.empty() ) {
+						  mediaInfo.SetArtist( trackArtist );
+					  }
+					  if ( trackYear > 0 ) {
+						  mediaInfo.SetYear( trackYear );
+					  }
+				  }
+				  m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
+        }
 			}
 
       if ( ( Playlist::Type::User == playlist->GetType() ) && ( !album.Title.empty() && ( playlist->GetName() != album.Title ) ) ) {

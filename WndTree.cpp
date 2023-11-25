@@ -566,7 +566,7 @@ void WndTree::OnContextMenu( const POINT& position )
 			EnableMenuItem( treemenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
 			VUPlayer* vuplayer = VUPlayer::Get();
-			const UINT musicbrainzEnabled = ( playlist && playlist->AllowMusicBrainzQueries() && ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT musicbrainzEnabled = ( ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() && playlist && playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( treemenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
 			const UINT enableColourChoice = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;

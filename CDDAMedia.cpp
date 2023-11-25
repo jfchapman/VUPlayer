@@ -508,40 +508,36 @@ long CDDAMedia::GetStartSector( const CDROM_TOC& toc, const long track )
 std::optional<std::pair<std::string /*discid*/, std::string /*toc*/>> CDDAMedia::GetMusicBrainzID( Playlist* const playlist )
 {
   const auto items = playlist->GetItems();
-  if ( items.empty() || ( items.size() >= MAXIMUM_NUMBER_TRACKS ) )
-    return std::nullopt;
 
-  // All playlist items should use the same source file.
-  std::set<std::wstring> filenames;
-  for ( const auto& item : items ) {
-    filenames.insert( item.Info.GetFilename() );
-  }
-  if ( 1 != filenames.size() )
-    return std::nullopt;
-
-  // All the playlist items should contain start & end cues, except for the last item (for which the source file duration will be used).
-  long endCue = static_cast<long>( items.front().Info.GetDuration( false /*applyCues*/ ) * 75 );
-
+  // Restrict queries to playlist items with cues, where all cues refer to the same source file.
   std::set<std::pair<long /*startCue*/, long /*endCue*/>> cues;
+  std::set<std::wstring> filenames;
+  long sourceFileLength = -1;
   for ( const auto& item : items ) {
-    if ( !item.Info.GetCueStart() )
-      return std::nullopt;
-    cues.insert( std::make_pair( *item.Info.GetCueStart(), item.Info.GetCueEnd().value_or( endCue ) ) );
+    if ( item.Info.GetCueStart() ) {
+      if ( -1 == sourceFileLength ) {
+        sourceFileLength = static_cast<long>( item.Info.GetDuration( false /*applyCues*/ ) * 75 );
+      }
+      filenames.insert( item.Info.GetFilename() );
+      if ( filenames.size() > 1 )
+        return std::nullopt;
+
+      cues.insert( std::make_pair( *item.Info.GetCueStart(), item.Info.GetCueEnd().value_or( sourceFileLength ) ) );
+    }
   }
 
-  // Restrict queries to playlists with a start cue of zero and an end cue of the source file duration.   
-  if ( ( 0 != cues.begin()->first ) || ( endCue != cues.rbegin()->second ) )
+  // Restrict queries to playlists where the start point of the first cue is zero, and the end point of the last cue is the source file length.
+  if ( cues.empty() || ( cues.size() >= MAXIMUM_NUMBER_TRACKS ) || ( 0 != cues.begin()->first ) || ( sourceFileLength != cues.rbegin()->second ) )
     return std::nullopt;
-  
+
+  // All cues should be contiguous.
   for ( auto cue = cues.begin(); cue != cues.end(); cue++ ) {
     auto next = cue;
     ++next;
     if ( cues.end() != next ) {
-      // All the cues should be contiguous.
       if ( cue->second != next->first )
         return std::nullopt;
     } else {
-      // Check the cues for the last track.
       if ( cue->second < cue->first )
         return std::nullopt;
     }
@@ -560,10 +556,10 @@ std::optional<std::pair<std::string /*discid*/, std::string /*toc*/>> CDDAMedia:
     toc.TrackData[ track ].Address[ 3 ] = static_cast<unsigned char>( address % 75 );
     ++track;
   }
-  endCue += PREGAP;
-  toc.TrackData[ track ].Address[ 1 ] = static_cast<unsigned char>( endCue / 75 / 60 );
-  toc.TrackData[ track ].Address[ 2 ] = static_cast<unsigned char>( endCue / 75 % 60 );
-  toc.TrackData[ track ].Address[ 3 ] = static_cast<unsigned char>( endCue % 75 );
+  sourceFileLength += PREGAP;
+  toc.TrackData[ track ].Address[ 1 ] = static_cast<unsigned char>( sourceFileLength / 75 / 60 );
+  toc.TrackData[ track ].Address[ 2 ] = static_cast<unsigned char>( sourceFileLength / 75 % 60 );
+  toc.TrackData[ track ].Address[ 3 ] = static_cast<unsigned char>( sourceFileLength % 75 );
 
   return GetMusicBrainzID( toc );
 }
