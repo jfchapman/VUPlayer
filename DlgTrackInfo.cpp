@@ -249,6 +249,9 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		bool sameArtist = true;
 		bool sameTitle = true;
 		bool sameAlbum = true;
+    bool samePublisher = true;
+    bool sameComposer = true;
+    bool sameConductor = true;
 		bool sameGenre = true;
 		bool sameYear = true;
 		bool sameTrack = true;
@@ -257,6 +260,9 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		std::wstring artist = iter->Info.GetArtist();
 		std::wstring title = iter->Info.GetTitle();
 		std::wstring album = iter->Info.GetAlbum();
+    std::wstring publisher = iter->Info.GetPublisher();
+    std::wstring composer = iter->Info.GetComposer();
+    std::wstring conductor = iter->Info.GetConductor();
 		std::wstring genre = iter->Info.GetGenre();
 		long year = iter->Info.GetYear();
 		long track = iter->Info.GetTrack();
@@ -274,6 +280,18 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 			if ( sameAlbum && ( iter->Info.GetAlbum() != album ) ) {
 				sameAlbum = false;
 				album.clear();
+			}
+			if ( samePublisher && ( iter->Info.GetPublisher() != publisher ) ) {
+				samePublisher = false;
+				publisher.clear();
+			}
+			if ( sameComposer && ( iter->Info.GetComposer() != composer ) ) {
+				sameComposer = false;
+				composer.clear();
+			}
+			if ( sameConductor && ( iter->Info.GetConductor() != conductor ) ) {
+				sameConductor = false;
+				conductor.clear();
 			}
 			if ( sameGenre && ( iter->Info.GetGenre() != genre ) ) {
 				sameGenre = false;
@@ -299,6 +317,9 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		m_InitialInfo.SetArtist( artist );
 		m_InitialInfo.SetTitle( title );
 		m_InitialInfo.SetAlbum( album );
+    m_InitialInfo.SetPublisher( publisher );
+    m_InitialInfo.SetComposer( composer );
+    m_InitialInfo.SetConductor( conductor );
 		m_InitialInfo.SetGenre( genre );
 		m_InitialInfo.SetYear( year );
 		m_InitialInfo.SetTrack( track );
@@ -312,7 +333,10 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 	SetDlgItemText( hwnd, IDC_TRACKINFO_ARTIST, m_InitialInfo.GetArtist().c_str() );
 	SetDlgItemText( hwnd, IDC_TRACKINFO_TITLE, m_InitialInfo.GetTitle().c_str() );
 	SetDlgItemText( hwnd, IDC_TRACKINFO_ALBUM, m_InitialInfo.GetAlbum().c_str() );
-	SetDlgItemText( hwnd, IDC_TRACKINFO_GENRE, m_InitialInfo.GetGenre().c_str() );
+  SetDlgItemText( hwnd, IDC_TRACKINFO_PUBLISHER, m_InitialInfo.GetPublisher().c_str() );
+  SetDlgItemText( hwnd, IDC_TRACKINFO_COMPOSER, m_InitialInfo.GetComposer().c_str() );
+  SetDlgItemText( hwnd, IDC_TRACKINFO_CONDUCTOR, m_InitialInfo.GetConductor().c_str() );
+  SetDlgItemText( hwnd, IDC_TRACKINFO_GENRE, m_InitialInfo.GetGenre().c_str() );
 	if ( m_InitialInfo.GetYear() > 0 ) {
 		SetDlgItemInt( hwnd, IDC_TRACKINFO_YEAR, static_cast<UINT>( m_InitialInfo.GetYear() ), FALSE /*signed*/ );
 	}
@@ -672,6 +696,15 @@ void DlgTrackInfo::OnSave( HWND hwnd )
 	if ( 0 != GetDlgItemText( hwnd, IDC_TRACKINFO_ALBUM, buffer, bufSize ) ) {
 		m_ClosingInfo.SetAlbum( buffer );
 	}
+	if ( 0 != GetDlgItemText( hwnd, IDC_TRACKINFO_PUBLISHER, buffer, bufSize ) ) {
+		m_ClosingInfo.SetPublisher( buffer );
+	}
+	if ( 0 != GetDlgItemText( hwnd, IDC_TRACKINFO_COMPOSER, buffer, bufSize ) ) {
+		m_ClosingInfo.SetComposer( buffer );
+	}
+	if ( 0 != GetDlgItemText( hwnd, IDC_TRACKINFO_CONDUCTOR, buffer, bufSize ) ) {
+		m_ClosingInfo.SetConductor( buffer );
+	}
 	if ( 0 != GetDlgItemText( hwnd, IDC_TRACKINFO_GENRE, buffer, bufSize ) ) {
 		m_ClosingInfo.SetGenre( buffer );
 	}
@@ -701,6 +734,18 @@ void DlgTrackInfo::OnSave( HWND hwnd )
 		}
 		if ( m_ClosingInfo.GetAlbum() != m_InitialInfo.GetAlbum() ) {
 			info.SetAlbum( m_ClosingInfo.GetAlbum() );
+			updateItem = true;
+		}
+		if ( m_ClosingInfo.GetPublisher() != m_InitialInfo.GetPublisher() ) {
+			info.SetPublisher( m_ClosingInfo.GetPublisher() );
+			updateItem = true;
+		}
+		if ( m_ClosingInfo.GetComposer() != m_InitialInfo.GetComposer() ) {
+			info.SetComposer( m_ClosingInfo.GetComposer() );
+			updateItem = true;
+		}
+		if ( m_ClosingInfo.GetConductor() != m_InitialInfo.GetConductor() ) {
+			info.SetConductor( m_ClosingInfo.GetConductor() );
 			updateItem = true;
 		}
 		if ( m_ClosingInfo.GetGenre() != m_InitialInfo.GetGenre() ) {
@@ -733,6 +778,9 @@ void DlgTrackInfo::OnSave( HWND hwnd )
 		EnableWindow( GetDlgItem( hwnd, IDC_TRACKINFO_ARTIST ), FALSE );
 		EnableWindow( GetDlgItem( hwnd, IDC_TRACKINFO_TITLE ), FALSE );
 		EnableWindow( GetDlgItem( hwnd, IDC_TRACKINFO_ALBUM ), FALSE );
+		EnableWindow( GetDlgItem( hwnd, IDC_TRACKINFO_PUBLISHER ), FALSE );
+		EnableWindow( GetDlgItem( hwnd, IDC_TRACKINFO_COMPOSER ), FALSE );
+		EnableWindow( GetDlgItem( hwnd, IDC_TRACKINFO_CONDUCTOR ), FALSE );
 		EnableWindow( GetDlgItem( hwnd, IDC_TRACKINFO_GENRE ), FALSE );
 		EnableWindow( GetDlgItem( hwnd, IDC_TRACKINFO_YEAR ), FALSE );
 		EnableWindow( GetDlgItem( hwnd, IDC_TRACKINFO_TRACKNUMBER ), FALSE );
