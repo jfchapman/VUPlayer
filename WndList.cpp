@@ -772,7 +772,7 @@ void WndList::OnContextMenu( const POINT& position )
 			EnableMenuItem( listmenu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | enableGainCalculator );
 
 			VUPlayer* vuplayer = VUPlayer::Get();
-			const UINT musicbrainzEnabled = ( ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() && m_Playlist && m_Playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT musicbrainzEnabled = ( m_Playlist && m_Playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
 			const UINT enableColourChoice = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;

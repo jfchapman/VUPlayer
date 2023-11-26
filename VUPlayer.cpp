@@ -70,7 +70,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_Output( m_hInst, m_hWnd, m_Handlers, m_Settings ),
 	m_GainCalculator( m_Library, m_Handlers ),
 	m_Scrobbler( m_Database, m_Settings ),
-	m_MusicBrainz( m_hInst, m_hWnd, m_Settings ),
+	m_MusicBrainz( m_hInst, m_hWnd ),
 	m_DiscManager( m_hInst, m_hWnd, m_Library, m_Handlers, m_MusicBrainz ),
 	m_Rebar( m_hInst, m_hWnd, m_Settings ),
 	m_Status( m_hInst, m_hWnd ),
@@ -1231,7 +1231,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | gainCalculatorEnabled );
 		const UINT refreshLibraryEnabled = m_Maintainer.IsActive() ? MF_DISABLED : MF_ENABLED;
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
-		const UINT musicbrainzEnabled = ( IsMusicBrainzEnabled() && playlist && playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_DISABLED;
+		const UINT musicbrainzEnabled = ( playlist && playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
 		const int bufferSize = 256;
@@ -1850,9 +1850,6 @@ void VUPlayer::ScrobblerAuthorise()
 
 void VUPlayer::OnMusicBrainzQuery( Playlist* const cueList )
 {
-  if ( !IsMusicBrainzEnabled() )
-    return;
-
   if ( nullptr != cueList ) {
     if ( const auto id = CDDAMedia::GetMusicBrainzID( cueList ) ) {
       m_MusicBrainz.Query( id->first, id->second, true /*forceDialog*/, cueList->GetID() );
@@ -1911,6 +1908,9 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
 				  mediaInfo.SetAlbum( album.Title );
 				  mediaInfo.SetArtist( album.Artist );
 				  mediaInfo.SetYear( album.Year );
+          mediaInfo.SetPublisher( album.Label );
+          mediaInfo.SetComposer( album.Composer );
+          mediaInfo.SetConductor( album.Conductor );
 
 				  mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
 

@@ -2,10 +2,13 @@
 
 #include "stdafx.h"
 
-#include "Settings.h"
-
 #include <atomic>
 #include <tuple>
+#include <map>
+#include <vector>
+#include <string>
+#include <functional>
+#include <mutex>
 
 // MusicBrainz handler for CD audio metadata.
 class MusicBrainz
@@ -15,10 +18,13 @@ public:
 	struct Album
 	{
 		// Maps a track number to Title/Artist/Year information.
-		std::map<long,std::tuple<std::wstring /*title*/, std::wstring /*artist*/, long /*year*/>> Tracks;
+		std::map<long, std::tuple<std::wstring /*title*/, std::wstring /*artist*/, long /*year*/>> Tracks;
 
 		std::wstring Title;
 		std::wstring Artist;
+    std::wstring Label;
+    std::wstring Composer;
+    std::wstring Conductor;
 		long Year;		
 		std::vector<unsigned char> Artwork;
 	};
@@ -36,8 +42,7 @@ public:
 
 	// 'instance' - module instance handle.
 	// 'hwnd' - application window handle.
-	// 'settings' - application settings.
-	MusicBrainz( const HINSTANCE instance, const HWND hwnd, Settings& settings );
+	MusicBrainz( const HINSTANCE instance, const HWND hwnd );
 
 	virtual ~MusicBrainz();
 
@@ -131,9 +136,6 @@ private:
 
 	// Application window handle.
 	const HWND m_hWnd;
-
-	// Application settings.
-	Settings& m_Settings;
 
 	// Pending queries.
 	PendingQueryList m_PendingQueries;

@@ -1163,7 +1163,7 @@ bool Playlist::AddCUE( const std::wstring& filename )
     }
 
     if ( added ) {
-			if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
+			if ( VUPlayer* vuplayer = VUPlayer::Get(); ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) {
         vuplayer->OnMusicBrainzQuery( this );
       }
     }

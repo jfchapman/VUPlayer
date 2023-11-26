@@ -4,6 +4,7 @@
 
 #include "CDDACache.h"
 #include "Utility.h"
+#include "VUPlayer.h"
 
 #include <iomanip>
 #include <numeric>
@@ -275,8 +276,10 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 		success = ( m_Playlist->GetCount() > 0 );
 
 		if ( success && isNewMedia ) {
-			const auto [ discID, toc ] = GetMusicBrainzID();
-			m_MusicBrainz.Query( discID, toc, false /*forceDialog*/, m_Playlist->GetID() );	
+			if ( VUPlayer* vuplayer = VUPlayer::Get(); ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) { 
+  			const auto [ discID, toc ] = GetMusicBrainzID();
+			  m_MusicBrainz.Query( discID, toc, false /*forceDialog*/, m_Playlist->GetID() );	
+      }
 		}
 	}
 	return success;
