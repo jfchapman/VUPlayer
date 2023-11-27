@@ -188,9 +188,6 @@ public:
   // Returns the list control index of the found item, or -1 if there is no match.
   int OnFindItem( const LVFINDINFO& findInfo, const int startIndex );
 
-  // Refreshes the list control item at the 'itemIndex'.
-  void RefreshItem( const int itemIndex );
-
   // Refreshes the list control.
   void RefreshPlaylist();
 
@@ -306,6 +303,9 @@ private:
   // Deselects all list control items.
   void DeselectAllItems();
 
+  // Refreshes the list control item at the 'itemIndex'.
+  void RefreshItem( const int itemIndex );
+
 	// Column format information.
 	static ColumnFormats s_ColumnFormats;
 
@@ -368,6 +368,9 @@ private:
 
 	// The file to select when setting the playlist.
 	std::optional<MediaInfo> m_FileToSelect;
+
+  // Whether to select the first list control item when a playlist item is added to the playlist.
+  bool m_SelectFirstItem = false;
 
 	// Maps an output state to an icon index.
 	IconMap m_IconMap;

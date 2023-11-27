@@ -9,6 +9,8 @@
 #include <ntddcdrm.h>
 
 #include <string>
+#include <tuple>
+#include <set>
 
 class CDDACache;
 
@@ -83,8 +85,8 @@ public:
 	// Returns the MusicBrainz ID for disc queries.
 	std::pair<std::string /*discid*/, std::string /*toc*/> GetMusicBrainzID() const;
 
-  // Returns the MusicBrainz ID for a 'playlist' (if it is suitable for a query).
-  static std::optional<std::pair<std::string /*discid*/, std::string /*toc*/>> GetMusicBrainzID( Playlist* const playlist );
+  // Returns the MusicBrainz ID ('discid'/'toc') & 'startCues' for a 'playlist' (if it is suitable for a query).
+  static std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<long> /*startCues*/>> GetMusicBrainzID( Playlist* const playlist );
 
 private:
 	// A string pair.

@@ -181,18 +181,17 @@ INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM w
 	return FALSE;
 }
 
-void MusicBrainz::Query( const std::string& discID, const std::string& toc, const bool forceDialog, const std::string& playlistID )
+void MusicBrainz::Query( const std::string& discID, const std::string& toc, const bool forceDialog, const std::string& playlistID, const std::optional<std::set<long>>& startCues )
 {
 	std::lock_guard<std::mutex> lock( m_PendingQueriesMutex );
 	bool addPending = true;
 	auto pendingQuery = m_PendingQueries.begin();
 	while ( addPending && ( m_PendingQueries.end() != pendingQuery ) ) {
-		const auto& [ pendingDiscID, pendingTOC, _ ] = pendingQuery->first;
-		addPending = ( discID != pendingDiscID );
+		addPending = ( discID != pendingQuery->DiscID );
 		++pendingQuery;
 	}
 	if ( addPending ) {
-		m_PendingQueries.push_back( { { discID, toc, playlistID }, forceDialog } );
+		m_PendingQueries.push_back( { discID, toc, playlistID, startCues, forceDialog } );
 		SetEvent( m_WakeEvent );
 	}
 }
@@ -207,7 +206,7 @@ void MusicBrainz::QueryHandler()
 	} );
 
 	while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
-		PendingQuery pendingQuery;
+		QueryInfo pendingQuery;
 		{
 			std::lock_guard<std::mutex> lock( m_PendingQueriesMutex );
 			if ( !m_PendingQueries.empty() ) {
@@ -216,13 +215,13 @@ void MusicBrainz::QueryHandler()
 			}
 		}
 
-		const auto& [ discID, toc, playlistID ] = pendingQuery.first;
-		const bool forceDialog = pendingQuery.second;
+		const auto& [ discID, toc, playlistID, startCues, forceDialog ] = pendingQuery;
 
 		if ( !discID.empty() && !toc.empty() ) {
 			Result* result = new Result();
 			result->DiscID = discID;
       result->PlaylistID = playlistID;
+      result->StartCues = startCues;
 
 			m_ActiveQuery = true;
 			const auto response = LookupDisc( discID, toc );
@@ -240,8 +239,7 @@ void MusicBrainz::QueryHandler()
 		std::lock_guard<std::mutex> lock( m_PendingQueriesMutex );
 		auto pendingIter = m_PendingQueries.begin();
 		while ( m_PendingQueries.end() != pendingIter ) {
-			const auto& [ pendingDiscID, pendingTOC, _ ] = pendingIter->first;
-			if ( pendingDiscID == toc ) {
+			if ( pendingIter->DiscID == discID ) {
 				pendingIter = m_PendingQueries.erase( pendingIter );
 			} else {
 				++pendingIter;

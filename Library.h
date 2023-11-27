@@ -196,7 +196,8 @@ private:
 	std::wstring FindArtwork( const std::vector<BYTE>& image );
 
 	// Sets 'mediaInfo' from a SQLite 'stmt'.
-	void ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo );
+  // Returns false if there was any missing media data in the table (from new columns added as part of a schema update).
+	bool ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo );
 
 	// Returns the library columns corresponding to 'mediaInfo'.
 	const Columns& GetColumns( const MediaInfo& mediaInfo ) const;

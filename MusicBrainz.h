@@ -9,6 +9,8 @@
 #include <string>
 #include <functional>
 #include <mutex>
+#include <optional>
+#include <set>
 
 // MusicBrainz handler for CD audio metadata.
 class MusicBrainz
@@ -35,9 +37,10 @@ public:
 	// Query result.
 	struct Result
 	{
-		std::string DiscID;     // MusicBrainz Disc ID.
-    std::string PlaylistID; // Playlist ID.
-		Albums Albums;				  // Matching albums.
+		std::string DiscID;                      // MusicBrainz Disc ID.
+    std::string PlaylistID;                  // Playlist ID (for cue sheet results).
+    std::optional<std::set<long>> StartCues; // Start cues (for cue sheet results).
+		Albums Albums;				                   // Matching albums.
 	};
 
 	// 'instance' - module instance handle.
@@ -50,8 +53,9 @@ public:
 	// 'discID' - MusicBrainz Disc ID.
 	// 'toc' - CD table of contents.
 	// 'forceDialog' - whether to show a dialog even for an exact match.
-  // 'playlistID' - playlist ID.
-  void Query( const std::string& discID, const std::string& toc, const bool forceDialog, const std::string& playlistID );
+  // 'playlistID' - playlist ID (for cue sheet queries).
+  // 'startCues' - start cues (for cue sheet queries).
+  void Query( const std::string& discID, const std::string& toc, const bool forceDialog, const std::string& playlistID, const std::optional<std::set<long>>& startCues = std::nullopt );
 
 	// Displays a dialog allowing one of the matches to be selected from the 'result'.
 	// Returns the album index of the selected match, or -1 if a match was not selected.
@@ -73,19 +77,18 @@ private:
 		MusicBrainz* m_MusicBrainz;
 	};
 
-	// Query ID.
-	struct QueryID
+	// Query information.
+	struct QueryInfo
 	{
-		std::string DiscID;		  // MusicBrainz Disc ID.
-		std::string TOC;			  // CD table of contents.
-    std::string PlaylistID; // Playlist ID.
+		std::string DiscID;		                      // MusicBrainz Disc ID.
+		std::string TOC;			                      // CD table of contents.
+    std::string PlaylistID;                     // Playlist ID (for cue sheet queries).
+    std::optional<std::set<long>> StartCues;    // Start cues (for cue sheet queries).
+    bool ForceMatchDialog;                      // Whether a dialog should be shown even for a single match.
 	};
 
-	// Pairs a query ID with a flag to indicate whether a dialog should be shown even for a single match.
-	using PendingQuery = std::pair<QueryID, bool>;
-
 	// A list of pending queries.
-	using PendingQueryList = std::list<PendingQuery>;
+	using PendingQueryList = std::list<QueryInfo>;
 
 		// A callback which returns true to continue.
 	using CanContinue = std::function<bool()>;

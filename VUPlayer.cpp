@@ -1852,7 +1852,8 @@ void VUPlayer::OnMusicBrainzQuery( Playlist* const cueList )
 {
   if ( nullptr != cueList ) {
     if ( const auto id = CDDAMedia::GetMusicBrainzID( cueList ) ) {
-      m_MusicBrainz.Query( id->first, id->second, true /*forceDialog*/, cueList->GetID() );
+      const auto& [ discID, toc, startCues ] = *id;
+      m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, cueList->GetID(), startCues );
     }
   } else if ( const Playlist::Ptr playlist = m_List.GetPlaylist(); playlist ) {
     if ( Playlist::Type::CDDA == playlist->GetType() ) {
@@ -1868,7 +1869,8 @@ void VUPlayer::OnMusicBrainzQuery( Playlist* const cueList )
 			  }
       }
     } else if ( const auto id = CDDAMedia::GetMusicBrainzID( playlist.get() ) ) {
-      m_MusicBrainz.Query( id->first, id->second, true /*forceDialog*/, playlist->GetID() );
+      const auto& [ discID, toc, startCues ] = *id;
+      m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, playlist->GetID(), startCues );
     }
 	}
 }
@@ -1902,31 +1904,34 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
   		const MusicBrainz::Album& album = result.Albums[ selectedResult ];
 			const Playlist::Items items = playlist->GetItems();
 			for ( const auto& item : items ) {
-        if ( item.Info.GetCueStart() ) {
-				  const MediaInfo previousMediaInfo( item.Info );
-				  MediaInfo mediaInfo( item.Info );
-				  mediaInfo.SetAlbum( album.Title );
-				  mediaInfo.SetArtist( album.Artist );
-				  mediaInfo.SetYear( album.Year );
+        const long trackIndex = result.StartCues ? 
+          ( 1 + static_cast<long>( std::distance( result.StartCues->begin(), result.StartCues->find( item.Info.GetCueStart().value_or( -1 ) ) ) ) ) :
+          item.Info.GetTrack();
+
+        const auto trackResult = album.Tracks.find( trackIndex );
+			  if ( album.Tracks.end() != trackResult ) {
+			    const MediaInfo previousMediaInfo( item.Info );
+			    MediaInfo mediaInfo( item.Info );
+			    mediaInfo.SetAlbum( album.Title );
+			    mediaInfo.SetArtist( album.Artist );
+			    mediaInfo.SetYear( album.Year );
           mediaInfo.SetPublisher( album.Label );
           mediaInfo.SetComposer( album.Composer );
           mediaInfo.SetConductor( album.Conductor );
 
-				  mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
+			    mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
 
-				  const auto trackIter = album.Tracks.find( mediaInfo.GetTrack() );
-				  if ( album.Tracks.end() != trackIter ) {
-					  const auto& [ trackTitle, trackArtist, trackYear ] = trackIter->second;
-					  mediaInfo.SetTitle( trackTitle );
-					  if ( !trackArtist.empty() ) {
-						  mediaInfo.SetArtist( trackArtist );
-					  }
-					  if ( trackYear > 0 ) {
-						  mediaInfo.SetYear( trackYear );
-					  }
+          const auto& [ trackTitle, trackArtist, trackYear ] = trackResult->second;
+				  mediaInfo.SetTitle( trackTitle );
+				  if ( !trackArtist.empty() ) {
+					  mediaInfo.SetArtist( trackArtist );
 				  }
-				  m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
-        }
+				  if ( trackYear > 0 ) {
+					  mediaInfo.SetYear( trackYear );
+				  }
+
+			    m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
+			  }
 			}
 
       if ( ( Playlist::Type::User == playlist->GetType() ) && ( !album.Title.empty() && ( playlist->GetName() != album.Title ) ) ) {

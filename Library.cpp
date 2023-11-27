@@ -289,8 +289,11 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 				const int result = sqlite3_step( stmt );
 				success = ( SQLITE_ROW == result );
 				if ( success ) {
-					ExtractMediaInfo( stmt, info );
-					if ( checkFileAttributes ) {
+					if ( !ExtractMediaInfo( stmt, info ) && ( MediaInfo::Source::File == info.GetSource() ) ) {
+            // Rescan file to update any missing table data.
+            GetDecoderInfo( info, true /*getTags*/ );
+            UpdateMediaLibrary( info );
+          } else if ( checkFileAttributes ) {
 						long long filetime = 0;
 						long long filesize = 0;
 						GetFileInfo( info.GetFilename(), filetime, filesize );
@@ -382,8 +385,9 @@ bool Library::GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags )
 	return success;
 }
 
-void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
+bool Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 {
+  bool missingData = false;
 	if ( nullptr != stmt ) {
 		const int columnCount = sqlite3_column_count( stmt );
     // Use cue columns (as a superset of media columns).
@@ -391,7 +395,9 @@ void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 		for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 			const auto columnIter = columns.find( sqlite3_column_name( stmt, columnIndex ) );
 			if ( columnIter != columns.end() ) {
-				switch ( columnIter->second ) {
+        const bool isNull = ( SQLITE_NULL == sqlite3_column_type( stmt, columnIndex ) );
+        const auto column = columnIter->second;
+				switch ( column ) {
 					case Column::Filename : {						
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetFilename( UTF8ToWideString( text ) );
@@ -427,39 +433,57 @@ void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 					case Column::Artist : {						
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetArtist( UTF8ToWideString( text ) );
-						}
+						} else if ( isNull ) {
+              missingData = true;
+            }     
 						break;
 					}
 					case Column::Title : {						
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetTitle( UTF8ToWideString( text ) );
-						}
+						} else if ( isNull ) {
+              missingData = true;
+            }     
 						break;
 					}
 					case Column::Album : {						
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetAlbum( UTF8ToWideString( text ) );
-						}
+						} else if ( isNull ) {
+              missingData = true;
+            }     
 						break;
 					}
 					case Column::Genre : {						
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetGenre( UTF8ToWideString( text ) );
-						}
+						} else if ( isNull ) {
+              missingData = true;
+            }     
 						break;
 					}
-					case Column::Year : {						
-						mediaInfo.SetYear( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
+					case Column::Year : {		
+            if ( isNull ) {
+              missingData = true;
+            } else {
+						  mediaInfo.SetYear( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
+            }
 						break;
 					}
 					case Column::Comment : {						
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetComment( UTF8ToWideString( text ) );
-						}
+						} else if ( isNull ) {
+              missingData = true;
+            }     
 						break;
 					}
-					case Column::Track : {						
-						mediaInfo.SetTrack( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
+					case Column::Track : {
+            if ( isNull ) {
+              missingData = true;
+            } else {
+						  mediaInfo.SetTrack( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
+            }
 						break;
 					}
 					case Column::Version : {						
@@ -507,25 +531,32 @@ void Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 					case Column::Composer : {						
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetComposer( UTF8ToWideString( text ) );
-						}
+						} else if ( isNull ) {
+              missingData = true;
+            }     
 						break;
 					}
 					case Column::Conductor : {						
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetConductor( UTF8ToWideString( text ) );
-						}
+						} else if ( isNull ) {
+              missingData = true;
+            }     
 						break;
 					}
 					case Column::Publisher : {						
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetPublisher( UTF8ToWideString( text ) );
-						}
+						} else if ( isNull ) {
+              missingData = true;
+            }     
 						break;
 					}
 				}
 			}
 		}
 	}
+  return !missingData;
 }
 
 bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )

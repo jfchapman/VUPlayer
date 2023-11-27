@@ -508,7 +508,7 @@ long CDDAMedia::GetStartSector( const CDROM_TOC& toc, const long track )
 	return trackOffset;
 }
 
-std::optional<std::pair<std::string /*discid*/, std::string /*toc*/>> CDDAMedia::GetMusicBrainzID( Playlist* const playlist )
+std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<long> /*startCues*/>> CDDAMedia::GetMusicBrainzID( Playlist* const playlist )
 {
   const auto items = playlist->GetItems();
 
@@ -564,5 +564,12 @@ std::optional<std::pair<std::string /*discid*/, std::string /*toc*/>> CDDAMedia:
   toc.TrackData[ track ].Address[ 2 ] = static_cast<unsigned char>( sourceFileLength / 75 % 60 );
   toc.TrackData[ track ].Address[ 3 ] = static_cast<unsigned char>( sourceFileLength % 75 );
 
-  return GetMusicBrainzID( toc );
+  std::set<long> startCues;
+  for ( const auto& [ cue, _ ] : cues ) {
+    startCues.insert( cue );
+  }
+
+  const auto [ mbID, mbTOC ] = GetMusicBrainzID( toc );
+
+  return std::make_tuple( mbID, mbTOC, startCues );
 }

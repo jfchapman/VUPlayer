@@ -425,7 +425,18 @@ void WndList::AddFileToPlaylist( const std::wstring& filename )
 {
 	if ( m_Playlist ) {
 		if ( Playlist::IsSupportedPlaylist( filename ) ) {
+      // Note that cue list files get added to a playlist directly (rather than as pending items), so ensure the filename to ID mapping is up to date.
+      const auto previousItems = m_Playlist->GetItems();
 			m_Playlist->AddPlaylist( filename );
+      const auto currentItems = m_Playlist->GetItems();
+      if ( currentItems.size() != previousItems.size() ) {
+        for ( const auto& item : currentItems ) {
+          if ( auto it = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != it ) {
+		        it->second.insert( item.ID );
+          }
+        }
+        RefreshPlaylist();
+      }
 		} else {
 			m_Playlist->AddPending( MediaInfo::ExtractCues( filename ) );
 		}
@@ -1045,7 +1056,9 @@ void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelectio
 			}
 			ListView_SetItemState( m_hWnd, selectedIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 			ListView_EnsureVisible( m_hWnd, selectedIndex, FALSE /*partialOK*/ );
-		}
+		} else {
+      m_SelectFirstItem = true;
+    }
 	}
 
 	RedrawWindow( m_hWnd, NULL /*rect*/, NULL /*rgn*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN );
@@ -1100,9 +1113,10 @@ void WndList::AddFileHandler( const AddedItem* addedItem )
 			int selectedIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
 
 			if ( !m_FileToSelect ) {
-				if ( ( -1 == selectedIndex ) && ( 1 == ListView_GetItemCount( m_hWnd ) ) ) {
+				if ( ( -1 == selectedIndex ) && ( ( 1 == ListView_GetItemCount( m_hWnd ) ) || m_SelectFirstItem ) ) {
 					ListView_SetItemState( m_hWnd, 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 				}
+        m_SelectFirstItem = false;
 			} else {
 				if ( -1 == selectedIndex ) {
           const auto& info = addedItem->Item.Info;
