@@ -120,6 +120,19 @@ void GainCalculator::Handler()
 				return ( WAIT_OBJECT_0 != WaitForSingleObject( stopEvent, 0 ) );
 			} );
 
+      // Ensure item information is up to date before modifying.
+      for ( auto& item : pendingItems ) {
+        if ( !canContinue() ) {
+          break;
+        } else if ( MediaInfo mediaInfo( item.Info ); m_Library.GetMediaInfo( mediaInfo ) ) {
+          item.Info = mediaInfo;
+        }
+      }
+
+      // Yes, this is the way!
+      if ( !canContinue() )
+        continue;
+
 			// Update track gain for all items.
 			Playlist::Items processedItems;
 			const size_t threadCount = std::min<size_t>( pendingItems.size(), std::max<size_t>( 1, std::thread::hardware_concurrency() ) );

@@ -34,10 +34,10 @@ public:
 	// 'cddbID' - CDDB ID (for CDDA sources).
 	MediaInfo( const long cddbID );
 
-	// Less than operator.
+	// Operators.
 	bool operator<( const MediaInfo& other ) const;
-
-	// Tags cast operator.
+	bool operator==( const MediaInfo& other ) const;
+	bool operator!=( const MediaInfo& other ) const;
 	operator Tags() const;
 
 	// Returns the filename (full path).

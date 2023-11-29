@@ -671,7 +671,7 @@ void Settings::ReadPlaylistFiles( Playlist& playlist )
 						if ( pending ) {
 							playlist.AddPending( mediaInfo, false /*startPendingThread*/ );
 						} else {
-							if ( m_Library.GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
+							if ( m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/ ) ) {
 								playlist.AddItem( mediaInfo );
               } else if ( mediaInfo.GetCueStart() ) {
                 m_Library.GetDecoderInfo( mediaInfo, false /*getTags*/ );

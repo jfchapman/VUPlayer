@@ -529,7 +529,7 @@ void CDDAExtract::EncodeHandler()
 
 									for ( auto& encodedMedia : encodedMediaList ) {
 										WriteAlbumTags( encodedMedia.GetFilename(), mediaInfo );					
-										if ( extractToLibrary || m_Library.GetMediaInfo( encodedMedia, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
+										if ( extractToLibrary || m_Library.GetMediaInfo( encodedMedia, false /*scanMedia*/ ) ) {
 											m_Library.GetMediaInfo( encodedMedia );
 										}
 									}
@@ -568,7 +568,7 @@ void CDDAExtract::EncodeHandler()
 				}
 
 				WriteTrackTags( joinedMediaInfo.GetFilename(), joinedMediaInfo );
-				if ( extractToLibrary || m_Library.GetMediaInfo( joinedMediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
+				if ( extractToLibrary || m_Library.GetMediaInfo( joinedMediaInfo, false /*scanMedia*/ ) ) {
 					m_Library.GetMediaInfo( joinedMediaInfo );
 				}
 

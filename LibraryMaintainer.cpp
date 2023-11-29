@@ -127,7 +127,7 @@ void LibraryMaintainer::Handler()
 				SetStatus( status );
 
 				MediaInfo mediaInfo( path->c_str() );
-				if ( m_Library.GetMediaInfo( mediaInfo, true /*checkFileAttributes*/, true /*scanMedia*/, true /*sendNotification*/, true /*removeMissing*/ ) ) {
+				if ( m_Library.GetMediaInfo( mediaInfo, true /*scanMedia*/, true /*sendNotification*/, true /*removeMissing*/ ) ) {
 					if ( ( nullptr != m_FileAddedCallback ) && ( existingFiles.end() == existingFiles.find( *path ) ) ) {
 						m_FileAddedCallback( *path );						
 					}

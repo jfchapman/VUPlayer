@@ -1338,7 +1338,7 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 			if ( m_Playlist ) {
 				Playlist::Item playlistItem = {	m_Playlist->GetItem( item.iItem ).ID, MediaInfo() };
 				if ( m_Playlist->GetItem( playlistItem ) ) {
-					m_Playlist->GetLibrary().GetMediaInfo( playlistItem.Info, false /*checkFileAttributes*/, false /*scanMedia*/ );
+					m_Playlist->GetLibrary().GetMediaInfo( playlistItem.Info, true /*scanMedia*/, false /*sendNotification*/ );
 					MediaInfo previousMediaInfo( playlistItem.Info );
 					LVCOLUMN lvc = {};
 					lvc.mask = LVCF_SUBITEM;

@@ -51,12 +51,11 @@ public:
 
 	// Gets media information.
 	// 'mediaInfo' - in/out, media information containing the filename (with optional cues) to query.
-	// 'checkFileAttributes' - whether to check if the time/size of the file matches any existing entry.
-	// 'scanMedia' - whether to scan the file specified in 'mediaInfo' if no matching database entry is found.
+	// 'scanMedia' - whether to scan the file specified in 'mediaInfo' if no matching database entry is found, or if the existing database entry is stale.
 	// 'sendNotification' - whether to notify the main app if 'mediaInfo' has changed.
 	// 'removeMissing' - whether to remove media information from the library if the file specified in 'mediaInfo' cannot be opened.
 	// Returns true if media information was returned.
-	bool GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes = true, const bool scanMedia = true, const bool sendNotification = true, const bool removeMissing = false );
+	bool GetMediaInfo( MediaInfo& mediaInfo, const bool scanMedia = true, const bool sendNotification = true, const bool removeMissing = false );
 
 	// Queries the available decoders for media information.
 	// 'mediaInfo' - in/out, media information containing the filename to query.

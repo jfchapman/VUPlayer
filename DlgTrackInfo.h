@@ -11,7 +11,7 @@ public:
 	// 'library' - media library.
 	// 'settings' - application settings.
 	// 'items' - item(s) for which to show track information.
-	DlgTrackInfo( HINSTANCE instance, HWND parent, Library& library, Settings& settings, const Playlist::Items& items );
+	DlgTrackInfo( HINSTANCE instance, HWND parent, Library& library, Settings& settings, Playlist::Items& items );
 
 	virtual ~DlgTrackInfo();
 
@@ -90,7 +90,7 @@ private:
 	Settings& m_Settings;
 
 	// Items for which to show track information.
-	const Playlist::Items& m_Items;
+	Playlist::Items& m_Items;
 
 	// Currently displayed artwork bitmap.
 	std::unique_ptr<Gdiplus::Bitmap> m_Bitmap;

@@ -1980,7 +1980,7 @@ bool VUPlayer::OnCommandLineFiles( const std::list<std::wstring>& filenames )
 				extension = GetFileExtension( filename );
 				if ( trackExtensions.end() != trackExtensions.find( extension ) ) {
 					MediaInfo mediaInfo( filename );
-					m_Library.GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
+					m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ );
 					mediaList.push_back( mediaInfo );
 				}
 			}

@@ -22,7 +22,7 @@ public:
 	// 'encoderHandler' - encoder handler to use.
 	// 'joinFilename' - output filename, when joining tracks into a single file.
 	// 'taskbar' - taskbar control.
-	Converter( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, const Playlist::Items& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar );
+	Converter( const HINSTANCE instance, const HWND hwnd, Library& library, Settings& settings, Handlers& handlers, Playlist::Items& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar );
 
 	virtual ~Converter();
 
@@ -83,7 +83,7 @@ private:
 	WndTaskbar& m_Taskbar;
 
 	// Tracks to convert.
-	const Playlist::Items m_Tracks;
+	Playlist::Items m_Tracks;
 
 	// Cancel event handle.
 	HANDLE m_CancelEvent;

@@ -88,7 +88,7 @@ DWORD WINAPI Converter::EncodeThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-Converter::Converter( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, const Playlist::Items& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar ) :
+Converter::Converter( const HINSTANCE instance, const HWND parent, Library& library, Settings& settings, Handlers& handlers, Playlist::Items& tracks, const Handler::Ptr encoderHandler, const std::wstring& joinFilename, WndTaskbar& taskbar ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
 	m_Library( library ),
@@ -239,6 +239,12 @@ void Converter::EncodeHandler()
 			auto track = m_Tracks.begin();
 			while ( conversionOK && !Cancelled() && ( m_Tracks.end() != track ) ) {
 				MediaInfo mediaInfo( track->Info );
+
+        // Ensure track information is up to date.
+        if ( m_Library.GetMediaInfo( mediaInfo ) ) {
+          track->Info = mediaInfo;
+        }
+
 				m_ProgressTrack.store( 0 );
 				m_StatusTrack.store( ++currentTrack );
 				std::wstring filename = extractJoin ? m_JoinFilename : GetOutputFilename( track->Info );
@@ -309,7 +315,7 @@ void Converter::EncodeHandler()
 								encodedMediaList.push_back( mediaInfo );
 
 								WriteTrackTags( filename, mediaInfo );
-								if ( extractToLibrary || m_Library.GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
+								if ( extractToLibrary || m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/ ) ) {
 									MediaInfo extractedMediaInfo( filename );
 									m_Library.GetMediaInfo( extractedMediaInfo );
 								}			
@@ -343,7 +349,7 @@ void Converter::EncodeHandler()
 					}
 
 					WriteTrackTags( joinedMediaInfo.GetFilename(), joinedMediaInfo );
-					if ( extractToLibrary || m_Library.GetMediaInfo( joinedMediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
+					if ( extractToLibrary || m_Library.GetMediaInfo( joinedMediaInfo, false /*scanMedia*/ ) ) {
 						m_Library.GetMediaInfo( joinedMediaInfo );
 					}
 				}
@@ -370,7 +376,7 @@ void Converter::EncodeHandler()
 								encodedMedia.SetGainAlbum( albumGain );
 								WriteAlbumTags( encodedMedia.GetFilename(), encodedMedia );
 								MediaInfo info( encodedMedia.GetFilename() );
-								if ( extractToLibrary || m_Library.GetMediaInfo( info, false /*checkFileAttributes*/, false /*scanMedia*/ ) ) {
+								if ( extractToLibrary || m_Library.GetMediaInfo( info, false /*scanMedia*/ ) ) {
 									m_Library.GetMediaInfo( info );
 								}						
 							}

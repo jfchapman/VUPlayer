@@ -34,6 +34,25 @@ bool MediaInfo::operator<( const MediaInfo& o ) const
 	return lessThan;
 }
 
+bool MediaInfo::operator==( const MediaInfo& o ) const
+{
+	const bool equals = 
+		std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate, 
+			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, m_Composer, m_Conductor, m_Publisher,
+			m_Source, m_CDDB, m_GainTrack, m_GainAlbum, m_CueStart, m_CueEnd ) ==
+
+		std::tie( o.m_Filename, o.m_Filetime, o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_BitsPerSample, o.m_Channels, o.m_Bitrate,
+			o.m_Artist, o.m_Title, o.m_Album, o.m_Genre, o.m_Year, o.m_Comment, o.m_Track, o.m_Version, o.m_ArtworkID, o.m_Composer, o.m_Conductor, o.m_Publisher,
+			o.m_Source, o.m_CDDB, o.m_GainTrack, o.m_GainAlbum, o.m_CueStart, o.m_CueEnd );
+
+	return equals;
+}
+
+bool MediaInfo::operator!=( const MediaInfo& o ) const
+{
+  return !operator==( o );
+}
+
 MediaInfo::operator Tags() const
 {
 	Tags tags;

@@ -235,7 +235,7 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 				mediaInfo.SetTrack( track );
 				mediaInfo.SetFilename( ToMediaFilepath( drive, track ) );
 
-				if ( !m_Library.GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ ) ) {
+				if ( !m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ ) ) {
 					mediaInfo.SetArtist( cdTextDiscArtist );
 					mediaInfo.SetAlbum( cdTextDiscTitle );
 					cdTextIter = cdTextStrings.find( track );

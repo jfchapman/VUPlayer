@@ -2024,7 +2024,7 @@ void Output::LoudnessPrecalcHandler()
       if ( isLocalFile ) {
 			  auto gain = item->Info.GetGainTrack();
 			  if ( !gain.has_value() ) {
-				  m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
+				  m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*scanMedia*/, false /*sendNotification*/ );
 				  gain = item->Info.GetGainTrack();
 				  if ( !gain.has_value() ) {
 					  gain = GainCalculator::CalculateTrackGain( *item, m_Handlers, canContinue );

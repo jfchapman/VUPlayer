@@ -78,7 +78,7 @@ Library::Library( Database& database, const Handlers& handlers ) :
 Library::~Library()
 {
 	for ( const auto& filename : m_PendingTags ) {
-    if ( MediaInfo mediaInfo( filename ); GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ ) ) {
+    if ( MediaInfo mediaInfo( filename ); GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ ) ) {
 		  if ( m_Handlers.SetTags( mediaInfo, *this ) ) {
 			  if ( GetDecoderInfo( mediaInfo, false /*getTags*/ ) ) {
 	        UpdateMediaLibrary( mediaInfo );
@@ -255,7 +255,7 @@ void Library::CreateIndices()
 	}
 }
 
-bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes, const bool scanMedia, const bool sendNotification, const bool removeMissing )
+bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool scanMedia, const bool sendNotification, const bool removeMissing )
 {
 	bool success = false;
 	sqlite3* database = m_Database.GetDatabase();
@@ -289,19 +289,27 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 				const int result = sqlite3_step( stmt );
 				success = ( SQLITE_ROW == result );
 				if ( success ) {
-					if ( !ExtractMediaInfo( stmt, info ) && ( MediaInfo::Source::File == info.GetSource() ) ) {
-            // Rescan file to update any missing table data.
-            GetDecoderInfo( info, true /*getTags*/ );
-            UpdateMediaLibrary( info );
-          } else if ( checkFileAttributes ) {
-						long long filetime = 0;
-						long long filesize = 0;
-						GetFileInfo( info.GetFilename(), filetime, filesize );
-						success = ( info.GetFiletime() == filetime ) && ( info.GetFilesize() == filesize );
-						if ( !success ) {
-							info = mediaInfo;
-						}
-					}
+          const bool staleData = !ExtractMediaInfo( stmt, info );
+          if ( scanMedia && ( MediaInfo::Source::File == info.GetSource() ) ) {
+            if ( staleData ) {
+              if ( GetDecoderInfo( info, true /*getTags*/ ) ) {
+                UpdateMediaLibrary( info );
+                if ( sendNotification ) {
+							    if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
+								    vuplayer->OnMediaUpdated( mediaInfo /*previousInfo*/, info /*updatedInfo*/ );
+							    }
+                }
+              }
+            } else {
+						  long long filetime = 0;
+						  long long filesize = 0;
+						  GetFileInfo( info.GetFilename(), filetime, filesize );
+						  success = ( info.GetFiletime() == filetime ) && ( info.GetFilesize() == filesize );
+						  if ( !success ) {
+							  info = mediaInfo;
+						  }
+            }
+          }
 				}
 
 				if ( !success && scanMedia && ( MediaInfo::Source::File == info.GetSource() ) ) {
@@ -309,12 +317,8 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool checkFileAttributes
 					if ( success ) {
 						success = UpdateMediaLibrary( info );
 						if ( success && sendNotification ) {
-							VUPlayer* vuplayer = VUPlayer::Get();
-							if ( nullptr != vuplayer ) {
-                MediaInfo previousInfo( mediaInfo.GetFilename() );
-                previousInfo.SetCueStart( mediaInfo.GetCueStart() );
-                previousInfo.SetCueEnd( mediaInfo.GetCueEnd() );
-								vuplayer->OnMediaUpdated( previousInfo, info /*updatedInfo*/ );
+							if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
+								vuplayer->OnMediaUpdated( mediaInfo /*previousInfo*/, info /*updatedInfo*/ );
 							}
 						}
 					} else if ( removeMissing ) {
@@ -1406,7 +1410,7 @@ bool Library::UpdateTrackGain( const MediaInfo& previousInfo, const MediaInfo& u
 void Library::UpdateMediaInfoFromDecoder( MediaInfo& mediaInfo, const Decoder& decoder, const bool sendNotification )
 {
 	MediaInfo originalInfo( mediaInfo );
-	GetMediaInfo( mediaInfo, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
+	GetMediaInfo( mediaInfo, true /*scanMedia*/, false /*sendNotification*/ );
 	mediaInfo.SetChannels( decoder.GetChannels() );
 	mediaInfo.SetBitsPerSample( decoder.GetBPS() );
 	mediaInfo.SetDuration( decoder.GetDuration() );

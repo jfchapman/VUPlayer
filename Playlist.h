@@ -9,6 +9,8 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <optional>
+#include <set>
 
 class Playlist
 {
@@ -83,7 +85,7 @@ public:
 	struct Item {
 		long ID = 0;
 		MediaInfo Info = {};
-		std::list<std::wstring> Duplicates = {};
+		std::set<std::wstring> Duplicates = {};
 	};
 
 	// Vector of playlist items.
@@ -160,11 +162,6 @@ public:
 
 	// Adds 'mediaInfo' to the playlist, returning the added item.
 	Item AddItem( const MediaInfo& mediaInfo );
-
-	// Adds 'mediaInfo' to the playlist, returning the added item.
-	// 'position' - out, 0-based index of the added item position.
-	// 'addedAsDuplicate' - out, whether the item was added as a duplicate of an existing item (which is returned).
-	Item AddItem( const MediaInfo& mediaInfo, int& position, bool& addedAsDuplicate );
 
 	// Adds 'mediaInfo' to the list of pending media to be added to the playlist.
 	// 'startPendingThread' - whether to start the background thread to process pending files.
@@ -257,6 +254,10 @@ public:
   // Returns whether MusicBrainz queries can be performed using this playlist.
   bool AllowMusicBrainzQueries();
 
+  // Updates a playlist item using 'mediaInfo', or adds the item if a matching file was not found.
+  // Returns whether the item was found and updated.
+  bool UpdateOrAddItem( const MediaInfo& mediaInfo );
+
 private:
 	// Pending file thread proc.
 	static DWORD WINAPI PendingThreadProc( LPVOID lpParam );
@@ -302,7 +303,12 @@ private:
   // (Internal method with no lock).
   int GetPositionNoLock( const long itemID );
 
-	// Playlist ID.
+	// Adds 'mediaInfo' to the playlist, returning the added item.
+	// 'position' - out, 0-based index of the added item position.
+	// 'addedAsDuplicate' - out, whether the item was added as a duplicate of an existing item (which is returned).
+	Item AddItem( const MediaInfo& mediaInfo, int& position, bool& addedAsDuplicate );
+
+  // Playlist ID.
 	const std::string m_ID;
 
 	// Playlist name.
@@ -342,7 +348,7 @@ private:
 	bool m_SortAscending;
 
 	// Playlist type.
-	Type m_Type;
+	const Type m_Type;
 
 	// Whether duplicate items should be merged into a single playlist entry.
 	bool m_MergeDuplicates;

@@ -54,7 +54,7 @@ Playlist::Playlist( Library& library, const Type& type ) :
 Playlist::Playlist( Library& library, const Type& type, const bool mergeDuplicates ) :
 	Playlist( library, type )
 {
-	m_MergeDuplicates = mergeDuplicates;
+  SetMergeDuplicates( mergeDuplicates );
 }
 
 Playlist::~Playlist()
@@ -227,13 +227,12 @@ Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo )
 {
 	int position = 0;
 	bool addedAsDuplicate = false;
-	const Playlist::Item item = AddItem( mediaInfo, position, addedAsDuplicate );
-	return item;
+	return AddItem( mediaInfo, position, addedAsDuplicate );
 }
 
 Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position, bool& addedAsDuplicate )
 {
-	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+  std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 
 	Item item = {};
 	position = 0;
@@ -245,7 +244,7 @@ Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position, boo
 				if ( itemIter.Info.GetFilename() != mediaInfo.GetFilename() ) {
 					const auto foundDuplicate = std::find( itemIter.Duplicates.begin(), itemIter.Duplicates.end(), mediaInfo.GetFilename() );
 					if ( itemIter.Duplicates.end() == foundDuplicate ) {
-						itemIter.Duplicates.push_back( mediaInfo.GetFilename() );
+						itemIter.Duplicates.insert( mediaInfo.GetFilename() );
 					}
 				}
 				item = itemIter;
@@ -277,7 +276,7 @@ Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position, boo
       }
 		}
 	}
-	return item;
+  return item;
 }
 
 void Playlist::AddPending( const MediaInfo& media, const bool startPendingThread )
@@ -323,19 +322,19 @@ void Playlist::OnPendingThreadHandler()
 				addItem = !ContainsFile( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() );
 			}
 			if ( addItem ) {
-				if ( m_Library.GetMediaInfo( mediaInfo ) ) {
-					int position = 0;
-					bool addedAsDuplicate = false;
-					const Item item = AddItem( mediaInfo, position, addedAsDuplicate );
-					VUPlayer* vuplayer = VUPlayer::Get();
-					if ( nullptr != vuplayer ) {
-						if ( addedAsDuplicate ) {
-							vuplayer->OnPlaylistItemUpdated( this, item );
-						} else {
-							vuplayer->OnPlaylistItemAdded( this, item, position );
-						}
-					}
-				}
+			  if ( m_Library.GetMediaInfo( mediaInfo ) ) {
+				  int position = 0;
+				  bool addedAsDuplicate = false;
+				  const Item item = AddItem( mediaInfo, position, addedAsDuplicate );
+				  VUPlayer* vuplayer = VUPlayer::Get();
+				  if ( nullptr != vuplayer ) {
+					  if ( addedAsDuplicate ) {
+						  vuplayer->OnPlaylistItemUpdated( this, item );
+					  } else {
+						  vuplayer->OnPlaylistItemAdded( this, item, position );
+					  }
+				  }
+        }
 			}
 		}
 	}
@@ -415,7 +414,8 @@ bool Playlist::RemoveItem( const MediaInfo& mediaInfo )
 	
 	bool removed = false;
 	for ( auto iter = m_Playlist.begin(); iter != m_Playlist.end(); iter++ ) {
-		if ( std::tie( iter->Info.GetFilename(), iter->Info.GetCueStart(), iter->Info.GetCueEnd() ) == std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() ) ) {
+    const auto itemToFind = std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() );
+		if ( std::tie( iter->Info.GetFilename(), iter->Info.GetCueStart(), iter->Info.GetCueEnd() ) == itemToFind ) {
 			if ( iter->Duplicates.empty() ) {
         const size_t position = std::distance( m_Playlist.begin(), iter );
 				const Item item = *iter;
@@ -430,8 +430,8 @@ bool Playlist::RemoveItem( const MediaInfo& mediaInfo )
 				}
 				removed = true;
 			} else {
-				iter->Info.SetFilename( iter->Duplicates.front() );
-				iter->Duplicates.pop_front();
+				iter->Info.SetFilename( *iter->Duplicates.begin() );
+				iter->Duplicates.erase( iter->Duplicates.begin() );
 			}
 			break;
 		} else if ( !iter->Duplicates.empty() && !iter->Info.GetCueStart() ) {
@@ -647,45 +647,50 @@ bool Playlist::GreaterThan( const Item& item1, const Item& item2, const Column c
 bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 {
 	bool updated = false;
-	VUPlayer* vuplayer = VUPlayer::Get();
+  VUPlayer* vuplayer = VUPlayer::Get();
 	Items itemsToRemove;
 	std::set<MediaInfo> itemsToAdd;
 	{
 		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+    const auto itemToFind = std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() );
 		for ( auto& item : m_Playlist ) {
-			if ( std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) == std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() ) ) {
-				item.Info = mediaInfo;
-				updated = true;
+			if ( std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) == itemToFind ) {
+        if ( item.Info != mediaInfo ) {
+				  item.Info = mediaInfo;
+				  updated = true;
 
-				if ( m_MergeDuplicates && !mediaInfo.GetCueStart() ) {
-					// Split out any duplicates from the top level item, and add them back later as new items.
-					for ( const auto& duplicate : item.Duplicates ) {
-						MediaInfo itemToAdd( duplicate );
-						m_Library.GetMediaInfo( itemToAdd, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
-						itemsToAdd.insert( itemToAdd );
-					}
-					item.Duplicates.clear();
+				  if ( m_MergeDuplicates && !mediaInfo.GetCueStart() ) {
+					  // Split out any duplicates from the top level item, and add them back later as new items.
+					  for ( const auto& duplicate : item.Duplicates ) {
+						  MediaInfo itemToAdd( duplicate );
+						  m_Library.GetMediaInfo( itemToAdd, false /*scanMedia*/, false /*sendNotification*/ );
+						  itemsToAdd.insert( itemToAdd );
+					  }
+					  item.Duplicates.clear();
 
-					// If the updated item now matches any other existing item, signal the item to be removed and added back later (as a duplicate).
-					for ( auto& duplicateItem : m_Playlist ) {
-						if ( ( item.Info.GetFilename() != duplicateItem.Info.GetFilename() ) && item.Info.IsDuplicate( duplicateItem.Info ) ) {
-							itemsToRemove.push_back( item );
-							itemsToAdd.insert( item.Info );
-							break;
-						}
-					}
-				}
+					  // If the updated item now matches any other existing item, signal the item to be removed and added back later (as a duplicate).
+					  for ( auto& duplicateItem : m_Playlist ) {
+						  if ( ( item.Info.GetFilename() != duplicateItem.Info.GetFilename() ) && item.Info.IsDuplicate( duplicateItem.Info ) ) {
+							  itemsToRemove.push_back( item );
+							  itemsToAdd.insert( item.Info );
+							  break;
+						  }
+					  }
+				  }
+        }
 			} else if ( m_MergeDuplicates && !mediaInfo.GetCueStart() ) {
 				// If a duplicate of a top level item has been updated, split it out and add it back later as a new item.
 				for ( auto duplicate = item.Duplicates.begin(); item.Duplicates.end() != duplicate; duplicate++ ) {
 					if ( *duplicate == mediaInfo.GetFilename() ) {
-						MediaInfo itemToAdd( *duplicate );
-						m_Library.GetMediaInfo( itemToAdd, false /*checkFileAttributes*/, false /*scanMedia*/, false /*sendNotification*/ );
-						itemsToAdd.insert( itemToAdd );
-						item.Duplicates.erase( duplicate );
-						if ( nullptr != vuplayer ) {
-							vuplayer->OnPlaylistItemUpdated( this, item );
-						}
+            if ( !item.Info.IsDuplicate( mediaInfo ) ) {
+              MediaInfo itemToAdd( mediaInfo );
+              itemToAdd.SetFilename( *duplicate );
+						  itemsToAdd.insert( itemToAdd );
+						  item.Duplicates.erase( duplicate );
+						  if ( nullptr != vuplayer ) {
+							  vuplayer->OnPlaylistItemUpdated( this, item );
+						  }
+            }
 						break;
 					}
 				}
@@ -693,10 +698,12 @@ bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 		}
 	}
 
-	if ( m_MergeDuplicates && !mediaInfo.GetCueStart() ) {
+	if ( m_MergeDuplicates ) {
 		for ( const auto& itemToRemove : itemsToRemove ) {
 			RemoveItem( itemToRemove );
-			vuplayer->OnPlaylistItemRemoved( this, itemToRemove );
+      if ( nullptr != vuplayer ) {
+			  vuplayer->OnPlaylistItemRemoved( this, itemToRemove );
+      }
 		}
 		for ( const auto& itemToAdd : itemsToAdd ) {
 			int position = 0;
@@ -708,7 +715,7 @@ bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 				} else {
 					vuplayer->OnPlaylistItemAdded( this, item, position );
 				}
-			}
+      }
 		}
 	}
 
@@ -778,8 +785,9 @@ bool Playlist::ContainsFile( const std::wstring& filename, const std::optional<l
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	bool containsFilename = false;
 	auto iter = m_Playlist.begin();
+  const auto itemToFind = std::tie( filename, cueStart, cueEnd );
 	while ( !containsFilename && ( m_Playlist.end() != iter ) ) {
-		containsFilename = std::tie( filename, cueStart, cueEnd ) == std::tie( iter->Info.GetFilename(), iter->Info.GetCueStart(), iter->Info.GetCueEnd() );
+		containsFilename = ( itemToFind == std::tie( iter->Info.GetFilename(), iter->Info.GetCueStart(), iter->Info.GetCueEnd() ) );
 		++iter;
 	}
 	return containsFilename;
@@ -788,12 +796,20 @@ bool Playlist::ContainsFile( const std::wstring& filename, const std::optional<l
 void Playlist::SetMergeDuplicates( const bool merge )
 {
 	if ( merge != m_MergeDuplicates ) {
-		m_MergeDuplicates = merge;
-		if ( m_MergeDuplicates ) {
-			MergeDuplicates();
-		} else {
-			SplitDuplicates();
-		}
+    switch ( GetType() ) {
+      case Type::Album :
+      case Type::Artist :
+      case Type::Genre :
+      case Type::Year : {
+		    m_MergeDuplicates = merge;
+		    if ( m_MergeDuplicates ) {
+			    MergeDuplicates();
+		    } else {
+			    SplitDuplicates();
+		    }
+        break;
+      }
+    }
 	}
 }
 
@@ -813,7 +829,7 @@ void Playlist::MergeDuplicates()
 				  itemsRemoved.push_back( *secondItem );
 				  const auto foundDuplicate = std::find( firstItem->Duplicates.begin(), firstItem->Duplicates.end(), secondItem->Info.GetFilename() );
 				  if ( firstItem->Duplicates.end() == foundDuplicate ) {
-					  firstItem->Duplicates.push_back( secondItem->Info.GetFilename() );
+					  firstItem->Duplicates.insert( secondItem->Info.GetFilename() );
 				  }
 				  secondItem = m_Playlist.erase( secondItem );
 				  itemModified = true;
@@ -869,7 +885,7 @@ void Playlist::SplitDuplicates()
 			} else {
 				vuplayer->OnPlaylistItemAdded( this, item, position );
 			}
-		}
+    }
 	}
 }
 
@@ -1239,4 +1255,31 @@ bool Playlist::AllowMusicBrainzQueries()
     return true;
 
   return CDDAMedia::GetMusicBrainzID( this ).has_value();
+}
+
+bool Playlist::UpdateOrAddItem( const MediaInfo& mediaInfo )
+{
+  bool itemFound = false;
+  std::optional<Item> itemToUpdate;
+  {
+    std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+    const auto itemToFind = std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() );
+    for ( auto& item : m_Playlist ) {
+      if ( itemToFind == std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) ) {
+        itemFound = true;
+        if ( item.Info != mediaInfo ) {
+          itemToUpdate = item;
+        }
+        break;
+      }
+    }
+  }
+  if ( itemFound ) {
+    if ( itemToUpdate ) {
+      OnUpdatedMedia( mediaInfo );
+    }
+  } else {
+    AddItem( mediaInfo );
+  }
+  return ( itemFound && itemToUpdate );
 }

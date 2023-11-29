@@ -204,7 +204,7 @@ DWORD WINAPI DlgTrackInfo::SaveThreadProc( LPVOID lpParam )
 	return 0;
 }
 
-DlgTrackInfo::DlgTrackInfo( HINSTANCE instance, HWND parent, Library& library, Settings& settings, const Playlist::Items& items ) :
+DlgTrackInfo::DlgTrackInfo( HINSTANCE instance, HWND parent, Library& library, Settings& settings, Playlist::Items& items ) :
 	m_hInst( instance ),
 	m_Library( library ),
 	m_Settings( settings ),
@@ -238,6 +238,13 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 			ComboBox_AddString( genreWnd, iter );
 		}
 	}
+
+  // Ensure item information is up to date before editing.
+  for ( auto& item : m_Items ) {
+    if ( MediaInfo mediaInfo( item.Info ); m_Library.GetMediaInfo( mediaInfo ) ) {
+      item.Info = mediaInfo;
+    }
+  }
 
 	if ( ( m_Items.size() > 1 ) || ( !m_Items.empty() && !m_Items.front().Duplicates.empty() ) ) {
 		const int bufSize = 64;
