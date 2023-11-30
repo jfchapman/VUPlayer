@@ -13,7 +13,7 @@
 #include <cmath>
 
 // Output buffer length, in seconds.
-constexpr float s_BufferLength = 1.5f;
+constexpr float s_BufferLength = 0.5f;
 
 // Cutoff point, in seconds, after which previous track replays the current track from the beginning.
 constexpr float s_PreviousTrackCutoff = 5.0f;
@@ -333,7 +333,7 @@ bool Output::Play( const long playlistID, const double seek )
 				m_DecoderStream->SkipSilence();
 			}
 
-			if ( ( Settings::OutputMode::Standard != m_OutputMode ) && !IsURL( item.Info.GetFilename() ) ) {
+			if ( !IsURL( item.Info.GetFilename() ) ) {
 				m_DecoderStream->PreBuffer( m_OnPreBufferFinishedCallback );
 			}
 
@@ -1638,7 +1638,7 @@ Output::OutputDecoderPtr Output::OpenOutputDecoder( Playlist::Item& item, const 
 			outputDecoder = m_PreloadedDecoder.decoder;
 			m_PreloadedDecoder.decoder.reset();
 			m_PreloadedDecoder.item = {};
-			if ( ( Settings::OutputMode::Standard != m_OutputMode ) && !IsURL( item.Info.GetFilename() ) ) {
+			if ( !IsURL( item.Info.GetFilename() ) ) {
 				// Ensure pre-buffering has started (in case the pre-buffer finished callback was not received for the previous decoder).
 				outputDecoder->PreBuffer( m_OnPreBufferFinishedCallback );
 			}

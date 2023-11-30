@@ -32,7 +32,10 @@ public:
 
 private:
 	// Available output modes, paired with the resource ID of the description.
-	static std::vector<std::pair<Settings::OutputMode,int>> s_OutputModes;
+	static std::vector<std::pair<Settings::OutputMode, int>> s_OutputModes;
+
+  // Available title bar text formats, paired with the the resource ID of the description.
+  static std::vector<std::pair<Settings::TitleBarFormat, int>> s_TitleBarFormats;
 
 	// Refreshes the output device list based on the currently selected output mode.
 	// 'hwnd' - dialog window handle.
@@ -40,6 +43,9 @@ private:
 
 	// Returns the currently selected output mode.
 	Settings::OutputMode GetSelectedMode( const HWND hwnd ) const;
+
+	// Returns the currently selected title bar format.
+	Settings::TitleBarFormat GetSelectedTitleBarFormat( const HWND hwnd ) const;
 
 	// Returns the currently selected device name.
 	std::wstring GetSelectedDeviceName( const HWND hwnd ) const;

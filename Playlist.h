@@ -27,6 +27,9 @@ public:
 		CDDA,
 		Folder,
 		Streams,
+    Publisher,
+    Composer,
+    Conductor,
 
 		_Undefined
 	};

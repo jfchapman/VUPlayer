@@ -83,10 +83,20 @@ public:
 		Large
 	};
 
-  // Preferred MOD music decoder
+  // Preferred MOD music decoder.
   enum class MODDecoder {
     BASS = 0,
     OpenMPT
+  };
+
+  // Title bar text formats during playback.
+  enum class TitleBarFormat {
+    ArtistTitle = 0,
+    TitleArtist,
+    ComposerTitle,
+    TitleComposer,
+    Title,
+    ApplicationName
   };
 
 	// EQ settings.
@@ -170,8 +180,12 @@ public:
 	// 'showAlbums' - out, whether Albums are shown.
 	// 'showGenres' - out, whether Genres are shown.
 	// 'showYears' - out, whether Years are shown.
+	// 'showPublishers' - out, whether Publishers are shown.
+	// 'showComposers' - out, whether Composers are shown.
+	// 'showConductors' - out, whether Conductors are shown.
 	void GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour,
-		bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears );
+		bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears,
+    bool& showPublishers, bool& showComposers, bool& showConductors );
 
 	// Sets the tree control settings.
 	// 'font' - tree control font.
@@ -186,8 +200,12 @@ public:
 	// 'showAlbums' - whether Albums are shown.
 	// 'showGenres' - whether Genres are shown.
 	// 'showYears' - whether Years are shown.
+	// 'showPublishers' - whether Publishers are shown.
+	// 'showComposers' - whether Composers are shown.
+	// 'showConductors' - whether Conductors are shown.
 	void SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF iconColour,
-		const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears );
+		const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears,
+    const bool showPublishers, const bool showComposers, const bool showConductors );
 
 	// Gets the playlists.
 	Playlists GetPlaylists();
@@ -640,6 +658,12 @@ public:
 
   // Sets whether to loudness normalisation is enabled.
   void SetLoudnessNormalisation( const bool enable );
+
+  // Gets the title bar text format during playback.
+  TitleBarFormat GetTitleBarFormat();
+
+  // Sets the title bar text format during playback.
+  void SetTitleBarFormat( const TitleBarFormat format );
 
   // Returns the supported OpenMPT ramping options.
   static constexpr std::array<long, 12> GetOpenMPTSupportedRamping() { return { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; }

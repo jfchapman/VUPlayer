@@ -115,6 +115,15 @@ public:
 	// Toggles albums on the tree control.
 	void OnAlbums();
 
+	// Toggles publishers on the tree control.
+	void OnPublishers();
+
+	// Toggles composers on the tree control.
+	void OnComposers();
+
+	// Toggles conductors on the tree control.
+	void OnConductors();
+
 	// Toggles genres on the tree control.
 	void OnGenres();
 
@@ -308,7 +317,16 @@ private:
 	// Adds albums to the tree control.
 	void AddAlbums();
 
-	// Adds genres to the tree control.
+	// Adds publishers to the tree control.
+	void AddPublishers();
+
+ 	// Adds composers to the tree control.
+	void AddComposers();
+
+ 	// Adds conductors to the tree control.
+	void AddConductors();
+
+  // Adds genres to the tree control.
 	void AddGenres();
 
 	// Adds years to the tree control.
@@ -332,7 +350,16 @@ private:
 	// Removes albums from the tree control.
 	void RemoveAlbums();
 
-	// Removes genres from the tree control.
+	// Removes publishers from the tree control.
+	void RemovePublishers();
+
+ 	// Removes composers from the tree control.
+	void RemoveComposers();
+
+	// Removes conductors from the tree control.
+	void RemoveConductors();
+
+  // Removes genres from the tree control.
 	void RemoveGenres();
 
 	// Removes years from the tree control.
@@ -380,7 +407,25 @@ private:
 	// 'updatedPlaylists' - in/out, the playlists that have been updated.
 	void UpdateArtists( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists );
 
-	// Updates albums when media information has been updated.
+	// Updates publishers when media information has been updated.
+	// 'previousMediaInfo' - previous media information.
+	// 'updatedMediaInfo' - updated media information.
+	// 'updatedPlaylists' - in/out, the playlists that have been updated.
+	void UpdatePublishers( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists );
+
+	// Updates composers when media information has been updated.
+	// 'previousMediaInfo' - previous media information.
+	// 'updatedMediaInfo' - updated media information.
+	// 'updatedPlaylists' - in/out, the playlists that have been updated.
+	void UpdateComposers( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists );
+
+	// Updates conductors when media information has been updated.
+	// 'previousMediaInfo' - previous media information.
+	// 'updatedMediaInfo' - updated media information.
+	// 'updatedPlaylists' - in/out, the playlists that have been updated.
+	void UpdateConductors( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists );
+
+  // Updates albums when media information has been updated.
 	// 'parentItem' - the parent tree item containing the albums.
 	// 'previousMediaInfo' - previous media information
 	// 'updatedMediaInfo' - updated media information
@@ -529,6 +574,20 @@ private:
 	// Called when the Add to Playlist 'command' is received.
 	void OnAddToPlaylist( const UINT command );
 
+  // Adds a child album node, or updates the playlist of the child album node (if it already exists).
+  // 'parent' - parent of the child album node.
+  // 'mediaInfo' - media information containing the information to add/update.
+  // 'updatedPlaylist' - playlist set into which to add any updated playlist.
+  // Returns the added/updated child album node.
+  HTREEITEM AddOrUpdateChildAlbumNode( const HTREEITEM parent, const MediaInfo& mediaInfo, Playlist::Set& updatedPlaylists );
+
+  // Removes an item from the playlist of a child album node (if it exists).
+  // 'parent' - parent of the child album node.
+  // 'mediaInfo' - media information containing the information to remove.
+  // 'updatedPlaylist' - playlist set into which to add any updated playlist.
+  // Returns the child album node which was updated, or nullptr if the child album node was not found.
+  HTREEITEM RemoveFromChildAlbumNode( const HTREEITEM parent, const MediaInfo& mediaInfo, Playlist::Set& updatedPlaylists );
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
@@ -547,7 +606,16 @@ private:
 	// Albums node.
 	HTREEITEM m_NodeAlbums;
 
-	// Genres node.
+	// Publishers node.
+	HTREEITEM m_NodePublishers;
+
+  // Composers node.
+	HTREEITEM m_NodeComposers;
+
+  // Conductors node.
+	HTREEITEM m_NodeConductors;
+
+  // Genres node.
 	HTREEITEM m_NodeGenres;
 
 	// Years node.
@@ -588,6 +656,15 @@ private:
 
 	// Albums.
 	PlaylistMap m_AlbumMap;
+
+  // Publishers.
+  PlaylistMap m_PublisherMap;
+
+  // Composers.
+  PlaylistMap m_ComposerMap;
+
+  // Conductors.
+  PlaylistMap m_ConductorMap;
 
 	// Genres.
 	PlaylistMap m_GenreMap;

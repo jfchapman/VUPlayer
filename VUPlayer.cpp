@@ -109,7 +109,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_IsTreeLabelEdit( false ),
 	m_IsFirstTimeStartup( true ),
 	m_IsEditingLabel( false ),
-	m_IsConverting( false )
+	m_IsConverting( false ),
+  m_TitleBarFormat( m_Settings.GetTitleBarFormat() )
 {
 	s_VUPlayer = this;
 
@@ -1132,6 +1133,18 @@ void VUPlayer::OnCommand( const int commandID )
 			m_Tree.OnArtists();
 			break;
 		}
+		case ID_TREEMENU_PUBLISHERS : {
+			m_Tree.OnPublishers();
+			break;
+		}
+		case ID_TREEMENU_COMPOSERS : {
+			m_Tree.OnComposers();
+			break;
+		}
+		case ID_TREEMENU_CONDUCTORS : {
+			m_Tree.OnConductors();
+			break;
+		}
 		case ID_TREEMENU_ALBUMS : {
 			m_Tree.OnAlbums();
 			break;
@@ -1255,6 +1268,9 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		CheckMenuItem( menu, ID_TREEMENU_STREAMS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_STREAMS ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_ALLTRACKS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_ALLTRACKS ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_ARTISTS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_ARTISTS ) ? MF_CHECKED : MF_UNCHECKED ) );
+		CheckMenuItem( menu, ID_TREEMENU_PUBLISHERS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_PUBLISHERS ) ? MF_CHECKED : MF_UNCHECKED ) );
+		CheckMenuItem( menu, ID_TREEMENU_COMPOSERS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_COMPOSERS ) ? MF_CHECKED : MF_UNCHECKED ) );
+		CheckMenuItem( menu, ID_TREEMENU_CONDUCTORS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_CONDUCTORS ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_ALBUMS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_ALBUMS ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_GENRES, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_GENRES ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_YEARS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_YEARS ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1631,6 +1647,8 @@ void VUPlayer::OnOptions()
 		m_Taskbar.SetToolbarButtonColour( m_Settings );
 	}
 	m_Taskbar.EnableProgressBar( m_Settings.GetTaskbarShowProgress() );
+
+  m_TitleBarFormat = m_Settings.GetTitleBarFormat();
 }
 
 Settings& VUPlayer::GetApplicationSettings()
@@ -2011,21 +2029,62 @@ bool VUPlayer::OnCommandLineFiles( const std::list<std::wstring>& filenames )
 void VUPlayer::SetTitlebarText( const Output::Item& item )
 {
 	std::wstring titlebarText = m_IdleText;
+
 	if ( item.PlaylistItem.ID > 0 ) {
+    std::wstring title;
+    std::wstring artist;
+    std::wstring composer;
 		if ( !item.StreamTitle.empty() ) {
-			titlebarText = item.StreamTitle;
+			title = item.StreamTitle;
 		} else {
-			const std::wstring title = item.PlaylistItem.Info.GetTitle( true /*filenameAsTitle*/ );
-			if ( !title.empty() ) {
-				titlebarText = item.PlaylistItem.Info.GetArtist();
-				if ( !titlebarText.empty() ) {
-					titlebarText += L" - ";
-				}
-				titlebarText += title;
-			}
+			title = item.PlaylistItem.Info.GetTitle( true /*filenameAsTitle*/ );
+      artist = item.PlaylistItem.Info.GetArtist();
+      composer = item.PlaylistItem.Info.GetComposer();
 		}
-	}
-	if ( m_TitlebarText != titlebarText ) {
+
+    switch ( m_TitleBarFormat ) {
+      case Settings::TitleBarFormat::ArtistTitle : {
+        titlebarText = artist;
+        if ( !titlebarText.empty() ) {
+          titlebarText += L" - ";
+        }
+        titlebarText += title;
+        break;
+      }
+      case Settings::TitleBarFormat::TitleArtist : {
+        titlebarText = title;
+        if ( !artist.empty() ) {
+          titlebarText += L" - " + artist;
+        }
+        break;
+      }
+      case Settings::TitleBarFormat::ComposerTitle : {
+        titlebarText = composer;
+        if ( !titlebarText.empty() ) {
+          titlebarText += L" - ";
+        }
+        titlebarText += title;
+        break;
+      }
+      case Settings::TitleBarFormat::TitleComposer : {
+        titlebarText = title;
+        if ( !composer.empty() ) {
+          titlebarText += L" - " + composer;
+        }
+        break;
+      }
+      case Settings::TitleBarFormat::Title : {
+        titlebarText = title;
+        break;
+      }
+      case Settings::TitleBarFormat::ApplicationName :
+      default : {
+        break;
+      }
+    }
+  }
+
+  if ( m_TitlebarText != titlebarText ) {
 		m_TitlebarText = titlebarText;
 		SetWindowText( m_hWnd, m_TitlebarText.c_str() );
 	}

@@ -447,4 +447,7 @@ private:
 
 	// Whether the application is currently converting files.
 	bool m_IsConverting;
+
+  // Title bar text format during playback.
+  Settings::TitleBarFormat m_TitleBarFormat;
 };

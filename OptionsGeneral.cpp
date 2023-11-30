@@ -9,10 +9,19 @@
 
 #include <array>
 
-std::vector<std::pair<Settings::OutputMode,int>> OptionsGeneral::s_OutputModes = {
-	std::make_pair( Settings::OutputMode::Standard, IDS_OPTIONS_MODE_STANDARD ),
-	std::make_pair( Settings::OutputMode::WASAPIExclusive, IDS_OPTIONS_MODE_WASAPI_EXCLUSIVE ),
-	std::make_pair( Settings::OutputMode::ASIO, IDS_OPTIONS_MODE_ASIO )
+std::vector<std::pair<Settings::OutputMode, int>> OptionsGeneral::s_OutputModes = {
+	std::make_pair( Settings::OutputMode::Standard,             IDS_OPTIONS_MODE_STANDARD ),
+	std::make_pair( Settings::OutputMode::WASAPIExclusive,      IDS_OPTIONS_MODE_WASAPI_EXCLUSIVE ),
+	std::make_pair( Settings::OutputMode::ASIO,                 IDS_OPTIONS_MODE_ASIO )
+};
+
+std::vector<std::pair<Settings::TitleBarFormat, int>> OptionsGeneral::s_TitleBarFormats = {
+	std::make_pair( Settings::TitleBarFormat::ArtistTitle,      IDS_OPTIONS_TITLEBAR_ARTISTTITLE ),
+	std::make_pair( Settings::TitleBarFormat::TitleArtist,      IDS_OPTIONS_TITLEBAR_TITLEARTIST ),
+	std::make_pair( Settings::TitleBarFormat::ComposerTitle,    IDS_OPTIONS_TITLEBAR_COMPOSERTITLE ),
+	std::make_pair( Settings::TitleBarFormat::TitleComposer,    IDS_OPTIONS_TITLEBAR_TITLECOMPOSER ),
+	std::make_pair( Settings::TitleBarFormat::Title,            IDS_OPTIONS_TITLEBAR_TITLE ),
+	std::make_pair( Settings::TitleBarFormat::ApplicationName,  IDS_OPTIONS_TITLEBAR_APPNAME )
 };
 
 OptionsGeneral::OptionsGeneral( HINSTANCE instance, Settings& settings, Output& output ) :
@@ -26,9 +35,8 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 	std::wstring settingDevice;
 	Settings::OutputMode settingMode;
 	GetSettings().GetOutputSettings( settingDevice, settingMode );
-
-	HWND hwndMode = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MODE );
-	if ( nullptr != hwndMode ) {
+	
+	if ( const HWND hwndMode = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MODE ); nullptr != hwndMode ) {
 		const int bufferSize = MAX_PATH;
 		WCHAR buffer[ bufferSize ];
 		const HINSTANCE instance = GetInstanceHandle();
@@ -53,7 +61,23 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 	RefreshOutputDeviceList( hwnd );
 
 	// Miscellaneous settings
-	VUPlayer* vuplayer = VUPlayer::Get();
+  const auto settingTitleBar = GetSettings().GetTitleBarFormat();
+  if ( const HWND hwndTitleBar = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_TITLEBAR ); nullptr != hwndTitleBar ) {
+		const int bufferSize = MAX_PATH;
+		WCHAR buffer[ bufferSize ];
+		const HINSTANCE instance = GetInstanceHandle();
+		for ( const auto& [ format, resourceID ] : s_TitleBarFormats ) {
+			LoadString( instance, resourceID, buffer, bufferSize );
+			ComboBox_AddString( hwndTitleBar, buffer );
+			ComboBox_SetItemData( hwndTitleBar, ComboBox_GetCount( hwndTitleBar ) - 1, static_cast<LPARAM>( format ) );
+			if ( format == settingTitleBar ) {
+				ComboBox_SetCurSel( hwndTitleBar, ComboBox_GetCount( hwndTitleBar ) - 1 );
+			}
+		}
+		if ( -1 == ComboBox_GetCurSel( hwndTitleBar ) ) {
+			ComboBox_SetCurSel( hwndTitleBar, 0 );
+		}
+  }
 
 	const bool mergeDuplicates = GetSettings().GetMergeDuplicates();
 	if ( const HWND hwndMergeDuplicates = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_HIDEDUPLICATES ); nullptr != hwndMergeDuplicates ) {
@@ -76,6 +100,7 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		Button_SetCheck( hwndMusicBrainz, ( musicbrainzEnabled ? BST_CHECKED : BST_UNCHECKED ) );
 	}
 
+  VUPlayer* vuplayer = VUPlayer::Get();
 	const bool scrobblerAvailable = ( nullptr != vuplayer ) && vuplayer->IsScrobblerAvailable();
 	const HWND hwndScrobblerEnable = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SCROBBLER_ENABLE );
 	if ( nullptr != hwndScrobblerEnable ) {
@@ -109,6 +134,9 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 	GetSettings().SetOutputSettings( device, mode );
 
 	// Miscellaneous settings
+  const auto titleBarFormat = GetSelectedTitleBarFormat( hwnd );
+  GetSettings().SetTitleBarFormat( titleBarFormat );
+
 	const bool mergeDuplicates = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_HIDEDUPLICATES ) ) );
 	GetSettings().SetMergeDuplicates( mergeDuplicates );
 
@@ -235,14 +263,23 @@ void OptionsGeneral::RefreshOutputDeviceList( const HWND hwnd )
 Settings::OutputMode OptionsGeneral::GetSelectedMode( const HWND hwnd ) const
 {
 	Settings::OutputMode mode = Settings::OutputMode::Standard;
-	HWND hwndMode = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MODE );
-	if ( nullptr != hwndMode ) {
-		const int selectedMode = ComboBox_GetCurSel( hwndMode );
-		if ( selectedMode >= 0 ) {
+	if ( const HWND hwndMode = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MODE ); nullptr != hwndMode ) {
+		if ( const int selectedMode = ComboBox_GetCurSel( hwndMode ); selectedMode >= 0 ) {
 			mode = static_cast<Settings::OutputMode>( ComboBox_GetItemData( hwndMode, selectedMode ) );
 		}
 	}
 	return mode;
+}
+
+Settings::TitleBarFormat OptionsGeneral::GetSelectedTitleBarFormat( const HWND hwnd ) const
+{
+	Settings::TitleBarFormat format = Settings::TitleBarFormat::ArtistTitle;
+	if ( const HWND hwndFormat = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_TITLEBAR ); nullptr != hwndFormat ) {
+		if ( const int selectedFormat = ComboBox_GetCurSel( hwndFormat ); selectedFormat >= 0 ) {
+			format = static_cast<Settings::TitleBarFormat>( ComboBox_GetItemData( hwndFormat, selectedFormat ) );
+		}
+	}
+	return format;
 }
 
 std::wstring OptionsGeneral::GetSelectedDeviceName( const HWND hwnd ) const

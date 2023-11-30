@@ -274,18 +274,11 @@ void WndList::ApplySettings()
 
 	if ( columns.empty() ) {
 		columns = {
-			{ static_cast<int>( Playlist::Column::Artist ), static_cast<int>( 150 * GetDPIScaling() ) /*width*/ },
 			{ static_cast<int>( Playlist::Column::Title ), static_cast<int>( 150 * GetDPIScaling() ) /*width*/ },
+			{ static_cast<int>( Playlist::Column::Artist ), static_cast<int>( 150 * GetDPIScaling() ) /*width*/ },
 			{ static_cast<int>( Playlist::Column::Album ), static_cast<int>( 150 * GetDPIScaling() ) /*width*/ },
 			{ static_cast<int>( Playlist::Column::Duration ), static_cast<int>( 100 * GetDPIScaling() ) /*width*/ }
 		};
-	}
-	bool titleShown = false;
-	for ( auto iter = columns.begin(); !titleShown && ( iter != columns.end() ); iter++ ) {
-		titleShown = ( Playlist::Column::Title == static_cast<Playlist::Column>( iter->ID ) );
-	}
-	if ( !titleShown ) {
-		columns.push_front( { static_cast<int>( Playlist::Column::Title ), static_cast<int>( 150 * GetDPIScaling() ) /*width*/ } );
 	}
 	for ( const auto& iter : columns ) {
 		ShowColumn( static_cast<Playlist::Column>( iter.ID ), iter.Width, true /*visible*/ );
@@ -382,7 +375,6 @@ void WndList::ShowColumn( const Playlist::Column column, const int width, const 
 					LoadString( m_hInst, columnFormat.HeaderID, buffer, bufSize );
 					lvc.pszText = buffer;
 					ListView_InsertColumn( m_hWnd, columnCount /*iCol*/, &lvc );
-					RefreshListViewItemText();
 					UpdateSortIndicator();
 
 					// Force an update to show the horizontal scrollbar if necessary.
@@ -925,16 +917,6 @@ bool WndList::IsColumnShown( const Playlist::Column& column ) const
 	return shown;
 }
 
-void WndList::RefreshListViewItemText()
-{
-	if ( m_Playlist ) {
-		const int itemCount = ListView_GetItemCount( m_hWnd );
-		for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-      RefreshItem( itemIndex );
-		}
-	}
-}
-
 void WndList::DeleteSelectedItems()
 {
   const auto playlistType = m_Playlist ? m_Playlist->GetType() : Playlist::Type::_Undefined;
@@ -995,6 +977,9 @@ void WndList::DeleteSelectedItems()
 		  switch ( playlistType ) {
 			  case Playlist::Type::All :
 			  case Playlist::Type::Artist :
+        case Playlist::Type::Publisher :
+        case Playlist::Type::Composer :
+        case Playlist::Type::Conductor :
 			  case Playlist::Type::Album :
 			  case Playlist::Type::Genre :
 			  case Playlist::Type::Year : {

@@ -246,9 +246,6 @@ private:
 	// Returns whether the 'column' is shown.
 	bool IsColumnShown( const Playlist::Column& column ) const;
 
-	// Refreshes the text of all list control items.
-	void RefreshListViewItemText();
-
 	// Updates the sort indicator on the list control header.
 	void UpdateSortIndicator();
 

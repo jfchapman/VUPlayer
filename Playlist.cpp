@@ -799,6 +799,9 @@ void Playlist::SetMergeDuplicates( const bool merge )
     switch ( GetType() ) {
       case Type::Album :
       case Type::Artist :
+      case Type::Publisher :
+      case Type::Composer :
+      case Type::Conductor :
       case Type::Genre :
       case Type::Year : {
 		    m_MergeDuplicates = merge;

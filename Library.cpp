@@ -252,6 +252,12 @@ void Library::CreateIndices()
 	if ( nullptr != database ) {
 		const std::string artistIndex = "CREATE INDEX IF NOT EXISTS MediaIndex_Artist ON Media(Artist);";
 		sqlite3_exec( database, artistIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		const std::string composerIndex = "CREATE INDEX IF NOT EXISTS MediaIndex_Composer ON Media(Composer);";
+		sqlite3_exec( database, composerIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		const std::string conductorIndex = "CREATE INDEX IF NOT EXISTS MediaIndex_Conductor ON Media(Conductor);";
+		sqlite3_exec( database, conductorIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		const std::string publisherIndex = "CREATE INDEX IF NOT EXISTS MediaIndex_Publisher ON Media(Publisher);";
+		sqlite3_exec( database, publisherIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 	}
 }
 
@@ -869,96 +875,22 @@ std::wstring Library::AddArtwork( const std::vector<BYTE>& image )
 
 std::set<std::wstring> Library::GetArtists()
 {
-	std::set<std::wstring> artists;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT Artist FROM Media UNION SELECT Artist FROM Cues;";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) ); nullptr != text ) {
-					const std::wstring artist = UTF8ToWideString( text );
-					if ( !artist.empty() ) {
-						artists.insert( artist );
-					}
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
-	return artists;
+  return GetEntities( "Artist" );
 }
 
 std::set<std::wstring> Library::GetAlbums()
 {
-	std::set<std::wstring> albums;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT Album FROM Media UNION SELECT Album FROM Cues;";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) ); nullptr != text ) {
-					const std::wstring album = UTF8ToWideString( text );
-					if ( !album.empty() ) {
-						albums.insert( album );
-					}
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
-	return albums;
+  return GetEntities( "Album" );
 }
 
-std::set<std::wstring> Library::GetAlbums( const std::wstring artist )
+std::set<std::wstring> Library::GetArtistAlbums( const std::wstring& artist )
 {
-	std::set<std::wstring> albums;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT Album FROM Media WHERE Artist=?1 UNION SELECT Album FROM Cues WHERE Artist=?1;";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
-				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-					if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) ); nullptr != text ) {
-						const std::wstring album = UTF8ToWideString( text );
-						if ( !album.empty() ) {
-							albums.insert( album );
-						}
-					}
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
-	return albums;
+  return GetAlbums( artist, "Artist" );
 }
 
 std::set<std::wstring> Library::GetGenres()
 {
-	std::set<std::wstring> genres;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT Genre FROM Media UNION SELECT Genre FROM Cues;";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-				if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) ); nullptr != text ) {
-					const std::wstring genre = UTF8ToWideString( text );
-					if ( !genre.empty() ) {
-						genres.insert( genre );
-					}
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
-	return genres;
+  return GetEntities( "Genre" );
 }
 
 std::set<long> Library::GetYears()
@@ -982,93 +914,54 @@ std::set<long> Library::GetYears()
 	return years;
 }
 
+std::set<std::wstring> Library::GetPublishers()
+{
+  return GetEntities( "Publisher" );
+}
+
+std::set<std::wstring> Library::GetPublisherAlbums( const std::wstring& publisher )
+{
+  return GetAlbums( publisher, "Publisher" );
+}
+
+std::set<std::wstring> Library::GetComposers()
+{
+  return GetEntities( "Composer" );
+}
+
+std::set<std::wstring> Library::GetComposerAlbums( const std::wstring& composer )
+{
+  return GetAlbums( composer, "Composer" );
+}
+
+std::set<std::wstring> Library::GetConductors()
+{
+  return GetEntities( "Conductor" );
+}
+
+std::set<std::wstring> Library::GetConductorAlbums( const std::wstring& conductor )
+{
+  return GetAlbums( conductor, "Conductor" );
+}
+
 MediaInfo::List Library::GetMediaByArtist( const std::wstring& artist )
 {
-	MediaInfo::List mediaList;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Artist=?1 UNION SELECT " + m_CueFields + " FROM Cues WHERE Artist=?1 ORDER BY Filename,CueStart COLLATE NOCASE;";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
-				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-					MediaInfo mediaInfo;
-					ExtractMediaInfo( stmt, mediaInfo );
-					mediaList.push_back( mediaInfo );
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
-	return mediaList;
+  return GetMediaByEntity( artist, "Artist" );
 }
 
 MediaInfo::List Library::GetMediaByAlbum( const std::wstring& album )
 {
-	MediaInfo::List mediaList;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Album=?1 UNION SELECT " + m_CueFields + " FROM Cues WHERE Album=?1 ORDER BY Filename,CueStart COLLATE NOCASE;";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
-				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-					MediaInfo mediaInfo;
-					ExtractMediaInfo( stmt, mediaInfo );
-					mediaList.push_back( mediaInfo );
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
-	return mediaList;
+  return GetMediaByEntity( album, "Album" );
 }
 
 MediaInfo::List Library::GetMediaByArtistAndAlbum( const std::wstring& artist, const std::wstring& album )
 {
-	MediaInfo::List mediaList;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Artist=?1 AND Album=?2 UNION SELECT " + m_CueFields + " FROM Cues WHERE Artist=?1 AND Album=?2 ORDER BY Filename,CueStart COLLATE NOCASE;";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-					( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
-				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-					MediaInfo mediaInfo;
-					ExtractMediaInfo( stmt, mediaInfo );
-					mediaList.push_back( mediaInfo );
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
-	return mediaList;
+  return GetMediaByEntityAndAlbum( artist, album, "Artist" );
 }
 
 MediaInfo::List Library::GetMediaByGenre( const std::wstring& genre )
 {
-	MediaInfo::List mediaList;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Genre=?1 UNION SELECT " + m_CueFields + " FROM Cues WHERE Genre=?1 ORDER BY Filename,CueStart COLLATE NOCASE;";
-		sqlite3_stmt* stmt = nullptr;
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( genre ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
-				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
-					MediaInfo mediaInfo;
-					ExtractMediaInfo( stmt, mediaInfo );
-					mediaList.push_back( mediaInfo );
-				}
-			}
-			sqlite3_finalize( stmt );
-			stmt = nullptr;
-		}
-	}
-	return mediaList;
+  return GetMediaByEntity( genre, "Genre" );
 }
 
 MediaInfo::List Library::GetMediaByYear( const long year )
@@ -1093,6 +986,36 @@ MediaInfo::List Library::GetMediaByYear( const long year )
 		}
 	}
 	return mediaList;
+}
+
+MediaInfo::List Library::GetMediaByPublisher( const std::wstring& publisher )
+{
+  return GetMediaByEntity( publisher, "Publisher" );
+}
+
+MediaInfo::List Library::GetMediaByPublisherAndAlbum( const std::wstring& publisher, const std::wstring& album )
+{
+  return GetMediaByEntityAndAlbum( publisher, album, "Publisher" );
+}
+ 
+MediaInfo::List Library::GetMediaByComposer( const std::wstring& composer )
+{
+  return GetMediaByEntity( composer, "Composer" );
+}
+
+MediaInfo::List Library::GetMediaByComposerAndAlbum( const std::wstring& composer, const std::wstring& album )
+{
+  return GetMediaByEntityAndAlbum( composer, album, "Composer" );
+}
+
+MediaInfo::List Library::GetMediaByConductor( const std::wstring& conductor )
+{
+  return GetMediaByEntity( conductor, "Conductor" );
+}
+
+MediaInfo::List Library::GetMediaByConductorAndAlbum( const std::wstring& conductor, const std::wstring& album )
+{
+  return GetMediaByEntityAndAlbum( conductor, album, "Conductor" );
 }
 
 MediaInfo::List Library::GetAllMedia()
@@ -1137,63 +1060,22 @@ MediaInfo::List Library::GetStreams()
 
 bool Library::GetArtistExists( const std::wstring& artist )
 {
-	bool exists = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE Artist=?1) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE Artist=?1);";
-		sqlite3_stmt* stmt = nullptr;
-		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-				( SQLITE_ROW == sqlite3_step( stmt ) );
-		sqlite3_finalize( stmt );
-	}
-	return exists;
+  return GetEntityExists( artist, "Artist" );
 }
 
 bool Library::GetAlbumExists( const std::wstring& album )
 {
-	bool exists = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE Album=?1) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE Album=?1);";
-		sqlite3_stmt* stmt = nullptr;
-		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-				( SQLITE_ROW == sqlite3_step( stmt ) );
-		sqlite3_finalize( stmt );
-	}
-	return exists;
+  return GetEntityExists( album, "Album" );
 }
 
 bool Library::GetArtistAndAlbumExists( const std::wstring& artist, const std::wstring& album )
 {
-	bool exists = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE Artist=?1 AND Album=?2) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE Artist=?1 AND Album=?2);";
-		sqlite3_stmt* stmt = nullptr;
-		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( artist ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-				( SQLITE_ROW == sqlite3_step( stmt ) );
-		sqlite3_finalize( stmt );
-	}
-	return exists;
+  return GetEntityAndAlbumExists( artist, album, "Artist" );
 }
 
 bool Library::GetGenreExists( const std::wstring& genre )
 {
-	bool exists = false;
-	sqlite3* database = m_Database.GetDatabase();
-	if ( nullptr != database ) {
-		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE Genre=?1) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE Genre=?1);";
-		sqlite3_stmt* stmt = nullptr;
-		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( genre ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-				( SQLITE_ROW == sqlite3_step( stmt ) );
-		sqlite3_finalize( stmt );
-	}
-	return exists;
+  return GetEntityExists( genre, "Genre" );
 }
 
 bool Library::GetYearExists( const long year )
@@ -1211,6 +1093,36 @@ bool Library::GetYearExists( const long year )
 		}
 	}
 	return exists;
+}
+
+bool Library::GetPublisherExists( const std::wstring& publisher )
+{
+  return GetEntityExists( publisher, "Publisher" );
+}
+
+bool Library::GetPublisherAndAlbumExists( const std::wstring& publisher, const std::wstring& album )
+{
+  return GetEntityAndAlbumExists( publisher, album, "Publisher" );
+}
+
+bool Library::GetComposerExists( const std::wstring& composer )
+{
+  return GetEntityExists( composer, "Composer" );
+}
+
+bool Library::GetComposerAndAlbumExists( const std::wstring& composer, const std::wstring& album )
+{
+  return GetEntityAndAlbumExists( composer, album, "Composer" );
+}
+
+bool Library::GetConductorExists( const std::wstring& conductor )
+{
+  return GetEntityExists( conductor, "Conductor" );
+}
+
+bool Library::GetConductorAndAlbumExists( const std::wstring& conductor, const std::wstring& album )
+{
+  return GetEntityAndAlbumExists( conductor, album, "Conductor" );
 }
 
 bool Library::RemoveFromLibrary( const MediaInfo& mediaInfo )
@@ -1460,4 +1372,128 @@ bool Library::HasRecentlyWrittenTag( const std::wstring& filename ) const
 		}
 	}
 	return recentTagWrite;
+}
+
+std::set<std::wstring> Library::GetEntities( const std::string& entityColumn )
+{
+	std::set<std::wstring> entities;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "SELECT " + entityColumn + " FROM Media UNION SELECT " + entityColumn + " FROM Cues;";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+				if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) ); nullptr != text ) {
+					const std::wstring entity = UTF8ToWideString( text );
+					if ( !entity.empty() ) {
+						entities.insert( entity );
+					}
+				}
+			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+	return entities;
+}
+
+std::set<std::wstring> Library::GetAlbums( const std::wstring& entity, const std::string& entityColumn )
+{
+	std::set<std::wstring> albums;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "SELECT Album FROM Media WHERE " + entityColumn + "=?1 UNION SELECT Album FROM Cues WHERE " + entityColumn + "=?1;";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( entity ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
+				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, 0 /*columnIndex*/ ) ); nullptr != text ) {
+						const std::wstring album = UTF8ToWideString( text );
+						if ( !album.empty() ) {
+							albums.insert( album );
+						}
+					}
+				}
+			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+	return albums;
+}
+
+MediaInfo::List Library::GetMediaByEntity( const std::wstring& entity, const std::string& entityColumn )
+{
+	MediaInfo::List mediaList;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE " + entityColumn + "=?1 UNION SELECT " + m_CueFields + " FROM Cues WHERE " + entityColumn + "=?1 ORDER BY Filename,CueStart COLLATE NOCASE;";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( entity ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) {
+				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					MediaInfo mediaInfo;
+					ExtractMediaInfo( stmt, mediaInfo );
+					mediaList.push_back( mediaInfo );
+				}
+			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+	return mediaList;
+}
+
+MediaInfo::List Library::GetMediaByEntityAndAlbum( const std::wstring& entity, const std::wstring& album, const std::string& entityColumn )
+{
+	MediaInfo::List mediaList;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE " + entityColumn + "=?1 AND Album=?2 UNION SELECT " + m_CueFields + " FROM Cues WHERE " + entityColumn + "=?1 AND Album=?2 ORDER BY Filename,CueStart COLLATE NOCASE;";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			if ( ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( entity ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+					( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
+				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
+					MediaInfo mediaInfo;
+					ExtractMediaInfo( stmt, mediaInfo );
+					mediaList.push_back( mediaInfo );
+				}
+			}
+			sqlite3_finalize( stmt );
+			stmt = nullptr;
+		}
+	}
+	return mediaList;
+}
+
+bool Library::GetEntityExists( const std::wstring& entity, const std::string& entityColumn )
+{
+	bool exists = false;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE " + entityColumn + "=?1) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE " + entityColumn + "=?1);";
+		sqlite3_stmt* stmt = nullptr;
+		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
+				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( entity ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+				( SQLITE_ROW == sqlite3_step( stmt ) );
+		sqlite3_finalize( stmt );
+	}
+	return exists;
+}
+
+bool Library::GetEntityAndAlbumExists( const std::wstring& entity, const std::wstring& album, const std::string& entityColumn )
+{
+	bool exists = false;
+	sqlite3* database = m_Database.GetDatabase();
+	if ( nullptr != database ) {
+		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE " + entityColumn + "=?1 AND Album=?2) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE " + entityColumn + "=?1 AND Album=?2);";
+		sqlite3_stmt* stmt = nullptr;
+		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
+				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( entity ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+				( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+				( SQLITE_ROW == sqlite3_step( stmt ) );
+		sqlite3_finalize( stmt );
+	}
+	return exists;
 }
