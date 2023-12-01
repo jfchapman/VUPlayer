@@ -99,6 +99,11 @@ std::wstring CodePageToWideString( const std::string& text, const UINT codePage 
 	return result;
 }
 
+std::string CodePageToUTF8( const std::string& text, const UINT codePage )
+{
+  return WideStringToUTF8( CodePageToWideString( text, codePage ) );
+}
+
 std::wstring WideStringToLower( const std::wstring& text )
 {
 	std::wstring result;

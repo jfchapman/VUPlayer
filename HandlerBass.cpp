@@ -8,6 +8,7 @@
 
 #include <list>
 #include <sstream>
+#include <regex>
 
 HandlerBass::HandlerBass() :
 	Handler(),
@@ -53,7 +54,7 @@ std::wstring HandlerBass::GetDescription() const
 
 std::set<std::wstring> HandlerBass::GetSupportedFileExtensions() const
 {
-	return { L"mod", L"s3m", L"xm", L"mtm", L"mo3", L"umx", L"mp2", L"mp3", L"ogg", L"wav", L"mid", L"midi", L"dsd", L"dsf", L"wma", L"wmv" };
+	return { L"mod", L"s3m", L"xm", L"mtm", L"mo3", L"umx", L"mp2", L"mp3", L"ogg", L"wav", L"mid", L"midi", L"dsd", L"dsf", L"wma", L"wmv", L"aiff" };
 }
 
 bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
@@ -106,7 +107,12 @@ bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
 					tags.insert( Tags::value_type( Tag::Title, dsdTitle ) );
 					success = true;
 				}
-			}
+			} else if ( BASS_CTYPE_STREAM_WAV & info.ctype ) {
+        if ( const char* riffTags = BASS_ChannelGetTags( stream, BASS_TAG_RIFF_INFO ); nullptr != riffTags ) {
+          ReadRIFFTags( riffTags, tags );
+          success = true;
+        }
+      }
 			BASS_StreamFree( stream );
 		}
 	}
@@ -372,6 +378,43 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 		}
 	}
 	return handled;
+}
+
+void HandlerBass::ReadRIFFTags( const char* riffTags, Tags& tags ) const
+{
+  if ( nullptr == riffTags )
+    return;
+
+  const std::regex kRegexTag( R"(^(.{4})=(.+))" );
+
+	const char* currentTag = riffTags;
+	while ( 0 != *currentTag ) {
+		const size_t tagLength = strlen( currentTag );
+		const std::string tag = CodePageToUTF8( currentTag, 1252 );
+
+    std::smatch match;
+    if ( std::regex_match( tag, match, kRegexTag ) && ( 3 == match.size() ) ) {
+      const std::string field = match[ 1 ];
+      const std::string value = match[ 2 ];
+      if ( field == "IART" ) {
+        tags.insert( { Tag::Artist, value } );
+      } else if ( field == "INAM" ) {
+        tags.insert( { Tag::Title, value } );
+      } else if ( field == "IGNR" ) {
+        tags.insert( { Tag::Genre, value } );
+      } else if ( field == "ICMT" ) {
+        tags.insert( { Tag::Comment, value } );
+      } else if ( field == "IPRD" ) {
+        tags.insert( { Tag::Album, value } );
+      } else if ( field == "ICRD" ) {
+        tags.insert( { Tag::Year, value } );
+      } else if ( field == "ITRK" ) {
+        tags.insert( { Tag::Track, value } );
+      }
+    }
+
+		currentTag += 1 + tagLength;
+	}
 }
 
 std::wstring HandlerBass::GetTemporaryFilename() const

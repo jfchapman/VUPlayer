@@ -27,6 +27,9 @@ std::string WideStringToAnsiCodePage( const std::wstring& text );
 // Converts 'text' to a wide string using the 'codePage'.
 std::wstring CodePageToWideString( const std::string& text, const UINT codePage );
 
+// Converts 'text' to UTF-8 using the 'codePage'.
+std::string CodePageToUTF8( const std::string& text, const UINT codePage );
+
 // Converts 'text' to lowercase.
 std::wstring WideStringToLower( const std::wstring& text );
 

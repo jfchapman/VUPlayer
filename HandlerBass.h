@@ -64,7 +64,12 @@ private:
 	// 'tags' - out, tag information.
 	bool WriteOggTags( const std::wstring& filename, const Tags& tags ) const;
 
-	// Returns a temporary file name.
+	// Reads RIFF tags.
+	// 'riffTags' - series of null-terminated strings (with assumed Windows-1252 encoding), ending with a double null.
+	// 'tags' - out, tag information.
+	void ReadRIFFTags( const char* riffTags, Tags& tags ) const;
+
+  // Returns a temporary file name.
 	std::wstring GetTemporaryFilename() const;
 
 	// BASS midi plugin.
