@@ -122,7 +122,17 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 		iter = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
 	}
 
-	m_Output.SetPlaylistChangeCallback( [ this ] ( Playlist::Ptr playlist ) { m_Tree.OnOutputPlaylistChange( playlist ); } );
+	m_Output.SetPlaylistChangeCallback( [ this ] ( Playlist::Ptr playlist )
+  {
+    const WPARAM playlistID = reinterpret_cast<WPARAM>( playlist.get() );
+    const LPARAM playlistType = static_cast<LPARAM>( playlist ? playlist->GetType() : Playlist::Type::_Undefined );
+    PostMessage( m_Tree.GetWindowHandle(), MSG_OUTPUTPLAYLISTCHANGED, playlistID, playlistType );
+  } );
+  m_Output.SetSelectFollowedTrackCallback( [ this ] ( const long itemID )
+  {
+    PostMessage( m_List.GetWindowHandle(), MSG_SELECTPLAYLISTITEM, itemID, 0 );
+  } );
+
 	m_Tree.Initialise();
 
 	if ( OnCommandLineFiles( startupFilenames ) ) {
@@ -134,6 +144,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
     startupInfo.SetCueEnd( cueEnd );
 		m_List.SetPlaylist( m_Tree.GetSelectedPlaylist(), false, startupInfo );
 	}
+  m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
 
 	m_Status.SetPlaylist( m_List.GetPlaylist() );
 
@@ -308,6 +319,7 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 					Playlist::Ptr playlist = m_Tree.GetPlaylist( nmTreeView->itemNew.hItem );
 					m_List.SetPlaylist( playlist );
 					m_Status.SetPlaylist( playlist );
+          m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
 				}
 				break;
 			}
@@ -447,7 +459,9 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				if ( nullptr != nmListView ) {
 					if ( nmListView->uNewState & LVIS_FOCUSED ) {
 						OnListSelectionChanged();
-					}
+					} else if ( ( -1 == nmListView->iItem ) && ( 0 == nmListView->uNewState ) ) {
+            m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
+          }
 				}
 				break;				
 			}
@@ -750,6 +764,10 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
+    case ID_CONTROL_FOLLOWSELECTION : {
+      m_Output.ToggleFollowTrackSelection();
+      break;
+    }
 		case ID_CONTROL_STOPTRACKEND : {
 			m_Output.ToggleStopAtTrackEnd();
 			break;
@@ -1379,7 +1397,8 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_MEDIUM, ( Settings::PitchRange::Medium == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
 		CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_LARGE, ( Settings::PitchRange::Large == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
 
-		const bool isStopAtTrackEnd = m_Output.GetStopAtTrackEnd();
+		const bool isFollowTrackSelection = m_Output.GetFollowTrackSelection();
+    const bool isStopAtTrackEnd = m_Output.GetStopAtTrackEnd();
 		const bool isMuted = m_Output.GetMuted();
 		const bool isFadeOut = m_Output.GetFadeOut();
 		const bool isFadeToNext = m_Output.GetFadeToNext();
@@ -1387,19 +1406,23 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const bool isStream =	IsURL( m_Output.GetCurrentPlaying().PlaylistItem.Info.GetFilename() );
 
 		const UINT enableStopAtTrackEnd = ( isFadeOut || isFadeToNext ) ? MF_DISABLED : MF_ENABLED;
+    const UINT enableFollowTrackSelection = ( isFadeOut || isFadeToNext || isStopAtTrackEnd ) ? MF_DISABLED : MF_ENABLED;
 		const UINT enableFadeOut = ( !isFadeToNext && ( Output::State::Playing == outputState ) ) ? MF_ENABLED : MF_DISABLED;
 		const UINT enableFadeToNext = ( !isFadeOut && !isStream && ( Output::State::Playing == outputState ) ) ? MF_ENABLED : MF_DISABLED;
+    EnableMenuItem( menu, ID_CONTROL_FOLLOWSELECTION, MF_BYCOMMAND | enableFollowTrackSelection );
 		EnableMenuItem( menu, ID_CONTROL_STOPTRACKEND, MF_BYCOMMAND | enableStopAtTrackEnd );
 		EnableMenuItem( menu, ID_CONTROL_FADEOUT, MF_BYCOMMAND | enableFadeOut );
 		EnableMenuItem( menu, ID_CONTROL_FADETONEXT, MF_BYCOMMAND | enableFadeToNext );
 
 		const UINT checkStopAtTrackEnd = isStopAtTrackEnd ? MF_CHECKED : MF_UNCHECKED;
+    const UINT checkFollowTrackSelection = isFollowTrackSelection ? MF_CHECKED : MF_UNCHECKED;
 		const UINT checkMuted = isMuted ? MF_CHECKED : MF_UNCHECKED;
 		const UINT checkFadeOut = isFadeOut ? MF_CHECKED : MF_UNCHECKED;
 		const UINT checkFadeToNext = isFadeToNext ? MF_CHECKED : MF_UNCHECKED;
 		const UINT checkCrossfade = isCrossfade ? MF_CHECKED : MF_UNCHECKED;
     const UINT checkLoudness = m_Output.GetLoudnessNormalisation() ? MF_CHECKED : MF_UNCHECKED;
     
+    CheckMenuItem( menu, ID_CONTROL_FOLLOWSELECTION, MF_BYCOMMAND | checkFollowTrackSelection );
 		CheckMenuItem( menu, ID_CONTROL_STOPTRACKEND, MF_BYCOMMAND | checkStopAtTrackEnd );
 		CheckMenuItem( menu, ID_CONTROL_MUTE, MF_BYCOMMAND | checkMuted );
 		CheckMenuItem( menu, ID_CONTROL_FADEOUT, MF_BYCOMMAND | checkFadeOut );
@@ -1535,6 +1558,7 @@ void VUPlayer::OnListSelectionChanged()
 	const Playlist::Item currentSelectedPlaylistItem = m_List.GetCurrentSelectedItem();
 	const Playlist::Item currentSelectedOutputItem = m_Output.GetCurrentSelectedPlaylistItem();
 	m_Output.SetCurrentSelectedPlaylistItem( currentSelectedPlaylistItem );
+  m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
 	if ( ( Output::State::Stopped == m_Output.GetState() ) && ( ID_VISUAL_ARTWORK == m_Visual.GetCurrentVisualID() ) &&
 			( currentSelectedPlaylistItem.Info.GetArtworkID( true /*checkFolder*/ ) != currentSelectedOutputItem.Info.GetArtworkID( true /*checkFolder*/ ) ) ) {
 		m_Splitter.Resize();
@@ -2118,7 +2142,7 @@ void VUPlayer::SaveSettings()
 	m_Settings.SetPlaybackSettings( m_Output.GetRandomPlay(), m_Output.GetRepeatTrack(), m_Output.GetRepeatPlaylist(), m_Output.GetCrossfade() );
 	m_Settings.SetOutputControlType( static_cast<int>( m_VolumeControl.GetType() ) );
   m_Settings.SetLoudnessNormalisation( m_Output.GetLoudnessNormalisation() );
-
+  m_Settings.SetFollowTrackSelection( m_Output.GetFollowTrackSelection() );
 	m_Settings.SetStopAtTrackEnd( m_Settings.GetRetainStopAtTrackEnd() ? m_Output.GetStopAtTrackEnd() : false );
 
 	if ( m_Settings.GetRetainPitchBalance() ) {

@@ -3,19 +3,20 @@
 #include <windowsx.h>
 
 #include <fstream>
+#include <array>
 
 #include "resource.h"
 #include "Utility.h"
 #include "VUPlayer.h"
 
 // Tree control ID.
-static const UINT_PTR s_WndTreeID = 1900;
+static constexpr UINT_PTR s_WndTreeID = 1900;
 
 // Icon size.
-static const int s_IconSize = 16;
+static constexpr int s_IconSize = 16;
 
 // User folders for the computer node.
-static const std::list<KNOWNFOLDERID> s_UserFolders = { FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Music };
+static const std::array s_UserFolders = { FOLDERID_Desktop, FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_Music };
 
 // Playlist ID for the scratch list.
 static const std::string s_ScratchListID = "F641E764-3385-428A-9F39-88E928234E17";
@@ -29,23 +30,23 @@ static const std::string s_PlaylistFolderSetting = "Playlist";
 // Message ID for adding a folder to the computer node.
 // 'wParam' : HTREEITEM - the parent item under which to add the folder.
 // 'lParam' : std::wstring* - folder name, to be deleted by the message handler.
-static const UINT MSG_FOLDERADD = WM_APP + 110;
+static constexpr UINT MSG_FOLDERADD = WM_APP + 110;
 
 // Message ID for deleting a folder from the computer node.
 // 'wParam' : HTREEITEM - the item to delete.
 // 'lParam' : unused.
-static const UINT MSG_FOLDERDELETE = WM_APP + 111;
+static constexpr UINT MSG_FOLDERDELETE = WM_APP + 111;
 
 // Message ID for renaming a folder in the computer node.
 // 'wParam' : std::wstring* - old folder path, to be deleted by the message handler.
 // 'lParam' : std::wstring* - new folder path, to be deleted by the message handler.
-static const UINT MSG_FOLDERRENAME = WM_APP + 112;
+static constexpr UINT MSG_FOLDERRENAME = WM_APP + 112;
 
 // Command ID of the first playlist entry on the Add to Playlist context sub menu.
-static const UINT MSG_TREEMENU_ADDTOPLAYLIST_START = WM_APP + 0xE00;
+static constexpr UINT MSG_TREEMENU_ADDTOPLAYLIST_START = WM_APP + 0xE00;
 
 // Command ID of the last playlist entry on the Add to Playlist context sub menu.
-static const UINT MSG_TREEMENU_ADDTOPLAYLIST_END = MSG_TREEMENU_ADDTOPLAYLIST_START + 50;
+static constexpr UINT MSG_TREEMENU_ADDTOPLAYLIST_END = MSG_TREEMENU_ADDTOPLAYLIST_START + 50;
 
 // Root item ordering.
 WndTree::OrderMap WndTree::s_RootOrder = {
@@ -139,6 +140,12 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				delete newFolderPath;
 				break;
 			}
+      case MSG_OUTPUTPLAYLISTCHANGED : {
+        const Playlist* const playlist = reinterpret_cast<Playlist*>( wParam );
+        const Playlist::Type playlistType = static_cast<Playlist::Type>( lParam );
+        wndTree->OnOutputPlaylistChange( playlist, playlistType );
+        break;
+      }
 			default : {
 				break;
 			}
@@ -4071,64 +4078,62 @@ void WndTree::UpdateOutputIcon()
 	UpdateIcon( m_NodeCurrentOutput, m_Output.GetState() );
 }
 
-void WndTree::OnOutputPlaylistChange( const Playlist::Ptr playlist )
+void WndTree::OnOutputPlaylistChange( const Playlist* const playlist, const Playlist::Type playlistType )
 {
 	HTREEITEM outputNode = nullptr;
-	if ( playlist ) {
-		switch ( playlist->GetType() ) {
-			case Playlist::Type::User : {
-				outputNode = FindPlaylist( m_PlaylistMap, playlist );
-				break;
-			}
-			case Playlist::Type::All : {
-				outputNode = m_NodeAll;
-				break;
-			}
-			case Playlist::Type::Artist : {
-				outputNode = FindPlaylist( m_ArtistMap, playlist );
-				break;
-			}
-			case Playlist::Type::Publisher : {
-				outputNode = FindPlaylist( m_PublisherMap, playlist );
-				break;
-			}
-			case Playlist::Type::Composer : {
-				outputNode = FindPlaylist( m_ComposerMap, playlist );
-				break;
-			}
-			case Playlist::Type::Conductor : {
-				outputNode = FindPlaylist( m_ConductorMap, playlist );
-				break;
-			}
-			case Playlist::Type::Album : {
-				outputNode = FindPlaylist( m_AlbumMap, playlist );
-				break;
-			}
-			case Playlist::Type::Genre : {
-				outputNode = FindPlaylist( m_GenreMap, playlist );
-				break;
-			}
-			case Playlist::Type::Year : {
-				outputNode = FindPlaylist( m_YearMap, playlist );
-				break;
-			}
-			case Playlist::Type::Favourites : {
-				outputNode = m_NodeFavourites;
-				break;
-			}
-			case Playlist::Type::CDDA : {
-				outputNode = FindPlaylist( m_CDDAMap, playlist );
-				break;
-			}
-			case Playlist::Type::Folder : {
-				std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
-				outputNode = FindPlaylist( m_FolderPlaylistMap, playlist );
-				break;
-			}
-			case Playlist::Type::Streams : {
-				outputNode = m_NodeStreams;
-				break;
-			}
+	switch ( playlistType ) {
+		case Playlist::Type::User : {
+			outputNode = FindPlaylist( m_PlaylistMap, playlist );
+			break;
+		}
+		case Playlist::Type::All : {
+			outputNode = m_NodeAll;
+			break;
+		}
+		case Playlist::Type::Artist : {
+			outputNode = FindPlaylist( m_ArtistMap, playlist );
+			break;
+		}
+		case Playlist::Type::Publisher : {
+			outputNode = FindPlaylist( m_PublisherMap, playlist );
+			break;
+		}
+		case Playlist::Type::Composer : {
+			outputNode = FindPlaylist( m_ComposerMap, playlist );
+			break;
+		}
+		case Playlist::Type::Conductor : {
+			outputNode = FindPlaylist( m_ConductorMap, playlist );
+			break;
+		}
+		case Playlist::Type::Album : {
+			outputNode = FindPlaylist( m_AlbumMap, playlist );
+			break;
+		}
+		case Playlist::Type::Genre : {
+			outputNode = FindPlaylist( m_GenreMap, playlist );
+			break;
+		}
+		case Playlist::Type::Year : {
+			outputNode = FindPlaylist( m_YearMap, playlist );
+			break;
+		}
+		case Playlist::Type::Favourites : {
+			outputNode = m_NodeFavourites;
+			break;
+		}
+		case Playlist::Type::CDDA : {
+			outputNode = FindPlaylist( m_CDDAMap, playlist );
+			break;
+		}
+		case Playlist::Type::Folder : {
+			std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
+			outputNode = FindPlaylist( m_FolderPlaylistMap, playlist );
+			break;
+		}
+		case Playlist::Type::Streams : {
+			outputNode = m_NodeStreams;
+			break;
 		}
 	}
 
@@ -4157,10 +4162,10 @@ void WndTree::UpdateIcon( const HTREEITEM item, const Output::State state )
 	}
 }
 
-HTREEITEM WndTree::FindPlaylist( const PlaylistMap& playlistMap, const Playlist::Ptr& playlist )
+HTREEITEM WndTree::FindPlaylist( const PlaylistMap& playlistMap, const Playlist* const playlist )
 {
 	const auto item = std::find_if( playlistMap.begin(), playlistMap.end(), [ playlist ] ( const PlaylistMap::value_type& entry ) {
-		return entry.second == playlist;
+		return entry.second.get() == playlist;
 	} );
 	return ( playlistMap.end() == item ) ? nullptr : item->first;
 }

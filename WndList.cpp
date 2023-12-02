@@ -95,6 +95,10 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				wndList->ReorderDummyColumn();
 				break;
 			}
+      case MSG_SELECTPLAYLISTITEM : {
+        wndList->SelectPlaylistItem( static_cast<long>( wParam ) );
+        break;
+      }
 			case WM_LBUTTONDBLCLK : {
 				LVHITTESTINFO info = {};
 				info.pt.x = LOWORD( lParam );

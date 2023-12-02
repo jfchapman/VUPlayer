@@ -801,7 +801,10 @@
     <Image Include="res\composer.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="res\coonductor.ico">
+    <Image Include="res\conductor.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\follow_selection.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

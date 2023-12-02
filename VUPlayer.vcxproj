@@ -537,7 +537,9 @@ copy "$(ProjectDir)libs\ffmpeg-6.1\bin\x64\swresample-4.dll" $(OutDir)swresample
     <Image Include="res\artist.ico" />
     <Image Include="res\artists.ico" />
     <Image Include="res\balance.ico" />
+    <Image Include="res\composer.ico" />
     <Image Include="res\computer.ico" />
+    <Image Include="res\conductor.ico" />
     <Image Include="res\convert.ico" />
     <Image Include="res\crossfade.ico" />
     <Image Include="res\disk.ico" />
@@ -546,6 +548,7 @@ copy "$(ProjectDir)libs\ffmpeg-6.1\bin\x64\swresample-4.dll" $(OutDir)swresample
     <Image Include="res\fade_to_next.ico" />
     <Image Include="res\favourites.ico" />
     <Image Include="res\folder.ico" />
+    <Image Include="res\follow_selection.ico" />
     <Image Include="res\genre.ico" />
     <Image Include="res\info.ico" />
     <Image Include="res\library.ico" />

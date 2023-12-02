@@ -26,7 +26,8 @@ public:
 		ResetPitch,
 		BalanceLeft,
 		BalanceRight,
-		ResetBalance
+		ResetBalance,
+    FollowTrackSelection
 	};
 
 	// Constructor.

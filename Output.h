@@ -47,6 +47,9 @@ public:
 	// Callback function for when the output 'playlist' changes.
 	using PlaylistChangeCallback = std::function<void( Playlist::Ptr playlist )>;
 
+  // Callback function for when the 'itemID' should be selected (when using 'follow track selection' mode).
+  using SelectFollowedTrackCallback = std::function<void( const long itemID )>;
+
 	// Starts playback.
 	// 'startID' - Playlist ID at which to start playback (or zero to start playback at the first playlist item).
 	// 'seek' - Initial start position in seconds (negative value to seek relative to the end of the track).
@@ -171,7 +174,13 @@ public:
 	// Returns whether playback is to be stopped at the end of the current track.
 	bool GetStopAtTrackEnd() const;
 
-	// Toggles whether output is muted. 
+  // Toggles whether playback is to follow track selection.
+  void ToggleFollowTrackSelection();
+
+  // Returns whether playback is to follow track selection.
+  bool GetFollowTrackSelection() const;
+
+  // Toggles whether output is muted. 
 	void ToggleMuted();
 
 	// Returns whether output is muted.
@@ -200,6 +209,12 @@ public:
 
 	// Sets the 'callback' function for when the output playlist changes.
 	void SetPlaylistChangeCallback( PlaylistChangeCallback callback );
+
+  // Sets the 'callback' function for when the selected playlist item changes (when using 'follow track selection' mode).
+  void SetSelectFollowedTrackCallback( SelectFollowedTrackCallback callback );
+
+  // Sets the current 'playlist' and 'selectedItems' to follow (used for 'follow track selection' mode).
+  void SetPlaylistInformationToFollow( Playlist::Ptr playlist, const Playlist::Items& selectedItems );
 
 private:
 	// Output queue.
@@ -375,7 +390,22 @@ private:
 	// Sets the synchronizer which is called when the current output 'stream' ends.
 	void SetEndSync( const HSTREAM stream );
 
-	// Module instance handle.
+  // Gets the current 'playlist' and 'selectedItems' to follow (used for 'follow track selection' mode).
+  std::pair<Playlist::Ptr, Playlist::Items> GetPlaylistInformationToFollow();
+
+  // Gets the next track to play, when the 'follow track selection' mode is active.
+  // 'currentItem' - currently playing item.
+  // 'previous' - whether to select the previous playlist item (if the currently playing item is already selected).
+  // If the currently playing item is already selected, returns the next playlist item.
+  // If the currently playing item is not selected, returns the next selected playlist item.
+  // If no playlist items are selected, returns nullopt.
+  // Returns the playlist & next track to play in the playlist, and whether the next track should be selected.
+  std::optional<std::tuple<Playlist::Ptr, Playlist::Item, bool /*SelectTrack*/>> GetTrackToFollow( const Playlist::Item& currentItem, const bool previous = false );
+
+  // Changes the current output 'playlist', returning whether the playist was changed.
+  bool ChangePlaylist( const Playlist::Ptr& playlist );
+
+  // Module instance handle.
 	const HINSTANCE m_hInst;
 
 	// Parent window handle.
@@ -561,7 +591,16 @@ private:
 	// Indicates whether an end synchronizer has been set on a mixer stream.
 	std::atomic<bool> m_MixerStreamHasEndSync;
 
-	// When starting playback in non-standard output mode, the lead-in length before passing through actual sample data.
+  // Whether playback should continue with the currently selected track, when the currently playing track has ended.
+  std::atomic<bool> m_FollowTrackSelection;
+
+  // Current playlist with selected items to follow (used for 'follow track selection' mode).
+  std::pair<Playlist::Ptr, Playlist::Items> m_FollowPlaylistInformation;
+
+  // Mutex for the current playlist with selected items to follow (used for 'follow track selection' mode).
+  std::mutex m_FollowPlaylistInformationMutex;
+
+  // When starting playback in non-standard output mode, the lead-in length before passing through actual sample data.
 	float m_LeadInSeconds;
 
 	// A preloaded decoder, which can be used to minimize the delay when switching streams.
@@ -579,6 +618,9 @@ private:
 	// Callback function for when the output playlist changes.
 	PlaylistChangeCallback m_OnPlaylistChangeCallback;
 
-	// Callback function for when the output decoder has finished pre-buffering.
+  // Callback function for when the selected playlist item changes (when using 'follow track selection' mode).
+  SelectFollowedTrackCallback m_OnSelectFollowedTrackCallback;
+
+  // Callback function for when the output decoder has finished pre-buffering.
 	const OutputDecoder::PreBufferFinishedCallback m_OnPreBufferFinishedCallback;
 };

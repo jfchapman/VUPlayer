@@ -665,6 +665,12 @@ public:
   // Sets the title bar text format during playback.
   void SetTitleBarFormat( const TitleBarFormat format );
 
+  // Returns whether playback should follow the current track selection.
+  bool GetFollowTrackSelection();
+
+  // Sets whether playback should follow the current track selection.
+  void SetFollowTrackSelection( const bool enabled );
+
   // Returns the supported OpenMPT ramping options.
   static constexpr std::array<long, 12> GetOpenMPTSupportedRamping() { return { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; }
 

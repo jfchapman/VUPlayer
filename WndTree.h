@@ -8,6 +8,11 @@
 #include "Output.h"
 #include "Settings.h"
 
+// Message ID for signalling when the current output playlist has changed.
+// 'wParam' : playlist pointer (used for identification only, not for dereferencing).
+// 'lParam' : playlist type.
+static constexpr UINT MSG_OUTPUTPLAYLISTCHANGED = WM_APP + 119;
+
 class WndTree
 {
 public:
@@ -194,8 +199,10 @@ public:
 	// 'isHighContrast' - indicates whether high contrast mode is active.
 	void OnSysColorChange( const bool isHighContrast );
 
-	// Called when the current output 'playlist' changes.
-	void OnOutputPlaylistChange( const Playlist::Ptr playlist );
+	// Called when the current output playlist changes.
+  // 'playlist' - playlist pointer (used for identification only, not for dereferencing).
+  // 'playlistType' - playlist type.
+	void OnOutputPlaylistChange( const Playlist* const playlist, const Playlist::Type playlistType );
 
 	// Updates the icon the for current output playlist node.
 	void UpdateOutputIcon();
@@ -285,7 +292,7 @@ private:
 
 	// Searches the 'playlistMap' for the 'playlist'.
 	// Returns the corresponding tree item, or nullptr if the playlist was not found.
-	static HTREEITEM FindPlaylist( const PlaylistMap& playlistMap, const Playlist::Ptr& playlist );
+	static HTREEITEM FindPlaylist( const PlaylistMap& playlistMap, const Playlist* const playlist );
 
 	// Creates a tree item parameter value from 'playlistType', 'originalIconIndex' & 'itemOrder'.
 	static LPARAM CreateItemData( const Playlist::Type playlistType, const int originalIconIndex, const int itemOrder = 0 );

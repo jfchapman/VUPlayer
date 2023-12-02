@@ -8,6 +8,11 @@
 #include "Playlist.h"
 #include "Settings.h"
 
+// Message ID for signalling when a playlist item should be selected.
+// 'wParam' : playlist item ID to select.
+// 'lParam' : unused.
+static constexpr UINT MSG_SELECTPLAYLISTITEM = WM_APP + 108;
+
 class WndList
 {
 public:

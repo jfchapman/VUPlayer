@@ -245,7 +245,11 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, S
 	m_PreloadedDecoderMutex(),
 	m_StreamTitleQueue(),
 	m_StreamTitleMutex(),
+  m_FollowTrackSelection( m_Settings.GetFollowTrackSelection() ),
+  m_FollowPlaylistInformation( {} ),
+  m_FollowPlaylistInformationMutex(),
 	m_OnPlaylistChangeCallback( nullptr ),
+  m_OnSelectFollowedTrackCallback( nullptr ),
 	m_OnPreBufferFinishedCallback( [ this ] ( const long id )
 		{
 			if ( id != m_CrossfadingItemID ) {
@@ -484,16 +488,26 @@ void Output::Previous( const bool forcePrevious, const float seek )
 		if ( currentItem.ID > 0 ) {
 			if ( forcePrevious || ( outputItem.Position < s_PreviousTrackCutoff ) ) {
 				Playlist::Item previousItem = {};
-				if ( GetRandomPlay() ) {
-					std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
-					if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_PreloadedDecoder.item.ID != currentItem.ID ) && m_Playlist->ContainsItem( { m_PreloadedDecoder.item } ) ) {
-						previousItem = m_PreloadedDecoder.item;
-					} else {
-						previousItem = m_Playlist->GetRandomItem( currentItem );
-					}
-				} else {
-					m_Playlist->GetPreviousItem( currentItem, previousItem );
-				}
+
+        if ( GetFollowTrackSelection() ) {
+          if ( const auto nextTrackToFollow = GetTrackToFollow( currentItem, true /*previous*/ ) ) {
+            const auto& [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
+            previousItem = nextTrack;
+            ChangePlaylist( playlist );
+          }
+        } else {        
+          if ( GetRandomPlay() ) {
+					  std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
+					  if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_PreloadedDecoder.item.ID != currentItem.ID ) && m_Playlist->ContainsItem( { m_PreloadedDecoder.item } ) ) {
+						  previousItem = m_PreloadedDecoder.item;
+					  } else {
+						  previousItem = m_Playlist->GetRandomItem( currentItem );
+					  }
+				  } else {
+					  m_Playlist->GetPreviousItem( currentItem, previousItem );
+				  }
+        }
+
 				if ( previousItem.ID > 0 ) {
 					Play( previousItem.ID, seek );
 				}
@@ -511,16 +525,26 @@ void Output::Next()
 		const Output::Item outputItem = GetCurrentPlaying();
 		const Playlist::Item currentItem = outputItem.PlaylistItem;
 		Playlist::Item nextItem = {};
-		if ( GetRandomPlay() ) {
-			std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
-			if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_PreloadedDecoder.item.ID != currentItem.ID ) && m_Playlist->ContainsItem( { m_PreloadedDecoder.item } ) ) {
-				nextItem = m_PreloadedDecoder.item;
-			} else {
-				nextItem = m_Playlist->GetRandomItem( currentItem );
-			}
-		} else {
-			m_Playlist->GetNextItem( currentItem, nextItem );
-		}
+
+    if ( GetFollowTrackSelection() ) {
+      if ( const auto nextTrackToFollow = GetTrackToFollow( currentItem ) ) {
+        const auto& [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
+        nextItem = nextTrack;
+        ChangePlaylist( playlist );
+      }
+    } else {
+		  if ( GetRandomPlay() ) {
+			  std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
+			  if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_PreloadedDecoder.item.ID != currentItem.ID ) && m_Playlist->ContainsItem( { m_PreloadedDecoder.item } ) ) {
+				  nextItem = m_PreloadedDecoder.item;
+			  } else {
+				  nextItem = m_Playlist->GetRandomItem( currentItem );
+			  }
+		  } else {
+			  m_Playlist->GetNextItem( currentItem, nextItem );
+		  }
+    }
+
 		if ( nextItem.ID > 0 ) {
 			Play( nextItem.ID );
 		}
@@ -530,12 +554,7 @@ void Output::Next()
 void Output::Play( const Playlist::Ptr playlist, const long startID, const float seek )
 {
 	Stop();
-	if ( m_Playlist != playlist ) {
-		m_Playlist = playlist;
-		if ( nullptr != m_OnPlaylistChangeCallback ) {
-			m_OnPlaylistChangeCallback( m_Playlist );
-		}
-	}
+  ChangePlaylist( playlist );
 	Play( startID, seek );
 }
 
@@ -1431,6 +1450,16 @@ bool Output::GetStopAtTrackEnd() const
 	return m_StopAtTrackEnd;
 }
 
+void Output::ToggleFollowTrackSelection()
+{
+  m_FollowTrackSelection = !m_FollowTrackSelection;
+}
+
+bool Output::GetFollowTrackSelection() const
+{
+  return m_FollowTrackSelection;
+}
+
 void Output::ToggleMuted()
 {
 	m_Muted = !m_Muted;
@@ -2083,6 +2112,30 @@ Output::OutputDecoderPtr Output::GetNextDecoder( Playlist::Item& item )
 	OutputDecoderPtr nextDecoder;
 	Playlist::Item nextItem = item;
 	item = {};
+
+  if ( GetFollowTrackSelection() ) {
+    bool selectNextItem = false;
+    if ( GetRepeatTrack() ) {
+      nextItem = m_CurrentItemDecoding;
+    } else if ( const auto nextTrackToFollow = GetTrackToFollow( nextItem ) ) {
+      auto [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
+      ChangePlaylist( playlist );
+      nextItem = nextTrack;
+      selectNextItem = selectTrack;
+    }
+		if ( nextItem.ID > 0 ) {
+			nextDecoder = OpenOutputDecoder( nextItem, true /*usePreloadedDecoder*/ );
+			if ( nextDecoder ) {
+				item = nextItem;
+				PreloadNextDecoder( item );
+        if ( m_OnSelectFollowedTrackCallback && selectNextItem ) {
+          m_OnSelectFollowedTrackCallback( nextItem.ID );
+        }
+			}
+		}
+    return nextDecoder;
+  }
+
 	std::lock_guard<std::mutex> playlistLock( m_PlaylistMutex );
 	if ( m_Playlist ) {
 		size_t skip = 0;
@@ -2157,7 +2210,7 @@ void Output::PreloadNextDecoder( const Playlist::Item& item )
 			preloadItem = m_Playlist->GetRandomItem( item );
 		} else if ( GetRepeatTrack() ) {
 			preloadItem = item;
-		} else if ( !GetRandomPlay() ) {
+		} else {
 			m_Playlist->GetNextItem( item, preloadItem, GetRepeatPlaylist() /*wrap*/ );
 		}
 
@@ -2184,6 +2237,11 @@ void Output::SetPlaylistChangeCallback( PlaylistChangeCallback callback )
 	m_OnPlaylistChangeCallback = callback;
 }
 
+void Output::SetSelectFollowedTrackCallback( SelectFollowedTrackCallback callback )
+{
+	m_OnSelectFollowedTrackCallback = callback;
+}
+
 void Output::SetEndSync( const HSTREAM stream )
 {
 	if ( stream == m_OutputStream ) {
@@ -2198,4 +2256,71 @@ bool Output::CanBackgroundThreadProceed( const HANDLE stopEvent )
 {
   constexpr DWORD kStartupDelayMsec = static_cast<DWORD>( 1000 * 2 * s_BufferLength );
   return ( WAIT_TIMEOUT == WaitForSingleObject( stopEvent, kStartupDelayMsec ) );
+}
+
+void Output::SetPlaylistInformationToFollow( Playlist::Ptr playlist, const Playlist::Items& selectedItems )
+{
+  std::lock_guard<std::mutex> lock( m_FollowPlaylistInformationMutex );
+  m_FollowPlaylistInformation = std::make_pair( playlist, selectedItems );
+}
+
+std::pair<Playlist::Ptr, Playlist::Items> Output::GetPlaylistInformationToFollow()
+{
+  std::lock_guard<std::mutex> lock( m_FollowPlaylistInformationMutex );
+  return m_FollowPlaylistInformation;
+}
+
+std::optional<std::tuple<Playlist::Ptr, Playlist::Item, bool>> Output::GetTrackToFollow( const Playlist::Item& currentItem, const bool previous )
+{
+  const auto [ playlist, selectedItems ] = GetPlaylistInformationToFollow();
+  if ( !playlist || selectedItems.empty() )
+    return std::nullopt;
+
+  auto foundItem = std::find_if( selectedItems.begin(), selectedItems.end(), [ id = currentItem.ID ] ( const Playlist::Item& item )
+	{
+	  return ( id == item.ID );
+	} );
+
+  Playlist::Item nextTrack;
+  bool selectTrack = false;
+
+  if ( selectedItems.end() == foundItem ) {
+    nextTrack = selectedItems.front();
+  } else {
+    if ( previous ) {
+      if ( selectedItems.begin() != foundItem ) {
+        --foundItem;
+      } else {
+        foundItem = selectedItems.end();
+      }
+    } else {
+      ++foundItem;
+    }
+    if ( foundItem == selectedItems.end() ) {
+      if ( GetRandomPlay() ) {
+        nextTrack = playlist->GetRandomItem( currentItem );
+        selectTrack = true;
+      } else if ( Playlist::Item nextItem; previous ? playlist->GetPreviousItem( currentItem, nextItem ) : playlist->GetNextItem( currentItem, nextItem, GetRepeatPlaylist() ) ) {
+        nextTrack = nextItem;
+        selectTrack = true;
+      }
+    } else {
+      nextTrack = *foundItem;
+    }
+  }
+
+  return std::make_tuple( playlist, nextTrack, selectTrack );
+}
+
+bool Output::ChangePlaylist( const Playlist::Ptr& playlist )
+{
+ 	std::lock_guard<std::mutex> playlistLock( m_PlaylistMutex );
+  if ( m_Playlist != playlist ) {
+    m_Playlist = playlist;
+    if ( nullptr != m_OnPlaylistChangeCallback ) {
+      m_OnPlaylistChangeCallback( m_Playlist );
+    }
+    return true;
+  }
+  return false;
 }

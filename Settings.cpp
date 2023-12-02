@@ -1814,3 +1814,13 @@ void Settings::SetTitleBarFormat( const TitleBarFormat format )
 {
   WriteSetting<TitleBarFormat>( "TitleBarFormat", format );
 }
+
+bool Settings::GetFollowTrackSelection()
+{
+  return ReadSetting<bool>( "FollowTrackSelection" ).value_or( false );
+}
+
+void Settings::SetFollowTrackSelection( const bool enabled )
+{
+	WriteSetting( "FollowTrackSelection", enabled );
+}
