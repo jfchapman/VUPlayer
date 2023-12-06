@@ -660,9 +660,13 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 				if ( crossfadePosition > 0 ) {
 					bool checkCrossFade = ( GetRandomPlay() || GetRepeatTrack() );
 					if ( !checkCrossFade ) {
-						std::lock_guard<std::mutex> lock( m_PlaylistMutex );
-						Playlist::Item nextItem = {};
-						checkCrossFade = m_Playlist->GetNextItem( m_CurrentItemDecoding, nextItem, GetRepeatPlaylist() /*wrap*/ );
+            if ( GetFollowTrackSelection() ) {
+              checkCrossFade = GetTrackToFollow( m_CurrentItemDecoding ).has_value();
+            } else {
+						  std::lock_guard<std::mutex> lock( m_PlaylistMutex );
+						  Playlist::Item nextItem = {};
+						  checkCrossFade = m_Playlist->GetNextItem( m_CurrentItemDecoding, nextItem, GetRepeatPlaylist() /*wrap*/ );
+            }
 					}
 					if ( checkCrossFade ) {
 						// Ensure we don't read past the crossfade point.

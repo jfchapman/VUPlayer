@@ -61,9 +61,6 @@ private:
 	// Returns whether extraction has been cancelled.
 	bool Cancelled() const;
 
-	// Returns the output filename for 'mediaInfo'.
-	std::wstring GetOutputFilename( const MediaInfo& mediaInfo ) const;
-
 	// Updates the status of the progress bars.
 	void UpdateStatus();
 

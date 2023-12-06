@@ -1824,3 +1824,146 @@ void Settings::SetFollowTrackSelection( const bool enabled )
 {
 	WriteSetting( "FollowTrackSelection", enabled );
 }
+
+std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINSTANCE instance )
+{
+	std::wstring outputFilename;
+
+	std::wstring extractFolder;
+	std::wstring extractFilename;
+	bool extractToLibrary = false;
+	bool extractJoin = false;
+	GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
+
+	WCHAR buffer[ 64 ] = {};
+	const std::wstring emptyArtist = LoadString( instance, IDS_EMPTYARTIST, buffer, 64 ) ? buffer : std::wstring();
+	const std::wstring emptyAlbum = LoadString( instance, IDS_EMPTYALBUM, buffer, 64 ) ? buffer : std::wstring();
+	const std::wstring emptyPublisher = LoadString( instance, IDS_EMPTY_PUBLISHER, buffer, 64 ) ? buffer : std::wstring();
+	const std::wstring emptyComposer = LoadString( instance, IDS_EMPTY_COMPOSER, buffer, 64 ) ? buffer : std::wstring();
+	const std::wstring emptyConductor = LoadString( instance, IDS_EMPTY_CONDUCTOR, buffer, 64 ) ? buffer : std::wstring();
+
+	std::wstring title = mediaInfo.GetTitle( true /*filenameAsTitle*/ );
+	WideStringReplaceInvalidFilenameCharacters( title, L"_", true /*replaceFolderDelimiters*/ );
+
+	std::wstring artist = mediaInfo.GetArtist().empty() ? emptyArtist : mediaInfo.GetArtist();
+	WideStringReplaceInvalidFilenameCharacters( artist, L"_", true /*replaceFolderDelimiters*/ );
+
+	std::wstring album = mediaInfo.GetAlbum().empty() ? emptyAlbum : mediaInfo.GetAlbum();
+	WideStringReplaceInvalidFilenameCharacters( album, L"_", true /*replaceFolderDelimiters*/ );
+
+	std::wstring publisher = mediaInfo.GetPublisher().empty() ? emptyPublisher : mediaInfo.GetPublisher();
+	WideStringReplaceInvalidFilenameCharacters( publisher, L"_", true /*replaceFolderDelimiters*/ );
+
+	std::wstring composer = mediaInfo.GetComposer().empty() ? emptyComposer : mediaInfo.GetComposer();
+	WideStringReplaceInvalidFilenameCharacters( composer, L"_", true /*replaceFolderDelimiters*/ );
+
+	std::wstring conductor = mediaInfo.GetConductor().empty() ? emptyConductor : mediaInfo.GetConductor();
+	WideStringReplaceInvalidFilenameCharacters( conductor, L"_", true /*replaceFolderDelimiters*/ );
+
+  const std::wstring sourceFilename = mediaInfo.GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
+
+	std::wstringstream ss;
+	ss << std::setfill( static_cast<wchar_t>( '0' ) ) << std::setw( 2 ) << mediaInfo.GetTrack();
+	const std::wstring track = ss.str();
+
+	auto currentChar = extractFilename.begin();
+	while ( extractFilename.end() != currentChar ) {
+		switch ( *currentChar ) {
+			case '%' : {
+				const auto nextChar = 1 + currentChar;
+				if ( extractFilename.end() == nextChar ) {
+					outputFilename += *currentChar;
+				} else {
+					switch ( *nextChar ) {
+						case 'A' :
+						case 'a' : {
+							outputFilename += artist;
+							++currentChar;
+							break;
+						}
+						case 'D' :
+						case 'd' : {
+							outputFilename += album;
+							++currentChar;
+							break;
+						}
+						case 'N' :
+						case 'n' : {
+							outputFilename += track;
+							++currentChar;
+							break;
+						}
+						case 'T' :
+						case 't' : {
+							outputFilename += title;
+							++currentChar;
+							break;
+						}
+						case 'F' :
+						case 'f' : {
+							outputFilename += sourceFilename;
+							++currentChar;
+							break;
+						}
+						case 'P' :
+						case 'p' : {
+							outputFilename += publisher;
+							++currentChar;
+							break;
+						}
+						case 'C' :
+						case 'c' : {
+							outputFilename += composer;
+							++currentChar;
+							break;
+						}
+						case 'U' :
+						case 'u' : {
+							outputFilename += conductor;
+							++currentChar;
+							break;
+						}
+						default : {
+							outputFilename += *currentChar;
+							break;
+						}
+					}
+				}
+				break;
+			}
+			default : {
+				outputFilename += *currentChar;
+				break;
+			}
+		}
+		++currentChar;
+	}
+
+	// Sanitise folder and file names.
+	if ( !extractFolder.empty() && ( extractFolder.back() != '\\' ) ) {
+		extractFolder += '\\';
+	}
+	WideStringReplaceInvalidFilenameCharacters( outputFilename, L"_", false /*replaceFolderDelimiters*/ );
+	WideStringReplace( outputFilename, L"/", L"\\" );
+	const size_t firstPos = outputFilename.find_first_not_of( L"\\ " );
+	const size_t lastPos = outputFilename.find_last_not_of( L"\\ " );
+	if ( ( std::wstring::npos != firstPos ) && ( std::wstring::npos != lastPos ) ) {
+		outputFilename = outputFilename.substr( firstPos, 1 + lastPos );
+	} else {
+		outputFilename.clear();
+	}
+	if ( outputFilename.empty() ) {
+		outputFilename = std::to_wstring( mediaInfo.GetTrack() );
+	}
+	outputFilename = extractFolder + outputFilename;
+
+	// Create the output folder, if necessary.
+	size_t pos = outputFilename.find( '\\', extractFolder.size() );
+	while ( std::wstring::npos != pos ) {
+		const std::wstring folder = outputFilename.substr( 0, pos );
+		CreateDirectory( folder.c_str(), NULL /*attributes*/ );
+		pos = outputFilename.find( '\\', 1 + folder.size() );
+	};
+
+	return outputFilename;
+}

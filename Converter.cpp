@@ -247,7 +247,7 @@ void Converter::EncodeHandler()
 
 				m_ProgressTrack.store( 0 );
 				m_StatusTrack.store( ++currentTrack );
-				std::wstring filename = extractJoin ? m_JoinFilename : GetOutputFilename( track->Info );
+				std::wstring filename = extractJoin ? m_JoinFilename : m_Settings.GetOutputFilename( track->Info, m_hInst );
 				conversionOK = !filename.empty();
 				if ( conversionOK ) {
 					const Decoder::Ptr decoder = OpenDecoder( *track );
@@ -395,119 +395,6 @@ void Converter::EncodeHandler()
 	if ( !Cancelled() ) {
 		PostMessage( m_hWnd, MSG_CONVERTERFINISHED, conversionOK, 0 );
 	}
-}
-
-std::wstring Converter::GetOutputFilename( const MediaInfo& mediaInfo ) const
-{
-	std::wstring outputFilename;
-
-	std::wstring extractFolder;
-	std::wstring extractFilename;
-	bool extractToLibrary = false;
-	bool extractJoin = false;
-	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
-
-	WCHAR buffer[ 64 ] = {};
-	const std::wstring emptyArtist = LoadString( m_hInst, IDS_EMPTYARTIST, buffer, 64 ) ? buffer : std::wstring();
-	const std::wstring emptyAlbum = LoadString( m_hInst, IDS_EMPTYALBUM, buffer, 64 ) ? buffer : std::wstring();
-
-	std::wstring title = mediaInfo.GetTitle( true /*filenameAsTitle*/ );
-	WideStringReplaceInvalidFilenameCharacters( title, L"_", true /*replaceFolderDelimiters*/ );
-
-	std::wstring artist = mediaInfo.GetArtist().empty() ? emptyArtist : mediaInfo.GetArtist();
-	WideStringReplaceInvalidFilenameCharacters( artist, L"_", true /*replaceFolderDelimiters*/ );
-
-	std::wstring album = mediaInfo.GetAlbum().empty() ? emptyAlbum : mediaInfo.GetAlbum();
-	WideStringReplaceInvalidFilenameCharacters( album, L"_", true /*replaceFolderDelimiters*/ );
-
-	const std::wstring sourceFilename = mediaInfo.GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
-
-	std::wstringstream ss;
-	ss << std::setfill( static_cast<wchar_t>( '0' ) ) << std::setw( 2 ) << mediaInfo.GetTrack();
-	const std::wstring track = ss.str();
-
-	auto currentChar = extractFilename.begin();
-	while ( extractFilename.end() != currentChar ) {
-		switch ( *currentChar ) {
-			case '%' : {
-				const auto nextChar = 1 + currentChar;
-				if ( extractFilename.end() == nextChar ) {
-					outputFilename += *currentChar;
-				} else {
-					switch ( *nextChar ) {
-						case 'A' :
-						case 'a' : {
-							outputFilename += artist;
-							++currentChar;
-							break;
-						}
-						case 'D' :
-						case 'd' : {
-							outputFilename += album;
-							++currentChar;
-							break;
-						}
-						case 'N' :
-						case 'n' : {
-							outputFilename += track;
-							++currentChar;
-							break;
-						}
-						case 'T' :
-						case 't' : {
-							outputFilename += title;
-							++currentChar;
-							break;
-						}
-						case 'F' :
-						case 'f' : {
-							outputFilename += sourceFilename;
-							++currentChar;
-							break;
-						}
-						default : {
-							outputFilename += *currentChar;
-							break;
-						}
-					}
-				}
-				break;
-			}
-			default : {
-				outputFilename += *currentChar;
-				break;
-			}
-		}
-		++currentChar;
-	}
-
-	// Sanitise folder and file names.
-	if ( !extractFolder.empty() && ( extractFolder.back() != '\\' ) ) {
-		extractFolder += '\\';
-	}
-	WideStringReplaceInvalidFilenameCharacters( outputFilename, L"_", false /*replaceFolderDelimiters*/ );
-	WideStringReplace( outputFilename, L"/", L"\\" );
-	const size_t firstPos = outputFilename.find_first_not_of( L"\\ " );
-	const size_t lastPos = outputFilename.find_last_not_of( L"\\ " );
-	if ( ( std::wstring::npos != firstPos ) && ( std::wstring::npos != lastPos ) ) {
-		outputFilename = outputFilename.substr( firstPos, 1 + lastPos );
-	} else {
-		outputFilename.clear();
-	}
-	if ( outputFilename.empty() ) {
-		outputFilename = std::to_wstring( mediaInfo.GetTrack() );
-	}
-	outputFilename = extractFolder + outputFilename;
-
-	// Create the output folder, if necessary.
-	size_t pos = outputFilename.find( '\\', extractFolder.size() );
-	while ( std::wstring::npos != pos ) {
-		const std::wstring folder = outputFilename.substr( 0, pos );
-		CreateDirectory( folder.c_str(), NULL /*attributes*/ );
-		pos = outputFilename.find( '\\', 1 + folder.size() );
-	};
-
-	return outputFilename;
 }
 
 void Converter::UpdateStatus()

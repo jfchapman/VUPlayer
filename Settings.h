@@ -671,6 +671,11 @@ public:
   // Sets whether playback should follow the current track selection.
   void SetFollowTrackSelection( const bool enabled );
 
+  // Returns the output filename when converting files or extracting CD audio.
+  // 'mediaInfo' - source media information.
+  // 'instance' - module instance handle.
+  std::wstring GetOutputFilename( const MediaInfo& mediaInfo, const HINSTANCE instance );
+
   // Returns the supported OpenMPT ramping options.
   static constexpr std::array<long, 12> GetOpenMPTSupportedRamping() { return { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; }
 
