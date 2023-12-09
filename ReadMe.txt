@@ -1,4 +1,4 @@
-VUPlayer 4.17
+VUPlayer 4.18
 Copyright (c) 2023 James Chapman
 ------------------------------------------------------------------------------
 website: http://www.vuplayer.com
@@ -41,12 +41,6 @@ http://xiph.org/flac/
 
 WavPack is copyright (c) 1998-2023 David Bryant
 http://www.wavpack.com
-
-Monkey's Audio is copyright (c) 2000-2023 Matt Ashland
-https://monkeysaudio.com
-
-Musepack is copyright (c) The Musepack Development Team
-https://www.musepack.net
 
 MusicBrainz is copyright (c) The MetaBrainz Foundation
 https://musicbrainz.org/

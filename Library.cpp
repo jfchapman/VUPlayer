@@ -258,7 +258,16 @@ void Library::CreateIndices()
 		sqlite3_exec( database, conductorIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 		const std::string publisherIndex = "CREATE INDEX IF NOT EXISTS MediaIndex_Publisher ON Media(Publisher);";
 		sqlite3_exec( database, publisherIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-	}
+
+		const std::string artistCues = "CREATE INDEX IF NOT EXISTS CuesIndex_Artist ON Cues(Artist);";
+		sqlite3_exec( database, artistCues.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		const std::string composerCues = "CREATE INDEX IF NOT EXISTS CuesIndex_Composer ON Cues(Composer);";
+		sqlite3_exec( database, composerCues.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		const std::string conductorCues = "CREATE INDEX IF NOT EXISTS CuesIndex_Conductor ON Cues(Conductor);";
+		sqlite3_exec( database, conductorCues.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		const std::string publisherCues = "CREATE INDEX IF NOT EXISTS CuesIndex_Publisher ON Cues(Publisher);";
+		sqlite3_exec( database, publisherCues.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+  }
 }
 
 bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool scanMedia, const bool sendNotification, const bool removeMissing )
@@ -295,9 +304,9 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool scanMedia, const bo
 				const int result = sqlite3_step( stmt );
 				success = ( SQLITE_ROW == result );
 				if ( success ) {
-          const bool staleData = !ExtractMediaInfo( stmt, info );
+          const bool missingData = !ExtractMediaInfo( stmt, info );
           if ( scanMedia && ( MediaInfo::Source::File == info.GetSource() ) ) {
-            if ( staleData ) {
+            if ( missingData ) {
               if ( GetDecoderInfo( info, true /*getTags*/ ) ) {
                 UpdateMediaLibrary( info );
                 if ( sendNotification ) {

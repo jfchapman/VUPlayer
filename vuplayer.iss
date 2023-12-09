@@ -2,13 +2,16 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "VUPlayer"
-#define MyAppVersion "4.17"
-#define MyAppFullVersion "4.17.0.0"
+#define MyAppVersion "4.18"
+#define MyAppFullVersion "4.18.0.0"
 #define MyAppMainVersion "4"
 #define MyAppDefaultDir "VUPlayer 4"
 #define MyAppPublisher "James Chapman"
 #define MyAppURL "http://www.vuplayer.com/"
 #define MyAppExeName "VUPlayer.exe"
+
+; Define to sign the installer & uninstaller (requires appropriate configuration & certificate)
+#undef EnableSigning
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -30,6 +33,10 @@ OutputBaseFilename=VUPlayerSetup
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
+ 
+#ifdef EnableSigning
+SignTool=signtool
+#endif
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

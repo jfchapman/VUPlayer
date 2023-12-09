@@ -1860,7 +1860,8 @@ std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINS
 	std::wstring conductor = mediaInfo.GetConductor().empty() ? emptyConductor : mediaInfo.GetConductor();
 	WideStringReplaceInvalidFilenameCharacters( conductor, L"_", true /*replaceFolderDelimiters*/ );
 
-  const std::wstring sourceFilename = mediaInfo.GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
+  std::wstring sourceFilename = mediaInfo.GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
+	WideStringReplaceInvalidFilenameCharacters( sourceFilename, L"_", true /*replaceFolderDelimiters*/ );
 
 	std::wstringstream ss;
 	ss << std::setfill( static_cast<wchar_t>( '0' ) ) << std::setw( 2 ) << mediaInfo.GetTrack();
@@ -1945,15 +1946,15 @@ std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINS
 	}
 	WideStringReplaceInvalidFilenameCharacters( outputFilename, L"_", false /*replaceFolderDelimiters*/ );
 	WideStringReplace( outputFilename, L"/", L"\\" );
-	const size_t firstPos = outputFilename.find_first_not_of( L"\\ " );
-	const size_t lastPos = outputFilename.find_last_not_of( L"\\ " );
+	const size_t firstPos = outputFilename.find_first_not_of( L"\\ \t" );
+	const size_t lastPos = outputFilename.find_last_not_of( L"\\ \t" );
 	if ( ( std::wstring::npos != firstPos ) && ( std::wstring::npos != lastPos ) ) {
 		outputFilename = outputFilename.substr( firstPos, 1 + lastPos );
 	} else {
 		outputFilename.clear();
 	}
 	if ( outputFilename.empty() ) {
-		outputFilename = std::to_wstring( mediaInfo.GetTrack() );
+		outputFilename = sourceFilename;
 	}
 	outputFilename = extractFolder + outputFilename;
 
