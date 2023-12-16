@@ -28,25 +28,25 @@ Main application is copyright (c) 2023 James Chapman
 http://www.vuplayer.com
 
 BASS library is copyright (c) 1999-2023 Un4seen Developments Ltd.
-http://www.un4seen.com
+https://www.un4seen.com
 
 Ogg Vorbis is copyright (c) 1994-2023 Xiph.Org
-http://xiph.org/vorbis/
+https://xiph.org/vorbis/
 
 Opus is copyright (c) 2011-2023 Xiph.Org
 https://opus-codec.org/
 
 FLAC is copyright (c) 2000-2009 Josh Coalson, 2011-2023 Xiph.Org
-http://xiph.org/flac/
+https://xiph.org/flac/
 
 WavPack is copyright (c) 1998-2023 David Bryant
-http://www.wavpack.com
+https://www.wavpack.com
 
 MusicBrainz is copyright (c) The MetaBrainz Foundation
 https://musicbrainz.org/
 
 Audioscrobbler is copyright (c) 2023 Last.fm Ltd.
-http://www.last.fm
+https://www.last.fm
 
 JSON for Modern C++ is copyright (c) 2013-2023 Niels Lohmann
 https://github.com/nlohmann/json
