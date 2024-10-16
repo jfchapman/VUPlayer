@@ -11,7 +11,7 @@
 #define MyAppExeName "VUPlayer.exe"
 
 ; Define to sign the installer & uninstaller (requires appropriate configuration & certificate)
-#define EnableSigning
+#undef EnableSigning
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
