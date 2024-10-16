@@ -33,3 +33,7 @@ void NullVisual::OnSettingsChange()
 void NullVisual::OnSysColorChange()
 {
 }
+
+void NullVisual::FreeResources()
+{
+}

@@ -220,6 +220,9 @@ public:
   // Refreshes the tree item label for the user 'playlist'.
   void RefreshUserPlaylistLabel( const Playlist::Ptr playlist );
 
+  // Returns the folder playlist matching the 'playlistID', or nullptr if the playlist was not found.
+  Playlist::Ptr GetFolderPlaylist( const std::string& playlistID );
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
@@ -779,7 +782,7 @@ private:
 	PlaylistMenuMap m_AddToPlaylistMenuMap;
 
 	// Maps a folder playlist item to the tracks that have been previously added to the playlist. 
-	std::map<HTREEITEM, std::set<std::wstring>> m_AddedFolderTracks;
+	std::map<HTREEITEM, std::set<std::filesystem::path>> m_AddedFolderTracks;
 
 	// Root item ordering.
 	static OrderMap s_RootOrder;

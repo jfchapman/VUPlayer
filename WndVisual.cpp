@@ -88,7 +88,8 @@ WndVisual::WndVisual( HINSTANCE instance, HWND parent, HWND rebarWnd, HWND statu
 	m_D2DSwapChain(),
 	m_Visuals(),
 	m_CurrentVisual(),
-	m_HardwareAccelerationEnabled( m_Settings.GetHardwareAccelerationEnabled() )
+	m_HardwareAccelerationEnabled( m_Settings.GetHardwareAccelerationEnabled() ),
+  m_DPIScaling( GetDPIScaling() )
 {
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof( WNDCLASSEX );
@@ -111,13 +112,13 @@ WndVisual::WndVisual( HINSTANCE instance, HWND parent, HWND rebarWnd, HWND statu
 
 	InitD2D();
 
-	m_Visuals.insert( Visuals::value_type( ID_VISUAL_VUMETER_STEREO, new VUMeter( *this, true /*stereo*/ ) ) );
-	m_Visuals.insert( Visuals::value_type( ID_VISUAL_VUMETER_MONO, new VUMeter( *this, false /*mono*/ ) ) );
-	m_Visuals.insert( Visuals::value_type( ID_VISUAL_OSCILLOSCOPE, new Oscilloscope( *this ) ) );
-	m_Visuals.insert( Visuals::value_type( ID_VISUAL_SPECTRUMANALYSER, new SpectrumAnalyser( *this ) ) );
-	m_Visuals.insert( Visuals::value_type( ID_VISUAL_ARTWORK, new Artwork( *this ) ) );
-	m_Visuals.insert( Visuals::value_type( ID_VISUAL_NONE, new NullVisual( *this ) ) );
-	m_Visuals.insert( Visuals::value_type( ID_VISUAL_PEAKMETER, new PeakMeter( *this ) ) );
+	m_Visuals.insert( Visuals::value_type( ID_VISUAL_VUMETER_STEREO, std::make_shared<VUMeter>( *this, true /*stereo*/ ) ) );
+	m_Visuals.insert( Visuals::value_type( ID_VISUAL_VUMETER_MONO, std::make_shared<VUMeter>( *this, false /*mono*/ ) ) );
+	m_Visuals.insert( Visuals::value_type( ID_VISUAL_OSCILLOSCOPE, std::make_shared<Oscilloscope>( *this ) ) );
+	m_Visuals.insert( Visuals::value_type( ID_VISUAL_SPECTRUMANALYSER, std::make_shared<SpectrumAnalyser>( *this ) ) );
+	m_Visuals.insert( Visuals::value_type( ID_VISUAL_ARTWORK, std::make_shared<Artwork>( *this ) ) );
+	m_Visuals.insert( Visuals::value_type( ID_VISUAL_NONE, std::make_shared<NullVisual>( *this ) ) );
+	m_Visuals.insert( Visuals::value_type( ID_VISUAL_PEAKMETER, std::make_shared<PeakMeter>( *this ) ) );
 
 	int visualID = m_Settings.GetVisualID();
 	switch ( visualID ) {
@@ -140,10 +141,6 @@ WndVisual::WndVisual( HINSTANCE instance, HWND parent, HWND rebarWnd, HWND statu
 
 WndVisual::~WndVisual()
 {
-	for ( const auto& iter : m_Visuals ) {
-		Visual* visual = iter.second;
-		delete visual;
-	}
 	ReleaseD2D();
 }
 
@@ -154,7 +151,11 @@ HWND WndVisual::GetWindowHandle()
 
 void WndVisual::ReleaseD2D()
 {
-	if ( m_D2DDeviceContext ) {
+	for ( const auto& iter : m_Visuals ) {
+		const auto& visual = iter.second;
+		visual->FreeResources();
+	}
+  if ( m_D2DDeviceContext ) {
 		m_D2DDeviceContext.Reset();
 	}
 	if ( m_D2DSwapChain ) {
@@ -406,9 +407,8 @@ void WndVisual::Resize( WINDOWPOS* windowPos )
 Visual* WndVisual::GetCurrentVisual()
 {
 	Visual* visual = nullptr;
-	auto visualIter = m_Visuals.find( m_CurrentVisual );
-	if ( visualIter != m_Visuals.end() ) {
-		visual = visualIter->second;
+	if ( const auto& visualIter = m_Visuals.find( m_CurrentVisual ); m_Visuals.end() != visualIter ) {
+		visual = visualIter->second.get();
 	}
 	return visual;
 }
@@ -425,19 +425,14 @@ std::set<UINT> WndVisual::GetVisualIDs() const
 void WndVisual::SelectVisual( const long id )
 {
 	if ( id != m_CurrentVisual ) {
-		Visual* visual = GetCurrentVisual();
-		if ( nullptr != visual ) {
+		if ( Visual* visual = GetCurrentVisual(); nullptr != visual ) {
 			visual->Hide();
 		}
 		m_CurrentVisual = 0;
-
-		const auto visualIter = m_Visuals.find( id );
-		if ( visualIter != m_Visuals.end() ) {
-			visual = visualIter->second;
-			if ( nullptr != visual ) {
-				visual->Show();
-				m_CurrentVisual = id;
-			}
+		
+		if ( const auto& visual = m_Visuals.find( id ); m_Visuals.end() != visual ) {
+			visual->second->Show();
+			m_CurrentVisual = id;
 		}
 		m_Settings.SetVisualID( static_cast<int>( m_CurrentVisual ) );
 	}
@@ -473,8 +468,7 @@ void WndVisual::OnOscilloscopeColour()
 	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
 	if ( const auto colour = ChooseColour( m_hWnd, initialColour, customColours ); colour.has_value() ) {
 		m_Settings.SetOscilloscopeColour( colour.value() );
-		auto visual = m_Visuals.find( ID_VISUAL_OSCILLOSCOPE );
-		if ( m_Visuals.end() != visual ) {
+		if ( const auto& visual = m_Visuals.find( ID_VISUAL_OSCILLOSCOPE ); m_Visuals.end() != visual ) {
 			visual->second->OnSettingsChange();
 		}
 	}
@@ -486,9 +480,8 @@ void WndVisual::OnOscilloscopeBackground()
 	VUPlayer* vuplayer = VUPlayer::Get();
 	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
 	if ( const auto colour = ChooseColour( m_hWnd, initialColour, customColours ); colour.has_value() ) {
-		m_Settings.SetOscilloscopeBackground( colour.value() );
-		auto visual = m_Visuals.find( ID_VISUAL_OSCILLOSCOPE );
-		if ( m_Visuals.end() != visual ) {
+		m_Settings.SetOscilloscopeBackground( colour.value() );		
+		if ( const auto& visual = m_Visuals.find( ID_VISUAL_OSCILLOSCOPE ); m_Visuals.end() != visual ) {
 			visual->second->OnSettingsChange();
 		}
 	}
@@ -501,8 +494,7 @@ void WndVisual::OnOscilloscopeWeight( const UINT commandID )
 	const float currentWeight = m_Settings.GetOscilloscopeWeight();
 	if ( weight != currentWeight ) {
 		m_Settings.SetOscilloscopeWeight( weight );
-		auto visual = m_Visuals.find( ID_VISUAL_OSCILLOSCOPE );
-		if ( m_Visuals.end() != visual ) {
+		if ( const auto& visual = m_Visuals.find( ID_VISUAL_OSCILLOSCOPE ); m_Visuals.end() != visual ) {
 			visual->second->OnSettingsChange();
 		}
 	}
@@ -526,8 +518,7 @@ void WndVisual::OnSpectrumAnalyserColour( const UINT commandID )
 			background = colour.value();
 		}
 		m_Settings.SetSpectrumAnalyserSettings( base, peak, background );
-		auto visual = m_Visuals.find( ID_VISUAL_SPECTRUMANALYSER );
-		if ( m_Visuals.end() != visual ) {
+		if ( const auto& visual = m_Visuals.find( ID_VISUAL_SPECTRUMANALYSER ); m_Visuals.end() != visual ) {
 			visual->second->OnSettingsChange();
 		}
 	}
@@ -551,8 +542,7 @@ void WndVisual::OnPeakMeterColour( const UINT commandID )
 			background = colour.value();
 		}
 		m_Settings.SetPeakMeterSettings( base, peak, background );
-		auto visual = m_Visuals.find( ID_VISUAL_PEAKMETER );
-		if ( m_Visuals.end() != visual ) {
+		if ( const auto& visual = m_Visuals.find( ID_VISUAL_PEAKMETER ); m_Visuals.end() != visual ) {
 			visual->second->OnSettingsChange();
 		}
 	}
@@ -565,12 +555,10 @@ void WndVisual::OnVUMeterDecay( const UINT commandID )
 	const float currentDecay = m_Settings.GetVUMeterDecay();
 	if ( decay != currentDecay ) {
 		m_Settings.SetVUMeterDecay( decay );
-		auto visual = m_Visuals.find( ID_VISUAL_VUMETER_STEREO );
-		if ( m_Visuals.end() != visual ) {
+		if ( const auto& visual = m_Visuals.find( ID_VISUAL_VUMETER_STEREO ); m_Visuals.end() != visual ) {
 			visual->second->OnSettingsChange();
 		}
-		visual = m_Visuals.find( ID_VISUAL_VUMETER_MONO );
-		if ( m_Visuals.end() != visual ) {
+		if ( const auto& visual = m_Visuals.find( ID_VISUAL_VUMETER_MONO ); m_Visuals.end() != visual ) {
 			visual->second->OnSettingsChange();
 		}
 	}
@@ -588,7 +576,7 @@ std::map<UINT,float> WndVisual::GetVUMeterDecayRates() const
 
 void WndVisual::OnPlaceholderArtworkChanged()
 {
-	if ( const auto visual = m_Visuals.find( ID_VISUAL_ARTWORK ); m_Visuals.end() != visual ) {
+	if ( const auto& visual = m_Visuals.find( ID_VISUAL_ARTWORK ); m_Visuals.end() != visual ) {
 		visual->second->OnSettingsChange();
 	}
 }
@@ -617,4 +605,14 @@ void WndVisual::OnSysColorChange()
 			visual->OnSysColorChange();
 		}
 	}
+}
+
+void WndVisual::OnDisplayChange()
+{
+  m_DPIScaling = GetDPIScaling();
+}
+
+float WndVisual::GetDPIScalingFactor() const
+{
+  return m_DPIScaling;
 }

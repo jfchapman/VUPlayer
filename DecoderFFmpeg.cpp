@@ -6,6 +6,7 @@ extern "C"
 {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libswresample/swresample.h>
 }
 
 DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context context ) :
@@ -46,6 +47,18 @@ DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context contex
 									if ( result >= 0 ) {
 										m_Packet = av_packet_alloc();
 										m_Frame = av_frame_alloc();
+
+                    const auto srcLayout = m_DecoderContext->ch_layout;
+                    const auto srcFormat = m_DecoderContext->sample_fmt;
+                    const AVChannelLayout dstLayout = srcLayout;
+                    const AVSampleFormat dstFormat = AV_SAMPLE_FMT_FLT;
+                    result = swr_alloc_set_opts2( &m_ResamplerContext, &dstLayout, dstFormat, codecParams->sample_rate, &srcLayout, srcFormat, codecParams->sample_rate, 0, nullptr );
+                    if ( result >= 0 ) {
+                      if ( swr_init( m_ResamplerContext ) < 0 ) {
+                        swr_free( &m_ResamplerContext );
+                        m_ResamplerContext = nullptr;
+                      }
+                    }
 									}
 								}
 							}
@@ -56,7 +69,7 @@ DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context contex
 		}
 	}
 
-	if ( ( nullptr == m_FormatContext ) || ( nullptr == m_DecoderContext ) || ( nullptr == m_Packet ) || ( nullptr == m_Frame ) ) {
+	if ( ( nullptr == m_FormatContext ) || ( nullptr == m_DecoderContext ) || ( nullptr == m_Packet ) || ( nullptr == m_Frame ) || ( nullptr == m_ResamplerContext ) ) {
 		if ( nullptr != m_Packet ) {
 			av_packet_free( &m_Packet );
 		}
@@ -68,6 +81,9 @@ DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context contex
 		}
 		if ( nullptr != m_FormatContext ) {
 			avformat_close_input( &m_FormatContext );
+		}
+		if ( nullptr != m_ResamplerContext ) {
+			swr_free( &m_ResamplerContext );
 		}
 		throw std::runtime_error( "DecoderFFmpeg could not load file" );
 	}
@@ -81,113 +97,23 @@ DecoderFFmpeg::~DecoderFFmpeg()
 	av_frame_free( &m_Frame );
 	avcodec_free_context( &m_DecoderContext );
 	avformat_close_input( &m_FormatContext );
+  swr_free( &m_ResamplerContext );
 }
 
-void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame, std::vector<float>& buffer )
+void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame )
 {
-	if ( nullptr != frame ) {
-		switch ( frame->format ) {
-			// Non-planar sample formats
-			case AV_SAMPLE_FMT_U8 : {
-				uint8_t* data = frame->data[ 0 ];
-				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
-					buffer.push_back( Unsigned8ToFloat( data[ pos ] ) );
-				}
-				break;
-			}
-			case AV_SAMPLE_FMT_S16 : {
-				int16_t* data = reinterpret_cast<int16_t*>( frame->data[ 0 ] );
-				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
-					buffer.push_back( Signed16ToFloat( data[ pos ] ) );
-				}
-				break;
-			}
-			case AV_SAMPLE_FMT_S32 : {
-				int32_t* data = reinterpret_cast<int32_t*>( frame->data[ 0 ] );
-				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
-					buffer.push_back( Signed32ToFloat( data[ pos ] ) );
-				}
-				break;
-			}
-			case AV_SAMPLE_FMT_S64 : {
-				int64_t* data = reinterpret_cast<int64_t*>( frame->data[ 0 ] );
-				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
-					buffer.push_back( Signed64ToFloat( data[ pos ] ) );
-				}
-				break;
-			}
-			case AV_SAMPLE_FMT_FLT : {
-				float* data = reinterpret_cast<float*>( frame->data[ 0 ] );
-				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
-					buffer.push_back( data[ pos ] );
-				}
-				break;
-			}
-			case AV_SAMPLE_FMT_DBL : {
-				double* data = reinterpret_cast<double*>( frame->data[ 0 ] );
-				for ( int pos = 0; pos < frame->ch_layout.nb_channels * frame->nb_samples; pos++ ) {
-					buffer.push_back( static_cast<float>( data[ pos ] ) );
-				}
-				break;
-			}
+  if ( nullptr == frame )
+    return;
 
-			// Planar sample formats
-			case AV_SAMPLE_FMT_U8P : {
-				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
-						uint8_t* data = frame->data[ channel ];
-						buffer.push_back( Unsigned8ToFloat( data[ samplePos ] ) );
-					}					
-				}
-				break;
-			}
-			case AV_SAMPLE_FMT_S16P : {
-				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
-						int16_t* data = reinterpret_cast<int16_t*>( frame->data[ channel ] );
-						buffer.push_back( Signed16ToFloat( data[ samplePos ] ) );
-					}					
-				}
-				break;
-			}
-			case AV_SAMPLE_FMT_S32P : {
-				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
-						int32_t* data = reinterpret_cast<int32_t*>( frame->data[ channel ] );
-						buffer.push_back( Signed32ToFloat( data[ samplePos ] ) );
-					}					
-				}
-				break;
-			}
-			case AV_SAMPLE_FMT_S64P : {
-				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
-						int64_t* data = reinterpret_cast<int64_t*>( frame->data[ channel ] );
-						buffer.push_back( Signed64ToFloat( data[ samplePos ] ) );
-					}					
-				}
-				break;
-			}
-			case AV_SAMPLE_FMT_FLTP : {
-				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
-						float* data = reinterpret_cast<float*>( frame->data[ channel ] );
-						buffer.push_back( data[ samplePos ] );
-					}					
-				}
-				break;
-			}
-			case AV_SAMPLE_FMT_DBLP : {
-				for ( int samplePos = 0; samplePos < frame->nb_samples; samplePos++ ) {
-					for ( int channel = 0; channel < frame->ch_layout.nb_channels; channel++ ) {
-						double* data = reinterpret_cast<double*>( frame->data[ channel ] );
-						buffer.push_back( static_cast<float>( data[ samplePos ] ) );
-					}					
-				}
-				break;
-			}
-		}
-	}
+  const size_t previousBufferSize = m_Buffer.size();
+  m_Buffer.resize( previousBufferSize + frame->nb_samples * GetChannels() );
+  uint8_t* buffer = reinterpret_cast<uint8_t*>( m_Buffer.data() + previousBufferSize );
+  const int samples = swr_convert( m_ResamplerContext, &buffer, frame->nb_samples, frame->data, frame->nb_samples );
+  if ( samples > 0 ) {
+    m_Buffer.resize( previousBufferSize + samples * GetChannels() );
+  } else {
+    m_Buffer.resize( previousBufferSize );
+  }
 }
 
 bool DecoderFFmpeg::Decode()
@@ -205,7 +131,7 @@ bool DecoderFFmpeg::Decode()
 			while ( result >= 0 ) {
 				result = avcodec_receive_frame( m_DecoderContext, m_Frame );
 				if ( result >= 0 ) {
-					ConvertSampleData( m_Frame, m_Buffer );
+					ConvertSampleData( m_Frame );
 					av_frame_unref( m_Frame );
 				}
 			}

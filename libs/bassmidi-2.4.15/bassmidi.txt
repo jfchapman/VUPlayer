@@ -1,0 +1,734 @@
+BASSMIDI 2.4
+Copyright (c) 2006-2024 Un4seen Developments Ltd. All rights reserved.
+
+Files that you should have found in the BASSMIDI package
+========================================================
+Win32 version
+-------------
+BASSMIDI.TXT    This file
+BASSMIDI.DLL    BASSMIDI module
+BASSMIDI.CHM    BASSMIDI documentation
+X64\
+  BASSMIDI.DLL    64-bit BASSMIDI module
+C\              C/C++ API and examples...
+  BASSMIDI.H      BASSMIDI C/C++ header file
+  BASSMIDI.LIB    BASSMIDI import library
+  BASSMIDI.SLN    Visual Studio solution for examples
+  MAKEFILE        Makefile for examples
+  MAKEFILE.IN     Makefile helper macros
+  X64\
+    BASSMIDI.LIB    64-bit BASSMIDI import library
+  MIDITEST\       MIDI playback example
+    ...
+  SF2PACK\        Soundfont packer
+    ...
+  SYNTH\          Real-time MIDI example
+    ...
+  BIN\            Precompiled examples
+    MIDITEST.EXE
+    SF2PACK.EXE
+    SYNTH.EXE
+VB\             Visual Basic API and examples...
+  BASSMIDI.BAS    BASSMIDI Visual Basic module
+  MIDITEST\       MIDI playback example
+    ...
+DELPHI\         Delphi API and examples...
+  BASSMIDI.PAS    BASSMIDI Delphi unit
+  MIDITEST\       MIDI playback example
+    ...
+  SYNTH\          Real-time MIDI example
+    ...
+
+NOTE: You may need to "Unblock" the BASSMIDI.CHM file in its "Properties" to
+      view it on Windows 7. The documentation can also be viewed online at
+      the BASS website.
+
+NOTE: To run the example EXEs, first you will have to copy BASSMIDI.DLL and
+      BASS.DLL into the same directory as them.
+
+NOTE: To build the examples, you will need to copy the BASS API into the same
+      directory as the BASSMIDI API.
+
+NOTE: The Delphi and VB examples may not always be up to date with the C
+      examples, so the latter should be preferred as references if possible.
+
+macOS version
+-------------
+BASSMIDI.TXT    This file
+LIBBASSMIDI.DYLIB  BASSMIDI module
+BASSMIDI.CHM    BASSMIDI documentation
+BASSMIDI.H      BASSMIDI C/C++ header file
+BASSMIDI.XCODEPROJ  Xcode project for examples
+MIDITEST\       MIDI playback example
+  ...
+SF2PACK\        Soundfont packer
+  ...
+SYNTH\          Real-time MIDI example
+  ...
+
+NOTE: To build the examples, you will need to copy the BASS API into the same
+      directory as the BASSMIDI API.
+
+Linux version
+-------------
+BASSMIDI.TXT    This file
+BASSMIDI.CHM    BASSMIDI documentation
+BASSMIDI.H      BASSMIDI C/C++ header file
+MAKEFILE        Makefile for examples
+MAKEFILE.IN     Makefile helper macros
+LIBS\           BASSMIDI modules
+  ...
+MIDITEST\       MIDI playback example
+  ...
+SF2PACK\        Soundfont packer
+  ...
+SYNTH\          Real-time MIDI example
+  ...
+
+NOTE: To build the examples, you will need to copy the BASS API into the same
+      directory as the BASSMIDI API.
+
+Android version
+---------------
+BASSMIDI.TXT    This file
+BASSMIDI.CHM    BASSMIDI documentation
+LIBS\           BASSMIDI modules
+  ...
+C\              C/C++ API...
+  BASSMIDI.H      BASSMIDI C/C++ header file
+JAVA\COM\UN4SEEN\BASS\
+  BASSMIDI.JAVA   BASSMIDI Java class
+EXAMPLES\       Java examples
+  BUILD.GRADLE    Android Studio build script for examples
+  SETTINGS.GRADLE
+  PROGUARD-BASS.PRO
+  MIDITEST\       MIDI playback example
+    ...
+
+NOTE: To build the examples, you will need to copy the BASS API into the same
+      directory as the BASSMIDI API.
+
+iOS version
+-----------
+BASSMIDI.TXT    This file
+BASSMIDI.XCFRAMEWORK  BASSMIDI framework
+BASSMIDI.CHM    BASSMIDI documentation
+BASSMIDI.H      BASSMIDI C/C++ header file
+
+
+What's the point?
+=================
+BASSMIDI is an extension to the BASS audio library, enabling the playing of
+MIDI files and custom event sequences, using SF2 (including SF2PACK and SF3)
+and/or SFZ soundfonts to provide the sounds. MIDI input is also supported.
+
+
+Requirements
+============
+BASS 2.4 is required.
+
+
+Using BASSMIDI
+==============
+The MIDI format is used in very much the same way as any of the built-in BASS
+stream formats; simply call the MIDI stream creation function instead of the
+BASS built-in functions. The BASS plugin system (see BASS_PluginLoad) is also
+supported.
+
+SF2 and SFZ soundfonts are used to provide the sounds. There are several
+soundfonts available on the internet, including a couple on the BASS webpage.
+On Windows, the Creative 28MB (28MBGM.SF2), 8MB (CT8MGM.SF2), 4MB (CT4MGM.SF2),
+or 2MB (CT2MGM.SF2) soundfont will be used by default when present in the
+Windows system directory.
+
+The usage information in the BASS.TXT file (from the BASS package) is also
+applicable to BASSMIDI and other add-ons.
+
+TIP: The BASSMIDI.CHM file should be put in the same directory as the BASS.CHM
+     file, so that the BASSMIDI documentation can be accessed from within the
+     BASS documentation.
+
+iOS version
+-----------
+The CoreMIDI framework is required for MIDI input, so that should be added to
+the "Link Binary With Libraries" build phase in Xcode.
+
+
+Latest Version
+==============
+The latest versions of BASSMIDI & BASS can be found at the BASS website:
+
+	www.un4seen.com
+
+
+Licence
+=======
+BASSMIDI is free to use with BASS.
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, BASSMIDI IS PROVIDED
+"AS IS", WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY
+AND/OR FITNESS FOR A PARTICULAR PURPOSE. THE AUTHORS SHALL NOT BE HELD
+LIABLE FOR ANY DAMAGE THAT MAY RESULT FROM THE USE OF BASSMIDI. YOU USE
+BASSMIDI ENTIRELY AT YOUR OWN RISK.
+
+Usage of BASSMIDI indicates that you agree to the above conditions.
+
+All trademarks and other registered names contained in the BASSMIDI
+package are the property of their respective owners.
+
+
+History
+=======
+These are the major (and not so major) changes in each release, along with the
+functions/options that are introduced/affected by them. There are other little
+tweaks and fixes made along the way too.
+
+2.4.15 - 9/10/2024
+------------------
+* Support for Key On Velocity to attackModEnv/decayModEnv/releaseModEnv and
+  Key Number to startAddrsOffset SF2 modulators
+	BASS_MIDI_FontInit/User
+* Support for fileg_vel2attack/fileg_vel2decay/fileg_vel2release/pitcheg_vel2attack/
+  pitcheg_vel2decay/pitcheg_vel2release SFZ opcodes
+	BASS_MIDI_FontInit/User
+* Improved SFZ variable parsing compatibility (uses the shortest match)
+	BASS_MIDI_FontInit/User
+* Support for high-pass filter in fil_type SFZ opcode
+	BASS_MIDI_FontInit/User
+* SoundBlaster hardware limit emulation is disabled by default for modern SF2 soundfonts
+	BASS_MIDI_FONT_SBLIMITS/NOSBLIMITS (BASS_MIDI_FontInit/User flags)
+* Extended filter cutoff range when SB limits are disabled
+	BASS_MIDI_FONT_NOSBLIMITS (BASS_MIDI_FontInit/User flag)
+* Improved single note releasing when there are overlapping instances of the same note
+	BASS_MIDI_NOTEOFF1 (BASS_MIDI_StreamCreateFile/User/URL flag)
+* Ports above 7 are mapped to lower ports (modulo 8)
+	BASS_MIDI_StreamCreateFile
+* Higher ports are shifted to lower channels when lower ports are unused
+	BASS_MIDI_StreamCreateFile
+* Default per-drum USERFX levels to 127 instead of 0 in all modes
+	BASS_MIDI_NODRUMPARAMUSER (BASS_MIDI_StreamCreate/Events/File/User/URL flag)
+* Per-drum key settings may be applied to all keys at once
+	MIDI_EVENT_DRUM_xxx (BASS_MIDI_StreamEvent/s)
+* System mode/reset events are ignored from additional ports
+	BASS_MIDI_StreamCreateFile/User/URL
+	BASS_MIDI_StreamEvents
+* Sequencer specific meta-event retrieval
+	BASS_MIDI_MARK_SEQSPEC (BASS_MIDI_StreamGetMark type)
+* Queued event buffer preallocation
+	BASS_ATTRIB_MIDI_QUEUE_TICK/BYTE/ASYNC (BASS_ChannelSetAttribute options)
+* Faster SFZ info retrieval
+	BASS_MIDI_FontGetInfo
+* Support for SF2 soundfonts embedded in RMID files
+	BASS_MIDI_StreamCreateFile/User/URL
+* RIFF/RMID "INFO" tag support
+	BASS_TAG_RIFF_INFO (BASS_ChannelGetTags type)
+* MIDI filename retrieval
+	BASS_CHANNELINFO (filename member)
+* Approximate support for AWE32 filter NRPN (7f15/7f16)
+	MIDI_EVENT_CUTOFF/RESONANCE
+* Maximum voices is practically unlimited (~14 million)
+	BASS_CONFIG_MIDI_VOICES (BASS_SetConfig option)
+	BASS_ATTRIB_MIDI_VOICES (BASS_ChannelSetAttribute option)
+
+2.4.14 - 3/5/2022
+-----------------
+* Support for Key On Velocity to startAddrsOffset/modEnvToFilterFc and CC21-24 to initialFilterFc/
+  initialAttenuation/attackVolEnv/decayVolEnv/releaseVolEnv/releaseModEnv/modEnvToFilterFc SF2 modulators
+	BASS_MIDI_FontInit/User
+* Support for all Key On Velocity to initialAttenuation SF2 modulator curve types
+	BASS_MIDI_FontInit/User
+* Support for SF3 (compressed SF2) soundfonts
+	BASS_MIDI_FontInit/User
+* Soundfont flag setting/retrieval
+	BASS_MIDI_FontFlags
+* Retrieval of currently loading samples
+	BASS_CONFIG_MIDI_SAMPLELOADING (BASS_GetConfig option)
+* Channel-specific soundfont configuration
+	BASS_MIDI_FONT_EX2 (BASS_MIDI_StreamSetFonts/GetFonts flag)
+	BASS_MIDI_FONTEX2 structure
+* MIDI port meta-event support (for more than 16 channels)
+	BASS_MIDI_StreamCreateFile/User/URL
+	BASS_MIDI_StreamEvents
+	BASS_MIDI_ConvertEvents
+* Asynchronous processing of live events
+	BASS_MIDI_ASYNC (BASS_MIDI_StreamCreate/Events/File/User/URL flag)
+	BASS_MIDI_EVENTS_ASYNC (BASS_MIDI_StreamEvents flag)
+	BASS_MIDI_EVENTS_FLUSH (BASS_MIDI_StreamEvents flag)
+	SYNTH example updated
+* Filtering of live events
+	BASS_MIDI_EVENTS_FILTER (BASS_MIDI_StreamEvents flag)
+* Improved reverb effect
+* Reverb/chorus levels raised (closer to Roland/Yamaha levels)
+* Current reverb/chorus type retrieval
+	MIDI_EVENT_REVERB_MACRO (BASS_MIDI_StreamGetEvent)
+	MIDI_EVENT_CHORUS_MACRO (BASS_MIDI_StreamGetEvent)
+* Treat soundfont reverb/chorus levels as minimums
+	BASS_MIDI_FONT_MINFX (BASS_MIDI_FontInit/User/Flags flag)
+* Default per-drum reverb/chorus levels now apply in all modes and can be disabled
+	BASS_MIDI_NODRUMPARAM (BASS_MIDI_StreamCreate/Events/File/User/URL flag)
+* Default drum channel configuration
+	BASS_EVENT_DEFDRUMS (BASS_MIDI_StreamEvent/s and BASS_MIDI_StreamCreateEvents)
+* Support for master tuning
+	MIDI_EVENT_MASTER_FINETUNE/COARSETUNE (BASS_MIDI_StreamEvent/s)
+* Omni-on/off (CC124/125) are treated as all-notes-off (CC123)
+	BASS_MIDI_StreamCreateFile/User/URL
+	BASS_MIDI_StreamEvents
+	BASS_MIDI_ConvertEvents
+* 16 point sinc interpolation support on ARM platforms with NEON
+	BASS_ATTRIB_MIDI_SRC (BASS_ChannelSetAttribute option)
+* Version number retrieval
+	BASS_MIDI_GetVersion
+* BASS_CONFIG_MIDI_SFZHEAD value changed (was same as BASS_CONFIG_MIDI_SAMPLEREAD)
+	BASS_CONFIG_MIDI_SFZHEAD (BASS_SetConfigPtr option)
+* MIDI implementation chart added to documentation
+
+2.4.13 - 16/9/2020
+------------------
+* Vibrato rate/depth/delay adjustment
+	MIDI_EVENT_VIBRATO_RATE/DEPTH/DELAY (BASS_MIDI_StreamEvent/s)
+* Support for Key Number to initialAttenuation/initialFilterFc/pan and Key On Velocity
+  to decayVolEnv/releaseVolEnv SF2 modulators
+	BASS_MIDI_FontInit/User
+* Support for amp_keycenter/amp_keytrack/ampeg_vel2release/delay_beats/fil_keycenter/
+  fil_keytrack/locc67/hicc67/pan_keycenter/pan_keytrack/sw_default/sw_last/sw_lokey/
+  sw_lolast/sw_hikey/sw_hilast SFZ opcodes
+	BASS_MIDI_FontInit/User
+* Support for global and master headers and #define directive in SFZ files
+	BASS_MIDI_FontInit/User
+* SFZ files share memory for common sample files
+	BASS_MIDI_FontInit/User
+* Partial sample loading and unloading
+	BASS_MIDI_FontLoadEx
+	SYNTH example updated
+* Non-interpolated resampling option
+	BASS_ATTRIB_MIDI_SRC (BASS_ChannelSetAttribute option)
+* Tempo modification attribute
+	BASS_ATTRIB_MIDI_SPEED (BASS_ChannelSetAttribute option)
+	MIDITEST example updated
+* Mix level control
+	BASS_ATTRIB_MIDI_VOL (BASS_ChannelSetAttribute option)
+* Reverb level modification
+	BASS_ATTRIB_MIDI_REVERB (BASS_ChannelSetAttribute option)
+* Global SFZ headers
+	BASS_CONFIG_MIDI_SFZHEAD (BASS_SetConfigPtr option)
+* Linear volume envelopes option
+	BASS_MIDI_FONT_LINDECVOL (BASS_MIDI_FontInit/User flag)
+* Disabling of sample ramping-in
+	BASS_MIDI_FONT_NORAMPIN (BASS_MIDI_FontInit/User flag)
+* Disabling of Creative/SoundBlaster hardware limit emulation
+	BASS_MIDI_FONT_NOLIMITS	(BASS_MIDI_FontInit flag)
+* Duplicate soundfonts will be reloaded instead of shared if modified in the meantime
+	BASS_MIDI_FontInit
+* Memory-mapped support for default soundfont option
+	BASS_CONFIG_MIDI_DEFFONT
+* Retrieval of total memory usage for sample data
+	BASS_CONFIG_MIDI_SAMPLEMEM (BASS_GetConfig option)
+* Total sample data size available for SFZ files
+	BASS_MIDI_FontGetInfo
+* Adjustable asynchronous sample loading chunks
+	BASS_CONFIG_MIDI_SAMPLEREAD (BASS_SetConfig option)
+* CPU usage limiting is enabled by default during playback
+	BASS_MIDI_StreamCreate/Events/File/User/URL
+	BASS_ATTRIB_MIDI_CPU (BASS_ChannelSetAttribute option)
+* Option to limit sample loading waiting without killing voices
+	BASS_ATTRIB_MIDI_CPU (BASS_ChannelSetAttribute option)
+* Tick-based timing for realtime event streams
+	BASS_MIDI_StreamCreate
+	BASS_MIDI_StreamEvents
+	BASS_ATTRIB_MIDI_PPQN (BASS_ChannelSetAttribute option)
+* 48000 Hz soundfont data encoding option
+	BASS_MIDI_PACK_48KHZ (BASS_MIDI_FontPack flag)
+* macOS examples rewritten in Objective-C/Cocoa
+
+2.4.12 - 9/11/2018
+------------------
+* Support for more than 16 MIDI channels in custom event sequences
+	BASS_MIDI_StreamCreateEvents
+* Absolute timing option for custom events
+	BASS_MIDI_EVENTS_ABSTIME (BASS_MIDI_StreamEvents flag)
+* Retrieval of note-on events
+	MIDI_EVENT_NOTES (BASS_MIDI_StreamGetEvents/Ex filter)
+* Soundfont config can be modified without stopping currently playing notes
+	BASS_MIDI_StreamSetFonts
+* Memory-mapped soundfonts can be preloaded/mapped
+	BASS_MIDI_FontLoad
+* Support for Key On Velocity to initialAttenuation SF2 modulators
+	BASS_MIDI_FontInit/User
+* Linear attack phase option for SF2 modulation envelopes
+	BASS_MIDI_FONT_LINATTMOD (BASS_MIDI_FontInit/User flag)
+* The attack phase of SFZ pitch/filter envelopes is now linear instead of convex
+* Support for trigger/rt_decay/delay/amplfo_fade/fillfo_fade/pitchlfo_fade/pitch_random/
+  xfin_lokey/xfin_hikey/xfout_lokey/xfout_hikey/xf_keycurve/xfin_lovel/xfin_hivel/
+  xfout_lovel/xfout_hivel/xf_velcurve SFZ opcodes
+	BASS_MIDI_FontInit/User
+* Support for separate amplifier/filter/pitch LFOs in SFZ
+	BASS_MIDI_FontInit/User
+* Support for UTF-8 sample SFZ opcodes on Windows (already on other platforms)
+	BASS_MIDI_FontInit/User
+* Support for #include directive in SFZ files
+	BASS_MIDI_FontInit
+* SFZ files are no longer kept open/locked after being loaded
+	BASS_MIDI_FontInit
+* Samples given more time to load asynchronously when CPU usage is low
+	BASS_ATTRIB_MIDI_CPU (BASS_ChannelSetAttribute option)
+* BASS_MIDI_SINCINTER flag deprecated in favour of BASS_ATTRIB_MIDI_SRC attribute
+	BASS_MIDI_StreamCreate/Events/File/User/URL
+* Smoother low-pass filter activation and deactivation
+* Fix for transpose/tune SFZ opcodes with encoded samples
+
+2.4.11 - 30/3/2017
+------------------
+* Event modification/filtering
+	BASS_MIDI_StreamSetFilter
+	MIDIFILTERPROC
+* Simpler tempo modification
+	MIDI_EVENT_SPEED (BASS_MIDI_StreamEvent)
+	MIDITEST example updated
+* Checking whether individual notes are playing
+	MIDI_EVENT_NOTE (BASS_MIDI_StreamGetEvent)
+* Retrieval of total number of notes playing in a channel
+	MIDI_EVENT_NOTES (BASS_MIDI_StreamGetEvent)
+* Retrieval of currently active voices in a channel
+	MIDI_EVENT_VOICES (BASS_MIDI_StreamGetEvent)
+* Retrieval of currently in use presets
+	BASS_MIDI_StreamGetPreset
+* SFZ filenames are used as preset names
+	BASS_MIDI_FontGetPreset
+* Support for loop info in FLAC samples used with SFZ (requires BASSFLAC 2.4.3)
+* Faster loading of very large MIDI files
+	BASS_MIDI_StreamCreateFile/User/URL
+* Faster unfiltered event counting
+	BASS_MIDI_StreamGetEvents/Ex
+	BASS_MIDI_ConvertEvents
+* 24-bit paramater passed to MIDI_EVENT_TEMPO event sync callbacks
+	BASS_SYNC_MIDI_EVENT (BASS_ChannelSetSync type)
+* When getting the number of events, only those in the specified range are counted
+	BASS_MIDI_StreamGetEventsEx
+* Invalid event types in custom sequences will give an error instead of being ignored
+	BASS_MIDI_StreamCreateEvents
+
+2.4.10 - 8/12/2016
+------------------
+* 16 point sinc interpolation option
+	BASS_ATTRIB_MIDI_SRC (BASS_ChannelSetAttribute option)
+* Support for lorand/hirand/locc1/hicc1/locc64/hicc64/off_mode/default_path SFZ opcodes
+	BASS_MIDI_FontInit/User
+* Support for Key On Velocity to initialFilterFc/attackVolEnv SF2 modulators
+	BASS_MIDI_FontInit/User
+* Conversion of raw MIDI data to BASS_MIDI_EVENT
+	BASS_MIDI_ConvertEvents
+* Modulation (CC1) destination control
+	MIDI_EVENT_MOD_VIBRATO/PITCH/FILTER/VOLUME (BASS_MIDI_StreamEvent/s)
+	MIDI_EVENT_MODRANGE superseded by MIDI_EVENT_MOD_VIBRATO
+* Sostenuto
+	MIDI_EVENT_SOSTENUTO (BASS_MIDI_StreamEvent/s)
+* Legato channel mode
+	MIDI_EVENT_MODE (BASS_MIDI_StreamEvent)
+* Partial retrieval of events
+	BASS_MIDI_StreamGetEventsEx
+* Bulk MIDI state retrieval/setting
+	BASS_ATTRIB_MIDI_STATE (BASS_ChannelGet/SetAttributeEx option)
+* Support for delaying custom events, including delta-time info in raw MIDI data
+	BASS_MIDI_EVENTS_TIME (BASS_MIDI_StreamEvents flag)
+* Cancellation of pending custom events
+	BASS_MIDI_EVENTS_CANCEL (BASS_MIDI_StreamEvents flag)
+* Marker for the start of each track in SMF2 files
+	BASS_MIDI_MARK_TRACKSTART (BASS_MIDI_StreamGetMark type)
+* Ignoring of soundfont effect levels
+	BASS_MIDI_FONT_NOFX (BASS_MIDI_FontInit/Ex flag)
+* Maximum voice limit increased to 100000
+	BASS_CONFIG_MIDI_VOICES (BASS_SetConfig option)
+	BASS_ATTRIB_MIDI_VOICES (BASS_ChannelSetAttribute option)
+* Unicode support for default soundfont option on Windows
+	BASS_CONFIG_MIDI_DEFFONT
+* BASS_CONFIG_UNICODE option support for input device names
+	BASS_MIDI_InGetDeviceInfo
+* Improved seeking with MIDI files that have events for a channel in multiple tracks
+	BASS_ChannelSetPosition
+* Fix for 2GB size limit when unpacking a soundfont on Windows
+	BASS_MIDI_FontUnpack
+
+2.4.9 - 4/12/2014
+-----------------
+* SFZ soundfont support
+	BASS_MIDI_FontInit/User
+* Support for XG drums in bank 127 of SF2 soundfonts
+	BASS_MIDI_FONT_XGDRUMS (BASS_MIDI_FontInit/Ex flag)
+* Key pressure/aftertouch support
+	MIDI_EVENT_KEYPRES (BASS_MIDI_StreamEvent/s)
+	MIDI_EVENT_KEYPRES_VIBRATO/PITCH/FILTER/VOLUME (BASS_MIDI_StreamEvent/s)
+* 3rd effect path for custom processing
+	BASS_MIDI_CHAN_USERFX (BASS_MIDI_StreamGetChannel option)
+	MIDI_EVENT_USERFX (BASS_MIDI_StreamEvent/s)
+	MIDI_EVENT_USERFX_LEVEL (BASS_MIDI_StreamEvent/s)
+	MIDI_EVENT_USERFX_REVERB (BASS_MIDI_StreamEvent/s)
+	MIDI_EVENT_USERFX_CHORUS (BASS_MIDI_StreamEvent/s)
+* Custom reverb/chorus effect processing
+	BASS_MIDI_CHAN_CHORUS/REVERB (BASS_MIDI_StreamGetChannel options)
+* Custom channel processing output routed to reverb/chorus/custom effects
+	BASS_MIDI_StreamGetChannel
+* Default drum reverb/chorus levels set to XG spec in XG mode (GS/GM modes too)
+	MIDI_EVENT_DRUM_REVERB/CHORUS (BASS_MIDI_StreamEvent/s)
+* Decay time event
+	MIDI_EVENT_DECAY (BASS_MIDI_StreamEvent/s)
+* Support for up to 65536 presets per bank
+	BASS_MIDI_StreamSetFonts
+	MIDI_EVENT_PROGRAM (BASS_MIDI_StreamEvent/s)
+* Input ports to receive MIDI data from other software on Linux
+	BASS_MIDI_InInit
+	BASS_CONFIG_MIDI_IN_PORTS (BASS_SetConfig option)
+	SYNTH example updated
+* Single note releasing when there are overlapping instances of the same note
+	BASS_MIDI_NOTEOFF1 (BASS_MIDI_StreamCreateFile/User/URL flag)
+* Ignoring of system resets with unchanged mode
+	BASS_MIDI_NOSYSRESET (BASS_MIDI_StreamCreateFile/User/URL flag)
+	MIDI_EVENT_SYSTEM (BASS_MIDI_StreamEvent/s)
+* Disabling of running status
+	BASS_MIDI_EVENTS_NORSTATUS (BASS_MIDI_StreamEvents flag)
+* Maximum voice limit increased to 1000
+	BASS_CONFIG_MIDI_VOICES (BASS_SetConfig option)
+	BASS_ATTRIB_MIDI_VOICES (BASS_ChannelSetAttribute option)
+* Reduction of 24-bit data to 16-bit when packing soundfont samples
+	BASS_MIDI_PACK_16BIT (BASS_MIDI_FontPack flag)
+* Support for remaining SF2 generators: fixed key, fixed velocity, key to vol/mod envelope hold/decay
+* Fix for multi-track custom event sequence stream creation
+	BASS_MIDI_StreamCreateEvents
+
+2.4.8 - 2/5/2013
+----------------
+* User file soundfont loading
+	BASS_MIDI_FontInitUser
+* Retrieval of all of a soundfont's preset numbers
+	BASS_MIDI_FontGetPresets
+* More flexible soundfont preset mapping
+	BASS_MIDI_FONT_EX (BASS_MIDI_StreamSetFonts/GetFonts flag)
+	BASS_MIDI_FONTEX structure
+* Bank LSB controller support
+	MIDI_EVENT_BANK_LSB (BASS_MIDI_StreamEvent/s)
+	BASS_MIDI_FONTEX structure
+* Modulation depth range control
+	MIDI_EVENT_MODRANGE (BASS_MIDI_StreamEvent/s)
+* Channel pressure destination control
+	MIDI_EVENT_CHANPRES_VIBRATO/PITCH/FILTER/VOLUME (BASS_MIDI_StreamEvent/s)
+* Unhandled controller event
+	MIDI_EVENT_CONTROL (BASS_MIDI_StreamEvent/s)
+* Reverb send level default changed to 40 (was 0)
+	MIDI_EVENT_REVERB (BASS_MIDI_StreamEvent/s)
+* Retrieval of events from all tracks at once
+	BASS_MIDI_StreamGetEvents
+* Copyright/instrument/track name markers
+	BASS_MIDI_MARK_COPY (BASS_MIDI_StreamGetMark type)
+	BASS_MIDI_MARK_INST (BASS_MIDI_StreamGetMark type)
+	BASS_MIDI_MARK_TRACK (BASS_MIDI_StreamGetMark type)
+* Retrieval of all markers at once
+	BASS_MIDI_StreamGetMarks
+* New sync type that supports all marker types
+	BASS_SYNC_MIDI_MARK (BASS_ChannelSetSync type)
+* Non-removal of empty space at the end of a MIDI file
+	BASS_MIDI_NOCROP (BASS_MIDI_StreamCreateFile/User/URL flag)
+* Omission of a WAVE header when packing soundfont samples
+	BASS_MIDI_PACK_NOHEAD (BASS_MIDI_FontPack flag)
+* Streams created via the plugin system use the output device's sample rate
+	BASS_StreamCreateFile/etc
+* Automatic BASS_UNICODE flag use in C++ and Delphi
+	BASS_MIDI_StreamCreateFile/URL
+	BASS_MIDI_FontInit/Pack/Unpack
+
+2.4.7 - 29/6/2012
+-----------------
+* Custom event sequence streams
+	BASS_MIDI_StreamCreateEvents	
+* Sinc interpolated sample mixing
+	BASS_MIDI_SINCINTER (BASS_MIDI_StreamCreate/Events/File/User/URL flag)
+* Asynchronous sample loading
+	BASS_ATTRIB_MIDI_CPU (BASS_ChannelSetAttribute option)
+* Preset unloading
+	BASS_MIDI_FontUnload
+* Note stopping without sustain/decay
+	BASS_EVENT_NOTE (BASS_MIDI_StreamEvent/s)
+* Syncing on all event types
+	BASS_SYNC_MIDI_EVENT (BASS_ChannelSetSync type)
+* Marker tick position retrieval
+	BASS_MIDI_MARK_TICK (BASS_MIDI_StreamGetMark flag)
+* Maximum voice limit increased to 500
+	BASS_CONFIG_MIDI_VOICES (BASS_SetConfig option)
+	BASS_ATTRIB_MIDI_VOICES (BASS_ChannelSetAttribute option)
+* Default voice limit raised to 40 on Android/iOS
+	BASS_CONFIG_MIDI_VOICES (BASS_SetConfig option)
+* Active voice count retrieval
+	BASS_ATTRIB_MIDI_VOICES_ACTIVE (BASS_ChannelGetAttribute option)
+* Use of the device's current output rate
+	BASS_MIDI_StreamCreate/Events/File/User/URL
+* Memory-mapped soundfont loading
+	BASS_MIDI_FONT_MMAP (BASS_MIDI_FontInit flag)
+* Fix for applying multiple events in BASS_MIDI_EVENTS_STRUCT mode
+	BASS_MIDI_StreamEvents
+* Marker sync compatibility (with mixer/splitter/tempo/reverse streams) fix
+	BASS_SYNC_MIDI_MARKER/CUE/LYRIC (BASS_ChannelSetSync types)
+* MIDI sysex input compatibility fix for some drivers on Windows
+	MIDIINPROC
+
+2.4.6 - 30/3/2011
+-----------------
+* MIDI input device support
+	BASS_MIDI_InGetDeviceInfo
+	BASS_MIDI_InInit
+	BASS_MIDI_InFree
+	BASS_MIDI_InStart
+	BASS_MIDI_InStop
+	MIDIINPROC
+	SYNTH example updated
+* Multiple event processing including support for raw MIDI data
+	BASS_MIDI_StreamEvents
+* CPU usage limiting
+	BASS_ATTRIB_MIDI_CPU (BASS_ChannelSetAttribute option)
+* Scale/octave tuning
+	MIDI_EVENT_SCALETUNING (BASS_MIDI_StreamEvent/s)
+* Soft pedal event
+	MIDI_EVENT_SOFT (BASS_MIDI_StreamEvent/s)
+* Random panning
+	MIDI_EVENT_PAN (BASS_MIDI_StreamEvent/s)
+* System reset event
+	MIDI_EVENT_SYSTEM/EX (BASS_MIDI_StreamEvent/s)
+* Resetting of overridden drum key pan/reverb/chorus back to normal
+	MIDI_EVENT_DRUM_PAN/REVERB/CHORUS (BASS_MIDI_StreamEvent)
+* Retrieval of drum key event values
+	BASS_MIDI_StreamGetEvent
+* All events initialized to a MIDI file's 1st tick values
+	BASS_MIDI_StreamGetEvent
+* Adjustable MIDI channel count
+	BASS_ATTRIB_MIDI_CHANS (BASS_ChannelSetAttribute option)
+* Adjustable voice limit
+	BASS_ATTRIB_MIDI_VOICES (BASS_ChannelSetAttribute option)
+* Preloaded presets are not automatically compacted
+	BASS_MIDI_FontLoad
+	BASS_CONFIG_MIDI_COMPACT (BASS_SetConfig option)
+* Multiple instances of a soundfont
+	BASS_MIDI_FontInit
+* Xcode examples project added for OSX
+
+2.4.5 - 8/2/2010
+----------------
+* Key signature retrieval
+	BASS_MIDI_MARK_KEYSIG (BASS_MIDI_StreamGetMark type)
+	BASS_SYNC_MIDI_KEYSIG (BASS_ChannelSetSync type)
+* Tempo event initialized to MIDI file's 1st tick value
+	MIDI_EVENT_TEMPO (BASS_MIDI_StreamGetEvent)
+* UTF-16 support on OSX
+	BASS_UNICODE (BASS_MIDI_StreamCreateFile/BASS_MIDI_FontInit/Pack/Unpack flag)
+
+2.4.4 - 24/8/2009
+-----------------
+* Attack & release time events
+	MIDI_EVENT_ATTACK/RELEASE (BASS_MIDI_StreamEvent)
+* Drum key level NRPN event
+	MIDI_EVENT_DRUM_LEVEL (BASS_MIDI_StreamEvent)
+* MIDI file event retrieval
+	BASS_MIDI_StreamGetEvents
+* Time signature retrieval
+	BASS_MIDI_MARK_TIMESIG (BASS_MIDI_StreamGetMark type)
+	BASS_SYNC_MIDI_TIMESIG (BASS_ChannelSetSync type)
+* Default soundfont configuration
+	BASS_CONFIG_MIDI_DEFFONT (BASS_SetConfig option)
+
+2.4.3 - 19/3/2009
+-----------------
+* Possibility of applying DSP/FX to individual MIDI channels
+	BASS_MIDI_StreamGetChannel
+* Per-track volume control
+	BASS_ATTRIB_MIDI_TRACK_VOL (BASS_ChannelSetAttribute option)
+* Support for all tracks in format 2 MIDI files
+	BASS_MIDI_StreamCreateFile/User/URL
+
+2.4.2 - 28/10/2008
+------------------
+* Decaying of old sound when seeking
+	BASS_MIDI_DECAYSEEK (BASS_MIDI_StreamCreateFile/User/URL flag)
+	MIDITEST example updated (C version)
+* End decaying now also applies when looping
+	BASS_MIDI_DECAYEND (BASS_MIDI_StreamCreateFile/User/URL flag)
+* Support for 28MBGM.SF2 and CT8MGM.SF2 as default soundfonts
+
+2.4.1 - 9/7/2008
+----------------
+* Ticks-per-beat retrieval
+	BASS_ATTRIB_MIDI_PPQN (BASS_ChannelGetAttribute option)
+
+2.4 - 2/4/2008
+--------------
+* Tick-based positioning
+	BASS_POS_MIDI_TICK (BASS_ChannelGetLength/GetPosition/SetPosition mode)
+	BASS_SYNC_MIDI_TICK (BASS_ChannelSetSync type)
+* Preset name retrieval
+	BASS_MIDI_FontGetPreset
+* Text markers
+	BASS_MIDI_MARK_TEXT (BASS_MIDI_StreamGetMark type)
+	BASS_SYNC_MIDI_TEXT (BASS_ChannelSetSync type)
+* Individual marker retrieval
+	BASS_MIDI_StreamGetMark
+	BASS_MIDI_StreamGetMarks *removed*
+* Marker index passed to marker sync callbacks
+	BASS_SYNC_MIDI_MARKER/CUE/LYRIC
+* Use of BASS_Init sample rate
+	BASS_MIDI_StreamCreate/File/User/URL
+* Support for updated user file stream system
+	BASS_MIDI_StreamCreateFileUser
+* 64-bit file positioning
+	BASS_MIDI_StreamCreateFile
+* Callback "user" parameters changed to pointers
+	BASS_MIDI_StreamCreateURL
+	BASS_MIDI_StreamCreateFileUser
+
+2.3.0.3 - 10/7/2007
+-------------------
+* Syncing on events
+	BASS_SYNC_MIDI_EVENT (BASS_ChannelSetSync type)
+
+2.3.0.2 - 26/2/2007
+-------------------
+* Reverb and chorus
+	MIDI_EVENT_REVERB/CHORUS (BASS_MIDI_StreamEvent)
+	MIDI_EVENT_REVERB_TIME/DELAY/LOCUTOFF/HICUTOFF/LEVEL (BASS_MIDI_StreamEvent)
+	MIDI_EVENT_CHORUS_DELAY/DEPTH/RATE/FEEDBACK/LEVEL/REVERB (BASS_MIDI_StreamEvent)
+	BASS_MIDI_NOFX (BASS_MIDI_StreamCreate/File/User/URL flag)
+* Resonant low-pass filters
+	MIDI_EVENT_CUTOFF/RESONANCE (BASS_MIDI_StreamEvent)
+* Portamento
+	MIDI_EVENT_PORTAMENTO/TIME/NOTE (BASS_MIDI_StreamEvent)
+* Fine-tuning
+	MIDI_EVENT_FINETUNE/COARSETUNE (BASS_MIDI_StreamEvent)
+* Drum key specific parameters
+	MIDI_EVENT_DRUM_FINETUNE/COARSETUNE/PAN/REVERB/CHORUS/CUTOFF/RESONANCE (BASS_MIDI_StreamEvent)
+* Support for mono channel mode
+	MIDI_EVENT_MODE (BASS_MIDI_StreamEvent)
+* Support for master volume
+	MIDI_EVENT_MASTERVOL (BASS_MIDI_StreamEvent)
+* Channel level control
+	MIDI_EVENT_MIXLEVEL (BASS_MIDI_StreamEvent)
+* Channel transposing
+	MIDI_EVENT_TRANSPOSE (BASS_MIDI_StreamEvent)
+* Retrieval of current event values
+	BASS_MIDI_StreamGetEvent
+* Soundfont volume control
+	BASS_MIDI_FontSetVolume/GetVolume
+* Track number added to markers and syncs
+	BASS_MIDI_MARK (track member)
+	BASS_SYNC_MIDI_MARKER/CUE/LYRIC
+
+2.3.0.1 - 1/12/2006
+-------------------
+* Optionally apply matching soundfonts to all banks
+	BASS_CONFIG_MIDI_AUTOFONT (BASS_SetConfig option)
+* Support for 0 length notes
+
+2.3 - 14/11/2006
+----------------
+* First release
+
+
+Bug reports, Suggestions, Comments, Enquiries, etc
+==================================================
+If you have any of the aforementioned please visit the BASS forum at the
+website.
+

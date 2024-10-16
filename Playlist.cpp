@@ -1063,9 +1063,9 @@ static bool SetCueStart( const std::string& line, MediaInfo& mediaInfo )
   return false;
 }
 
-bool Playlist::AddCUE( const std::wstring& filename )
+static std::map<long /*trackNumber*/, std::pair<bool /*isAudio*/, MediaInfo>> GetCueEntries( const std::filesystem::path& filename )
 {
-  bool added = false;
+  std::map<long /*trackNumber*/, std::pair<bool /*isAudio*/, MediaInfo>> tracks;
   std::ifstream stream( filename );
   if ( stream.good() ) {
 		std::filesystem::path playlistPath( filename );
@@ -1088,7 +1088,6 @@ bool Playlist::AddCUE( const std::wstring& filename )
     std::filesystem::path currentFile;
     bool currentFileExists = false;
 
-    std::map<long /*trackNumber*/, std::pair<bool /*isAudio*/, MediaInfo>> tracks;
     auto currentTrack = tracks.end();
 
     std::vector<std::wstring> matches;
@@ -1165,29 +1164,40 @@ bool Playlist::AddCUE( const std::wstring& filename )
         track = tracks.erase( track );
       }
     }
+  }
+  return tracks;
+}
 
-    for ( auto track = tracks.begin(); track != tracks.end(); track++ ) {
-      const bool isAudio = track->second.first;
-      MediaInfo& info = track->second.second;
-      if ( isAudio ) {
-        if ( auto nextTrack = track; ++nextTrack != tracks.end() ) {
-          const MediaInfo& nextInfo = nextTrack->second.second;
-          info.SetCueEnd( nextInfo.GetCueStart() );
-        }
-        if ( m_Library.GetMediaInfo( info ) ) {
-          AddItem( info );
-          added = true;
-        }
+bool Playlist::AddCUE( const std::wstring& filename )
+{
+  auto tracks = GetCueEntries( filename );
+  MediaInfo::List addedItems;
+  bool queryMusicBrainz = false;
+  for ( auto track = tracks.begin(); track != tracks.end(); track++ ) {
+    const bool isAudio = track->second.first;
+    MediaInfo& info = track->second.second;
+    if ( isAudio ) {
+      if ( auto nextTrack = track; ++nextTrack != tracks.end() ) {
+        const MediaInfo& nextInfo = nextTrack->second.second;
+        info.SetCueEnd( nextInfo.GetCueStart() );
       }
-    }
-
-    if ( added ) {
-			if ( VUPlayer* vuplayer = VUPlayer::Get(); ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) {
-        vuplayer->OnMusicBrainzQuery( this );
+      queryMusicBrainz |= !m_Library.GetMediaInfo( info, false /*scanMedia*/, false /*sendNotifications*/ );
+      if ( m_Library.GetMediaInfo( info ) ) {
+        AddItem( info );
+        addedItems.push_back( info );
       }
     }
   }
-  return added;
+  if ( !addedItems.empty() ) {
+    Playlist cueList( m_Library, GetID(), GetType() );
+    for ( const auto& item : addedItems ) {
+      cueList.AddItem( item );
+    }
+		if ( VUPlayer* vuplayer = VUPlayer::Get(); ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() && queryMusicBrainz ) {
+      vuplayer->OnMusicBrainzQuery( &cueList );
+    }
+  }
+  return !addedItems.empty();
 }
 
 std::set<std::wstring> Playlist::GetSupportedPlaylistExtensions()
@@ -1198,6 +1208,40 @@ std::set<std::wstring> Playlist::GetSupportedPlaylistExtensions()
 bool Playlist::IsSupportedPlaylist( const std::wstring& filename )
 {
 	return ( s_SupportedExtensions.end() != std::find( s_SupportedExtensions.begin(), s_SupportedExtensions.end(), GetFileExtension( filename ) ) );
+}
+
+std::optional<std::set<std::filesystem::path>> Playlist::ExtractCueFiles( std::set<std::filesystem::path>& originalFilenames )
+{
+  std::set<std::filesystem::path> cueFiles;
+  for ( auto filename = originalFilenames.begin(); originalFilenames.end() != filename; ) {
+    if ( const auto extension = WideStringToLower( filename->extension() ); L".cue" == extension ) {
+      cueFiles.insert( *filename );
+      filename = originalFilenames.erase( filename );
+    } else {
+      ++filename;
+    }
+  }
+
+  if ( !cueFiles.empty() ) {
+    // Map a copy of the original file names, to allow for case insensitive comparisons.
+    std::map<std::wstring, std::filesystem::path> filenames;
+    for ( const auto& originalFilename : originalFilenames ) {
+      filenames.insert( { WideStringToLower( originalFilename ), originalFilename } );
+    }
+    for ( const auto& cueFile : cueFiles ) {
+      const auto cueEntries = GetCueEntries( cueFile );
+      for ( const auto& [ tracknumber, entry ] : cueEntries ) {
+        const auto cueFilename = WideStringToLower( entry.second.GetFilename() );
+        if ( const auto match = filenames.find( cueFilename ); filenames.end() != match ) {
+          const auto& originalFilename = match->second;
+          originalFilenames.erase( originalFilename );
+          filenames.erase( match );
+        }
+      }
+    }
+  }
+
+  return cueFiles.empty() ? std::nullopt : std::make_optional( cueFiles );
 }
 
 bool Playlist::CanConvertAnyItems()
@@ -1257,7 +1301,7 @@ bool Playlist::AllowMusicBrainzQueries()
   if ( Type::CDDA == m_Type )
     return true;
 
-  return CDDAMedia::GetMusicBrainzID( this ).has_value();
+  return CDDAMedia::GetMusicBrainzPlaylistID( this ).has_value();
 }
 
 bool Playlist::UpdateOrAddItem( const MediaInfo& mediaInfo )

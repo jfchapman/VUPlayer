@@ -40,6 +40,7 @@ public:
 		std::string DiscID;                      // MusicBrainz Disc ID.
     std::string PlaylistID;                  // Playlist ID (for cue sheet results).
     std::optional<std::set<long>> StartCues; // Start cues (for cue sheet results).
+    std::optional<std::wstring> BackingFile; // Backing file (for cue sheet results).
 		Albums Albums;				                   // Matching albums.
 	};
 
@@ -55,7 +56,8 @@ public:
 	// 'forceDialog' - whether to show a dialog even for an exact match.
   // 'playlistID' - playlist ID (for cue sheet queries).
   // 'startCues' - start cues (for cue sheet queries).
-  void Query( const std::string& discID, const std::string& toc, const bool forceDialog, const std::string& playlistID, const std::optional<std::set<long>>& startCues = std::nullopt );
+  // 'backingFile' - backing file (for cue sheet queries),
+  void Query( const std::string& discID, const std::string& toc, const bool forceDialog, const std::string& playlistID, const std::optional<std::set<long>>& startCues = std::nullopt, const std::optional<std::wstring>& backingFile = std::nullopt );
 
 	// Displays a dialog allowing one of the matches to be selected from the 'result'.
 	// Returns the album index of the selected match, or -1 if a match was not selected.
@@ -84,6 +86,7 @@ private:
 		std::string TOC;			                      // CD table of contents.
     std::string PlaylistID;                     // Playlist ID (for cue sheet queries).
     std::optional<std::set<long>> StartCues;    // Start cues (for cue sheet queries).
+    std::optional<std::wstring> BackingFile;    // Backing file (for cue sheet queries).
     bool ForceMatchDialog;                      // Whether a dialog should be shown even for a single match.
 	};
 

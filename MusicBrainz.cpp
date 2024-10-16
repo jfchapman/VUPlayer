@@ -181,7 +181,7 @@ INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM w
 	return FALSE;
 }
 
-void MusicBrainz::Query( const std::string& discID, const std::string& toc, const bool forceDialog, const std::string& playlistID, const std::optional<std::set<long>>& startCues )
+void MusicBrainz::Query( const std::string& discID, const std::string& toc, const bool forceDialog, const std::string& playlistID, const std::optional<std::set<long>>& startCues, const std::optional<std::wstring>& backingFile )
 {
 	std::lock_guard<std::mutex> lock( m_PendingQueriesMutex );
 	bool addPending = true;
@@ -191,7 +191,7 @@ void MusicBrainz::Query( const std::string& discID, const std::string& toc, cons
 		++pendingQuery;
 	}
 	if ( addPending ) {
-		m_PendingQueries.push_back( { discID, toc, playlistID, startCues, forceDialog } );
+		m_PendingQueries.push_back( { discID, toc, playlistID, startCues, backingFile, forceDialog } );
 		SetEvent( m_WakeEvent );
 	}
 }
@@ -215,13 +215,14 @@ void MusicBrainz::QueryHandler()
 			}
 		}
 
-		const auto& [ discID, toc, playlistID, startCues, forceDialog ] = pendingQuery;
+		const auto& [ discID, toc, playlistID, startCues, backingFile, forceDialog ] = pendingQuery;
 
 		if ( !discID.empty() && !toc.empty() ) {
 			Result* result = new Result();
 			result->DiscID = discID;
       result->PlaylistID = playlistID;
       result->StartCues = startCues;
+      result->BackingFile = backingFile;
 
 			m_ActiveQuery = true;
 			const auto response = LookupDisc( discID, toc );

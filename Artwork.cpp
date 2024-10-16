@@ -8,7 +8,6 @@ static const int s_MinHeight = static_cast<int>( 100 * GetDPIScaling() );
 
 Artwork::Artwork( WndVisual& wndVisual ) :
 	Visual( wndVisual ),
-	m_Bitmap( nullptr ),
 	m_ArtworkID( L"Init" ),
 	m_PreviousSize( {} )
 {
@@ -16,9 +15,6 @@ Artwork::Artwork( WndVisual& wndVisual ) :
 
 Artwork::~Artwork()
 {
-	if ( nullptr != m_Bitmap ) {
-		m_Bitmap->Release();
-	}
 }
 
 int Artwork::GetHeight( const int width )
@@ -57,10 +53,10 @@ void Artwork::OnPaint()
 
 		LoadArtwork( mediaInfo, deviceContext );
 
-		const D2D1_SIZE_F targetSize = deviceContext->GetSize();
-		if ( nullptr != m_Bitmap ) {
+		if ( m_Bitmap ) {
+		  const D2D1_SIZE_F targetSize = deviceContext->GetSize();
 			const D2D1_SIZE_F bitmapSize = m_Bitmap->GetSize();
-			if ( ( bitmapSize.height > 0 ) && ( bitmapSize.width > 0 ) ) {
+			if ( ( bitmapSize.width > 0 ) && ( bitmapSize.height > 0 ) ) {
 				const D2D1_RECT_F srcRect = D2D1::RectF( 0.0f /*left*/, 0.0f /*top*/, bitmapSize.width /*right*/, bitmapSize.height /*bottom*/ );
 				const D2D1_RECT_F destRect = { 0, 0, targetSize.width, targetSize.height };
 				const FLOAT opacity = 1.0;
@@ -69,7 +65,7 @@ void Artwork::OnPaint()
 					D2D1_INTERPOLATION_MODE_HIGH_QUALITY_CUBIC : D2D1_INTERPOLATION_MODE_LINEAR;
 				m_PreviousSize = targetSize;
 
-				deviceContext->DrawBitmap( m_Bitmap, destRect, opacity, interpolationMode, NULL /*srcRect*/, NULL /*transform*/ );
+				deviceContext->DrawBitmap( m_Bitmap.Get(), destRect, opacity, interpolationMode, NULL /*srcRect*/, NULL /*transform*/ );
 			}
 		}
 		EndDrawing();
@@ -78,7 +74,7 @@ void Artwork::OnPaint()
 
 void Artwork::OnSettingsChange()
 {
-	FreeArtwork();
+	FreeResources();
 }
 
 void Artwork::OnSysColorChange()
@@ -89,7 +85,7 @@ void Artwork::LoadArtwork( const MediaInfo& mediaInfo, ID2D1DeviceContext* devic
 {
 	const std::wstring artworkID = mediaInfo.GetArtworkID( true /*checkFolder*/ );
 	if ( ( artworkID != m_ArtworkID ) && ( nullptr != deviceContext ) ) {
-		FreeArtwork();
+		FreeResources();
 		std::shared_ptr<Gdiplus::Bitmap> bitmap = GetArtworkBitmap( mediaInfo );
 		if ( bitmap ) {
 			Gdiplus::Rect rect( 0 /*x*/, 0 /*y*/, bitmap->GetWidth(), bitmap->GetHeight() );
@@ -107,13 +103,10 @@ void Artwork::LoadArtwork( const MediaInfo& mediaInfo, ID2D1DeviceContext* devic
 	}
 }
 
-void Artwork::FreeArtwork()
+void Artwork::FreeResources()
 {
-	if ( nullptr != m_Bitmap ) {
-		m_Bitmap->Release();
-		m_Bitmap = nullptr;
-	}
-	m_ArtworkID = L"Init";
+  m_Bitmap.Reset();
+  m_ArtworkID = L"Init";
 }
 
 std::unique_ptr<Gdiplus::Bitmap> Artwork::GetArtworkBitmap( const MediaInfo& mediaInfo )

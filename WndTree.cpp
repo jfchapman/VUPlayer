@@ -3460,7 +3460,7 @@ void WndTree::OnItemExpanding( const HTREEITEM item )
 void WndTree::AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist )
 {
 	if ( playlist && ( Playlist::Type::Folder == playlist->GetType() ) && ( nullptr != item ) ) {
-		std::set<std::wstring> fileNames;
+		std::set<std::filesystem::path> fileNames;
 
 		std::wstring folderPath;
 		GetFolderPath( item, folderPath );
@@ -3507,8 +3507,14 @@ void WndTree::AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist )
 			m_AddedFolderTracks[ item ] = fileNames;
 		}
 
+    if ( const auto cueFiles = Playlist::ExtractCueFiles( fileNames ) ) {
+      for ( const auto& cueFile : *cueFiles ) {
+        playlist->AddPlaylist( cueFile );
+      }
+    } 
+
 		for ( const auto& fileName : fileNames ) {
-			playlist->AddPending( fileName );
+			playlist->AddPending( fileName.native() );
 		}
 	}
 }
@@ -4376,12 +4382,16 @@ void WndTree::OnAddToPlaylist( const UINT command )
 					break;
 				}
 				case Playlist::Type::Folder : {
-					for ( const auto& entry : std::filesystem::recursive_directory_iterator( sourcePlaylist->GetName() ) ) {
-						std::error_code errorCode = {};
-						if ( entry.is_regular_file( errorCode ) && !entry.is_directory( errorCode ) ) {
-							targetPlaylist->AddPending( MediaInfo( entry.path() ) );
+          std::set<std::filesystem::path> filepaths;
+          std::error_code ec;
+					for ( const auto& entry : std::filesystem::recursive_directory_iterator( sourcePlaylist->GetName(), ec ) ) {
+						if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
+							filepaths.insert( entry.path() );
 						}
 					}
+          for ( const auto& filepath : filepaths ) {
+            targetPlaylist->AddPending( MediaInfo( filepath ) );
+          }
 					break;
 				}
 				default : {
@@ -4450,4 +4460,14 @@ HTREEITEM WndTree::RemoveFromChildAlbumNode( const HTREEITEM parent, const Media
 		albumNode = TreeView_GetNextSibling( m_hWnd, albumNode );
 	}
   return albumNode;
+}
+
+Playlist::Ptr WndTree::GetFolderPlaylist( const std::string& playlistID )
+{
+	std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
+  for ( const auto& playlist : m_FolderPlaylistMap ) {
+    if ( playlist.second && ( playlist.second->GetID() == playlistID ) )
+      return playlist.second;
+  }
+  return nullptr;
 }

@@ -95,7 +95,10 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 					if ( !autoplay.empty() ) {
 						cmdLineFiles.push_back( autoplay );
 						break;
-					}
+					} else if ( FILE_ATTRIBUTE_DIRECTORY & attributes ) {
+						cmdLineFiles.push_back( args[ argc ] );
+						break;
+          }
 				}
 			}
 		}
@@ -153,7 +156,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 
 	SetErrorMode( SEM_FAILCRITICALERRORS );
 
-	VUPlayer* vuplayer = new VUPlayer( g_hInst, g_hWnd, cmdLineFiles, portable, mode );
+  VUPlayer* vuplayer = new VUPlayer( g_hInst, g_hWnd, cmdLineFiles, portable, mode );
 
 	SetWindowLongPtr( g_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( vuplayer ) );
 	MSG msg;
@@ -330,6 +333,12 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
       return TRUE;
     }
+    case WM_DISPLAYCHANGE : {
+			if ( nullptr != vuplayer ) {
+				vuplayer->OnDisplayChange();
+			}
+      break;
+    }
 		case WM_COPYDATA : {
 			if ( nullptr != vuplayer ) {
 				COPYDATASTRUCT* copyData = reinterpret_cast<COPYDATASTRUCT*>( lParam );
@@ -350,7 +359,10 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 							if ( !autoplay.empty() ) {
 								filenames.push_back( autoplay );
 								break;
-							}
+					    } else if ( FILE_ATTRIBUTE_DIRECTORY & attributes ) {
+						    filenames.push_back( filename );
+						    break;
+              }
 						}
 						filename += ( 1 + wcslen( filename ) );
 					}

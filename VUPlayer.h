@@ -43,6 +43,8 @@
 #include "WndTree.h"
 #include "WndVisual.h"
 
+#include <queue>
+
 // Message ID for signalling that media information has been updated.
 // 'wParam' : pointer to previous MediaInfo, to be deleted by the message handler.
 // 'lParam' : pointer to updated MediaInfo, to be deleted by the message handler.
@@ -220,6 +222,9 @@ public:
 
   // Called when a power management event 'type' has occurred.
   void OnPowerBroadcast( const WPARAM type );
+
+  // Called when the display resolution has changed.
+  void OnDisplayChange();
 
 private:
 	// Main application instance.
@@ -450,4 +455,10 @@ private:
 
   // Title bar text format during playback.
   Settings::TitleBarFormat m_TitleBarFormat;
+
+  // Indicates whether a MusicBrainz result is being processed.
+  bool m_IsProcessingMusicBrainzResult = false;
+
+  // Pending MusicBrainz results to be processed.
+  std::queue<MusicBrainz::Result> m_PendingMusicBrainzResults;
 };

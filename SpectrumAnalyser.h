@@ -28,6 +28,9 @@ public:
 	// Called when the system colours have changed.
 	void OnSysColorChange() override;
 
+  // Called when the visual should free any resources.
+	void FreeResources() override;
+
 private:
 	// Render thread procedure.
 	static DWORD WINAPI RenderThreadProc( LPVOID lpParam );
@@ -44,9 +47,6 @@ private:
 	// Loads the resources using the 'deviceContext'.
 	void LoadResources( ID2D1DeviceContext* deviceContext );
 
-	// Frees the resources.
-	void FreeResources();
-
 	// Rendering thread handle.
 	HANDLE m_RenderThread;
 
@@ -54,10 +54,10 @@ private:
 	HANDLE m_RenderStopEvent;
 
 	// Analyser colour.
-	ID2D1LinearGradientBrush* m_Colour;
+	Microsoft::WRL::ComPtr<ID2D1LinearGradientBrush> m_Colour;
 
 	// Background colour.
-	ID2D1SolidColorBrush* m_BackgroundColour;
+	Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_BackgroundColour;
 
 	// Spectrum values.
 	std::vector<float> m_Values;

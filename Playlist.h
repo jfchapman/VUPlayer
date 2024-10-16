@@ -11,6 +11,7 @@
 #include <string>
 #include <optional>
 #include <set>
+#include <filesystem>
 
 class Playlist
 {
@@ -55,6 +56,10 @@ public:
 
 	// Returns whether 'filename' is a supported playlist type.
 	static bool IsSupportedPlaylist( const std::wstring& filename );
+
+  // Extracts CUE files, and all files referenced by CUE files, from a set of 'filenames'.
+  // Returns just the CUE files, or nullopt if no CUE files were found.
+  static std::optional<std::set<std::filesystem::path>> ExtractCueFiles( std::set<std::filesystem::path>& filenames );
 
 	// Column type.
 	enum class Column {

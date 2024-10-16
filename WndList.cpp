@@ -441,38 +441,23 @@ void WndList::AddFileToPlaylist( const std::wstring& filename )
 
 void WndList::AddFolderToPlaylist( const std::wstring& folder )
 {
-	WIN32_FIND_DATA findData;
-	std::wstring str = folder;
-	if ( !str.empty() && ( '\\' != str.back() ) ) {
-		str += '\\';
-	}
-	str += L"*.*";
-	const HANDLE handle = FindFirstFile( str.c_str(), &findData );
-	if ( INVALID_HANDLE_VALUE != handle ) {
-		BOOL found = TRUE;
-		while ( found ) {
-			if ( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) {
-				if ( findData.cFileName[ 0 ] != '.' ) {
-					str = folder;
-					if ( !str.empty() && ( '\\' != str.back() ) ) {
-						str += '\\';
-					}
-					str += findData.cFileName;
-					AddFolderToPlaylist( str );
-				}
-			}
-			else {
-				str = folder;
-				if ( !str.empty() && ( '\\' != str.back() ) ) {
-					str += '\\';
-				}
-				str += findData.cFileName;
-				AddFileToPlaylist( str );
-			}
-			found = FindNextFile( handle, &findData );
+  std::set<std::filesystem::path> filepaths;
+  std::error_code ec;
+  for ( const auto& entry : std::filesystem::recursive_directory_iterator( folder, ec ) ) {
+	  if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
+		  filepaths.insert( entry.path() );
 		}
-		FindClose( handle );
-	}	
+  }
+
+  // Strip out any files that are referenced by CUE files (to prevent duplicate entries).
+  if ( const auto cueFiles = Playlist::ExtractCueFiles( filepaths ) ) {
+    for ( const auto& cueFile : *cueFiles )
+      filepaths.insert( cueFile );
+  }
+
+  for ( const auto& filepath : filepaths ) {
+    AddFileToPlaylist( filepath );
+  }
 }
 
 void WndList::InsertListViewItem( const Playlist::Item& playlistItem, const int position )
@@ -1022,7 +1007,17 @@ void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelectio
 	  		filename->second.insert( item->ID );
 	  	}
       if ( ( -1 == selectedIndex ) && m_FileToSelect && ( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ) == std::tie( m_FileToSelect->GetFilename(), m_FileToSelect->GetCueStart(), m_FileToSelect->GetCueEnd() ) ) ) {
-				selectedIndex = static_cast<int>( std::distance( playlistItems.begin(), item ) );
+        if ( item->Info.GetCueStart() && ( Playlist::Type::Folder == m_Playlist->GetType() ) ) {
+          // When selecting a cue list item as part of a folder playlist at startup, ignore any intervening items which are not cue list items, as these are added later to the list control as pending items.
+          selectedIndex = 0;
+          for ( auto checkItem = playlistItems.begin(); checkItem != item; checkItem++ ) {
+            if ( checkItem->Info.GetCueStart() ) {
+              ++selectedIndex;
+            }
+          }
+        } else {
+				  selectedIndex = static_cast<int>( std::distance( playlistItems.begin(), item ) );
+        }
 			}
 		}
 		if ( -1 != selectedIndex ) {

@@ -27,5 +27,7 @@ public:
 
 	// Called when the system colours have changed.
 	void OnSysColorChange() override;
-};
 
+  // Called when the visual should free any resources.
+	void FreeResources() override;
+};

@@ -19,8 +19,6 @@ SpectrumAnalyser::SpectrumAnalyser( WndVisual& wndVisual ) :
 	Visual( wndVisual ),
 	m_RenderThread( NULL ),
 	m_RenderStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
-	m_Colour( nullptr ),
-	m_BackgroundColour( nullptr ),
 	m_Values()
 {
 }
@@ -80,12 +78,12 @@ void SpectrumAnalyser::OnPaint()
 	if ( nullptr != deviceContext ) {
 		LoadResources( deviceContext );
 		const D2D1_SIZE_F targetSize = deviceContext->GetSize();
-		if ( ( targetSize.height > 0 ) && ( targetSize.height > 0 ) ) {
-			if ( nullptr != m_BackgroundColour ) {
+		if ( ( targetSize.width > 0 ) && ( targetSize.height > 0 ) ) {
+			if ( m_BackgroundColour ) {
 				const D2D1_RECT_F rect = D2D1::RectF( 0 /*left*/, 0 /*top*/, targetSize.width, targetSize.height );
-				deviceContext->FillRectangle( rect, m_BackgroundColour );
+				deviceContext->FillRectangle( rect, m_BackgroundColour.Get() );
 			}
-			if ( nullptr != m_Colour ) {
+			if ( m_Colour ) {
 				m_Colour->SetStartPoint( D2D1::Point2F( 0, 0 ) );
 				m_Colour->SetEndPoint( D2D1::Point2F( 0, targetSize.height ) );
 
@@ -101,7 +99,8 @@ void SpectrumAnalyser::OnPaint()
 
 					const float decay = targetSize.height / s_DecayFactor;
 
-					for ( long pos = 1; ( pos < width ); pos += 3 ) {
+          const long barWidth = static_cast<long>( 3 * GetDPIScalingFactor() );
+					for ( long pos = 1; ( pos < width ); pos += barWidth ) {
 						const size_t bin = std::lround( pow( static_cast<float>( fftSize - 1 ), pow( ( static_cast<float>( pos ) / width ), 0.38 ) ) );
 						const float value = fft.at( bin );
 						float y = ( -targetSize.height / 4.0f ) * ( ( value < 0.0001 ) ? -4.0f : log10f( value ) );
@@ -120,7 +119,7 @@ void SpectrumAnalyser::OnPaint()
 						}
 
 						const D2D1_RECT_F rect = D2D1::RectF( static_cast<FLOAT>( pos - 1 ) /*left*/, y /*top*/, static_cast<FLOAT>( pos + 1 ) /*right*/, targetSize.height );
-						deviceContext->FillRectangle( rect, m_Colour );
+						deviceContext->FillRectangle( rect, m_Colour.Get() );
 					}
 				}
 			}
@@ -140,52 +139,44 @@ void SpectrumAnalyser::OnSysColorChange()
 
 void SpectrumAnalyser::LoadResources( ID2D1DeviceContext* deviceContext )
 {
-	if ( nullptr != deviceContext ) {
-		if ( ( nullptr == m_Colour ) && ( nullptr == m_BackgroundColour ) ) {
-			COLORREF base = 0;
-			COLORREF peak = 0;
-			COLORREF background = 0;
-			GetSettings().GetSpectrumAnalyserSettings( base, peak, background );
+	if ( ( nullptr != deviceContext ) && !m_Colour && !m_BackgroundColour ) {
+		COLORREF base = 0;
+		COLORREF peak = 0;
+		COLORREF background = 0;
+		GetSettings().GetSpectrumAnalyserSettings( base, peak, background );
 
-			D2D1_GRADIENT_STOP gradientStop[ 2 ];
-			gradientStop[ 0 ].color = D2D1::ColorF( D2D1::ColorF(
-					static_cast<FLOAT>( GetRValue( peak ) ) / 0xff,
-					static_cast<FLOAT>( GetGValue( peak ) ) / 0xff,
-					static_cast<FLOAT>( GetBValue( peak ) ) / 0xff,
-					0xff ) );
-			gradientStop[ 0 ].position = 0.5f;
-			gradientStop[ 1 ].color = D2D1::ColorF( D2D1::ColorF(
-					static_cast<FLOAT>( GetRValue( base ) ) / 0xff,
-					static_cast<FLOAT>( GetGValue( base ) ) / 0xff,
-					static_cast<FLOAT>( GetBValue( base ) ) / 0xff,
-					0xff ) );
-			gradientStop[ 1 ].position = 1.0f;
+		D2D1_GRADIENT_STOP gradientStop[ 2 ];
+		gradientStop[ 0 ].color = D2D1::ColorF( D2D1::ColorF(
+				static_cast<FLOAT>( GetRValue( peak ) ) / 0xff,
+				static_cast<FLOAT>( GetGValue( peak ) ) / 0xff,
+				static_cast<FLOAT>( GetBValue( peak ) ) / 0xff,
+				0xff ) );
+		gradientStop[ 0 ].position = 0.5f;
+		gradientStop[ 1 ].color = D2D1::ColorF( D2D1::ColorF(
+				static_cast<FLOAT>( GetRValue( base ) ) / 0xff,
+				static_cast<FLOAT>( GetGValue( base ) ) / 0xff,
+				static_cast<FLOAT>( GetBValue( base ) ) / 0xff,
+				0xff ) );
+		gradientStop[ 1 ].position = 1.0f;
 
-			ID2D1GradientStopCollection* gradientStops = nullptr;
-			HRESULT hr = deviceContext->CreateGradientStopCollection( gradientStop, 2, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP, &gradientStops );
-			if ( SUCCEEDED( hr ) ) {
-				hr = deviceContext->CreateLinearGradientBrush( 
-						D2D1::LinearGradientBrushProperties( D2D1::Point2F() /*start*/, D2D1::Point2F() /*end*/ ), gradientStops, &m_Colour );
-				gradientStops->Release();
-			}
-
-			deviceContext->CreateSolidColorBrush( D2D1::ColorF(
-					static_cast<FLOAT>( GetRValue( background ) ) / 0xff,
-					static_cast<FLOAT>( GetGValue( background ) ) / 0xff,
-					static_cast<FLOAT>( GetBValue( background ) ) / 0xff,
-					0xff ), &m_BackgroundColour );
+		ID2D1GradientStopCollection* gradientStops = nullptr;
+		HRESULT hr = deviceContext->CreateGradientStopCollection( gradientStop, 2, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP, &gradientStops );
+		if ( SUCCEEDED( hr ) ) {
+			hr = deviceContext->CreateLinearGradientBrush( 
+					D2D1::LinearGradientBrushProperties( D2D1::Point2F() /*start*/, D2D1::Point2F() /*end*/ ), gradientStops, &m_Colour );
+			gradientStops->Release();
 		}
+
+		deviceContext->CreateSolidColorBrush( D2D1::ColorF(
+				static_cast<FLOAT>( GetRValue( background ) ) / 0xff,
+				static_cast<FLOAT>( GetGValue( background ) ) / 0xff,
+				static_cast<FLOAT>( GetBValue( background ) ) / 0xff,
+				0xff ), &m_BackgroundColour );
 	}
 }
 
 void SpectrumAnalyser::FreeResources()
 {
-	if ( nullptr != m_Colour ) {
-		m_Colour->Release();
-		m_Colour = nullptr;
-	}
-	if ( nullptr != m_BackgroundColour ) {
-		m_BackgroundColour->Release();
-		m_BackgroundColour = nullptr;
-	}
+  m_Colour.Reset();
+  m_BackgroundColour.Reset();
 }
