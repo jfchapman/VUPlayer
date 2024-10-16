@@ -8,6 +8,7 @@ struct AVCodecContext;
 struct AVFormatContext;
 struct AVFrame;
 struct AVPacket;
+struct SwrContext;
 
 class DecoderFFmpeg : public Decoder
 {
@@ -33,8 +34,8 @@ private:
 	// Deccodes the next chunk of data into the sample buffer, returning whether any data was decoded.
 	bool Decode();
 
-	// Converts data from the 'frame' into the sample 'buffer'.
-	static void ConvertSampleData( const AVFrame* frame, std::vector<float>& buffer ); 
+	// Converts data from the 'frame' into the sample buffer.
+	void ConvertSampleData( const AVFrame* frame ); 
 
 	// FFmpeg format context.
 	AVFormatContext* m_FormatContext = nullptr;
@@ -48,7 +49,10 @@ private:
 	// FFmpeg current frame.
 	AVFrame* m_Frame = nullptr;
 
-	// Index of the 'best' stream.
+  // FFmpeg resampler context.
+  SwrContext* m_ResamplerContext = nullptr;
+
+  // Index of the 'best' stream.
 	int m_StreamIndex = 0;
 
 	// Interleaved sample buffer.

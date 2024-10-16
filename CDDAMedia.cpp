@@ -277,7 +277,7 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 
 		if ( success && isNewMedia ) {
 			if ( VUPlayer* vuplayer = VUPlayer::Get(); ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) { 
-  			const auto [ discID, toc ] = GetMusicBrainzID();
+  			const auto [ discID, toc ] = GetMusicBrainzDiscID();
 			  m_MusicBrainz.Query( discID, toc, false /*forceDialog*/, m_Playlist->GetID() );	
       }
 		}
@@ -467,7 +467,7 @@ void CDDAMedia::GetDataBlockText( const CDROM_TOC_CD_TEXT_DATA& data, const int 
 	}
 }
 
-std::pair<std::string /*discid*/, std::string /*toc*/> CDDAMedia::GetMusicBrainzID() const
+std::pair<std::string /*discid*/, std::string /*toc*/> CDDAMedia::GetMusicBrainzDiscID() const
 {
   return GetMusicBrainzID( m_TOC );
 }
@@ -508,7 +508,7 @@ long CDDAMedia::GetStartSector( const CDROM_TOC& toc, const long track )
 	return trackOffset;
 }
 
-std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<long> /*startCues*/>> CDDAMedia::GetMusicBrainzID( Playlist* const playlist )
+std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<long> /*startCues*/, std::wstring /*backingFile*/>> CDDAMedia::GetMusicBrainzPlaylistID( Playlist* const playlist )
 {
   const auto items = playlist->GetItems();
 
@@ -521,7 +521,7 @@ std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<l
       if ( -1 == sourceFileLength ) {
         sourceFileLength = static_cast<long>( item.Info.GetDuration( false /*applyCues*/ ) * 75 );
       }
-      filenames.insert( item.Info.GetFilename() );
+      filenames.insert( WideStringToLower( item.Info.GetFilename() ) );
       if ( filenames.size() > 1 )
         return std::nullopt;
 
@@ -530,7 +530,7 @@ std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<l
   }
 
   // Restrict queries to playlists where the start point of the first cue is zero, and the end point of the last cue is the source file length.
-  if ( cues.empty() || ( cues.size() >= MAXIMUM_NUMBER_TRACKS ) || ( 0 != cues.begin()->first ) || ( sourceFileLength != cues.rbegin()->second ) )
+  if ( filenames.empty() || cues.empty() || ( cues.size() >= MAXIMUM_NUMBER_TRACKS ) || ( 0 != cues.begin()->first ) || ( sourceFileLength != cues.rbegin()->second ) )
     return std::nullopt;
 
   // All cues should be contiguous.
@@ -570,6 +570,7 @@ std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<l
   }
 
   const auto [ mbID, mbTOC ] = GetMusicBrainzID( toc );
+  const auto& backingFile = *filenames.begin();
 
-  return std::make_tuple( mbID, mbTOC, startCues );
+  return std::make_tuple( mbID, mbTOC, startCues, backingFile );
 }

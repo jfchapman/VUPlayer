@@ -38,6 +38,9 @@ public:
 	// Called when the system colours have changed.
 	void OnSysColorChange() override;
 
+  // Called when the visual should free any resources.
+	void FreeResources() override;
+
 private:
 	// Render thread procedure.
 	static DWORD WINAPI RenderThreadProc( LPVOID lpParam );
@@ -65,9 +68,6 @@ private:
 
 	// Loads the resources using the 'deviceContext'.
 	void LoadResources( ID2D1DeviceContext* deviceContext );
-
-	// Frees the resources.
-	void FreeResources();
 
   // Whether the meter resource has been loaded successfully.
   static bool s_MeterLoaded;
@@ -97,13 +97,13 @@ private:
 	const DWORD* m_MeterPin;
 
 	// Left meter bitmap.
-	ID2D1Bitmap* m_BitmapLeft;
+	Microsoft::WRL::ComPtr<ID2D1Bitmap> m_BitmapLeft;
 
 	// Right meter bitmap.
-	ID2D1Bitmap* m_BitmapRight;
+	Microsoft::WRL::ComPtr<ID2D1Bitmap> m_BitmapRight;
 
 	// Background brush.
-	ID2D1SolidColorBrush* m_Brush;
+	Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_Brush;
 
 	// Current left/right channel output level.
 	std::pair<float, float> m_OutputLevel;

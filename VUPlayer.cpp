@@ -1893,9 +1893,9 @@ void VUPlayer::ScrobblerAuthorise()
 void VUPlayer::OnMusicBrainzQuery( Playlist* const cueList )
 {
   if ( nullptr != cueList ) {
-    if ( const auto id = CDDAMedia::GetMusicBrainzID( cueList ) ) {
-      const auto& [ discID, toc, startCues ] = *id;
-      m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, cueList->GetID(), startCues );
+    if ( const auto id = CDDAMedia::GetMusicBrainzPlaylistID( cueList ) ) {
+      const auto& [ discID, toc, startCues, backingFile ] = *id;
+      m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, cueList->GetID(), startCues, backingFile );
     }
   } else if ( const Playlist::Ptr playlist = m_List.GetPlaylist(); playlist ) {
     if ( Playlist::Type::CDDA == playlist->GetType() ) {
@@ -1904,21 +1904,33 @@ void VUPlayer::OnMusicBrainzQuery( Playlist* const cueList )
 			  const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
 			  for ( const auto& drive : drives ) {
 				  if ( cddbID == drive.second.GetCDDB() ) {
-					  const auto [ discID, toc ] = drives.begin()->second.GetMusicBrainzID();
+					  const auto [ discID, toc ] = drive.second.GetMusicBrainzDiscID();
 					  m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, playlist->GetID() );
 					  break;
 				  }
 			  }
       }
-    } else if ( const auto id = CDDAMedia::GetMusicBrainzID( playlist.get() ) ) {
-      const auto& [ discID, toc, startCues ] = *id;
-      m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, playlist->GetID(), startCues );
+    } else if ( const auto id = CDDAMedia::GetMusicBrainzPlaylistID( playlist.get() ) ) {
+      const auto& [ discID, toc, startCues, backingFile ] = *id;
+      m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, playlist->GetID(), startCues, backingFile );
     }
 	}
 }
 
 void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const bool forceDialog )
 {
+  // Note (to self) that although this method can display a modal dialog, 
+  // it is still possible for this method to be called again on the main thread, before the dialog closes,
+  // if another result is received and dispatched from the main message loop.
+  // 
+  // So, just guard this method to allow only one result to be processed at a time,
+  // and queue up any other results received while the dialog box is (potentially) open, to be processed later.
+  if ( m_IsProcessingMusicBrainzResult ) {
+    m_PendingMusicBrainzResults.push( result );
+    return;
+  }
+  m_IsProcessingMusicBrainzResult = true;
+
 	const int selectedResult = ( ( 1 == result.Albums.size() ) && !forceDialog ) ? 0 : m_MusicBrainz.ShowMatchesDialog( result );
 	if ( ( selectedResult >= 0 ) && ( selectedResult < static_cast<int>( result.Albums.size() ) ) ) {
     Playlist::Ptr playlist;
@@ -1931,13 +1943,17 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
       }
     }
 
+    if ( !playlist )
+      playlist = m_Tree.GetFolderPlaylist( result.PlaylistID );
+
     if ( !playlist ) {
 		  const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
 		  for ( const auto& drive : drives ) {
-			  const auto [ discID, toc ] = drive.second.GetMusicBrainzID();
+			  const auto [ discID, toc ] = drive.second.GetMusicBrainzDiscID();
 			  if ( result.DiscID == discID ) {
 			  	const CDDAMedia& cddaMedia = drive.second;
 				  playlist = cddaMedia.GetPlaylist();
+          break;
         }
       }
     }
@@ -1945,13 +1961,21 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
 		if ( playlist ) {
   		const MusicBrainz::Album& album = result.Albums[ selectedResult ];
 			const Playlist::Items items = playlist->GetItems();
+      const auto backingFile = WideStringToLower( result.BackingFile.value_or( std::wstring() ) );
 			for ( const auto& item : items ) {
-        const long trackIndex = result.StartCues ? 
-          ( 1 + static_cast<long>( std::distance( result.StartCues->begin(), result.StartCues->find( item.Info.GetCueStart().value_or( -1 ) ) ) ) ) :
-          item.Info.GetTrack();
+        auto matchingTrack = album.Tracks.end();
+        if ( result.StartCues ) {
+          const auto& itemStartCue = item.Info.GetCueStart();
+          if ( itemStartCue && ( backingFile == WideStringToLower( item.Info.GetFilename() ) ) ) {
+            if ( const auto matchingCue = result.StartCues->find( *itemStartCue ); result.StartCues->end() != matchingCue ) {
+              matchingTrack = album.Tracks.find( 1 + static_cast<long>( std::distance( result.StartCues->begin(), matchingCue ) ) );
+            }
+          }          
+        } else {
+          matchingTrack = album.Tracks.find( item.Info.GetTrack() );
+        }
 
-        const auto trackResult = album.Tracks.find( trackIndex );
-			  if ( album.Tracks.end() != trackResult ) {
+			  if ( album.Tracks.end() != matchingTrack ) {
 			    const MediaInfo previousMediaInfo( item.Info );
 			    MediaInfo mediaInfo( item.Info );
 			    mediaInfo.SetAlbum( album.Title );
@@ -1963,7 +1987,7 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
 
 			    mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
 
-          const auto& [ trackTitle, trackArtist, trackYear ] = trackResult->second;
+          const auto& [ trackTitle, trackArtist, trackYear ] = matchingTrack->second;
 				  mediaInfo.SetTitle( trackTitle );
 				  if ( !trackArtist.empty() ) {
 					  mediaInfo.SetArtist( trackArtist );
@@ -1976,12 +2000,19 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
 			  }
 			}
 
-      if ( ( Playlist::Type::User == playlist->GetType() ) && ( !album.Title.empty() && ( playlist->GetName() != album.Title ) ) ) {
+      if ( ( Playlist::Type::User == playlist->GetType() ) && ( !album.Title.empty() && ( playlist->GetName() != album.Title ) && ( static_cast<size_t>( playlist->GetCount() ) == album.Tracks.size() ) ) ) {
         playlist->SetName( album.Title );
         m_Tree.RefreshUserPlaylistLabel( playlist );
       }
 		}
 	}
+
+  m_IsProcessingMusicBrainzResult = false;
+  if ( !m_PendingMusicBrainzResults.empty() ) {
+    const auto pendingResult = m_PendingMusicBrainzResults.front();
+    m_PendingMusicBrainzResults.pop();
+    OnMusicBrainzResult( pendingResult, forceDialog );
+  }
 }
 
 bool VUPlayer::IsMusicBrainzEnabled()
@@ -2031,17 +2062,38 @@ bool VUPlayer::OnCommandLineFiles( const std::list<std::wstring>& filenames )
 				m_Output.Play( scratchList );
 				validCommandLine = true;
 			} else {
-				// Handle Audio CD autoplay
 				if ( 1 == filenames.size() ) {
 					const std::wstring& filename = filenames.front();
 					if ( !filename.empty() ) {
 						const UINT driveType = GetDriveType( filename.c_str() );
-						if ( ( DRIVE_CDROM == driveType ) && CDDAMedia::ContainsCDAudio( filename.front() ) ) {
-							const Playlist::Ptr playlist = m_Tree.SelectAudioCD( filename.front() );
-							if ( playlist ) {
-								m_Output.Play( playlist );
-							}
-						}
+						if ( DRIVE_CDROM == driveType ) {
+				      // Handle Audio CD autoplay
+              if ( CDDAMedia::ContainsCDAudio( filename.front() ) ) {
+							  const Playlist::Ptr playlist = m_Tree.SelectAudioCD( filename.front() );
+							  if ( playlist ) {
+								  m_Output.Play( playlist );
+							  }
+              }
+						} else {
+              std::error_code ec;
+              if ( std::filesystem::is_directory( filename, ec ) ) {
+                // Create a scratch list for the folder.
+                std::set<std::filesystem::path> filepaths;
+				        for ( const auto& entry : std::filesystem::recursive_directory_iterator( filename, ec ) ) {
+					        if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
+                    filepaths.insert( entry.path() );
+					        }
+				        }
+                for ( const auto& filepath : filepaths ) {
+				          MediaInfo mediaInfo( filepath );
+				          m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ );
+				          mediaList.push_back( mediaInfo );
+                }
+			          const Playlist::Ptr scratchList = m_Tree.SetScratchList( mediaList );
+                m_Output.Play( scratchList );
+                validCommandLine = true;
+              }
+            }
 					}
 				}
 			}
@@ -2255,4 +2307,9 @@ void VUPlayer::OnPowerBroadcast( const WPARAM type )
   if ( PBT_APMSUSPEND == type ) {
 	  m_Output.Stop();
   }
+}
+
+void VUPlayer::OnDisplayChange()
+{
+  m_Visual.OnDisplayChange();
 }

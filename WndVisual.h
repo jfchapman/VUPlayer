@@ -5,6 +5,8 @@
 #include "resource.h"
 #include "Settings.h"
 
+#include <memory>
+
 #include <wrl.h>
 
 #include <D2d1_1.h>
@@ -103,12 +105,18 @@ public:
 	// Called on a system colour change event.
 	void OnSysColorChange();
 
+  // Called when the display resolution has changed.
+  void OnDisplayChange();
+
+  // Returns the current DPI scaling factor.
+  float GetDPIScalingFactor() const;
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK VisualProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
 	// Maps an ID to a visual.
-	typedef std::map<UINT,Visual*> Visuals;
+	typedef std::map<UINT, std::shared_ptr<Visual>> Visuals;
 
 	// Initialises Direct2D resources.
 	void InitD2D();
@@ -169,5 +177,8 @@ private:
 
 	// Whether hardware acceleration is enabled in the application settings.
 	bool m_HardwareAccelerationEnabled;
+
+  // Current DPI scaling factor.
+  float m_DPIScaling = 1.0f;
 };
 

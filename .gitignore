@@ -244,8 +244,28 @@ ModelManifest.xml
 /CppProperties.json
 
 # Exemptions
-!libs/libopenmpt-0.7.2/lib/*
-!libs/libopenmpt-0.7.2/lib/x86/*
-!libs/libopenmpt-0.7.2/lib/x86/Release/*
-!libs/libopenmpt-0.7.2/lib/x86_64/*
-!libs/libopenmpt-0.7.2/lib/x86_64/Release/*
+!libs/bass*/*
+!libs/bass*/c
+!libs/bass*/c/*
+!libs/bass*/c/x64
+!libs/bass*/c/x64/*
+!libs/bass*/x64/
+!libs/bass*/x64/*
+
+!libs/*/bin
+!libs/*/bin/x86
+!libs/*/bin/x86/*
+!libs/*/bin/x64
+!libs/*/bin/x64/*
+
+!libs/*/x86
+!libs/*/x86/*
+!libs/*/x64
+!libs/*/x64/*
+
+!libs/*/lib
+!libs/*/lib/*
+!libs/*/lib/x86/Release
+!libs/*/lib/x86/Release/*
+!libs/*/lib/x86_64/Release
+!libs/*/lib/x86_64/Release/*

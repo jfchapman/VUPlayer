@@ -16,8 +16,6 @@ Oscilloscope::Oscilloscope( WndVisual& wndVisual ) :
 	Visual( wndVisual ),
 	m_RenderThread( NULL ),
 	m_RenderStopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
-	m_Colour( nullptr ),
-	m_BackgroundColour( nullptr ),
 	m_Weight( 2.0f )
 {
 }
@@ -77,12 +75,12 @@ void Oscilloscope::OnPaint()
 	if ( nullptr != deviceContext ) {
 		LoadResources( deviceContext );
 		const D2D1_SIZE_F targetSize = deviceContext->GetSize();
-		if ( ( targetSize.height > 0 ) && ( targetSize.height > 0 ) ) {
-			if ( nullptr != m_BackgroundColour ) {
+		if ( ( targetSize.width > 0 ) && ( targetSize.height > 0 ) ) {
+			if ( m_BackgroundColour ) {
 				const D2D1_RECT_F rect = D2D1::RectF( 0 /*left*/, 0 /*top*/, targetSize.width, targetSize.height );
-				deviceContext->FillRectangle( rect, m_BackgroundColour );
+				deviceContext->FillRectangle( rect, m_BackgroundColour.Get() );
 			}
-			if ( nullptr != m_Colour ) {
+			if ( m_Colour ) {
 				std::vector<float> sampleData;
 				long channelCount = 0;
 				const long scale = 4;
@@ -113,7 +111,7 @@ void Oscilloscope::OnPaint()
 										sink->EndFigure( D2D1_FIGURE_END_OPEN );
 										sink->Close();
 										sink->Release();
-										deviceContext->DrawGeometry( pathGeometry, m_Colour, m_Weight );
+										deviceContext->DrawGeometry( pathGeometry, m_Colour.Get(), m_Weight );
 									}
 									pathGeometry->Release();
 								}
@@ -122,7 +120,7 @@ void Oscilloscope::OnPaint()
 						} else {
 							const D2D1_POINT_2F startPoint = D2D1::Point2F( 0 /*x*/, centrePoint );
 							const D2D1_POINT_2F endPoint = D2D1::Point2F( static_cast<FLOAT>( width ) /*x*/, centrePoint );
-							deviceContext->DrawLine( startPoint, endPoint, m_Colour, m_Weight );
+							deviceContext->DrawLine( startPoint, endPoint, m_Colour.Get(), m_Weight );
 						}
 					}
 				}
@@ -143,33 +141,25 @@ void Oscilloscope::OnSysColorChange()
 
 void Oscilloscope::LoadResources( ID2D1DeviceContext* deviceContext )
 {
-	if ( nullptr != deviceContext ) {
-		if ( ( nullptr == m_Colour ) && ( nullptr == m_BackgroundColour ) ) {
-			const COLORREF colour = GetSettings().GetOscilloscopeColour();
-			deviceContext->CreateSolidColorBrush( D2D1::ColorF(
-					static_cast<FLOAT>( GetRValue( colour ) ) / 0xff,
-					static_cast<FLOAT>( GetGValue( colour ) ) / 0xff,
-					static_cast<FLOAT>( GetBValue( colour ) ) / 0xff,
-					0xff ), &m_Colour );
-			const COLORREF background = GetSettings().GetOscilloscopeBackground();
-			deviceContext->CreateSolidColorBrush( D2D1::ColorF(
-					static_cast<FLOAT>( GetRValue( background ) ) / 0xff,
-					static_cast<FLOAT>( GetGValue( background ) ) / 0xff,
-					static_cast<FLOAT>( GetBValue( background ) ) / 0xff,
-					0xff ), &m_BackgroundColour );
-			m_Weight = GetSettings().GetOscilloscopeWeight();
-		}
+	if ( ( nullptr != deviceContext ) && !m_Colour && !m_BackgroundColour ) {
+		const COLORREF colour = GetSettings().GetOscilloscopeColour();
+		deviceContext->CreateSolidColorBrush( D2D1::ColorF(
+				static_cast<FLOAT>( GetRValue( colour ) ) / 0xff,
+				static_cast<FLOAT>( GetGValue( colour ) ) / 0xff,
+				static_cast<FLOAT>( GetBValue( colour ) ) / 0xff,
+				0xff ), &m_Colour );
+		const COLORREF background = GetSettings().GetOscilloscopeBackground();
+		deviceContext->CreateSolidColorBrush( D2D1::ColorF(
+				static_cast<FLOAT>( GetRValue( background ) ) / 0xff,
+				static_cast<FLOAT>( GetGValue( background ) ) / 0xff,
+				static_cast<FLOAT>( GetBValue( background ) ) / 0xff,
+				0xff ), &m_BackgroundColour );
+		m_Weight = GetSettings().GetOscilloscopeWeight();
 	}
 }
 
 void Oscilloscope::FreeResources()
 {
-	if ( nullptr != m_Colour ) {
-		m_Colour->Release();
-		m_Colour = nullptr;
-	}
-	if ( nullptr != m_BackgroundColour ) {
-		m_BackgroundColour->Release();
-		m_BackgroundColour = nullptr;
-	}
+  m_Colour.Reset();
+  m_BackgroundColour.Reset();
 }

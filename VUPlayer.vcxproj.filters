@@ -318,7 +318,7 @@
     <ClInclude Include="CDDACache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\json-3.11.2\json.hpp">
+    <ClInclude Include="libs\json-3.11.3\json.hpp">
       <Filter>Third Party</Filter>
     </ClInclude>
     <ClInclude Include="libs\libebur128-1.2.6\ebur128.h">
@@ -351,7 +351,7 @@
     <ClInclude Include="DlgModOpenMPT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\sqlite-3.42.0\sqlite3.h">
+    <ClInclude Include="libs\sqlite-3.46.1\sqlite3.h">
       <Filter>Third Party</Filter>
     </ClInclude>
     <ClInclude Include="WndToolbarLoudness.h">
@@ -656,7 +656,7 @@
     <ClCompile Include="DlgModOpenMPT.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.42.0\sqlite3.c">
+    <ClCompile Include="libs\sqlite-3.46.1\sqlite3.c">
       <Filter>Third Party</Filter>
     </ClCompile>
     <ClCompile Include="WndToolbarLoudness.cpp">
