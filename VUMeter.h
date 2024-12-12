@@ -9,7 +9,7 @@ constexpr float VUMeterDecayMinimum = 0.0075f;
 constexpr float VUMeterDecayNormal = 0.01f;
 
 // Maximum decay factor.
-constexpr float VUMeterDecayMaximum = 0.015f;
+constexpr float VUMeterDecayMaximum = 0.040f;
 
 class VUMeter :	public Visual
 {
