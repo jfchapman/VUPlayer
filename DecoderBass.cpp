@@ -31,7 +31,7 @@ DecoderBass::DecoderBass( const std::wstring& filename, const Context context ) 
 	m_StreamTitleMutex()
 {
 	DWORD flags = BASS_UNICODE | BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE;
-	
+
 	if ( m_IsURL ) {
 		m_Handle = BASS_StreamCreateURL( filename.c_str(), 0 /*offset*/, flags, nullptr /*downloadProc*/, nullptr /*user*/ );
 		if ( 0 != m_Handle ) {
@@ -135,8 +135,8 @@ double DecoderBass::Seek( const double position )
 	if ( BASS_CTYPE_MUSIC_MOD & info.ctype ) {
 		flags |= BASS_POS_DECODETO;
 	} else {
-    flags |= BASS_POS_SCAN;
-  }
+		flags |= BASS_POS_SCAN;
+	}
 	double seconds = 0;
 	if ( QWORD bytes = BASS_ChannelSeconds2Bytes( m_Handle, position ); -1 != bytes ) {
 		if ( BASS_ChannelSetPosition( m_Handle, bytes, flags ) ) {
@@ -148,7 +148,7 @@ double DecoderBass::Seek( const double position )
 				} else if ( m_FadeEndPosition > 0 ) {
 					if ( const QWORD length = BASS_ChannelGetLength( m_Handle, BASS_POS_BYTE ); ( -1 != length ) && ( length > bytes ) ) {
 						bytes = length - bytes;
-						m_FadeStartPosition = bytes / ( info.chans * 4 );				
+						m_FadeStartPosition = bytes / ( info.chans * 4 );
 						m_FadeEndPosition = m_FadeStartPosition + BASS_ChannelSeconds2Bytes( m_Handle, sFadeOutLength ) / ( info.chans * 4 );
 					}
 				}
@@ -170,7 +170,7 @@ void DecoderBass::OnMetadata( const DWORD channel )
 		auto& [ position, title ] = m_StreamTitle;
 		position = static_cast<float>( BASS_ChannelBytes2Seconds( channel, BASS_ChannelGetPosition( channel, BASS_POS_BYTE ) ) );
 		title.clear();
-		
+
 		std::wstring metadata = UTF8ToWideString( tags );
 		static const std::wstring titleTag( L"StreamTitle='" );
 		if ( const size_t startPos = metadata.find( titleTag ); std::wstring::npos != startPos ) {
@@ -188,7 +188,7 @@ bool DecoderBass::SupportsStreamTitles() const
 
 std::pair<float /*seconds*/, std::wstring /*title*/> DecoderBass::GetStreamTitle()
 {
-	return m_StreamTitle;	
+	return m_StreamTitle;
 }
 
 void CALLBACK DecoderBass::MetadataSyncProc( HSYNC /*handle*/, DWORD channel, DWORD /*data*/, void *user )
@@ -200,10 +200,10 @@ void CALLBACK DecoderBass::MetadataSyncProc( HSYNC /*handle*/, DWORD channel, DW
 
 void DecoderBass::LoadMusic( const std::wstring& filename )
 {
-  VUPlayer* vuplayer = VUPlayer::Get();
-  const uint32_t samplerate = ( nullptr != vuplayer ) ? vuplayer->GetApplicationSettings().GetMODSamplerate() : 48000;
+	VUPlayer* vuplayer = VUPlayer::Get();
+	const uint32_t samplerate = ( nullptr != vuplayer ) ? vuplayer->GetApplicationSettings().GetMODSamplerate() : 48000;
 
-  DWORD flags = BASS_UNICODE | BASS_SAMPLE_FLOAT | BASS_MUSIC_DECODE | BASS_MUSIC_NOSAMPLE;
+	DWORD flags = BASS_UNICODE | BASS_SAMPLE_FLOAT | BASS_MUSIC_DECODE | BASS_MUSIC_NOSAMPLE;
 	m_Handle = BASS_MusicLoad( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, flags, samplerate );
 	if ( 0 != m_Handle ) {
 		BASS_CHANNELINFO info = {};
@@ -220,23 +220,23 @@ void DecoderBass::LoadMusic( const std::wstring& filename )
 			vuplayer->GetApplicationSettings().GetMODSettings( modSettings, mtmSettings, s3mSettings, xmSettings, itSettings );
 			long long settingsValue = 0;
 			switch ( info.ctype ) {
-				case BASS_CTYPE_MUSIC_IT : {
+				case BASS_CTYPE_MUSIC_IT: {
 					settingsValue = itSettings;
 					break;
 				}
-				case BASS_CTYPE_MUSIC_XM : {
+				case BASS_CTYPE_MUSIC_XM: {
 					settingsValue = xmSettings;
 					break;
 				}
-				case BASS_CTYPE_MUSIC_S3M : {
+				case BASS_CTYPE_MUSIC_S3M: {
 					settingsValue = s3mSettings;
 					break;
 				}
-				case BASS_CTYPE_MUSIC_MTM : {
+				case BASS_CTYPE_MUSIC_MTM: {
 					settingsValue = mtmSettings;
 					break;
 				}
-				default : {
+				default: {
 					settingsValue = modSettings;
 					break;
 				}
@@ -247,12 +247,12 @@ void DecoderBass::LoadMusic( const std::wstring& filename )
 				panning = sDefaultPanSeparation;
 			}
 			flags |= BASS_UNICODE | BASS_SAMPLE_FLOAT | BASS_MUSIC_DECODE | BASS_MUSIC_PRESCAN;
-			m_Handle = BASS_MusicLoad( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, flags, 1 /*freq*/ );
+			m_Handle = BASS_MusicLoad( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, flags, samplerate );
 			if ( 0 != m_Handle ) {
 				BASS_ChannelSetAttribute( m_Handle, BASS_ATTRIB_MUSIC_PANSEP, static_cast<float>( panning ) );
 				if ( ( settingsValue & VUPLAYER_MUSIC_FADEOUT ) && ( info.chans > 0 ) ) {
 					if ( const QWORD bytes = BASS_ChannelGetLength( m_Handle, BASS_POS_BYTE ); -1 != bytes ) {
-						m_FadeStartPosition = bytes / ( info.chans * 4 );				
+						m_FadeStartPosition = bytes / ( info.chans * 4 );
 						m_FadeEndPosition = m_FadeStartPosition + BASS_ChannelSeconds2Bytes( m_Handle, sFadeOutLength ) / ( info.chans * 4 );
 					}
 				}

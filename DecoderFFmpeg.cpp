@@ -26,8 +26,8 @@ DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context contex
 							if ( codecParams->ch_layout.nb_channels > 0 ) {
 								SetChannels( codecParams->ch_layout.nb_channels );
 								SetSampleRate( codecParams->sample_rate );
-								if ( codecParams->bits_per_coded_sample > 0 ) {
-									SetBPS( codecParams->bits_per_coded_sample );
+								if ( const int bps = std::max( codecParams->bits_per_coded_sample, codecParams->bits_per_raw_sample ); bps > 0 ) {
+									SetBPS( bps );
 								}
 								if ( codecParams->bit_rate > 0 ) {
 									SetBitrate( codecParams->bit_rate / 1000.0f );
@@ -48,17 +48,17 @@ DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context contex
 										m_Packet = av_packet_alloc();
 										m_Frame = av_frame_alloc();
 
-                    const auto srcLayout = m_DecoderContext->ch_layout;
-                    const auto srcFormat = m_DecoderContext->sample_fmt;
-                    const AVChannelLayout dstLayout = srcLayout;
-                    const AVSampleFormat dstFormat = AV_SAMPLE_FMT_FLT;
-                    result = swr_alloc_set_opts2( &m_ResamplerContext, &dstLayout, dstFormat, codecParams->sample_rate, &srcLayout, srcFormat, codecParams->sample_rate, 0, nullptr );
-                    if ( result >= 0 ) {
-                      if ( swr_init( m_ResamplerContext ) < 0 ) {
-                        swr_free( &m_ResamplerContext );
-                        m_ResamplerContext = nullptr;
-                      }
-                    }
+										const auto srcLayout = m_DecoderContext->ch_layout;
+										const auto srcFormat = m_DecoderContext->sample_fmt;
+										const AVChannelLayout dstLayout = srcLayout;
+										const AVSampleFormat dstFormat = AV_SAMPLE_FMT_FLT;
+										result = swr_alloc_set_opts2( &m_ResamplerContext, &dstLayout, dstFormat, codecParams->sample_rate, &srcLayout, srcFormat, codecParams->sample_rate, 0, nullptr );
+										if ( result >= 0 ) {
+											if ( swr_init( m_ResamplerContext ) < 0 ) {
+												swr_free( &m_ResamplerContext );
+												m_ResamplerContext = nullptr;
+											}
+										}
 									}
 								}
 							}
@@ -97,23 +97,23 @@ DecoderFFmpeg::~DecoderFFmpeg()
 	av_frame_free( &m_Frame );
 	avcodec_free_context( &m_DecoderContext );
 	avformat_close_input( &m_FormatContext );
-  swr_free( &m_ResamplerContext );
+	swr_free( &m_ResamplerContext );
 }
 
 void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame )
 {
-  if ( nullptr == frame )
-    return;
+	if ( nullptr == frame )
+		return;
 
-  const size_t previousBufferSize = m_Buffer.size();
-  m_Buffer.resize( previousBufferSize + frame->nb_samples * GetChannels() );
-  uint8_t* buffer = reinterpret_cast<uint8_t*>( m_Buffer.data() + previousBufferSize );
-  const int samples = swr_convert( m_ResamplerContext, &buffer, frame->nb_samples, frame->data, frame->nb_samples );
-  if ( samples > 0 ) {
-    m_Buffer.resize( previousBufferSize + samples * GetChannels() );
-  } else {
-    m_Buffer.resize( previousBufferSize );
-  }
+	const size_t previousBufferSize = m_Buffer.size();
+	m_Buffer.resize( previousBufferSize + frame->nb_samples * GetChannels() );
+	uint8_t* buffer = reinterpret_cast<uint8_t*>( m_Buffer.data() + previousBufferSize );
+	const int samples = swr_convert( m_ResamplerContext, &buffer, frame->nb_samples, frame->data, frame->nb_samples );
+	if ( samples > 0 ) {
+		m_Buffer.resize( previousBufferSize + samples * GetChannels() );
+	} else {
+		m_Buffer.resize( previousBufferSize );
+	}
 }
 
 bool DecoderFFmpeg::Decode()

@@ -35,7 +35,7 @@ private:
 	bool Decode();
 
 	// Converts data from the 'frame' into the sample buffer.
-	void ConvertSampleData( const AVFrame* frame ); 
+	void ConvertSampleData( const AVFrame* frame );
 
 	// FFmpeg format context.
 	AVFormatContext* m_FormatContext = nullptr;
@@ -49,10 +49,10 @@ private:
 	// FFmpeg current frame.
 	AVFrame* m_Frame = nullptr;
 
-  // FFmpeg resampler context.
-  SwrContext* m_ResamplerContext = nullptr;
+	// FFmpeg resampler context.
+	SwrContext* m_ResamplerContext = nullptr;
 
-  // Index of the 'best' stream.
+	// Index of the 'best' stream.
 	int m_StreamIndex = 0;
 
 	// Interleaved sample buffer.

@@ -9,12 +9,12 @@
 class Decoder
 {
 public:
-  // Contexts for which a decoder can be used.
-  enum class Context {
-    Output,     // Decoding to an output device 
-    Input,      // Decoding as an input for conversion
-    Temporary   // Any other usage (information gathering, loudness calculation, etc.) 
-  };
+	// Contexts for which a decoder can be used.
+	enum class Context {
+		Output,     // Decoding to an output device 
+		Input,      // Decoding as an input for conversion
+		Temporary   // Any other usage (information gathering, loudness calculation, etc.) 
+	};
 
 	// Decoder shared pointer type.
 	using Ptr = std::shared_ptr<Decoder>;
@@ -61,12 +61,12 @@ public:
 	// Returns the new position in seconds.
 	double SetPosition( const double position );
 
-  // Sets the start & end positions (for tracks from cue files), in frames (where there are 75 frames per second).
-  void SetCues( const std::optional<long>& cueStart, const std::optional<long>& cueEnd );
+	// Sets the start & end positions (for tracks from cue files), in frames (where there are 75 frames per second).
+	void SetCues( const std::optional<long>& cueStart, const std::optional<long>& cueEnd );
 
 protected:
-  // 'context' - context for which the decoder is to be used.
-  Decoder( const Context context );
+	// 'context' - context for which the decoder is to be used.
+	Decoder( const Context context );
 
 	virtual ~Decoder();
 
@@ -80,10 +80,10 @@ protected:
 	// Returns the new position in seconds.
 	virtual double Seek( const double position ) = 0;
 
-  // Returns the context for which the decoder is being used.
-  Context GetContext() const { return m_Context; }
+	// Returns the context for which the decoder is being used.
+	Context GetContext() const { return m_Context; }
 
-  // Sets the 'duration'.
+	// Sets the 'duration'.
 	void SetDuration( const float duration );
 
 	// Sets the 'sampleRate'.
@@ -99,7 +99,7 @@ protected:
 	void SetBitrate( const std::optional<float> bitrate );
 
 private:
-  // Duration in seconds.
+	// Duration in seconds.
 	float m_Duration;
 
 	// Sample rate.
@@ -114,15 +114,15 @@ private:
 	// Bitrate in kbps (if relevant).
 	std::optional<float> m_Bitrate;
 
-  // Start sample position (for tracks from cue files).
-  std::optional<int64_t> m_SampleStart;
+	// Start sample position (for tracks from cue files).
+	std::optional<int64_t> m_SampleStart;
 
-  // End sample position (for tracks from cue files).
-  std::optional<int64_t> m_SampleEnd;
+	// End sample position (for tracks from cue files).
+	std::optional<int64_t> m_SampleEnd;
 
-  // Remaining number of samples to read (for tracks from cue files).
-  std::optional<int64_t> m_SamplesRemaining;
+	// Remaining number of samples to read (for tracks from cue files).
+	std::optional<int64_t> m_SamplesRemaining;
 
-  // Decoder context.
-  const Context m_Context;
+	// Decoder context.
+	const Context m_Context;
 };

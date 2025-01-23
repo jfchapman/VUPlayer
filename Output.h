@@ -4,7 +4,7 @@
 
 #include "bass.h"
 #include "Handlers.h"
-#include "OutputDecoder.h"
+#include "Resampler.h"
 #include "Playlist.h"
 #include "Settings.h"
 
@@ -36,19 +36,19 @@ public:
 	// Output item information.
 	struct Item {
 		Playlist::Item PlaylistItem;	// Playlist item.
-		double Position;							// Position in seconds.
-		double InitialSeek;						// Initial seek time for the item.
-		std::wstring StreamTitle;			// Current stream title.
+		double Position;				// Position in seconds.
+		double InitialSeek;				// Initial seek time for the item.
+		std::wstring StreamTitle;		// Current stream title.
 	};
 
 	// Maps a device ID to its description.
-	using Devices = std::map<int,std::wstring>;
+	using Devices = std::map<int, std::wstring>;
 
 	// Callback function for when the output 'playlist' changes.
 	using PlaylistChangeCallback = std::function<void( Playlist::Ptr playlist )>;
 
-  // Callback function for when the 'itemID' should be selected (when using 'follow track selection' mode).
-  using SelectFollowedTrackCallback = std::function<void( const long itemID )>;
+	// Callback function for when the 'itemID' should be selected (when using 'follow track selection' mode).
+	using SelectFollowedTrackCallback = std::function<void( const long itemID )>;
 
 	// Starts playback.
 	// 'startID' - Playlist ID at which to start playback (or zero to start playback at the first playlist item).
@@ -66,10 +66,10 @@ public:
 	// 'forcePrevious' - True to always play the previous track, false to restart the current track if not already near the start.
 	// 'seek' - Start position in seconds (negative value to seek relative to the end of the track).
 	void Previous( const bool forcePrevious = false, const float seek = 0.0f );
-	
+
 	// Plays the next track.
 	void Next();
-	
+
 	// Sets the current 'playlist', and starts playback.
 	// 'startID' - Playlist ID at which to start playback (or zero to start playback at the first playlist item).
 	// 'seek' - Initial start position in seconds (negative value to seek relative to the end of the track).
@@ -147,7 +147,7 @@ public:
 	// Sets whether loudness normalisation is enabled.
 	void SetLoudnessNormalisation( const bool enabled );
 
-  // Called when 'mediaInfo' is updated.
+	// Called when 'mediaInfo' is updated.
 	// Returns whether the currently playing item has changed.
 	bool OnUpdatedMedia( const MediaInfo& mediaInfo );
 
@@ -174,13 +174,13 @@ public:
 	// Returns whether playback is to be stopped at the end of the current track.
 	bool GetStopAtTrackEnd() const;
 
-  // Toggles whether playback is to follow track selection.
-  void ToggleFollowTrackSelection();
+	// Toggles whether playback is to follow track selection.
+	void ToggleFollowTrackSelection();
 
-  // Returns whether playback is to follow track selection.
-  bool GetFollowTrackSelection() const;
+	// Returns whether playback is to follow track selection.
+	bool GetFollowTrackSelection() const;
 
-  // Toggles whether output is muted. 
+	// Toggles whether output is muted. 
 	void ToggleMuted();
 
 	// Returns whether output is muted.
@@ -210,11 +210,11 @@ public:
 	// Sets the 'callback' function for when the output playlist changes.
 	void SetPlaylistChangeCallback( PlaylistChangeCallback callback );
 
-  // Sets the 'callback' function for when the selected playlist item changes (when using 'follow track selection' mode).
-  void SetSelectFollowedTrackCallback( SelectFollowedTrackCallback callback );
+	// Sets the 'callback' function for when the selected playlist item changes (when using 'follow track selection' mode).
+	void SetSelectFollowedTrackCallback( SelectFollowedTrackCallback callback );
 
-  // Sets the current 'playlist' and 'selectedItems' to follow (used for 'follow track selection' mode).
-  void SetPlaylistInformationToFollow( Playlist::Ptr playlist, const Playlist::Items& selectedItems );
+	// Sets the current 'playlist' and 'selectedItems' to follow (used for 'follow track selection' mode).
+	void SetPlaylistInformationToFollow( Playlist::Ptr playlist, const Playlist::Items& selectedItems );
 
 private:
 	// Output queue.
@@ -227,7 +227,7 @@ private:
 	using FXList = std::list<HFX>;
 
 	// Buffered output decoder shared pointer.
-	using OutputDecoderPtr =  std::shared_ptr<OutputDecoder>;
+	using OutputDecoderPtr = std::shared_ptr<OutputDecoder>;
 
 	// Preloaded decoder information.
 	struct PreloadedDecoder {
@@ -269,9 +269,9 @@ private:
 	// Gets the interval between the start and end tick count, in seconds.
 	static float GetInterval( const LONGLONG startTick, const LONGLONG endTick );
 
-  // Returns whether a background thread can proceed, after an initial delay.
-  // 'stopEvent' - the event reponsible for stopping the background thread.
-  static bool CanBackgroundThreadProceed( const HANDLE stopEvent );
+	// Returns whether a background thread can proceed, after an initial delay.
+	// 'stopEvent' - the event reponsible for stopping the background thread.
+	static bool CanBackgroundThreadProceed( const HANDLE stopEvent );
 
 	// Reads sample data from the current decoder.
 	// 'buffer' - sample buffer.
@@ -292,18 +292,21 @@ private:
 	// Background thread handler for preloading the next decoder.
 	void PreloadDecoderHandler();
 
-	// Initialises the BASS system;
-	void InitialiseBass();
+	// Initialises the BASS system & resampler.
+	void InitialiseOutput();
 
 	// Estimates the gain for a playlist 'item' if necessary.
 	void EstimateGain( Playlist::Item& item );
 
-	// Calculates the crossfade point for the 'item'.
+	// Starts the thread to calculation the crossfade point for the 'item'.
 	// 'seekOffset' - indicates the initial seek position of 'item', in seconds.
-	void CalculateCrossfadePoint( const Playlist::Item& item, const double seekOffset = 0 );
+	void StartCrossfadeCalculationThread( const Playlist::Item& item, const double seekOffset = 0 );
 
 	// Terminates the crossfade calculation thread.
-	void StopCrossfadeThread();
+	void StopCrossfadeCalculationThread();
+
+	// Calculates the crossfade position.
+	double CalculateCrossfadePosition( Decoder::Ptr decoder, const double seekPosition, Decoder::CanContinue canContinue ) const;
 
 	// Returns the crossfade position for the current track, in seconds.
 	double GetCrossfadePosition() const;
@@ -329,7 +332,7 @@ private:
 
 	// Starts the output and returns the output state.
 	State StartOutput();
-	
+
 	// Gets the current decoding position, in seconds.
 	float GetDecodePosition() const;
 
@@ -382,30 +385,36 @@ private:
 	void PreloadNextDecoder( const Playlist::Item& item );
 
 	// Gets the stream title queue.
-	std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>> GetStreamTitleQueue();
+	std::vector<std::pair<float /*seconds*/, std::wstring /*title*/>> GetStreamTitleQueue();
 
 	// Sets the stream title 'queue'.
-	void SetStreamTitleQueue( const std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>>& queue );
+	void SetStreamTitleQueue( const std::vector<std::pair<float /*seconds*/, std::wstring /*title*/>>& queue );
 
 	// Sets the synchronizer which is called when the current output 'stream' ends.
 	void SetEndSync( const HSTREAM stream );
 
-  // Gets the current 'playlist' and 'selectedItems' to follow (used for 'follow track selection' mode).
-  std::pair<Playlist::Ptr, Playlist::Items> GetPlaylistInformationToFollow();
+	// Gets the current 'playlist' and 'selectedItems' to follow (used for 'follow track selection' mode).
+	std::pair<Playlist::Ptr, Playlist::Items> GetPlaylistInformationToFollow();
 
-  // Gets the next track to play, when the 'follow track selection' mode is active.
-  // 'currentItem' - currently playing item.
-  // 'previous' - whether to select the previous playlist item (if the currently playing item is already selected).
-  // If the currently playing item is already selected, returns the next playlist item.
-  // If the currently playing item is not selected, returns the next selected playlist item.
-  // If no playlist items are selected, returns nullopt.
-  // Returns the playlist & next track to play in the playlist, and whether the next track should be selected.
-  std::optional<std::tuple<Playlist::Ptr, Playlist::Item, bool /*SelectTrack*/>> GetTrackToFollow( const Playlist::Item& currentItem, const bool previous = false );
+	// Gets the next track to play, when the 'follow track selection' mode is active.
+	// 'currentItem' - currently playing item.
+	// 'previous' - whether to select the previous playlist item (if the currently playing item is already selected).
+	// If the currently playing item is already selected, returns the next playlist item.
+	// If the currently playing item is not selected, returns the next selected playlist item.
+	// If no playlist items are selected, returns the playlist item following/preceding the currently playing item, or nullopt (if at the end of the playlist).
+	// Returns the playlist & next track to play in the playlist, and whether the next track should be selected.
+	std::optional<std::tuple<Playlist::Ptr, Playlist::Item, bool /*SelectTrack*/>> GetTrackToFollow( const Playlist::Item& currentItem, const bool previous = false );
 
-  // Changes the current output 'playlist', returning whether the playist was changed.
-  bool ChangePlaylist( const Playlist::Ptr& playlist );
+	// Changes the current output 'playlist', returning whether the playist was changed.
+	bool ChangePlaylist( const Playlist::Ptr& playlist );
 
-  // Module instance handle.
+	// Applies the latest WASAPI settings.
+	void GetWASAPISettings();
+
+	// Applies the latest ASIO settings.
+	void GetASIOSettings();
+
+	// Module instance handle.
 	const HINSTANCE m_hInst;
 
 	// Parent window handle.
@@ -483,8 +492,8 @@ private:
 	// Gain preamp in dB.
 	float m_GainPreamp;
 
-  // Indicates whether loudness normalisation is enabled.
-  bool m_LoudnessNormalisation;
+	// Indicates whether loudness normalisation is enabled.
+	bool m_LoudnessNormalisation;
 
 	// Indicates whether the 'stop at track end' setting should be reset when playback ends.
 	bool m_RetainStopAtTrackEnd;
@@ -591,16 +600,26 @@ private:
 	// Indicates whether an end synchronizer has been set on a mixer stream.
 	std::atomic<bool> m_MixerStreamHasEndSync;
 
-  // Whether playback should continue with the currently selected track, when the currently playing track has ended.
-  std::atomic<bool> m_FollowTrackSelection;
+	// Whether playback should continue with the currently selected track, when the currently playing track has ended.
+	std::atomic<bool> m_FollowTrackSelection;
 
-  // Current playlist with selected items to follow (used for 'follow track selection' mode).
-  std::pair<Playlist::Ptr, Playlist::Items> m_FollowPlaylistInformation;
+	// WASAPI settings.
+	std::atomic<bool> m_WASAPIUseMixFormat;
+	std::atomic<int> m_WASAPIBufferMilliseconds;
+	std::atomic<int> m_WASAPILeadInMilliseconds;
 
-  // Mutex for the current playlist with selected items to follow (used for 'follow track selection' mode).
-  std::mutex m_FollowPlaylistInformationMutex;
+	// ASIO settings.
+	std::atomic<bool> m_ASIOUseDefaultSamplerate;
+	std::atomic<int> m_ASIODefaultSamplerate;
+	std::atomic<int> m_ASIOLeadInMilliseconds;
 
-  // When starting playback in non-standard output mode, the lead-in length before passing through actual sample data.
+	// Current playlist with selected items to follow (used for 'follow track selection' mode).
+	std::pair<Playlist::Ptr, Playlist::Items> m_FollowPlaylistInformation;
+
+	// Mutex for the current playlist with selected items to follow (used for 'follow track selection' mode).
+	std::mutex m_FollowPlaylistInformationMutex;
+
+	// When starting playback in non-standard output mode, the lead-in length before passing through actual sample data.
 	float m_LeadInSeconds;
 
 	// A preloaded decoder, which can be used to minimize the delay when switching streams.
@@ -610,7 +629,7 @@ private:
 	std::mutex m_PreloadedDecoderMutex;
 
 	// The queue of stream titles, associated with their start times.
-	std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>> m_StreamTitleQueue;
+	std::vector<std::pair<float /*seconds*/, std::wstring /*title*/>> m_StreamTitleQueue;
 
 	// Stream title queue mutex.
 	std::mutex m_StreamTitleMutex;
@@ -618,9 +637,12 @@ private:
 	// Callback function for when the output playlist changes.
 	PlaylistChangeCallback m_OnPlaylistChangeCallback;
 
-  // Callback function for when the selected playlist item changes (when using 'follow track selection' mode).
-  SelectFollowedTrackCallback m_OnSelectFollowedTrackCallback;
+	// Callback function for when the selected playlist item changes (when using 'follow track selection' mode).
+	SelectFollowedTrackCallback m_OnSelectFollowedTrackCallback;
 
-  // Callback function for when the output decoder has finished pre-buffering.
+	// Indicates whether the output stream should be resampled, and the samplerate & channels to use if so.
+	std::optional<std::pair<uint32_t /*samplerate*/, uint32_t /*channels*/>> m_Resample;
+
+	// Callback function for when the output decoder has finished pre-buffering.
 	const OutputDecoder::PreBufferFinishedCallback m_OnPreBufferFinishedCallback;
 };

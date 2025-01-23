@@ -35,16 +35,16 @@ public:
 		Version,
 		GainTrack,
 		GainAlbum,
-//		PeakTrack = 18,	*DEPRECATED*
-//		PeakAlbum = 19,	*DEPRECATED*
+		//		PeakTrack = 18,	*DEPRECATED*
+		//		PeakAlbum = 19,	*DEPRECATED*
 		Artwork = 20,
 		CDDB = 21,
 		Bitrate = 22,
-    CueStart = 23,
-    CueEnd = 24,
-    Composer = 25,
-    Conductor = 26,
-    Publisher = 27,
+		CueStart = 23,
+		CueEnd = 24,
+		Composer = 25,
+		Conductor = 26,
+		Publisher = 27,
 
 		_Undefined
 	};
@@ -59,7 +59,7 @@ public:
 
 	// Queries the available decoders for media information.
 	// 'mediaInfo' - in/out, media information containing the filename to query.
-  // 'getTags' - whether to read file tags.
+	// 'getTags' - whether to read file tags.
 	// Returns true if the file was successfully opened by a decoder.
 	bool GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags );
 
@@ -83,14 +83,14 @@ public:
 
 	// Returns the albums contained in the media library.
 	std::set<std::wstring> GetAlbums();
-	
+
 	// Returns the albums by 'artist' contained in the media library.
 	std::set<std::wstring> GetArtistAlbums( const std::wstring& artist );
 
 	// Returns the genres contained in the media library.
 	std::set<std::wstring> GetGenres();
 
-  // Returns the years contained in the media library.
+	// Returns the years contained in the media library.
 	std::set<long> GetYears();
 
 	// Returns the publishers contained in the media library.
@@ -99,19 +99,19 @@ public:
 	// Returns the albums by 'publisher' contained in the media library.
 	std::set<std::wstring> GetPublisherAlbums( const std::wstring& publisher );
 
-  // Returns the composers contained in the media library.
+	// Returns the composers contained in the media library.
 	std::set<std::wstring> GetComposers();
 
 	// Returns the albums by 'composer' contained in the media library.
 	std::set<std::wstring> GetComposerAlbums( const std::wstring& composer );
 
-  // Returns the conductors contained in the media library.
+	// Returns the conductors contained in the media library.
 	std::set<std::wstring> GetConductors();
 
 	// Returns the albums by 'conductor' contained in the media library.
 	std::set<std::wstring> GetConductorAlbums( const std::wstring& conductor );
 
-  // Returns the media information by 'artist' contained in the media library.
+	// Returns the media information by 'artist' contained in the media library.
 	MediaInfo::List GetMediaByArtist( const std::wstring& artist );
 
 	// Returns the media information by 'album' contained in the media library.
@@ -126,19 +126,19 @@ public:
 	// Returns the media information by 'year' contained in the media library.
 	MediaInfo::List GetMediaByYear( const long year );
 
-  // Returns the media information by 'publisher' contained in the media library.
+	// Returns the media information by 'publisher' contained in the media library.
 	MediaInfo::List GetMediaByPublisher( const std::wstring& publisher );
 
 	// Returns the media information by 'publisher' & 'album' contained in the media library.
 	MediaInfo::List GetMediaByPublisherAndAlbum( const std::wstring& publisher, const std::wstring& album );
-  
-  // Returns the media information by 'composer' contained in the media library.
+
+	// Returns the media information by 'composer' contained in the media library.
 	MediaInfo::List GetMediaByComposer( const std::wstring& composer );
 
 	// Returns the media information by 'composer' & 'album' contained in the media library.
 	MediaInfo::List GetMediaByComposerAndAlbum( const std::wstring& composer, const std::wstring& album );
 
-  // Returns the media information by 'conductor' contained in the media library.
+	// Returns the media information by 'conductor' contained in the media library.
 	MediaInfo::List GetMediaByConductor( const std::wstring& conductor );
 
 	// Returns the media information by 'conductor' & 'album' contained in the media library.
@@ -183,7 +183,7 @@ public:
 	// Returns whether the 'conductor' & 'album' exists in the media library.
 	bool GetConductorAndAlbumExists( const std::wstring& conductor, const std::wstring& album );
 
-  // Removes 'mediaInfo' from the library.
+	// Removes 'mediaInfo' from the library.
 	// Returns true if the library was updated.
 	bool RemoveFromLibrary( const MediaInfo& mediaInfo );
 
@@ -215,8 +215,8 @@ private:
 	void UpdateDatabase();
 
 	// Updates the media table if necessary.
-  // 'cuesTable' - whether to update the cues table, rather than the main media table.
-	void UpdateMediaTable(const bool cuesTable = false);
+	// 'cuesTable' - whether to update the cues table, rather than the main media table.
+	void UpdateMediaTable( const bool cuesTable = false );
 
 	// Updates the CDDA table if necessary.
 	void UpdateCDDATable();
@@ -249,7 +249,7 @@ private:
 	std::wstring FindArtwork( const std::vector<BYTE>& image );
 
 	// Sets 'mediaInfo' from a SQLite 'stmt'.
-  // Returns false if there was any missing media data in the table (from new columns added as part of a schema update).
+	// Returns false if there was any missing media data in the table (from new columns added as part of a schema update).
 	bool ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo );
 
 	// Returns the library columns corresponding to 'mediaInfo'.
@@ -267,13 +267,13 @@ private:
 	// Returns the albums by the 'entity' from the media library, using the 'entityColumn'.
 	std::set<std::wstring> GetAlbums( const std::wstring& entity, const std::string& entityColumn );
 
-  // Returns the media information for the 'entity' from the media library, using the 'entityColumn'.
+	// Returns the media information for the 'entity' from the media library, using the 'entityColumn'.
 	MediaInfo::List GetMediaByEntity( const std::wstring& entity, const std::string& entityColumn );
 
 	// Returns the media information for the 'entity' & 'album' from the media library, using the 'entityColumn'.
 	MediaInfo::List GetMediaByEntityAndAlbum( const std::wstring& entity, const std::wstring& album, const std::string& entityColumn );
-  
-  // Returns whether an 'entity' exists in the media library, using the 'entityColumn'.
+
+	// Returns whether an 'entity' exists in the media library, using the 'entityColumn'.
 	bool GetEntityExists( const std::wstring& entity, const std::string& entityColumn );
 
 	// Returns whether an 'entity' & 'album' exists in the media library, using the 'entityColumn'.
@@ -303,12 +303,15 @@ private:
 	// CD audio columns.
 	Columns m_CDDAColumns;
 
-  // Cue columns.
-  Columns m_CueColumns;
+	// Cue columns.
+	Columns m_CueColumns;
 
-  // Fields from the media table, when combined with the cues table (for use in union queries).
-  std::string m_MediaFields;
+	// Fields from the media table, when combined with the cues table (for use in union queries).
+	std::string m_MediaFields;
 
-  // Fields from the cues table, when combined with the media table (for use in union queries).
-  std::string m_CueFields;
+	// Fields from the cues table, when combined with the media table (for use in union queries).
+	std::string m_CueFields;
+
+	// Media information for the last scanned CUE file entry (used for optimizing the opening of new CUE files).
+	std::optional<MediaInfo> m_LastCueFileInfo;
 };

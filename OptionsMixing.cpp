@@ -7,7 +7,7 @@
 #include "DlgModOpenMPT.h"
 
 // Maps an index to a pre-amp dB value.
-static const std::map<int,int> sPreampValues = {
+static const std::map<int, int> sPreampValues = {
 	{ 0,	+12 },
 	{ 1,	+11 },
 	{ 2,	+10 },
@@ -19,15 +19,27 @@ static const std::map<int,int> sPreampValues = {
 	{ 8,	+4 },
 	{ 9,	+3 },
 	{ 10,	+2 },
-	{ 11, +1 },
-	{ 12, +0 },
-	{ 13, -1 },
-	{ 14, -2 },
-	{ 15, -3 },
-	{ 16, -4 },
-	{ 17, -5 },
-	{ 18, -6 }
+	{ 11,	+1 },
+	{ 12,	+0 },
+	{ 13,	-1 },
+	{ 14,	-2 },
+	{ 15,	-3 },
+	{ 16,	-4 },
+	{ 17,	-5 },
+	{ 18,	-6 }
 };
+
+// Packs samplerate & channels into an LPARAM value.
+static LPARAM PackResampleFormat( const uint32_t samplerate, const uint32_t channels )
+{
+	return ( channels << 24 ) | samplerate;
+}
+
+// Unpacks samplerate & channels from an LPARAM value.
+static std::pair<int /*samplerate*/, int /*channels*/> UnpackResampleFormat( LPARAM data )
+{
+	return std::make_pair<uint32_t, uint32_t>( data & 0xFFFFFF, ( data >> 24 ) & 0x0F );
+}
 
 OptionsMixing::OptionsMixing( HINSTANCE instance, Settings& settings, Output& output ) :
 	Options( instance, settings, output ),
@@ -40,18 +52,18 @@ void OptionsMixing::OnInit( const HWND hwnd )
 	m_hWnd = hwnd;
 
 #ifndef _DEBUG
-  const std::vector<std::pair<Settings::MODDecoder, std::wstring>>modDecoders = {
-	  std::make_pair( Settings::MODDecoder::BASS, GetOutput().GetHandlers().GetBassVersion() ),
-    std::make_pair( Settings::MODDecoder::OpenMPT, GetOutput().GetHandlers().GetOpenMPTVersion() )
-  };
+	const std::vector<std::pair<Settings::MODDecoder, std::wstring>>modDecoders = {
+		std::make_pair( Settings::MODDecoder::BASS, GetOutput().GetHandlers().GetBassVersion() ),
+		std::make_pair( Settings::MODDecoder::OpenMPT, GetOutput().GetHandlers().GetOpenMPTVersion() )
+	};
 #else
-  const std::vector<std::pair<Settings::MODDecoder, std::wstring>>modDecoders = {
-	  std::make_pair( Settings::MODDecoder::BASS, GetOutput().GetHandlers().GetBassVersion() )
-  };
+	const std::vector<std::pair<Settings::MODDecoder, std::wstring>>modDecoders = {
+		std::make_pair( Settings::MODDecoder::BASS, GetOutput().GetHandlers().GetBassVersion() )
+	};
 #endif
 
-  const auto preferredDecoder = GetSettings().GetMODDecoder();
-	
+	const auto preferredDecoder = GetSettings().GetMODDecoder();
+
 	if ( const HWND hwndDecoder = GetDlgItem( hwnd, IDC_OPTIONS_MOD_DECODER ); nullptr != hwndDecoder ) {
 		for ( const auto& [ decoder, name ] : modDecoders ) {
 			ComboBox_AddString( hwndDecoder, name.c_str() );
@@ -59,35 +71,35 @@ void OptionsMixing::OnInit( const HWND hwnd )
 			if ( decoder == preferredDecoder ) {
 				ComboBox_SetCurSel( hwndDecoder, ComboBox_GetCount( hwndDecoder ) - 1 );
 			}
-  	}
+		}
 	}
 
-  const auto samplerateSetting = GetSettings().GetMODSamplerate();
+	const auto samplerateSetting = GetSettings().GetMODSamplerate();
 
 	if ( const HWND hwndSamplerate = GetDlgItem( hwnd, IDC_OPTIONS_MOD_SAMPLERATE ); nullptr != hwndSamplerate ) {
-    constexpr auto samplerates = Settings::GetMODSupportedSamplerates();
+		constexpr auto samplerates = Settings::GetSupportedSamplerates();
 		const int bufferSize = 16;
 		WCHAR hz[ bufferSize ];
 		const HINSTANCE instance = GetInstanceHandle();
-    LoadString( instance, IDS_UNITS_HZ, hz, bufferSize );
+		LoadString( instance, IDS_UNITS_HZ, hz, bufferSize );
 		for ( const auto samplerate : samplerates ) {
-      const std::wstring str = std::to_wstring( samplerate ) + L" " + hz;
+			const std::wstring str = std::to_wstring( samplerate ) + L" " + hz;
 			ComboBox_AddString( hwndSamplerate, str.c_str() );
 			ComboBox_SetItemData( hwndSamplerate, ComboBox_GetCount( hwndSamplerate ) - 1, static_cast<LPARAM>( samplerate ) );
 			if ( samplerate == samplerateSetting ) {
 				ComboBox_SetCurSel( hwndSamplerate, ComboBox_GetCount( hwndSamplerate ) - 1 );
 			}
-  	}
+		}
 	}
 
-  m_SoundFont = GetSettings().GetSoundFont();
-  SetWindowText( GetDlgItem( hwnd, IDC_OPTIONS_SOUNDFONT ), m_SoundFont.c_str() );
+	m_SoundFont = GetSettings().GetSoundFont();
+	SetWindowText( GetDlgItem( hwnd, IDC_OPTIONS_SOUNDFONT ), m_SoundFont.c_str() );
 
 	Settings::GainMode gainMode = Settings::GainMode::Disabled;
 	Settings::LimitMode limitMode = Settings::LimitMode::None;
 	float preamp = 0;
 	GetSettings().GetGainSettings( gainMode, limitMode, preamp );
-  Button_SetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GAIN_ALBUM ), ( Settings::GainMode::Album == gainMode ) ? BST_CHECKED : BST_UNCHECKED );
+	Button_SetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GAIN_ALBUM ), ( Settings::GainMode::Album == gainMode ) ? BST_CHECKED : BST_UNCHECKED );
 
 	const int bufSize = MAX_PATH;
 	WCHAR buf[ bufSize ] = {};
@@ -114,24 +126,54 @@ void OptionsMixing::OnInit( const HWND hwnd )
 	LoadString( GetInstanceHandle(), IDS_CLIPPREVENT_SOFTLIMIT, buf, bufSize );
 	ComboBox_AddString( hwndClip, buf );
 	switch ( limitMode ) {
-		case Settings::LimitMode::None : {
+		case Settings::LimitMode::None: {
 			ComboBox_SetCurSel( hwndClip, 0 );
 			break;
 		}
-		case Settings::LimitMode::Hard : {
+		case Settings::LimitMode::Hard: {
 			ComboBox_SetCurSel( hwndClip, 1 );
 			break;
 		}
-		case Settings::LimitMode::Soft : {
+		case Settings::LimitMode::Soft: {
 			ComboBox_SetCurSel( hwndClip, 2 );
 			break;
 		}
+	}
+
+	uint32_t resamplerRateSetting = 0;
+	uint32_t resamplerChannelsSetting = 0;
+	const bool resamplerEnabled = GetSettings().GetResamplerSettings( resamplerRateSetting, resamplerChannelsSetting );
+	Button_SetCheck( GetDlgItem( hwnd, IDC_OPTIONS_RESAMPLE_ENABLE ), resamplerEnabled ? BST_CHECKED : BST_UNCHECKED );
+
+	if ( const HWND hwndResampleFormat = GetDlgItem( hwnd, IDC_OPTIONS_RESAMPLE_FORMAT ); nullptr != hwndResampleFormat ) {
+		constexpr auto samplerates = Settings::GetSupportedSamplerates();
+		const int bufferSize = 32;
+		WCHAR hz[ bufferSize ];
+		WCHAR mono[ bufferSize ];
+		WCHAR stereo[ bufferSize ];
+		const HINSTANCE instance = GetInstanceHandle();
+		LoadString( instance, IDS_UNITS_HZ, hz, bufferSize );
+		LoadString( instance, IDS_MONO, mono, bufferSize );
+		LoadString( instance, IDS_STEREO, stereo, bufferSize );
+		std::array<std::pair<uint32_t, std::wstring>, 2> channels = { std::make_pair( 2u, stereo ), std::make_pair( 1u, mono ) };
+		for ( const auto& [ channelCount, channelText ] : channels ) {
+			for ( const auto samplerate : samplerates ) {
+				const std::wstring str = channelText + L", " + std::to_wstring( samplerate ) + L" " + hz;
+				ComboBox_AddString( hwndResampleFormat, str.c_str() );
+				const LPARAM data = PackResampleFormat( samplerate, channelCount );
+				ComboBox_SetItemData( hwndResampleFormat, ComboBox_GetCount( hwndResampleFormat ) - 1, data );
+				if ( ( samplerate == resamplerRateSetting ) && ( channelCount == resamplerChannelsSetting ) ) {
+					ComboBox_SetCurSel( hwndResampleFormat, ComboBox_GetCount( hwndResampleFormat ) - 1 );
+				}
+			}
+		}
+		EnableWindow( hwndResampleFormat, resamplerEnabled ? TRUE : FALSE );
 	}
 }
 
 void OptionsMixing::OnSave( const HWND hwnd )
 {
-  GetSettings().SetMODDecoder( GetPreferredDecoder( hwnd ) );
+	GetSettings().SetMODDecoder( GetPreferredDecoder( hwnd ) );
 
 	if ( const HWND hwndSamplerate = GetDlgItem( hwnd, IDC_OPTIONS_MOD_SAMPLERATE ); nullptr != hwndSamplerate ) {
 		const int selectedSamplerate = ComboBox_GetCurSel( hwndSamplerate );
@@ -156,20 +198,29 @@ void OptionsMixing::OnSave( const HWND hwnd )
 
 	const int selectedClip = ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_GAIN_CLIP ) );
 	switch ( selectedClip ) {
-		case 0 : {
+		case 0: {
 			limitMode = Settings::LimitMode::None;
 			break;
 		}
-		case 1 : {
+		case 1: {
 			limitMode = Settings::LimitMode::Hard;
 			break;
 		}
-		case 2 : {
+		case 2: {
 			limitMode = Settings::LimitMode::Soft;
 			break;
 		}
 	}
 	GetSettings().SetGainSettings( gainMode, limitMode, preamp );
+
+	if ( const HWND hwndResampleFormat = GetDlgItem( hwnd, IDC_OPTIONS_RESAMPLE_FORMAT ); nullptr != hwndResampleFormat ) {
+		const int selectedResampleFormat = ComboBox_GetCurSel( hwndResampleFormat );
+		if ( selectedResampleFormat >= 0 ) {
+			const auto [ samplerate, channels ] = UnpackResampleFormat( ComboBox_GetItemData( hwndResampleFormat, selectedResampleFormat ) );
+			const bool enabled = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_RESAMPLE_ENABLE ) ) );
+			GetSettings().SetResamplerSettings( enabled, samplerate, channels );
+		}
+	}
 }
 
 void OptionsMixing::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /*lParam*/ )
@@ -178,25 +229,31 @@ void OptionsMixing::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARA
 	const WORD controlID = LOWORD( wParam );
 	if ( BN_CLICKED == notificationCode ) {
 		switch ( controlID ) {
-      case IDC_OPTIONS_MOD_SETTINGS : {
-        const auto preferredDecoder = GetPreferredDecoder( hwnd );
-        switch ( preferredDecoder ) {
-          case Settings::MODDecoder::BASS : {
-				    DlgModBASS dialog( GetInstanceHandle(), hwnd, GetSettings() );
-            break;
-          }
-          case Settings::MODDecoder::OpenMPT : {
-				    DlgModOpenMPT dialog( GetInstanceHandle(), hwnd, GetSettings() );
-            break;
-          }
-        }
-        break;
-      }
-			case IDC_OPTIONS_SOUNDFONT_BROWSE : {
+			case IDC_OPTIONS_MOD_SETTINGS: {
+				const auto preferredDecoder = GetPreferredDecoder( hwnd );
+				switch ( preferredDecoder ) {
+					case Settings::MODDecoder::BASS: {
+						DlgModBASS dialog( GetInstanceHandle(), hwnd, GetSettings() );
+						break;
+					}
+					case Settings::MODDecoder::OpenMPT: {
+						DlgModOpenMPT dialog( GetInstanceHandle(), hwnd, GetSettings() );
+						break;
+					}
+				}
+				break;
+			}
+			case IDC_OPTIONS_SOUNDFONT_BROWSE: {
 				ChooseSoundFont();
 				break;
 			}
-			default : {
+			case IDC_OPTIONS_RESAMPLE_ENABLE: {
+				if ( const HWND hwndResampleFormat = GetDlgItem( hwnd, IDC_OPTIONS_RESAMPLE_FORMAT ); nullptr != hwndResampleFormat ) {
+					EnableWindow( hwndResampleFormat, ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_RESAMPLE_ENABLE ) ) ) ? TRUE : FALSE );
+				}
+				break;
+			}
+			default: {
 				break;
 			}
 		}
@@ -205,14 +262,14 @@ void OptionsMixing::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARA
 
 Settings::MODDecoder OptionsMixing::GetPreferredDecoder( const HWND hwnd ) const
 {
-  Settings::MODDecoder decoder = Settings::MODDecoder::BASS;
+	Settings::MODDecoder decoder = Settings::MODDecoder::BASS;
 	if ( const HWND hwndDecoder = GetDlgItem( hwnd, IDC_OPTIONS_MOD_DECODER ); nullptr != hwndDecoder ) {
 		const int selectedDecoder = ComboBox_GetCurSel( hwndDecoder );
 		if ( selectedDecoder >= 0 ) {
 			decoder = static_cast<Settings::MODDecoder>( ComboBox_GetItemData( hwndDecoder, selectedDecoder ) );
 		}
 	}
-  return decoder;
+	return decoder;
 }
 
 void OptionsMixing::ChooseSoundFont()

@@ -24,24 +24,24 @@ public:
 	// Callback function for when the output decoder has finished pre-buffering the playlist item ID.
 	using PreBufferFinishedCallback = std::function<void( const long /*ID*/ )>;
 
-  // Returns the number of channels to output for the 'mediaInfo'.
-  static long GetOutputChannels( const MediaInfo& mediaInfo );
+	// Returns the number of channels to output for the 'mediaInfo'.
+	static long GetOutputChannels( const MediaInfo& mediaInfo );
 
-  // Reads sample data.
+	// Reads sample data.
 	// 'buffer' - output buffer (floating point format scaled to +/-1.0f).
 	// 'sampleCount' - number of samples to read.
 	// Returns the number of samples read, or zero if the stream has ended.
-	long Read( float* buffer, const long sampleCount );
+	virtual long Read( float* buffer, const long sampleCount );
 
 	// Seeks to a 'position' in the stream, in seconds.
 	// Returns the new position in seconds.
 	double Seek( const double position );
 
-	// Returns the sample rate.
-	long GetSampleRate() const;
+	// Returns the output sample rate (after any optional resampling).
+	virtual long GetOutputSampleRate() const;
 
-	// Returns the number of channels.
-	long GetChannels() const;
+	// Returns the output channels (after any optional resampling).
+	virtual long GetOutputChannels() const;
 
 	// Returns the number of bits per sample (if relevant).
 	std::optional<long> GetBPS() const;
@@ -62,12 +62,15 @@ public:
 	// 'callback' - called when the output decoder has finished pre-buffering.
 	void PreBuffer( PreBufferFinishedCallback callback );
 
-private:
+protected:
 	// Starts the pre-buffering thread.
 	void StartPreBufferThread();
 
 	// Stops the pre-buffering thread.
 	void StopPreBufferThread();
+
+	// Returns an additional factor by which to scale the buffer size when pre-buffering.
+	virtual float GetPreBufferSizeFactor() const { return 1.0f; }
 
 	// Decodes sample data.
 	// 'buffer' - output buffer (floating point format scaled to +/-1.0f).
@@ -75,14 +78,14 @@ private:
 	// Returns the number of samples read, or zero if the stream has ended.
 	long Decode( float* buffer, const long sampleCount );
 
-  // Returns the number of channels to output for the 'decoder'.
-  static long GetOutputChannels( const Decoder::Ptr& decoder );
+	// Returns the number of channels to output for the 'decoder'.
+	static long GetDecoderChannels( const Decoder::Ptr& decoder );
 
-  // Decoder.
+	// Decoder.
 	const Decoder::Ptr m_Decoder;
 
 	// Decoder channels.
-	const long m_Channels;
+	const long m_DecoderChannels;
 
 	// Playlist item ID.
 	const long m_ID;

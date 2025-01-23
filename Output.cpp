@@ -31,7 +31,7 @@ constexpr float s_GainMax = 20.0f;
 constexpr float s_FadeOutDuration = 5.0f;
 
 // The relative volume at which to set the crossfade position on a track.
-constexpr float s_CrossfadeVolume = 0.3f;
+constexpr float s_CrossfadeVolume = 1 / 3.0f;
 
 // The fade to next duration, in seconds.
 constexpr float s_FadeToNextDuration = 3.0f;
@@ -45,15 +45,15 @@ constexpr DWORD s_StopFadeDuration = 20;
 // Maximum number of playlist items to skip when trying to switch decoder streams.
 constexpr size_t s_MaxSkipItems = 20;
 
-// Define to output debug timing for slow StreamProc calls.
-#undef STREAMPROC_TIMING
+// Define to output debug timing for testing.
+#undef DEBUG_TIMING
 
 DWORD CALLBACK Output::StreamProc( HSTREAM handle, void *buf, DWORD length, void *user )
 {
 	DWORD bytesRead = 0;
 	Output* output = static_cast<Output*>( user );
 	if ( nullptr != output ) {
-#ifdef STREAMPROC_TIMING
+#ifdef DEBUG_TIMING
 		LARGE_INTEGER perfFreq, perfCount1, perfCount2;
 		QueryPerformanceFrequency( &perfFreq );
 		QueryPerformanceCounter( &perfCount1 );
@@ -65,13 +65,13 @@ DWORD CALLBACK Output::StreamProc( HSTREAM handle, void *buf, DWORD length, void
 		if ( length > 0 ) {
 			sampleBuffer += bytesRead / 4;
 			bytesRead += output->ReadSampleData( sampleBuffer, length, handle );
-			if ( 0 == bytesRead ) {
-				bytesRead = BASS_STREAMPROC_END;
-				output->SetOutputStreamFinished( true );
-			}
+		}
+		if ( 0 == bytesRead ) {
+			bytesRead = BASS_STREAMPROC_END;
+			output->SetOutputStreamFinished( true );
 		}
 
-#ifdef STREAMPROC_TIMING
+#ifdef DEBUG_TIMING
 		QueryPerformanceCounter( &perfCount2 );
 		const float msec = 1000 * static_cast<float>( perfCount2.QuadPart - perfCount1.QuadPart ) / perfFreq.QuadPart;
 		if ( msec >= 1.0f ) {
@@ -112,8 +112,8 @@ void CALLBACK Output::WasapiNotifyProc( DWORD notify, DWORD device, void *user )
 	const DWORD currentDevice = BASS_WASAPI_GetDevice();
 	if ( currentDevice == device ) {
 		switch ( notify ) {
-			case BASS_WASAPI_NOTIFY_DISABLED :
-			case BASS_WASAPI_NOTIFY_FAIL : {
+			case BASS_WASAPI_NOTIFY_DISABLED:
+			case BASS_WASAPI_NOTIFY_FAIL: {
 				Output* output = static_cast<Output*>( user );
 				if ( nullptr != output ) {
 					output->m_WASAPIFailed = true;
@@ -204,7 +204,7 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, S
 	m_GainMode( Settings::GainMode::Disabled ),
 	m_LimitMode( Settings::LimitMode::None ),
 	m_GainPreamp( 0 ),
-  m_LoudnessNormalisation( m_Settings.GetLoudnessNormalisation() ),
+	m_LoudnessNormalisation( m_Settings.GetLoudnessNormalisation() ),
 	m_RetainStopAtTrackEnd( m_Settings.GetRetainStopAtTrackEnd() ),
 	m_StopAtTrackEnd( m_RetainStopAtTrackEnd ? m_Settings.GetStopAtTrackEnd() : false ),
 	m_Muted( false ),
@@ -245,11 +245,11 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, S
 	m_PreloadedDecoderMutex(),
 	m_StreamTitleQueue(),
 	m_StreamTitleMutex(),
-  m_FollowTrackSelection( m_Settings.GetFollowTrackSelection() ),
-  m_FollowPlaylistInformation( {} ),
-  m_FollowPlaylistInformationMutex(),
+	m_FollowTrackSelection( m_Settings.GetFollowTrackSelection() ),
+	m_FollowPlaylistInformation( {} ),
+	m_FollowPlaylistInformationMutex(),
 	m_OnPlaylistChangeCallback( nullptr ),
-  m_OnSelectFollowedTrackCallback( nullptr ),
+	m_OnSelectFollowedTrackCallback( nullptr ),
 	m_OnPreBufferFinishedCallback( [ this ] ( const long id )
 		{
 			if ( id != m_CrossfadingItemID ) {
@@ -261,7 +261,7 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, S
 		}
 	)
 {
-	InitialiseBass();
+	InitialiseOutput();
 
 	SetVolume( m_Settings.GetVolume() );
 	if ( m_Settings.GetRetainPitchBalance() ) {
@@ -280,7 +280,7 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, S
 
 Output::~Output()
 {
-	StopCrossfadeThread();
+	StopCrossfadeCalculationThread();
 	CloseHandle( m_CrossfadeStopEvent );
 
 	StopLoudnessPrecalcThread();
@@ -322,7 +322,7 @@ bool Output::Play( const long playlistID, const double seek )
 
 			EstimateGain( item );
 
-			m_DecoderSampleRate = m_DecoderStream->GetSampleRate();
+			m_DecoderSampleRate = m_DecoderStream->GetOutputSampleRate();
 			const DWORD freq = static_cast<DWORD>( m_DecoderSampleRate );
 			double seekPosition = seek;
 			if ( 0.0f != seekPosition ) {
@@ -358,7 +358,7 @@ bool Output::Play( const long playlistID, const double seek )
 					queue.push_back( { item, 0, seekPosition } );
 					SetOutputQueue( queue );
 					if ( GetCrossfade() ) {
-						CalculateCrossfadePoint( item, seekPosition );
+						StartCrossfadeCalculationThread( item, seekPosition );
 					}
 					StartLoudnessPrecalcThread();
 					PreloadNextDecoder( item );
@@ -379,7 +379,7 @@ void Output::Stop()
 			if ( BASS_ACTIVE_PLAYING == BASS_ChannelIsActive( m_OutputStream ) ) {
 				const HANDLE slideFinishedEvent = CreateEvent( nullptr /*attributes*/, FALSE /*manualReset*/, FALSE /*initial*/, L"" /*name*/ );
 				if ( nullptr != slideFinishedEvent ) {
-					const HSYNC syncSlide =	BASS_ChannelSetSync( m_OutputStream, BASS_SYNC_SLIDE | BASS_SYNC_ONETIME, 0 /*param*/, SyncSlideStop, slideFinishedEvent );
+					const HSYNC syncSlide = BASS_ChannelSetSync( m_OutputStream, BASS_SYNC_SLIDE | BASS_SYNC_ONETIME, 0 /*param*/, SyncSlideStop, slideFinishedEvent );
 					if ( 0 != syncSlide ) {
 						if ( BASS_ChannelSlideAttribute( m_OutputStream, BASS_ATTRIB_VOL, -1 /*fadeOutAndStop*/, s_StopFadeDuration ) ) {
 							WaitForSingleObject( slideFinishedEvent, 2 * s_StopFadeDuration );
@@ -439,7 +439,7 @@ void Output::Stop()
 	m_WASAPIPaused = false;
 	m_OutputStreamFinished = false;
 	m_MixerStreamHasEndSync = false;
-	StopCrossfadeThread();
+	StopCrossfadeCalculationThread();
 	StopLoudnessPrecalcThread();
 	std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
 	m_PreloadedDecoder = {};
@@ -450,21 +450,21 @@ void Output::Pause()
 {
 	const State state = GetState();
 	switch ( m_OutputMode ) {
-		case Settings::OutputMode::Standard : {
-			if ( State::Paused == state ) {	
+		case Settings::OutputMode::Standard: {
+			if ( State::Paused == state ) {
 				BASS_ChannelPlay( m_OutputStream, FALSE /*restart*/ );
 			} else if ( State::Playing == state ) {
 				BASS_ChannelPause( m_OutputStream );
 			}
 			break;
 		}
-		case Settings::OutputMode::WASAPIExclusive : {
+		case Settings::OutputMode::WASAPIExclusive: {
 			if ( ( -1 != BASS_WASAPI_GetDevice() ) && BASS_WASAPI_IsStarted() ) {
 				m_WASAPIPaused = !m_WASAPIPaused;
 			}
 			break;
 		}
-		case Settings::OutputMode::ASIO : {
+		case Settings::OutputMode::ASIO: {
 			if ( -1 != BASS_ASIO_GetDevice() ) {
 				if ( BASS_ASIO_ACTIVE_PAUSED == BASS_ASIO_ChannelIsActive( FALSE /*input*/, 0 /*channel*/ ) ) {
 					if ( TRUE != BASS_ASIO_ChannelReset( FALSE /*input*/, -1 /*channel*/, BASS_ASIO_RESET_PAUSE ) ) {
@@ -489,24 +489,24 @@ void Output::Previous( const bool forcePrevious, const float seek )
 			if ( forcePrevious || ( outputItem.Position < s_PreviousTrackCutoff ) ) {
 				Playlist::Item previousItem = {};
 
-        if ( GetFollowTrackSelection() ) {
-          if ( const auto nextTrackToFollow = GetTrackToFollow( currentItem, true /*previous*/ ) ) {
-            const auto& [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
-            previousItem = nextTrack;
-            ChangePlaylist( playlist );
-          }
-        } else {        
-          if ( GetRandomPlay() ) {
-					  std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
-					  if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_PreloadedDecoder.item.ID != currentItem.ID ) && m_Playlist->ContainsItem( { m_PreloadedDecoder.item } ) ) {
-						  previousItem = m_PreloadedDecoder.item;
-					  } else {
-						  previousItem = m_Playlist->GetRandomItem( currentItem );
-					  }
-				  } else {
-					  m_Playlist->GetPreviousItem( currentItem, previousItem );
-				  }
-        }
+				if ( GetFollowTrackSelection() ) {
+					if ( const auto nextTrackToFollow = GetTrackToFollow( currentItem, true /*previous*/ ) ) {
+						const auto& [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
+						previousItem = nextTrack;
+						ChangePlaylist( playlist );
+					}
+				} else {
+					if ( GetRandomPlay() ) {
+						std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
+						if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_PreloadedDecoder.item.ID != currentItem.ID ) && m_Playlist->ContainsItem( { m_PreloadedDecoder.item } ) ) {
+							previousItem = m_PreloadedDecoder.item;
+						} else {
+							previousItem = m_Playlist->GetRandomItem( currentItem );
+						}
+					} else {
+						m_Playlist->GetPreviousItem( currentItem, previousItem );
+					}
+				}
 
 				if ( previousItem.ID > 0 ) {
 					Play( previousItem.ID, seek );
@@ -517,7 +517,7 @@ void Output::Previous( const bool forcePrevious, const float seek )
 		}
 	}
 }
-	
+
 void Output::Next()
 {
 	const State state = GetState();
@@ -526,24 +526,24 @@ void Output::Next()
 		const Playlist::Item currentItem = outputItem.PlaylistItem;
 		Playlist::Item nextItem = {};
 
-    if ( GetFollowTrackSelection() ) {
-      if ( const auto nextTrackToFollow = GetTrackToFollow( currentItem ) ) {
-        const auto& [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
-        nextItem = nextTrack;
-        ChangePlaylist( playlist );
-      }
-    } else {
-		  if ( GetRandomPlay() ) {
-			  std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
-			  if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_PreloadedDecoder.item.ID != currentItem.ID ) && m_Playlist->ContainsItem( { m_PreloadedDecoder.item } ) ) {
-				  nextItem = m_PreloadedDecoder.item;
-			  } else {
-				  nextItem = m_Playlist->GetRandomItem( currentItem );
-			  }
-		  } else {
-			  m_Playlist->GetNextItem( currentItem, nextItem );
-		  }
-    }
+		if ( GetFollowTrackSelection() ) {
+			if ( const auto nextTrackToFollow = GetTrackToFollow( currentItem ) ) {
+				const auto& [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
+				nextItem = nextTrack;
+				ChangePlaylist( playlist );
+			}
+		} else {
+			if ( GetRandomPlay() ) {
+				std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
+				if ( ( m_PreloadedDecoder.item.ID > 0 ) && ( m_PreloadedDecoder.item.ID != currentItem.ID ) && m_Playlist->ContainsItem( { m_PreloadedDecoder.item } ) ) {
+					nextItem = m_PreloadedDecoder.item;
+				} else {
+					nextItem = m_Playlist->GetRandomItem( currentItem );
+				}
+			} else {
+				m_Playlist->GetNextItem( currentItem, nextItem );
+			}
+		}
 
 		if ( nextItem.ID > 0 ) {
 			Play( nextItem.ID );
@@ -554,7 +554,7 @@ void Output::Next()
 void Output::Play( const Playlist::Ptr playlist, const long startID, const float seek )
 {
 	Stop();
-  ChangePlaylist( playlist );
+	ChangePlaylist( playlist );
 	Play( startID, seek );
 }
 
@@ -567,14 +567,14 @@ Output::State Output::GetState()
 {
 	State state = State::Stopped;
 	switch ( m_OutputMode ) {
-		case Settings::OutputMode::Standard : {
+		case Settings::OutputMode::Standard: {
 			const DWORD channelState = BASS_ChannelIsActive( m_OutputStream );
 			switch ( channelState ) {
-				case BASS_ACTIVE_PLAYING : {
+				case BASS_ACTIVE_PLAYING: {
 					state = State::Playing;
 					break;
 				}
-				case BASS_ACTIVE_STALLED : {
+				case BASS_ACTIVE_STALLED: {
 					if ( m_OutputStreamFinished && !m_MixerStreamHasEndSync ) {
 						Stop();
 					} else {
@@ -582,14 +582,14 @@ Output::State Output::GetState()
 					}
 					break;
 				}
-				case BASS_ACTIVE_PAUSED : {
+				case BASS_ACTIVE_PAUSED: {
 					state = State::Paused;
 					break;
 				}
 			}
 			break;
 		}
-		case Settings::OutputMode::WASAPIExclusive : {
+		case Settings::OutputMode::WASAPIExclusive: {
 			if ( -1 != BASS_WASAPI_GetDevice() ) {
 				if ( BASS_WASAPI_IsStarted() ) {
 					state = m_WASAPIPaused ? State::Paused : State::Playing;
@@ -600,7 +600,7 @@ Output::State Output::GetState()
 			}
 			break;
 		}
-		case Settings::OutputMode::ASIO : {
+		case Settings::OutputMode::ASIO: {
 			if ( -1 != BASS_ASIO_GetDevice() ) {
 				if ( BASS_ASIO_IsStarted() ) {
 					if ( BASS_ASIO_ACTIVE_PAUSED == BASS_ASIO_ChannelIsActive( FALSE /*input*/, 0 /*channel*/ ) ) {
@@ -651,26 +651,26 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 	// Read sample data into the output buffer.
 	DWORD bytesRead = 0;
 	if ( ( nullptr != buffer ) && ( byteCount > 0 ) && m_DecoderStream ) {
-		const long channels = m_DecoderStream->GetChannels();
+		const long channels = m_DecoderStream->GetOutputChannels();
 		if ( channels > 0 ) {
 			long samplesToRead = static_cast<long>( byteCount ) / ( channels * 4 );
 
 			if ( GetCrossfade() && !GetFadeOut() && !GetFadeToNext() && !GetStopAtTrackEnd() ) {
-				const double crossfadePosition = GetCrossfadePosition();			
+				const double crossfadePosition = GetCrossfadePosition();
 				if ( crossfadePosition > 0 ) {
 					bool checkCrossFade = ( GetRandomPlay() || GetRepeatTrack() );
 					if ( !checkCrossFade ) {
-            if ( GetFollowTrackSelection() ) {
-              checkCrossFade = GetTrackToFollow( m_CurrentItemDecoding ).has_value();
-            } else {
-						  std::lock_guard<std::mutex> lock( m_PlaylistMutex );
-						  Playlist::Item nextItem = {};
-						  checkCrossFade = m_Playlist->GetNextItem( m_CurrentItemDecoding, nextItem, GetRepeatPlaylist() /*wrap*/ );
-            }
+						if ( GetFollowTrackSelection() ) {
+							checkCrossFade = GetTrackToFollow( m_CurrentItemDecoding ).has_value();
+						} else {
+							std::lock_guard<std::mutex> lock( m_PlaylistMutex );
+							Playlist::Item nextItem = {};
+							checkCrossFade = m_Playlist->GetNextItem( m_CurrentItemDecoding, nextItem, GetRepeatPlaylist() /*wrap*/ );
+						}
 					}
 					if ( checkCrossFade ) {
 						// Ensure we don't read past the crossfade point.
-						const long sampleRate = m_DecoderStream->GetSampleRate();
+						const long sampleRate = m_DecoderStream->GetOutputSampleRate();
 						if ( sampleRate > 0 ) {
 							const double trackPos = GetDecodePosition() - m_LastTransitionPosition - m_LeadInSeconds;
 							const double secondsTillCrossfade = crossfadePosition - trackPos;
@@ -729,9 +729,9 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 			auto nextDecoder = GetNextDecoder( nextItem );
 			if ( nextDecoder && !IsURL( nextItem.Info.GetFilename() ) ) {
 				EstimateGain( nextItem );
-				const long channels = m_DecoderStream->GetChannels();
-				const long sampleRate = m_DecoderStream->GetSampleRate();
-				if ( ( nextDecoder->GetChannels() == channels ) && ( nextDecoder->GetSampleRate() == sampleRate ) ) {
+				const long channels = m_DecoderStream->GetOutputChannels();
+				const long sampleRate = m_DecoderStream->GetOutputSampleRate();
+				if ( ( nextDecoder->GetOutputChannels() == channels ) && ( nextDecoder->GetOutputSampleRate() == sampleRate ) ) {
 					if ( GetCrossfade() || GetFadeToNext() ) {
 						nextDecoder->SkipSilence();
 					}
@@ -745,7 +745,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 						SetOutputQueue( queue );
 
 						if ( GetCrossfade() && ( 0 != bytesRead ) ) {
-							CalculateCrossfadePoint( nextItem );
+							StartCrossfadeCalculationThread( nextItem );
 						}
 					} else {
 						nextItem = {};
@@ -782,8 +782,8 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 		std::lock_guard<std::mutex> crossfadingStreamLock( m_CrossfadingStreamMutex );
 		if ( m_CrossfadingStream ) {
 			// Decode and fade out the crossfading stream and mix with the final output buffer.
-			const long channels = OutputDecoder::GetOutputChannels( m_CurrentItemCrossfading.Info );
-			const long samplerate = m_CurrentItemCrossfading.Info.GetSampleRate();
+			const long channels = m_Resample ? m_Resample->second : OutputDecoder::GetOutputChannels( m_CurrentItemCrossfading.Info );
+			const long samplerate = m_Resample ? m_Resample->first : m_CurrentItemCrossfading.Info.GetSampleRate();
 			if ( ( channels > 0 ) && ( samplerate > 0 ) ) {
 				const long samplesToRead = static_cast<long>( bytesRead ) / ( channels * 4 );
 				std::vector<float> crossfadingBuffer( bytesRead / 4 );
@@ -801,7 +801,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 							} else {
 								const float fadeOutEndPosition = m_FadeOutStartPosition + GetFadeOutDuration();
 								for ( long sampleIndex = 0; sampleIndex < crossfadingSamplesRead; sampleIndex++ ) {
-									const float pos = static_cast<float>( sampleIndex ) / samplerate;			
+									const float pos = static_cast<float>( sampleIndex ) / samplerate;
 									float scale = static_cast<float>( fadeOutEndPosition - currentPos - pos ) / GetFadeOutDuration();
 									if ( ( scale < 0 ) || ( scale > 1.0f ) ) {
 										scale = 0;
@@ -815,9 +815,9 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 					} else {
 						// Crossfade.
 						const float trackPos = GetDecodePosition() - m_LastTransitionPosition - m_LeadInSeconds;
-						if ( ( crossfadingBytesRead > 0 ) && ( trackPos < GetFadeOutDuration() ) ) {				
+						if ( ( crossfadingBytesRead > 0 ) && ( trackPos < GetFadeOutDuration() ) ) {
 							for ( long sampleIndex = 0; sampleIndex < crossfadingSamplesRead; sampleIndex++ ) {
-								const float pos = static_cast<float>( sampleIndex ) / samplerate;			
+								const float pos = static_cast<float>( sampleIndex ) / samplerate;
 								float scale = static_cast<float>( GetFadeOutDuration() - trackPos - pos ) / GetFadeOutDuration();
 								if ( ( scale < 0 ) || ( scale > 1.0f ) ) {
 									scale = 0;
@@ -849,8 +849,8 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 	// Apply fade out on the currently decoding track, if necessary.
 	if ( ( GetFadeOut() || GetFadeToNext() ) && ( 0 != bytesRead ) && ( m_FadeOutStartPosition > 0 ) && m_DecoderStream ) {
 		const float currentPos = GetDecodePosition();
-		const long channels = m_DecoderStream->GetChannels();
-		const long samplerate = m_DecoderStream->GetSampleRate();
+		const long channels = m_DecoderStream->GetOutputChannels();
+		const long samplerate = m_DecoderStream->GetOutputSampleRate();
 		if ( ( currentPos > m_FadeOutStartPosition ) && ( channels > 0 ) && ( samplerate > 0 ) ) {
 			if ( ( currentPos - m_FadeOutStartPosition ) > GetFadeOutDuration() ) {
 				bytesRead = 0;
@@ -861,7 +861,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 				const long sampleCount = static_cast<long>( bytesRead ) / ( channels * 4 );
 				const float fadeOutEndPosition = m_FadeOutStartPosition + GetFadeOutDuration();
 				for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
-					const float pos = static_cast<float>( sampleIndex ) / samplerate;			
+					const float pos = static_cast<float>( sampleIndex ) / samplerate;
 					float scale = static_cast<float>( fadeOutEndPosition - currentPos - pos ) / GetFadeOutDuration();
 					if ( ( scale < 0 ) || ( scale > 1.0f ) ) {
 						scale = 0;
@@ -875,7 +875,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 					m_SwitchToNext = true;
 				}
 			}
-		}		
+		}
 	}
 
 	return bytesRead;
@@ -941,21 +941,21 @@ void Output::GetLevels( float& left, float& right )
 		float levels[ 2 ] = {};
 		const float length = 0.05f;
 		switch ( m_OutputMode ) {
-			case Settings::OutputMode::Standard : {
+			case Settings::OutputMode::Standard: {
 				if ( TRUE == BASS_ChannelGetLevelEx( m_OutputStream, levels, length, BASS_LEVEL_STEREO ) ) {
 					left = levels[ 0 ];
 					right = levels[ 1 ];
 				}
 				break;
 			}
-			case Settings::OutputMode::WASAPIExclusive : {
+			case Settings::OutputMode::WASAPIExclusive: {
 				if ( TRUE == BASS_WASAPI_GetLevelEx( levels, length, BASS_LEVEL_STEREO ) ) {
 					left = levels[ 0 ];
 					right = levels[ 1 ];
 				}
 				break;
 			}
-			case Settings::OutputMode::ASIO : {
+			case Settings::OutputMode::ASIO: {
 				if ( TRUE == BASS_Mixer_ChannelGetLevelEx( m_OutputStream, levels, length, BASS_LEVEL_STEREO ) ) {
 					left = levels[ 0 ];
 					right = levels[ 1 ];
@@ -970,8 +970,8 @@ void Output::GetSampleData( const long sampleCount, std::vector<float>& samples,
 {
 	if ( 0 != m_OutputStream ) {
 		switch ( m_OutputMode ) {
-			case Settings::OutputMode::Standard : 
-			case Settings::OutputMode::ASIO : {
+			case Settings::OutputMode::Standard:
+			case Settings::OutputMode::ASIO: {
 				BASS_CHANNELINFO channelInfo = {};
 				if ( BASS_ChannelGetInfo( m_OutputStream, &channelInfo ) ) {
 					channels = static_cast<long>( channelInfo.chans );
@@ -987,7 +987,7 @@ void Output::GetSampleData( const long sampleCount, std::vector<float>& samples,
 				}
 				break;
 			}
-			case Settings::OutputMode::WASAPIExclusive : {
+			case Settings::OutputMode::WASAPIExclusive: {
 				if ( BASS_WASAPI_IsStarted() ) {
 					BASS_WASAPI_INFO wasapiInfo = {};
 					if ( TRUE == BASS_WASAPI_GetInfo( &wasapiInfo ) ) {
@@ -1007,18 +1007,18 @@ void Output::GetSampleData( const long sampleCount, std::vector<float>& samples,
 
 void Output::GetFFTData( std::vector<float>& fft )
 {
-	constexpr std::pair fftSize { BASS_DATA_FFT4096, 2048 };
+	constexpr std::pair fftSize{ BASS_DATA_FFT4096, 2048 };
 
 	if ( 0 != m_OutputStream ) {
 		switch ( m_OutputMode ) {
-			case Settings::OutputMode::Standard : {
+			case Settings::OutputMode::Standard: {
 				fft.resize( fftSize.second );
 				if ( -1 == BASS_ChannelGetData( m_OutputStream, fft.data(), BASS_DATA_FLOAT | fftSize.first ) ) {
 					fft.clear();
 				}
 				break;
 			}
-			case Settings::OutputMode::WASAPIExclusive : {
+			case Settings::OutputMode::WASAPIExclusive: {
 				if ( BASS_WASAPI_IsStarted() ) {
 					fft.resize( fftSize.second );
 					if ( -1 == BASS_WASAPI_GetData( fft.data(), BASS_DATA_FLOAT | fftSize.first ) ) {
@@ -1027,7 +1027,7 @@ void Output::GetFFTData( std::vector<float>& fft )
 				}
 				break;
 			}
-			case Settings::OutputMode::ASIO : {
+			case Settings::OutputMode::ASIO: {
 				fft.resize( fftSize.second );
 				if ( -1 == BASS_Mixer_ChannelGetData( m_OutputStream, fft.data(), BASS_DATA_FLOAT | fftSize.first ) ) {
 					fft.clear();
@@ -1111,28 +1111,28 @@ void Output::SetCrossfade( const bool enabled )
 			auto iter = queue.rbegin();
 			if ( queue.rend() != iter ) {
 				const Item item = *iter;
-				CalculateCrossfadePoint( item.PlaylistItem, item.InitialSeek );
+				StartCrossfadeCalculationThread( item.PlaylistItem, item.InitialSeek );
 			}
 		}
 	} else {
-		StopCrossfadeThread();
+		StopCrossfadeCalculationThread();
 	}
 }
 
 bool Output::GetLoudnessNormalisation() const
 {
-  return m_LoudnessNormalisation;
+	return m_LoudnessNormalisation;
 }
 
 void Output::SetLoudnessNormalisation( const bool enabled )
 {
-  m_LoudnessNormalisation = enabled;
-  if ( m_LoudnessNormalisation ) {
-	  EstimateGain( m_CurrentItemDecoding );
-	  if ( State::Stopped != GetState() ) {
-		  StartLoudnessPrecalcThread();
-	  }
-  }
+	m_LoudnessNormalisation = enabled;
+	if ( m_LoudnessNormalisation ) {
+		EstimateGain( m_CurrentItemDecoding );
+		if ( State::Stopped != GetState() ) {
+			StartLoudnessPrecalcThread();
+		}
+	}
 }
 
 bool Output::OnUpdatedMedia( const MediaInfo& mediaInfo )
@@ -1185,7 +1185,7 @@ Output::Devices Output::GetDevices( const Settings::OutputMode mode ) const
 	Devices devices;
 	DWORD deviceID = 0;
 	switch ( mode ) {
-		case Settings::OutputMode::Standard : {
+		case Settings::OutputMode::Standard: {
 			BASS_DEVICEINFO deviceInfo = {};
 			while ( TRUE == BASS_GetDeviceInfo( ++deviceID, &deviceInfo ) ) {
 				if ( nullptr != deviceInfo.name ) {
@@ -1194,7 +1194,7 @@ Output::Devices Output::GetDevices( const Settings::OutputMode mode ) const
 			}
 			break;
 		}
-		case Settings::OutputMode::WASAPIExclusive : {
+		case Settings::OutputMode::WASAPIExclusive: {
 			BASS_WASAPI_DEVICEINFO deviceInfo = {};
 			while ( TRUE == BASS_WASAPI_GetDeviceInfo( deviceID, &deviceInfo ) ) {
 				if ( ( deviceInfo.flags & BASS_DEVICE_ENABLED ) && !( deviceInfo.flags & BASS_DEVICE_INPUT ) && ( nullptr != deviceInfo.name ) ) {
@@ -1204,7 +1204,7 @@ Output::Devices Output::GetDevices( const Settings::OutputMode mode ) const
 			}
 			break;
 		}
-		case Settings::OutputMode::ASIO : {
+		case Settings::OutputMode::ASIO: {
 			BASS_ASIO_DEVICEINFO deviceInfo = {};
 			while ( TRUE == BASS_ASIO_GetDeviceInfo( deviceID, &deviceInfo ) ) {
 				if ( nullptr != deviceInfo.name ) {
@@ -1227,7 +1227,16 @@ void Output::SettingsChanged()
 	Settings::OutputMode settingsMode = Settings::OutputMode::Standard;
 	m_Settings.GetOutputSettings( settingsDevice, settingsMode );
 
-	const bool reinitialise = ( settingsMode != m_OutputMode ) || ( settingsDevice != m_OutputDevice );
+	uint32_t resamplerRate = 0;
+	uint32_t resamplerChannels = 0;
+	const bool resamplerEnabled = m_Settings.GetResamplerSettings( resamplerRate, resamplerChannels );
+
+	const bool reinitialise =
+		( settingsMode != m_OutputMode ) ||
+		( settingsDevice != m_OutputDevice ) ||
+		( resamplerEnabled != m_Resample.has_value() ) ||
+		( resamplerRate != m_Resample.value_or( std::make_pair( resamplerRate, resamplerChannels ) ).first ) ||
+		( resamplerChannels != m_Resample.value_or( std::make_pair( resamplerRate, resamplerChannels ) ).second );
 
 	if ( reinitialise ) {
 		Stop();
@@ -1235,8 +1244,11 @@ void Output::SettingsChanged()
 			BASS_ASIO_Free();
 		}
 		BASS_Free();
-		InitialiseBass();
+		InitialiseOutput();
 	}
+
+	GetWASAPISettings();
+	GetASIOSettings();
 
 	Settings::GainMode gainMode = Settings::GainMode::Disabled;
 	Settings::LimitMode limitMode = Settings::LimitMode::None;
@@ -1253,7 +1265,7 @@ void Output::SettingsChanged()
 	m_Handlers.SettingsChanged( m_Settings );
 }
 
-void Output::InitialiseBass()
+void Output::InitialiseOutput()
 {
 	int deviceNum = -1;
 	m_Settings.GetOutputSettings( m_OutputDevice, m_OutputMode );
@@ -1302,6 +1314,36 @@ void Output::InitialiseBass()
 		const std::wstring userAgent( buffer );
 		BASS_SetConfigPtr( BASS_CONFIG_NET_AGENT, userAgent.c_str() );
 	}
+
+	uint32_t resamplerRate = 0;
+	uint32_t resamplerChannels = 0;
+	const bool resamplerEnabled = m_Settings.GetResamplerSettings( resamplerRate, resamplerChannels );
+	m_Resample = resamplerEnabled ? std::make_optional( std::make_pair( resamplerRate, resamplerChannels ) ) : std::nullopt;
+
+	GetWASAPISettings();
+	GetASIOSettings();
+}
+
+void Output::GetWASAPISettings()
+{
+	bool useMixFormat = false;
+	int bufferMilliseconds = 0;
+	int leadInMilliseconds = 0;
+	m_Settings.GetAdvancedWasapiExclusiveSettings( useMixFormat, bufferMilliseconds, leadInMilliseconds );
+	m_WASAPIUseMixFormat.store( useMixFormat );
+	m_WASAPIBufferMilliseconds.store( bufferMilliseconds );
+	m_WASAPILeadInMilliseconds.store( leadInMilliseconds );
+}
+
+void Output::GetASIOSettings()
+{
+	bool useDefaultSamplerate = false;
+	int defaultSamplerate = 0;
+	int leadInMilliseconds = 0;
+	m_Settings.GetAdvancedASIOSettings( useDefaultSamplerate, defaultSamplerate, leadInMilliseconds );
+	m_ASIOUseDefaultSamplerate.store( useDefaultSamplerate );
+	m_ASIODefaultSamplerate.store( defaultSamplerate );
+	m_ASIOLeadInMilliseconds.store( leadInMilliseconds );
 }
 
 void Output::EstimateGain( Playlist::Item& item )
@@ -1329,9 +1371,9 @@ void Output::EstimateGain( Playlist::Item& item )
 	}
 }
 
-void Output::CalculateCrossfadePoint( const Playlist::Item& item, const double seekOffset )
+void Output::StartCrossfadeCalculationThread( const Playlist::Item& item, const double seekOffset )
 {
-	StopCrossfadeThread();
+	StopCrossfadeCalculationThread();
 	ResetEvent( m_CrossfadeStopEvent );
 	m_CrossfadeItem = item;
 	m_CrossfadeSeekOffset = seekOffset;
@@ -1340,9 +1382,9 @@ void Output::CalculateCrossfadePoint( const Playlist::Item& item, const double s
 
 void Output::CalculateCrossfadeHandler()
 {
-  if ( !CanBackgroundThreadProceed( m_CrossfadeStopEvent ) ) {
-    return;
-  }
+	if ( !CanBackgroundThreadProceed( m_CrossfadeStopEvent ) ) {
+		return;
+	}
 
 	const auto decoder = IsURL( m_CrossfadeItem.Info.GetFilename() ) ? nullptr : OpenDecoder( m_CrossfadeItem, Decoder::Context::Input );
 	if ( decoder ) {
@@ -1350,50 +1392,9 @@ void Output::CalculateCrossfadeHandler()
 		const long channels = decoder->GetChannels();
 		const long samplerate = decoder->GetSampleRate();
 		if ( ( duration > 0 ) && ( channels > 0 ) && ( samplerate > 0 ) ) {
-			if ( 0.0f == m_CrossfadeSeekOffset ) {
-				decoder->SkipSilence();
-			}
-
-			double position = 0;
-			if ( m_CrossfadeSeekOffset > 0 ) {
-				position = decoder->SetPosition( m_CrossfadeSeekOffset );
-			}
-			double crossfadePosition = 0;
-
-			int64_t cumulativeCount = 0;
-			double cumulativeTotal = 0;
-			double cumulativeRMS = 0;
-
-			const double crossfadeRMSRatio = s_CrossfadeVolume;
-			const long windowSize = samplerate / 10;
-			std::vector<float> buffer( windowSize * channels );
-
-			while ( WAIT_OBJECT_0 != WaitForSingleObject( m_CrossfadeStopEvent, 0 ) ) {
-				long sampleCount = decoder->ReadSamples( buffer.data(), windowSize );
-				if ( sampleCount > 0 ) {
-					auto sampleIter = buffer.begin();
-					double windowTotal = 0;
-					for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
-						for ( long channel = 0; channel < channels; channel++, sampleIter++, cumulativeCount++ ) {
-							const double value = *sampleIter * *sampleIter;
-							windowTotal += value;
-							cumulativeTotal += value;
-						}
-					}
-
-					const double windowRMS = sqrt( windowTotal / ( sampleCount * channels ) );
-					cumulativeRMS = sqrt( cumulativeTotal / cumulativeCount );
-					position += static_cast<double>( sampleCount ) / samplerate;
-
-					if ( windowRMS > cumulativeRMS ) {
-						crossfadePosition = position;
-					} else if ( ( cumulativeRMS > 0 ) && ( ( windowRMS / cumulativeRMS ) > crossfadeRMSRatio ) ) {
-						crossfadePosition = position;
-					}
-				} else {
-					break;
-				}
-			}
+			const double crossfadePosition = CalculateCrossfadePosition( decoder, m_CrossfadeSeekOffset, [ this ] () {
+				return WAIT_OBJECT_0 != WaitForSingleObject( m_CrossfadeStopEvent, 0 );
+				} );
 			if ( WAIT_OBJECT_0 != WaitForSingleObject( m_CrossfadeStopEvent, 0 ) ) {
 				SetCrossfadePosition( crossfadePosition - m_CrossfadeSeekOffset );
 
@@ -1405,10 +1406,12 @@ void Output::CalculateCrossfadeHandler()
 				if ( MediaInfo::Source::CDDA == nextItem.Info.GetSource() ) {
 					// Pre-cache some CD audio data for the next track, to prevent glitches when crossfading.
 					if ( const auto nextDecoder = OpenDecoder( nextItem, Decoder::Context::Output ); nextDecoder ) {
+						const long bufferSize = nextDecoder->GetSampleRate() / 10;
+						std::vector<float> buffer( bufferSize * channels );
 						const long kSamplesToRead = 10 * nextDecoder->GetSampleRate();
 						long totalSamplesRead = 0;
 						while ( WAIT_OBJECT_0 != WaitForSingleObject( m_CrossfadeStopEvent, 0 ) ) {
-							const long samplesRead = nextDecoder->ReadSamples( buffer.data(), windowSize );
+							const long samplesRead = nextDecoder->ReadSamples( buffer.data(), bufferSize );
 							totalSamplesRead += samplesRead;
 							if ( ( totalSamplesRead >= kSamplesToRead ) || ( samplesRead <= 0 ) ) {
 								break;
@@ -1421,7 +1424,7 @@ void Output::CalculateCrossfadeHandler()
 	}
 }
 
-void Output::StopCrossfadeThread()
+void Output::StopCrossfadeCalculationThread()
 {
 	if ( nullptr != m_CrossfadeThread ) {
 		SetEvent( m_CrossfadeStopEvent );
@@ -1432,6 +1435,60 @@ void Output::StopCrossfadeThread()
 	SetCrossfadePosition( 0 );
 	m_CrossfadeSeekOffset = 0;
 	m_CrossfadeItem = {};
+}
+
+double Output::CalculateCrossfadePosition( Decoder::Ptr decoder, const double seekOffset, Decoder::CanContinue canContinue ) const
+{
+	if ( !decoder )
+		return 0;
+
+	if ( 0.0f == seekOffset ) {
+		decoder->SkipSilence();
+	}
+
+	double position = 0;
+	if ( seekOffset > 0 ) {
+		position = decoder->SetPosition( seekOffset );
+	}
+	double crossfadePosition = 0;
+
+	int64_t cumulativeCount = 0;
+	double cumulativeTotal = 0;
+	double cumulativeRMS = 0;
+
+	const double crossfadeRMSRatio = s_CrossfadeVolume;
+	const long windowSize = decoder->GetSampleRate() / 10;
+	std::vector<float> buffer( windowSize * decoder->GetChannels() );
+
+	while ( ( nullptr == canContinue ) || canContinue() ) {
+		long sampleCount = decoder->ReadSamples( buffer.data(), windowSize );
+		if ( sampleCount > 0 ) {
+
+			auto sampleIter = buffer.begin();
+			double windowTotal = 0;
+			for ( long sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++ ) {
+				for ( long channel = 0; channel < decoder->GetChannels(); channel++, sampleIter++, cumulativeCount++ ) {
+					const double value = *sampleIter * *sampleIter;
+					windowTotal += value;
+					cumulativeTotal += value;
+				}
+			}
+
+			const double windowRMS = sqrt( windowTotal / ( sampleCount * decoder->GetChannels() ) );
+			cumulativeRMS = sqrt( cumulativeTotal / cumulativeCount );
+			position += static_cast<double>( sampleCount ) / decoder->GetSampleRate();
+
+			if ( windowRMS > cumulativeRMS ) {
+				crossfadePosition = position;
+			} else if ( ( cumulativeRMS > 0 ) && ( ( windowRMS / cumulativeRMS ) > crossfadeRMSRatio ) ) {
+				crossfadePosition = position;
+			}
+
+		} else {
+			break;
+		}
+	}
+	return crossfadePosition;
 }
 
 double Output::GetCrossfadePosition() const
@@ -1456,12 +1513,12 @@ bool Output::GetStopAtTrackEnd() const
 
 void Output::ToggleFollowTrackSelection()
 {
-  m_FollowTrackSelection = !m_FollowTrackSelection;
+	m_FollowTrackSelection = !m_FollowTrackSelection;
 }
 
 bool Output::GetFollowTrackSelection() const
 {
-  return m_FollowTrackSelection;
+	return m_FollowTrackSelection;
 }
 
 void Output::ToggleMuted()
@@ -1544,7 +1601,7 @@ void Output::ApplyGain( float* buffer, const long sampleCount, const Playlist::I
 				buffer[ sampleIndex ] *= scale;
 			}
 			switch ( m_LimitMode ) {
-				case Settings::LimitMode::Hard : {
+				case Settings::LimitMode::Hard: {
 					for ( long sampleIndex = 0; sampleIndex < totalSamples; sampleIndex++ ) {
 						if ( buffer[ sampleIndex ] < -1.0f ) {
 							buffer[ sampleIndex ] = -1.0f;
@@ -1554,14 +1611,14 @@ void Output::ApplyGain( float* buffer, const long sampleCount, const Playlist::I
 					}
 					break;
 				}
-				case Settings::LimitMode::Soft : {
+				case Settings::LimitMode::Soft: {
 					if ( softClipState.size() != static_cast<size_t>( channels ) ) {
 						softClipState.resize( channels, 0 );
 					}
 					opus_pcm_soft_clip( buffer, sampleCount, channels, softClipState.data() );
 					break;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
@@ -1594,7 +1651,7 @@ void Output::UpdateEQ( const Settings::EQ& eq )
 
 	m_CurrentEQ = eq;
 	if ( 0 != m_OutputStream ) {
-		if ( eq.Enabled ) {	
+		if ( eq.Enabled ) {
 			if ( m_FX.empty() ) {
 				// Add FX to current output stream.
 				BASS_DX8_PARAMEQ params = {};
@@ -1645,12 +1702,13 @@ void Output::UpdateEQ( const Settings::EQ& eq )
 
 Decoder::Ptr Output::OpenDecoder( Playlist::Item& item, const Decoder::Context context )
 {
-	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info, context );
+	constexpr bool applyCues = true;
+	Decoder::Ptr decoder = m_Handlers.OpenDecoder( item.Info, context, applyCues );
 	if ( !decoder ) {
 		auto duplicate = item.Duplicates.begin();
 		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
-      MediaInfo duplicateInfo( item.Info );
-      duplicateInfo.SetFilename( *duplicate );
+			MediaInfo duplicateInfo( item.Info );
+			duplicateInfo.SetFilename( *duplicate );
 			decoder = m_Handlers.OpenDecoder( duplicateInfo, context );
 			++duplicate;
 		}
@@ -1666,7 +1724,7 @@ Output::OutputDecoderPtr Output::OpenOutputDecoder( Playlist::Item& item, const 
 	OutputDecoderPtr outputDecoder;
 	if ( usePreloadedDecoder ) {
 		std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
-    const auto& info = m_PreloadedDecoder.item.Info;
+		const auto& info = m_PreloadedDecoder.item.Info;
 		if ( m_PreloadedDecoder.decoder && ( std::tie( info.GetFilename(), info.GetCueStart(), info.GetCueEnd() ) == std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) ) && ( info.GetFiletime() == item.Info.GetFiletime() ) ) {
 			outputDecoder = m_PreloadedDecoder.decoder;
 			m_PreloadedDecoder.decoder.reset();
@@ -1679,7 +1737,12 @@ Output::OutputDecoderPtr Output::OpenOutputDecoder( Playlist::Item& item, const 
 	}
 	if ( !outputDecoder ) {
 		try {
-			outputDecoder = std::make_shared<OutputDecoder>( OpenDecoder( item, Decoder::Context::Output ), item.ID );
+			std::optional<uint32_t> resamplerRate = m_Resample ? std::make_optional( m_Resample->first ) : std::nullopt;
+			std::optional<uint32_t> resamplerChannels = m_Resample ? std::make_optional( m_Resample->second ) : std::nullopt;
+			if ( resamplerRate && resamplerChannels )
+				outputDecoder = std::make_shared<Resampler>( OpenDecoder( item, Decoder::Context::Output ), item.ID, *resamplerRate, *resamplerChannels );
+			else
+				outputDecoder = std::make_shared<OutputDecoder>( OpenDecoder( item, Decoder::Context::Output ), item.ID );
 		} catch ( const std::runtime_error& ) {
 		}
 	}
@@ -1690,13 +1753,13 @@ Output::State Output::StartOutput()
 {
 	State state = State::Stopped;
 	switch ( m_OutputMode ) {
-		case Settings::OutputMode::Standard : {
+		case Settings::OutputMode::Standard: {
 			if ( BASS_ChannelPlay( m_OutputStream, TRUE /*restart*/ ) ) {
 				state = State::Playing;
 			}
 			break;
 		}
-		case Settings::OutputMode::WASAPIExclusive : {
+		case Settings::OutputMode::WASAPIExclusive: {
 			if ( BASS_WASAPI_Start() ) {
 				BASS_WASAPI_INFO info = {};
 				if ( ( TRUE == BASS_WASAPI_GetInfo( &info ) ) && ( info.freq > 0 ) && ( info.chans > 0 ) ) {
@@ -1711,7 +1774,7 @@ Output::State Output::StartOutput()
 			}
 			break;
 		}
-		case Settings::OutputMode::ASIO : {
+		case Settings::OutputMode::ASIO: {
 			if ( BASS_ASIO_Start( 0, 0 ) ) {
 				BASS_CHANNELINFO channelInfo = {};
 				if ( ( TRUE == BASS_ChannelGetInfo( m_MixerStream, &channelInfo ) ) && ( channelInfo.freq > 0 ) ) {
@@ -1737,13 +1800,13 @@ float Output::GetOutputPosition() const
 {
 	float seconds = 0;
 	switch ( m_OutputMode ) {
-		case Settings::OutputMode::Standard : {
+		case Settings::OutputMode::Standard: {
 			const QWORD bytePos = BASS_ChannelGetPosition( m_OutputStream, BASS_POS_BYTE );
 			seconds = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytePos ) );
 			break;
 		}
-		case Settings::OutputMode::WASAPIExclusive :
-		case Settings::OutputMode::ASIO : {
+		case Settings::OutputMode::WASAPIExclusive:
+		case Settings::OutputMode::ASIO: {
 			const QWORD bytePos = BASS_Mixer_ChannelGetPosition( m_OutputStream, BASS_POS_BYTE );
 			seconds = static_cast<float>( BASS_ChannelBytes2Seconds( m_OutputStream, bytePos ) ) - m_LeadInSeconds;
 			if ( seconds < 0 ) {
@@ -1772,11 +1835,11 @@ float Output::GetInterval( const LONGLONG startTick, const LONGLONG endTick )
 bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
 {
 	bool success = false;
-	if ( ( mediaInfo.GetSampleRate() > 0 ) && ( mediaInfo.GetChannels() > 0 ) ) {
-		const DWORD samplerate = static_cast<DWORD>( mediaInfo.GetSampleRate() );
-		const DWORD channels = static_cast<DWORD>( OutputDecoder::GetOutputChannels( mediaInfo ) );
+	const DWORD samplerate = static_cast<DWORD>( m_Resample ? m_Resample->first : mediaInfo.GetSampleRate() );
+	const DWORD channels = static_cast<DWORD>( m_Resample ? m_Resample->second : OutputDecoder::GetOutputChannels( mediaInfo ) );
+	if ( ( samplerate > 0 ) && ( channels > 0 ) ) {
 		switch ( m_OutputMode ) {
-			case Settings::OutputMode::Standard : {
+			case Settings::OutputMode::Standard: {
 				m_LeadInSeconds = 0;
 				BASS_INFO bassInfo = {};
 				const DWORD outputChannels = ( BASS_GetInfo( &bassInfo ) && ( bassInfo.speakers >= 2ul ) ) ? std::clamp( channels, 2ul, bassInfo.speakers ) : channels;
@@ -1814,7 +1877,7 @@ bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
 				break;
 			}
 
-			case Settings::OutputMode::WASAPIExclusive : {
+			case Settings::OutputMode::WASAPIExclusive: {
 				int deviceNum = -1;
 				if ( !m_OutputDevice.empty() ) {
 					const Devices devices = GetDevices( m_OutputMode );
@@ -1826,12 +1889,8 @@ bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
 					}
 				}
 
-				bool useMixFormat = false;
-				int bufferMilliseconds = 0;
-				int leadInMilliseconds = 0;
-				m_Settings.GetAdvancedWasapiExclusiveSettings( useMixFormat, bufferMilliseconds, leadInMilliseconds );
-				m_LeadInSeconds = static_cast<float>( leadInMilliseconds ) / 1000;
-
+				m_LeadInSeconds = static_cast<float>( m_WASAPILeadInMilliseconds.load() ) / 1000;
+				bool useMixFormat = m_WASAPIUseMixFormat.load();
 				if ( !useMixFormat ) {
 					const DWORD format = BASS_WASAPI_CheckFormat( deviceNum, samplerate, channels, BASS_WASAPI_EXCLUSIVE );
 					useMixFormat = ( -1 == format ) && ( BASS_ERROR_FORMAT == BASS_ErrorGetCode() );
@@ -1841,7 +1900,7 @@ bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
 
 				DWORD flags = BASS_WASAPI_EXCLUSIVE | BASS_WASAPI_BUFFER | BASS_WASAPI_EVENT | BASS_WASAPI_ASYNC;
 				const float period = 0;
-				float buffer = static_cast<float>( bufferMilliseconds ) / 1000;
+				float buffer = static_cast<float>( m_WASAPIBufferMilliseconds.load() ) / 1000;
 				if ( flags & BASS_WASAPI_EVENT ) {
 					buffer /= 2;
 				}
@@ -1889,15 +1948,12 @@ bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
 				break;
 			}
 
-			case Settings::OutputMode::ASIO : {
+			case Settings::OutputMode::ASIO: {
 				if ( InitASIO() ) {
-					bool useDefaultSamplerate = false;
-					int defaultSamplerate = 0;
-					int leadInMilliseconds = 0;
-					m_Settings.GetAdvancedASIOSettings( useDefaultSamplerate, defaultSamplerate, leadInMilliseconds );
-					m_LeadInSeconds = static_cast<float>( leadInMilliseconds ) / 1000;
-
-					double outputSamplerate = useDefaultSamplerate ? static_cast<double>( defaultSamplerate ) : static_cast<double>( samplerate );
+					m_LeadInSeconds = static_cast<float>( m_ASIOLeadInMilliseconds.load() ) / 1000;
+					const bool useDefaultSamplerate = m_ASIOUseDefaultSamplerate.load();
+					const double defaultSamplerate = static_cast<double>( m_ASIODefaultSamplerate.load() );
+					double outputSamplerate = useDefaultSamplerate ? defaultSamplerate : static_cast<double>( samplerate );
 					if ( FALSE == BASS_ASIO_CheckRate( outputSamplerate ) ) {
 						if ( useDefaultSamplerate ) {
 							outputSamplerate = static_cast<double>( samplerate );
@@ -2026,17 +2082,17 @@ float Output::GetFadeToNextDuration() const
 
 void Output::LoudnessPrecalcHandler()
 {
-  if ( !CanBackgroundThreadProceed( m_LoudnessPrecalcStopEvent ) ) {
-    return;
-  }
+	if ( !CanBackgroundThreadProceed( m_LoudnessPrecalcStopEvent ) ) {
+		return;
+	}
 
 	// Playlist might have new items, so check back every so often.
 	constexpr DWORD interval = 30 /*sec*/ * 1000;
 
 	Decoder::CanContinue canContinue( [ stopEvent = m_LoudnessPrecalcStopEvent ] ()
-	{
-		return ( WAIT_OBJECT_0 != WaitForSingleObject( stopEvent, 0 ) );
-	} );
+		{
+			return ( WAIT_OBJECT_0 != WaitForSingleObject( stopEvent, 0 ) );
+		} );
 
 	do {
 		Playlist::Items items;
@@ -2046,31 +2102,31 @@ void Output::LoudnessPrecalcHandler()
 		}
 		auto item = items.begin();
 		while ( ( items.end() != item ) && canContinue() ) {
-      // Only scan files on local (fixed) drives.
-      bool isLocalFile = false;
-      if ( const auto& filename = item->Info.GetFilename(); !filename.empty() ) {
-        std::vector<wchar_t> volumePathName( 1 + filename.size() );
-        if ( GetVolumePathName( filename.c_str(), volumePathName.data(), static_cast<DWORD>( volumePathName.size() ) ) ) {
-          isLocalFile = ( DRIVE_FIXED == GetDriveType( volumePathName.data() ) );
-        }
-      }
-      if ( isLocalFile ) {
-			  auto gain = item->Info.GetGainTrack();
-			  if ( !gain.has_value() ) {
-				  m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*scanMedia*/, false /*sendNotification*/ );
-				  gain = item->Info.GetGainTrack();
-				  if ( !gain.has_value() ) {
-					  gain = GainCalculator::CalculateTrackGain( *item, m_Handlers, canContinue );
-					  if ( gain.has_value() ) {
-						  const MediaInfo previousMediaInfo( item->Info );
-						  item->Info.SetGainTrack( gain );
-						  std::lock_guard<std::mutex> lock( m_PlaylistMutex );
-						  m_Playlist->UpdateItem( *item );
-						  m_Playlist->GetLibrary().UpdateTrackGain( previousMediaInfo, item->Info );
-					  }
-				  }
-			  }
-      }
+			// Only scan files on local (fixed) drives.
+			bool isLocalFile = false;
+			if ( const auto& filename = item->Info.GetFilename(); !filename.empty() ) {
+				std::vector<wchar_t> volumePathName( 1 + filename.size() );
+				if ( GetVolumePathName( filename.c_str(), volumePathName.data(), static_cast<DWORD>( volumePathName.size() ) ) ) {
+					isLocalFile = ( DRIVE_FIXED == GetDriveType( volumePathName.data() ) );
+				}
+			}
+			if ( isLocalFile ) {
+				auto gain = item->Info.GetGainTrack();
+				if ( !gain.has_value() ) {
+					m_Playlist->GetLibrary().GetMediaInfo( item->Info, false /*scanMedia*/, false /*sendNotification*/ );
+					gain = item->Info.GetGainTrack();
+					if ( !gain.has_value() ) {
+						gain = GainCalculator::CalculateTrackGain( *item, m_Handlers, canContinue );
+						if ( gain.has_value() ) {
+							const MediaInfo previousMediaInfo( item->Info );
+							item->Info.SetGainTrack( gain );
+							std::lock_guard<std::mutex> lock( m_PlaylistMutex );
+							m_Playlist->UpdateItem( *item );
+							m_Playlist->GetLibrary().UpdateTrackGain( previousMediaInfo, item->Info );
+						}
+					}
+				}
+			}
 			++item;
 		}
 	} while ( WAIT_OBJECT_0 != WaitForSingleObject( m_LoudnessPrecalcStopEvent, interval ) );
@@ -2117,28 +2173,30 @@ Output::OutputDecoderPtr Output::GetNextDecoder( Playlist::Item& item )
 	Playlist::Item nextItem = item;
 	item = {};
 
-  if ( GetFollowTrackSelection() ) {
-    bool selectNextItem = false;
-    if ( GetRepeatTrack() ) {
-      nextItem = m_CurrentItemDecoding;
-    } else if ( const auto nextTrackToFollow = GetTrackToFollow( nextItem ) ) {
-      auto [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
-      ChangePlaylist( playlist );
-      nextItem = nextTrack;
-      selectNextItem = selectTrack;
-    }
+	if ( GetFollowTrackSelection() ) {
+		bool selectNextItem = false;
+		if ( GetRepeatTrack() ) {
+			nextItem = m_CurrentItemDecoding;
+		} else if ( const auto nextTrackToFollow = GetTrackToFollow( nextItem ) ) {
+			auto [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
+			ChangePlaylist( playlist );
+			nextItem = nextTrack;
+			selectNextItem = selectTrack;
+		} else {
+			nextItem = {};
+		}
 		if ( nextItem.ID > 0 ) {
 			nextDecoder = OpenOutputDecoder( nextItem, true /*usePreloadedDecoder*/ );
 			if ( nextDecoder ) {
 				item = nextItem;
 				PreloadNextDecoder( item );
-        if ( m_OnSelectFollowedTrackCallback && selectNextItem ) {
-          m_OnSelectFollowedTrackCallback( nextItem.ID );
-        }
+				if ( m_OnSelectFollowedTrackCallback && selectNextItem ) {
+					m_OnSelectFollowedTrackCallback( nextItem.ID );
+				}
 			}
 		}
-    return nextDecoder;
-  }
+		return nextDecoder;
+	}
 
 	std::lock_guard<std::mutex> playlistLock( m_PlaylistMutex );
 	if ( m_Playlist ) {
@@ -2224,13 +2282,13 @@ void Output::PreloadNextDecoder( const Playlist::Item& item )
 	}
 }
 
-std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>> Output::GetStreamTitleQueue()
+std::vector<std::pair<float /*seconds*/, std::wstring /*title*/>> Output::GetStreamTitleQueue()
 {
 	std::lock_guard<std::mutex> lock( m_StreamTitleMutex );
 	return m_StreamTitleQueue;
 }
 
-void Output::SetStreamTitleQueue( const std::vector<std::pair<float /*seconds*/,std::wstring /*title*/>>& queue )
+void Output::SetStreamTitleQueue( const std::vector<std::pair<float /*seconds*/, std::wstring /*title*/>>& queue )
 {
 	std::lock_guard<std::mutex> lock( m_StreamTitleMutex );
 	m_StreamTitleQueue = queue;
@@ -2250,7 +2308,7 @@ void Output::SetEndSync( const HSTREAM stream )
 {
 	if ( stream == m_OutputStream ) {
 		BASS_ChannelSetSync( stream, BASS_SYNC_END | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
-	}	else if ( const DWORD mixerStream = BASS_Mixer_ChannelGetMixer( m_MixerStream ); mixerStream == m_OutputStream ) {
+	} else if ( const DWORD mixerStream = BASS_Mixer_ChannelGetMixer( m_MixerStream ); mixerStream == m_OutputStream ) {
 		BASS_ChannelSetSync( mixerStream, BASS_SYNC_STALL | BASS_SYNC_ONETIME, 0 /*param*/, SyncEnd, this );
 		m_MixerStreamHasEndSync = true;
 	}
@@ -2258,73 +2316,82 @@ void Output::SetEndSync( const HSTREAM stream )
 
 bool Output::CanBackgroundThreadProceed( const HANDLE stopEvent )
 {
-  constexpr DWORD kStartupDelayMsec = static_cast<DWORD>( 1000 * 2 * s_BufferLength );
-  return ( WAIT_TIMEOUT == WaitForSingleObject( stopEvent, kStartupDelayMsec ) );
+	constexpr DWORD kStartupDelayMsec = static_cast<DWORD>( 1000 * 2 * s_BufferLength );
+	return ( WAIT_TIMEOUT == WaitForSingleObject( stopEvent, kStartupDelayMsec ) );
 }
 
 void Output::SetPlaylistInformationToFollow( Playlist::Ptr playlist, const Playlist::Items& selectedItems )
 {
-  std::lock_guard<std::mutex> lock( m_FollowPlaylistInformationMutex );
-  m_FollowPlaylistInformation = std::make_pair( playlist, selectedItems );
+	std::lock_guard<std::mutex> lock( m_FollowPlaylistInformationMutex );
+	m_FollowPlaylistInformation = std::make_pair( playlist, selectedItems );
 }
 
 std::pair<Playlist::Ptr, Playlist::Items> Output::GetPlaylistInformationToFollow()
 {
-  std::lock_guard<std::mutex> lock( m_FollowPlaylistInformationMutex );
-  return m_FollowPlaylistInformation;
+	std::lock_guard<std::mutex> lock( m_FollowPlaylistInformationMutex );
+	return m_FollowPlaylistInformation;
 }
 
 std::optional<std::tuple<Playlist::Ptr, Playlist::Item, bool>> Output::GetTrackToFollow( const Playlist::Item& currentItem, const bool previous )
 {
-  const auto [ playlist, selectedItems ] = GetPlaylistInformationToFollow();
-  if ( !playlist || selectedItems.empty() )
-    return std::nullopt;
+	auto [ playlist, selectedItems ] = GetPlaylistInformationToFollow();
+	if ( !playlist || selectedItems.empty() ) {
+		std::lock_guard<std::mutex> lock( m_PlaylistMutex );
+		playlist = m_Playlist;
+		if ( !playlist )
+			return std::nullopt;
+	}
 
-  auto foundItem = std::find_if( selectedItems.begin(), selectedItems.end(), [ id = currentItem.ID ] ( const Playlist::Item& item )
+	auto foundItem = std::find_if( selectedItems.begin(), selectedItems.end(), [ id = currentItem.ID ] ( const Playlist::Item& item )
 	{
-	  return ( id == item.ID );
+		return ( id == item.ID );
 	} );
 
-  Playlist::Item nextTrack;
-  bool selectTrack = false;
+	Playlist::Item nextTrack;
+	bool selectTrack = false;
 
-  if ( selectedItems.end() == foundItem ) {
-    nextTrack = selectedItems.front();
-  } else {
-    if ( previous ) {
-      if ( selectedItems.begin() != foundItem ) {
-        --foundItem;
-      } else {
-        foundItem = selectedItems.end();
-      }
-    } else {
-      ++foundItem;
-    }
-    if ( foundItem == selectedItems.end() ) {
-      if ( GetRandomPlay() ) {
-        nextTrack = playlist->GetRandomItem( currentItem );
-        selectTrack = true;
-      } else if ( Playlist::Item nextItem; previous ? playlist->GetPreviousItem( currentItem, nextItem ) : playlist->GetNextItem( currentItem, nextItem, GetRepeatPlaylist() ) ) {
-        nextTrack = nextItem;
-        selectTrack = true;
-      }
-    } else {
-      nextTrack = *foundItem;
-    }
-  }
+	if ( ( selectedItems.end() == foundItem ) && !selectedItems.empty() ) {
+		nextTrack = selectedItems.front();
+	} else {
+		if ( !selectedItems.empty() ) {
+			if ( previous ) {
+				if ( selectedItems.begin() != foundItem ) {
+					--foundItem;
+				} else {
+					foundItem = selectedItems.end();
+				}
+			} else {
+				++foundItem;
+			}
+		}
+		if ( foundItem == selectedItems.end() ) {
+			if ( GetRandomPlay() ) {
+				nextTrack = playlist->GetRandomItem( currentItem );
+				selectTrack = true;
+			} else if ( Playlist::Item nextItem; previous ? playlist->GetPreviousItem( currentItem, nextItem, GetRepeatPlaylist() ) : playlist->GetNextItem( currentItem, nextItem, GetRepeatPlaylist() ) ) {
+				nextTrack = nextItem;
+				selectTrack = true;
+			}
+		} else {
+			nextTrack = *foundItem;
+		}
+	}
 
-  return std::make_tuple( playlist, nextTrack, selectTrack );
+	if ( 0 == nextTrack.ID )
+		return std::nullopt;
+
+	return std::make_tuple( playlist, nextTrack, selectTrack );
 }
 
 bool Output::ChangePlaylist( const Playlist::Ptr& playlist )
 {
- 	std::lock_guard<std::mutex> playlistLock( m_PlaylistMutex );
-  if ( m_Playlist != playlist ) {
-    m_Playlist = playlist;
-    if ( nullptr != m_OnPlaylistChangeCallback ) {
-      m_OnPlaylistChangeCallback( m_Playlist );
-    }
-    return true;
-  }
-  return false;
+	std::lock_guard<std::mutex> playlistLock( m_PlaylistMutex );
+	if ( m_Playlist != playlist ) {
+		m_Playlist = playlist;
+		if ( nullptr != m_OnPlaylistChangeCallback ) {
+			m_OnPlaylistChangeCallback( m_Playlist );
+		}
+		return true;
+	}
+	return false;
 }

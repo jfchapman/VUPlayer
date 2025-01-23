@@ -53,14 +53,14 @@ public:
 	void SetFiletime( const long long filetime );
 
 	// Returns the filesize, in bytes.
-  // 'applyCues' - true to return the estimated track filesize with cues applied (if present), false to return the underlying filesize.
+	// 'applyCues' - true to return the estimated track filesize with cues applied (if present), false to return the underlying filesize.
 	long long GetFilesize( const bool applyCues = false ) const;
 
 	// Sets the filesize, in bytes.
 	void SetFilesize( const long long filesize );
 
 	// Returns the duration, in seconds.
-  // 'applyCues' - true to return the track duration with cues applied (if present), false to return the underlying file duration.
+	// 'applyCues' - true to return the track duration with cues applied (if present), false to return the underlying file duration.
 	float GetDuration( const bool applyCues = true ) const;
 
 	// Sets the duration, in seconds.
@@ -123,7 +123,7 @@ public:
 	// Sets the publisher.
 	void SetPublisher( const std::wstring& publisher );
 
-  // Returns the year.
+	// Returns the year.
 	long GetYear() const;
 
 	// Sets the year.
@@ -180,24 +180,24 @@ public:
 	// Sets the artwork ID.
 	void SetArtworkID( const std::wstring& id );
 
-  // Gets the start position (for tracks from cue files), in frames (where there are 75 frames per second).
-  const std::optional<long>& GetCueStart() const;
+	// Gets the start position (for tracks from cue files), in frames (where there are 75 frames per second).
+	const std::optional<long>& GetCueStart() const;
 
-  // Sets the start position (for tracks from cue files), in frames (where there are 75 frames per second).
-  void SetCueStart( const std::optional<long>& frames );
+	// Sets the start position (for tracks from cue files), in frames (where there are 75 frames per second).
+	void SetCueStart( const std::optional<long>& frames );
 
-  // Gets the end position (for tracks from cue files), in frames (where there are 75 frames per second).
-  const std::optional<long>& GetCueEnd() const;
+	// Gets the end position (for tracks from cue files), in frames (where there are 75 frames per second).
+	const std::optional<long>& GetCueEnd() const;
 
-  // Sets the end position (for tracks from cue files), in frames (where there are 75 frames per second).
-  void SetCueEnd( const std::optional<long>& frames );
+	// Sets the end position (for tracks from cue files), in frames (where there are 75 frames per second).
+	void SetCueEnd( const std::optional<long>& frames );
 
 	// Returns the filename, including cues (if present).
-  // 'fullPath' - whether to return the full path, or just the filename component.
-  // 'removeExtension' - whether to return just the filename component with no extension.
+	// 'fullPath' - whether to return the full path, or just the filename component.
+	// 'removeExtension' - whether to return just the filename component with no extension.
 	std::wstring GetFilenameWithCues( const bool fullPath = false, const bool removeExtension = false ) const;
 
-  // Returns the media source.
+	// Returns the media source.
 	Source GetSource() const;
 
 	// Returns the CDDB ID.
@@ -212,11 +212,11 @@ public:
 	// Returns whether any common information was retrieved.
 	static bool GetCommonInfo( const List& mediaList, MediaInfo& commonInfo );
 
-  // Returns the string value with embedded cues, if present (used for display and copy & paste operations).
-  static std::wstring FormatCues( const std::optional<long>& cueStart, const std::optional<long>& cueEnd, const std::wstring& value );
+	// Returns the string value with embedded cues, if present (used for display and copy & paste operations).
+	static std::wstring FormatCues( const std::optional<long>& cueStart, const std::optional<long>& cueEnd, const std::wstring& value );
 
-  // Returns media information from a filepath containing optional embedded cues (used for paste operations).
-  static MediaInfo ExtractCues( const std::wstring& filepath );
+	// Returns media information from a filepath containing optional embedded cues (used for paste operations).
+	static MediaInfo ExtractCues( const std::wstring& filepath );
 
 private:
 	std::wstring m_Filename = {};
@@ -229,11 +229,11 @@ private:
 	std::wstring m_Title = {};
 	std::wstring m_Album = {};
 	std::wstring m_Genre = {};
-  std::wstring m_Composer = {};
-  std::wstring m_Conductor = {};
-  std::wstring m_Publisher = {};
+	std::wstring m_Composer = {};
+	std::wstring m_Conductor = {};
+	std::wstring m_Publisher = {};
 	long m_Year = 0;
-	std::wstring m_Comment= {};
+	std::wstring m_Comment = {};
 	long m_Track = 0;
 	std::wstring m_Version = {};
 	std::wstring m_ArtworkID = {};
@@ -243,7 +243,6 @@ private:
 	std::optional<float> m_Bitrate = std::nullopt;
 	std::optional<float> m_GainTrack = std::nullopt;
 	std::optional<float> m_GainAlbum = std::nullopt;
-  std::optional<long> m_CueStart = std::nullopt;
-  std::optional<long> m_CueEnd = std::nullopt;
+	std::optional<long> m_CueStart = std::nullopt;
+	std::optional<long> m_CueEnd = std::nullopt;
 };
-

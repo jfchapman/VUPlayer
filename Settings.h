@@ -83,21 +83,21 @@ public:
 		Large
 	};
 
-  // Preferred MOD music decoder.
-  enum class MODDecoder {
-    BASS = 0,
-    OpenMPT
-  };
+	// Preferred MOD music decoder.
+	enum class MODDecoder {
+		BASS = 0,
+		OpenMPT
+	};
 
-  // Title bar text formats during playback.
-  enum class TitleBarFormat {
-    ArtistTitle = 0,
-    TitleArtist,
-    ComposerTitle,
-    TitleComposer,
-    Title,
-    ApplicationName
-  };
+	// Title bar text formats during playback.
+	enum class TitleBarFormat {
+		ArtistTitle = 0,
+		TitleArtist,
+		ComposerTitle,
+		TitleComposer,
+		Title,
+		ApplicationName
+	};
 
 	// EQ settings.
 	struct EQ {
@@ -140,10 +140,10 @@ public:
 	typedef std::list<Hotkey> HotkeyList;
 
 	// Maps a pitch range option to a pitch adjustment factor.
-	typedef std::map<PitchRange,float> PitchRangeMap;
+	typedef std::map<PitchRange, float> PitchRangeMap;
 
 	// Maps a toolbar size to a button size.
-	typedef std::map<Settings::ToolbarSize,int> ButtonSizeMap;
+	typedef std::map<Settings::ToolbarSize, int> ButtonSizeMap;
 
 	// Returns the playlist control settings.
 	// 'columns' - out, column settings.
@@ -185,7 +185,7 @@ public:
 	// 'showConductors' - out, whether Conductors are shown.
 	void GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour,
 		bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears,
-    bool& showPublishers, bool& showComposers, bool& showConductors );
+		bool& showPublishers, bool& showComposers, bool& showConductors );
 
 	// Sets the tree control settings.
 	// 'font' - tree control font.
@@ -205,7 +205,7 @@ public:
 	// 'showConductors' - whether Conductors are shown.
 	void SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF iconColour,
 		const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears,
-    const bool showPublishers, const bool showComposers, const bool showConductors );
+		const bool showPublishers, const bool showComposers, const bool showConductors );
 
 	// Gets the playlists.
 	Playlists GetPlaylists();
@@ -325,7 +325,7 @@ public:
 	// 'font' - out, counter font.
 	// 'fontColour' - out, font colour.
 	// 'showRemaining' - out, true to display remaining time, false for elapsed time.
-	void GetCounterSettings( LOGFONT& font,	COLORREF& fontColour, bool& showRemaining );
+	void GetCounterSettings( LOGFONT& font, COLORREF& fontColour, bool& showRemaining );
 
 	// Sets the counter settings.
 	// 'font' - counter font.
@@ -617,34 +617,34 @@ public:
 	// Sets whether to show a progress bar in the taskbar button.
 	void SetTaskbarShowProgress( const bool showProgress );
 
-  // Returns whether to allow writing of metadata tags to file.
-  bool GetWriteFileTags();
+	// Returns whether to allow writing of metadata tags to file.
+	bool GetWriteFileTags();
 
-  // Sets whether to allow writing of metadata tags to file.
-  void SetWriteFileTags( const bool write );
+	// Sets whether to allow writing of metadata tags to file.
+	void SetWriteFileTags( const bool write );
 
-  // Returns whether to preserve the last modified time when writing metadata tags to file.
-  bool GetPreserveLastModifiedTime();
+	// Returns whether to preserve the last modified time when writing metadata tags to file.
+	bool GetPreserveLastModifiedTime();
 
-  // Sets whether to preserve the last modified time when writing metadata tags to file.
-  void SetPreserveLastModifiedTime( const bool preserve );
+	// Sets whether to preserve the last modified time when writing metadata tags to file.
+	void SetPreserveLastModifiedTime( const bool preserve );
 
-  // Returns the preferred MOD music decoder.
-  MODDecoder GetMODDecoder();
+	// Returns the preferred MOD music decoder.
+	MODDecoder GetMODDecoder();
 
-  // Sets the preferred MOD music decoder.
-  void SetMODDecoder( const MODDecoder decoder );
+	// Sets the preferred MOD music decoder.
+	void SetMODDecoder( const MODDecoder decoder );
 
-  // Gets the MOD music sample rate.
-  uint32_t GetMODSamplerate();
+	// Gets the MOD music sample rate.
+	uint32_t GetMODSamplerate();
 
-  // Sets the MOD music sample rate.
-  void SetMODSamplerate( const uint32_t samplerate );
+	// Sets the MOD music sample rate.
+	void SetMODSamplerate( const uint32_t samplerate );
 
-  // Returns the supported MOD music sample rates.
-  static constexpr std::array<uint32_t, 4> GetMODSupportedSamplerates() { return { 96000, 48000, 44100, 22050 }; }
+	// Returns the supported sample rates for MOD music and the resampler.
+	static constexpr std::array<uint32_t, 8> GetSupportedSamplerates() { return { 192000, 96000, 48000, 44100, 22050, 16000, 11025, 8000 }; }
 
-  // Gets default OpenMPT settings.
+	// Gets default OpenMPT settings.
 	void GetDefaultOpenMPTSettings( bool& fadeout, long& separation, long& ramping, long& interpolation );
 
 	// Gets OpenMPT settings.
@@ -653,34 +653,40 @@ public:
 	// Sets OpenMPT settings.
 	void SetOpenMPTSettings( const bool fadeout, const long separation, const long ramping, const long interpolation );
 
-  // Returns whether loudness normalisation is enabled.
-  bool GetLoudnessNormalisation();
+	// Returns whether loudness normalisation is enabled.
+	bool GetLoudnessNormalisation();
 
-  // Sets whether to loudness normalisation is enabled.
-  void SetLoudnessNormalisation( const bool enable );
+	// Sets whether to loudness normalisation is enabled.
+	void SetLoudnessNormalisation( const bool enable );
 
-  // Gets the title bar text format during playback.
-  TitleBarFormat GetTitleBarFormat();
+	// Gets the title bar text format during playback.
+	TitleBarFormat GetTitleBarFormat();
 
-  // Sets the title bar text format during playback.
-  void SetTitleBarFormat( const TitleBarFormat format );
+	// Sets the title bar text format during playback.
+	void SetTitleBarFormat( const TitleBarFormat format );
 
-  // Returns whether playback should follow the current track selection.
-  bool GetFollowTrackSelection();
+	// Returns whether playback should follow the current track selection.
+	bool GetFollowTrackSelection();
 
-  // Sets whether playback should follow the current track selection.
-  void SetFollowTrackSelection( const bool enabled );
+	// Sets whether playback should follow the current track selection.
+	void SetFollowTrackSelection( const bool enabled );
 
-  // Returns the output filename when converting files or extracting CD audio.
-  // 'mediaInfo' - source media information.
-  // 'instance' - module instance handle.
-  std::wstring GetOutputFilename( const MediaInfo& mediaInfo, const HINSTANCE instance );
+	// Returns the output filename when converting files or extracting CD audio.
+	// 'mediaInfo' - source media information.
+	// 'instance' - module instance handle.
+	std::wstring GetOutputFilename( const MediaInfo& mediaInfo, const HINSTANCE instance );
 
-  // Returns the supported OpenMPT ramping options.
-  static constexpr std::array<long, 12> GetOpenMPTSupportedRamping() { return { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; }
+	// Returns whether resampling is enabled, and the samplerate & channel settings if so.
+	bool GetResamplerSettings( uint32_t& samplerate, uint32_t& channels );
 
-  // Returns the supported OpenMPT interpolation options.
-  static constexpr std::array<long, 5> GetOpenMPTSupportedInterpolation() { return { 0, 1, 2, 4, 8 }; }
+	// Sets whether resampling is enabled, and the samplerate & channel settings if so.
+	void SetResamplerSettings( const bool enabled, const uint32_t samplerate, const uint32_t channels );
+
+	// Returns the supported OpenMPT ramping options.
+	static constexpr std::array<long, 12> GetOpenMPTSupportedRamping() { return { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; }
+
+	// Returns the supported OpenMPT interpolation options.
+	static constexpr std::array<long, 5> GetOpenMPTSupportedInterpolation() { return { 0, 1, 2, 4, 8 }; }
 
 private:
 	// Updates the database to the current version if necessary.
@@ -709,7 +715,7 @@ private:
 
 	// Returns whether a GUID string is valid.
 	static bool IsValidGUID( const std::string& guid );
-	
+
 	// Returns the value of the setting 'name', or nullopt if the setting is not in the database.
 	template <typename T>
 	std::optional<T> ReadSetting( const std::string& name );

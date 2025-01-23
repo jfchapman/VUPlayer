@@ -378,28 +378,68 @@ bool Library::GetFileInfo( const std::wstring& filename, long long& lastModified
 bool Library::GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags )
 {
 	bool success = false;
-	Decoder::Ptr stream = m_Handlers.OpenDecoder( mediaInfo, Decoder::Context::Temporary, false /*applyCues*/ );
-	if ( stream ) {
-		mediaInfo.SetBitsPerSample( stream->GetBPS() );
-		mediaInfo.SetChannels( stream->GetChannels() );
-		mediaInfo.SetDuration( stream->GetDuration() );
-		mediaInfo.SetSampleRate( stream->GetSampleRate() );
-		mediaInfo.SetBitrate( stream->GetBitrate() );
-
-    if ( getTags ) {
-		  Tags tags;
-		  if ( m_Handlers.GetTags( mediaInfo.GetFilename(), tags ) ) {
-			  UpdateMediaInfoFromTags( mediaInfo, tags );
-		  }
-    }
-
-		long long filetime = 0;
-		long long filesize = 0;
-		GetFileInfo( mediaInfo.GetFilename(), filetime, filesize );
-		mediaInfo.SetFiletime( filetime );
-		mediaInfo.SetFilesize( filesize );
-
+	if ( mediaInfo.GetCueStart() && m_LastCueFileInfo && ( mediaInfo.GetFilename() == m_LastCueFileInfo->GetFilename() ) ) {
+		// Use previously cached information for the CUE file entry, rather than scanning the backing file again.
+		mediaInfo.SetFiletime( m_LastCueFileInfo->GetFiletime() );
+		mediaInfo.SetFilesize( m_LastCueFileInfo->GetFilesize( false /*applyCues*/ ) );
+		mediaInfo.SetDuration( m_LastCueFileInfo->GetDuration( false /*applyCues*/ ) );
+		mediaInfo.SetSampleRate( m_LastCueFileInfo->GetSampleRate() );
+		mediaInfo.SetChannels( m_LastCueFileInfo->GetChannels() );
+		mediaInfo.SetBitsPerSample( m_LastCueFileInfo->GetBitsPerSample() );
+		mediaInfo.SetBitrate( m_LastCueFileInfo->GetBitrate( false /*calculate*/ ) );
+		mediaInfo.SetGainTrack( m_LastCueFileInfo->GetGainTrack() );
+		mediaInfo.SetGainAlbum( m_LastCueFileInfo->GetGainAlbum() );
+		mediaInfo.SetVersion( m_LastCueFileInfo->GetVersion() );
+		mediaInfo.SetArtworkID( m_LastCueFileInfo->GetArtworkID( false /*checkFolder*/ ) );
+		if ( mediaInfo.GetYear() <= 0 )
+			mediaInfo.SetYear( m_LastCueFileInfo->GetYear() );
+		if ( mediaInfo.GetTitle().empty() )
+			mediaInfo.SetTitle( m_LastCueFileInfo->GetTitle() );
+		if ( mediaInfo.GetArtist().empty() )
+			mediaInfo.SetArtist( m_LastCueFileInfo->GetArtist() );
+		if ( mediaInfo.GetAlbum().empty() )
+			mediaInfo.SetAlbum( m_LastCueFileInfo->GetAlbum() );
+		if ( mediaInfo.GetGenre().empty() )
+			mediaInfo.SetGenre( m_LastCueFileInfo->GetGenre() );
+		if ( mediaInfo.GetComposer().empty() )
+			mediaInfo.SetComposer( m_LastCueFileInfo->GetComposer() );
+		if ( mediaInfo.GetConductor().empty() )
+			mediaInfo.SetConductor( m_LastCueFileInfo->GetConductor() );
+		if ( mediaInfo.GetPublisher().empty() )
+			mediaInfo.SetPublisher( m_LastCueFileInfo->GetPublisher() );
+		if ( mediaInfo.GetComment().empty() )
+			mediaInfo.SetComment( m_LastCueFileInfo->GetComment() );
 		success = true;
+	} else {
+		Decoder::Ptr stream = m_Handlers.OpenDecoder( mediaInfo, Decoder::Context::Temporary, false /*applyCues*/ );
+		if ( stream ) {
+			long long filetime = 0;
+			long long filesize = 0;
+			GetFileInfo( mediaInfo.GetFilename(), filetime, filesize );
+			mediaInfo.SetFiletime( filetime );
+			mediaInfo.SetFilesize( filesize );
+
+			mediaInfo.SetBitsPerSample( stream->GetBPS() );
+			mediaInfo.SetChannels( stream->GetChannels() );
+			mediaInfo.SetDuration( stream->GetDuration() );
+			mediaInfo.SetSampleRate( stream->GetSampleRate() );
+			mediaInfo.SetBitrate( stream->GetBitrate() );
+
+			if ( getTags ) {
+				Tags tags;
+				if ( m_Handlers.GetTags( mediaInfo.GetFilename(), tags ) ) {
+					UpdateMediaInfoFromTags( mediaInfo, tags );
+				}
+			}
+
+			success = true;
+		}
+
+		if ( stream && mediaInfo.GetCueStart() ) {
+			m_LastCueFileInfo = mediaInfo;
+		} else {
+			m_LastCueFileInfo = std::nullopt;
+		}
 	}
 	return success;
 }
@@ -1170,9 +1210,6 @@ void Library::UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Tags& tags )
 {
 	for ( const auto& iter : tags ) {
     const auto tagType = iter.first;
-    if ( mediaInfo.GetCueStart() && ( Tag::Version != tagType ) && ( Tag::Artwork != tagType ) )
-      continue;
-    
     const std::wstring value = UTF8ToWideString( iter.second );
 		switch ( tagType ) {
 			case Tag::Album : {

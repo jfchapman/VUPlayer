@@ -18,8 +18,8 @@ public:
 
 	// Opens a decoder.
 	// 'filename' - file to open.
-  // 'context' - context for which the decoder is to be used.
-  // 'applyCues' - whether to apply any cues (if present) when opening the decoder.
+	// 'context' - context for which the decoder is to be used.
+	// 'applyCues' - whether to apply any cues (if present) when opening the decoder.
 	// Returns the decoder, or nullptr if the stream could not be opened.
 	Decoder::Ptr OpenDecoder( const MediaInfo& mediaInfo, const Decoder::Context context, const bool applyCues = true ) const;
 
@@ -61,8 +61,8 @@ private:
 	// BASS handler.
 	Handler::Ptr m_HandlerBASS;
 
-  // OpenMPT handler.
-  Handler::Ptr m_HandlerOpenMPT;
+	// OpenMPT handler.
+	Handler::Ptr m_HandlerOpenMPT;
 
 	// FFmpeg handler.
 	Handler::Ptr m_HandlerFFmpeg;
@@ -76,13 +76,13 @@ private:
 	// Available encoders.
 	Handler::List m_Encoders;
 
-  // Whether to allow writing of metadata tags to file.
-  mutable bool m_WriteTags = false;
+	// Whether to allow writing of metadata tags to file.
+	mutable bool m_WriteTags = false;
 
-  // Whether to preserve the last modified time when writing metadata tags to file.
-  mutable bool m_PreserveLastModifiedTime = false;
+	// Whether to preserve the last modified time when writing metadata tags to file.
+	mutable bool m_PreserveLastModifiedTime = false;
 
-  // Decoders mutex (used when swapping decoder order).
-  mutable std::mutex m_MutexDecoders;
+	// Decoders mutex (used when swapping decoder order).
+	mutable std::mutex m_MutexDecoders;
 };
 

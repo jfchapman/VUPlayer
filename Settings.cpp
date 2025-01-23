@@ -50,10 +50,10 @@ std::optional<T> Settings::ReadSetting( const std::string& name )
 							value = UTF8ToWideString( reinterpret_cast<const char*>( text ) );
 						}
 					} else if constexpr ( std::is_same_v<T, LOGFONT> ) {
-				    if ( const int bytes = sqlite3_column_bytes( stmt, kColumnIndex ); sizeof( LOGFONT ) == bytes ) {
-              value = *reinterpret_cast<const LOGFONT*>( sqlite3_column_blob( stmt, kColumnIndex ) );
-            }
-          } else {
+						if ( const int bytes = sqlite3_column_bytes( stmt, kColumnIndex ); sizeof( LOGFONT ) == bytes ) {
+							value = *reinterpret_cast<const LOGFONT*>( sqlite3_column_blob( stmt, kColumnIndex ) );
+						}
+					} else {
 						static_assert( !sizeof( T ), "Settings::ReadSetting - unsupported type" );
 					}
 				}
@@ -82,9 +82,9 @@ void Settings::WriteSetting( const std::string& name, const T& value )
 				sqlite3_bind_text( stmt, 2, value.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 			} else if constexpr ( std::is_same_v<T, std::wstring> ) {
 				sqlite3_bind_text( stmt, 2, WideStringToUTF8( value ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
-			} else if constexpr (std::is_same_v<T, LOGFONT> ) {
-  			sqlite3_bind_blob( stmt, 2, &value, sizeof( LOGFONT ), SQLITE_STATIC );
-      } else {
+			} else if constexpr ( std::is_same_v<T, LOGFONT> ) {
+				sqlite3_bind_blob( stmt, 2, &value, sizeof( LOGFONT ), SQLITE_STATIC );
+			} else {
 				static_assert( !sizeof( T ), "Settings::WriteSetting - unsupported type" );
 			}
 			sqlite3_step( stmt );
@@ -132,9 +132,9 @@ void Settings::UpdateSettingsTable()
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
 						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
-              const std::string name = reinterpret_cast<const char*>( text );
-						  columns.insert( name );
-            }
+							const std::string name = reinterpret_cast<const char*>( text );
+							columns.insert( name );
+						}
 						break;
 					}
 				}
@@ -170,9 +170,9 @@ void Settings::UpdatePlaylistColumnsTable()
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
 						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
-						  const std::string name = reinterpret_cast<const char*>( text );
-						  columns.insert( name );
-            }
+							const std::string name = reinterpret_cast<const char*>( text );
+							columns.insert( name );
+						}
 						break;
 					}
 				}
@@ -208,9 +208,9 @@ void Settings::UpdatePlaylistsTable()
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
 						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
-						  const std::string name = reinterpret_cast<const char*>( text );
-						  columns.insert( name );
-            }
+							const std::string name = reinterpret_cast<const char*>( text );
+							columns.insert( name );
+						}
 						break;
 					}
 				}
@@ -238,8 +238,8 @@ void Settings::UpdatePlaylistTable( const std::string& table )
 		sqlite3_exec( database, createTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 
 		// Check the columns in the playlists table.
-    std::set<std::string> missingColumns = { "File", "Pending", "CueStart", "CueEnd" };
-    std::string columnsInfoQuery = "PRAGMA table_info('";
+		std::set<std::string> missingColumns = { "File", "Pending", "CueStart", "CueEnd" };
+		std::string columnsInfoQuery = "PRAGMA table_info('";
 		columnsInfoQuery += table + "')";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, columnsInfoQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
@@ -249,9 +249,9 @@ void Settings::UpdatePlaylistTable( const std::string& table )
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
 						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
-						  const std::string name = reinterpret_cast<const char*>( text );
-						  missingColumns.erase( name );
-            }
+							const std::string name = reinterpret_cast<const char*>( text );
+							missingColumns.erase( name );
+						}
 						break;
 					}
 				}
@@ -259,8 +259,8 @@ void Settings::UpdatePlaylistTable( const std::string& table )
 			sqlite3_finalize( stmt );
 
 			for ( auto column = missingColumns.rbegin(); missingColumns.rend() != column; column++ ) {
-		    std::string addColumnQuery = "ALTER TABLE \"" + table + "\" ADD COLUMN ";
-			  addColumnQuery += *column + ";";
+				std::string addColumnQuery = "ALTER TABLE \"" + table + "\" ADD COLUMN ";
+				addColumnQuery += *column + ";";
 				sqlite3_exec( database, addColumnQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 			}
 		}
@@ -286,9 +286,9 @@ void Settings::UpdateHotkeysTable()
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
 						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
-						  const std::string name = reinterpret_cast<const char*>( text );
-						  columns.insert( name );
-            }
+							const std::string name = reinterpret_cast<const char*>( text );
+							columns.insert( name );
+						}
 						break;
 					}
 				}
@@ -296,8 +296,8 @@ void Settings::UpdateHotkeysTable()
 			sqlite3_finalize( stmt );
 
 			if ( ( columns.find( "ID" ) == columns.end() ) || ( columns.find( "Hotkey" ) == columns.end() ) ||
-					( columns.find( "Alt" ) == columns.end() ) || ( columns.find( "Ctrl" ) == columns.end() ) ||
-					( columns.find( "Shift" ) == columns.end() ) ) {
+				( columns.find( "Alt" ) == columns.end() ) || ( columns.find( "Ctrl" ) == columns.end() ) ||
+				( columns.find( "Shift" ) == columns.end() ) ) {
 				// Drop the table and recreate.
 				const std::string dropTableQuery = "DROP TABLE Hotkeys;";
 				sqlite3_exec( database, dropTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
@@ -314,7 +314,7 @@ void Settings::UpdateHotkeysTable()
 void Settings::UpdateFontSettings()
 {
 	// Apply DPI scaling, if necessary, to all logfont blobs in the settings table.
-	constexpr std::array allFontSettings { "ListFont", "TreeFont", "CounterFont" };
+	constexpr std::array allFontSettings{ "ListFont", "TreeFont", "CounterFont" };
 
 	// Get the current pixel count per logical inch.
 	const HDC dc = GetDC( 0 );
@@ -322,7 +322,7 @@ void Settings::UpdateFontSettings()
 	if ( nullptr != dc ) {
 		ReleaseDC( 0, dc );
 	}
-	
+
 	if ( currentLogPixels > 0 ) {
 		sqlite3* database = m_Database.GetDatabase();
 		if ( nullptr != database ) {
@@ -353,7 +353,7 @@ void Settings::UpdateFontSettings()
 				const float scaling = static_cast<float>( currentLogPixels ) / settingsLogPixels;
 
 				// Extract logfont blobs from the settings table and apply DPI scaling.
-				std::map<std::string,LOGFONT> fontSettingsToUpdate;
+				std::map<std::string, LOGFONT> fontSettingsToUpdate;
 				stmt = nullptr;
 				query = "SELECT Value FROM Settings WHERE Setting = ?1;";
 				if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
@@ -390,7 +390,7 @@ void Settings::UpdateFontSettings()
 }
 
 void Settings::GetPlaylistSettings( PlaylistColumns& columns, bool& showStatusIcon, LOGFONT& font,
-			COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& statusIconColour )
+	COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& statusIconColour )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -473,7 +473,7 @@ void Settings::GetPlaylistSettings( PlaylistColumns& columns, bool& showStatusIc
 }
 
 void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const bool showStatusIcon, const LOGFONT& font,
-			const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF statusIconColour )
+	const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF statusIconColour )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
@@ -532,8 +532,8 @@ void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const bool s
 }
 
 void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour,
-  bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears,
-  bool& showPublishers, bool& showComposers, bool& showConductors )
+	bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears,
+	bool& showPublishers, bool& showComposers, bool& showConductors )
 {
 	if ( const auto value = ReadSetting<LOGFONT>( "TreeFont" ); value ) {
 		font = *value;
@@ -583,24 +583,24 @@ void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& b
 }
 
 void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF iconColour,
-  const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears,
-  const bool showPublishers, const bool showComposers, const bool showConductors )
+	const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears,
+	const bool showPublishers, const bool showComposers, const bool showConductors )
 {
-  WriteSetting( "TreeFont", font );
-  WriteSetting( "TreeFontColour", fontColour );
-  WriteSetting( "TreeBackgroundColour", backgroundColour );
-  WriteSetting( "TreeHighlightColour", highlightColour );
-  WriteSetting( "TreeIconColour", iconColour );
-  WriteSetting( "TreeFavourites", showFavourites );
-  WriteSetting( "TreeStreams", showStreams );
-  WriteSetting( "TreeAllTracks", showAllTracks );
-  WriteSetting( "TreeArtists", showArtists );
-  WriteSetting( "TreeAlbums", showAlbums );
-  WriteSetting( "TreeGenres", showGenres );
-  WriteSetting( "TreeYears", showYears );
-  WriteSetting( "TreePublishers", showPublishers );
-  WriteSetting( "TreeComposers", showComposers );
-  WriteSetting( "TreeConductors", showConductors );
+	WriteSetting( "TreeFont", font );
+	WriteSetting( "TreeFontColour", fontColour );
+	WriteSetting( "TreeBackgroundColour", backgroundColour );
+	WriteSetting( "TreeHighlightColour", highlightColour );
+	WriteSetting( "TreeIconColour", iconColour );
+	WriteSetting( "TreeFavourites", showFavourites );
+	WriteSetting( "TreeStreams", showStreams );
+	WriteSetting( "TreeAllTracks", showAllTracks );
+	WriteSetting( "TreeArtists", showArtists );
+	WriteSetting( "TreeAlbums", showAlbums );
+	WriteSetting( "TreeGenres", showGenres );
+	WriteSetting( "TreeYears", showYears );
+	WriteSetting( "TreePublishers", showPublishers );
+	WriteSetting( "TreeComposers", showComposers );
+	WriteSetting( "TreeConductors", showConductors );
 }
 
 Playlists Settings::GetPlaylists()
@@ -672,14 +672,14 @@ void Settings::ReadPlaylistFiles( Playlist& playlist )
 						} else if ( columnName == "Pending" ) {
 							pending = ( 0 != sqlite3_column_int( stmt, columnIndex ) );
 						} else if ( columnName == "CueStart" ) {
-              if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
-                mediaInfo.SetCueStart( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
-              }              
+							if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
+								mediaInfo.SetCueStart( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
+							}
 						} else if ( columnName == "CueEnd" ) {
-              if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
-                mediaInfo.SetCueEnd( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
-              }              
-            }
+							if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
+								mediaInfo.SetCueEnd( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
+							}
+						}
 					}
 					if ( !mediaInfo.GetFilename().empty() ) {
 						if ( pending ) {
@@ -687,8 +687,8 @@ void Settings::ReadPlaylistFiles( Playlist& playlist )
 						} else {
 							if ( m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/ ) ) {
 								playlist.AddItem( mediaInfo );
-              } else if ( mediaInfo.GetCueStart() ) {
-                m_Library.GetDecoderInfo( mediaInfo, false /*getTags*/ );
+							} else if ( mediaInfo.GetCueStart() ) {
+								m_Library.GetDecoderInfo( mediaInfo, false /*getTags*/ );
 								playlist.AddItem( mediaInfo );
 							} else {
 								playlist.AddPending( mediaInfo, false /*startPendingThread*/ );
@@ -757,16 +757,16 @@ void Settings::SavePlaylist( Playlist& playlist )
 					if ( !filename.empty() ) {
 						sqlite3_bind_text( stmt, 1 /*param*/, filename.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 						sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( pending ) );
-            if ( iter.Info.GetCueStart() ) {
-              sqlite3_bind_int64( stmt, 3 /*param*/, *iter.Info.GetCueStart() );
-            } else {
-              sqlite3_bind_null( stmt, 3 /*param*/ );
-            }
-            if ( iter.Info.GetCueEnd() ) {
-              sqlite3_bind_int64( stmt, 4 /*param*/, *iter.Info.GetCueEnd() );
-            } else {
-              sqlite3_bind_null( stmt, 4 /*param*/ );
-            }
+						if ( iter.Info.GetCueStart() ) {
+							sqlite3_bind_int64( stmt, 3 /*param*/, *iter.Info.GetCueStart() );
+						} else {
+							sqlite3_bind_null( stmt, 3 /*param*/ );
+						}
+						if ( iter.Info.GetCueEnd() ) {
+							sqlite3_bind_int64( stmt, 4 /*param*/, *iter.Info.GetCueEnd() );
+						} else {
+							sqlite3_bind_null( stmt, 4 /*param*/ );
+						}
 						sqlite3_step( stmt );
 						sqlite3_reset( stmt );
 					}
@@ -778,16 +778,16 @@ void Settings::SavePlaylist( Playlist& playlist )
 					if ( !filename.empty() ) {
 						sqlite3_bind_text( stmt, 1 /*param*/, filename.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 						sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( pending ) );
-            if ( iter.GetCueStart() ) {
-              sqlite3_bind_int64( stmt, 3 /*param*/, *iter.GetCueStart() );
-            } else {
-              sqlite3_bind_null( stmt, 3 /*param*/ );
-            }
-            if ( iter.GetCueEnd() ) {
-              sqlite3_bind_int64( stmt, 4 /*param*/, *iter.GetCueEnd() );
-            } else {
-              sqlite3_bind_null( stmt, 4 /*param*/ );
-            }
+						if ( iter.GetCueStart() ) {
+							sqlite3_bind_int64( stmt, 3 /*param*/, *iter.GetCueStart() );
+						} else {
+							sqlite3_bind_null( stmt, 3 /*param*/ );
+						}
+						if ( iter.GetCueEnd() ) {
+							sqlite3_bind_int64( stmt, 4 /*param*/, *iter.GetCueEnd() );
+						} else {
+							sqlite3_bind_null( stmt, 4 /*param*/ );
+						}
 						sqlite3_step( stmt );
 						sqlite3_reset( stmt );
 					}
@@ -802,7 +802,7 @@ void Settings::SavePlaylist( Playlist& playlist )
 				stmt = nullptr;
 				if ( SQLITE_OK == sqlite3_prepare_v2( database, insertPlaylistQuery.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 					if ( ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, playlistID.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) &&
-							( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, playlistName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) ) {
+						( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, playlistName.c_str(), -1 /*strLen*/, SQLITE_STATIC ) ) ) {
 						sqlite3_step( stmt );
 					}
 					sqlite3_finalize( stmt );
@@ -819,55 +819,55 @@ std::filesystem::path Settings::GetDefaultArtwork()
 
 void Settings::SetDefaultArtwork( const std::filesystem::path& artwork )
 {
-  WriteSetting( "DefaultArtwork", artwork.native() );
+	WriteSetting( "DefaultArtwork", artwork.native() );
 }
 
 COLORREF Settings::GetOscilloscopeColour()
 {
-  constexpr COLORREF kDefaultBackground = RGB( 0, 0, 0 );
+	constexpr COLORREF kDefaultBackground = RGB( 0, 0, 0 );
 
-  return ReadSetting<COLORREF>( "OscilloscopeColour" ).value_or( kDefaultBackground );
+	return ReadSetting<COLORREF>( "OscilloscopeColour" ).value_or( kDefaultBackground );
 }
 
 void Settings::SetOscilloscopeColour( const COLORREF colour )
 {
-  WriteSetting( "OscilloscopeColour", colour );
+	WriteSetting( "OscilloscopeColour", colour );
 }
 
 COLORREF Settings::GetOscilloscopeBackground()
 {
-  constexpr COLORREF kDefaultBackground = RGB( 255, 255, 255 );
+	constexpr COLORREF kDefaultBackground = RGB( 255, 255, 255 );
 
-  return ReadSetting<COLORREF>( "OscilloscopeBackground" ).value_or( kDefaultBackground );
+	return ReadSetting<COLORREF>( "OscilloscopeBackground" ).value_or( kDefaultBackground );
 }
 
 void Settings::SetOscilloscopeBackground( const COLORREF colour )
 {
-  WriteSetting( "OscilloscopeBackground", colour );
+	WriteSetting( "OscilloscopeBackground", colour );
 }
 
 float Settings::GetOscilloscopeWeight()
 {
-  constexpr float kDefaultWeight = 2.0f;
-  constexpr float kMinWeight = 0.5f;
-  constexpr float kMaxWeight = 5.0f;
+	constexpr float kDefaultWeight = 2.0f;
+	constexpr float kMinWeight = 0.5f;
+	constexpr float kMaxWeight = 5.0f;
 
-  return std::clamp( ReadSetting<float>( "OscilloscopeWeight" ).value_or( kDefaultWeight ), kMinWeight, kMaxWeight );
+	return std::clamp( ReadSetting<float>( "OscilloscopeWeight" ).value_or( kDefaultWeight ), kMinWeight, kMaxWeight );
 }
 
 void Settings::SetOscilloscopeWeight( const float weight )
 {
-  WriteSetting( "OscilloscopeWeight", weight );
+	WriteSetting( "OscilloscopeWeight", weight );
 }
 
 float Settings::GetVUMeterDecay()
 {
-  return std::clamp( ReadSetting<float>( "VUMeterDecay" ).value_or( VUMeterDecayNormal ), VUMeterDecayMinimum, VUMeterDecayMaximum );
+	return std::clamp( ReadSetting<float>( "VUMeterDecay" ).value_or( VUMeterDecayNormal ), VUMeterDecayMinimum, VUMeterDecayMaximum );
 }
 
 void Settings::SetVUMeterDecay( const float decay )
 {
-  WriteSetting( "VUMeterDecay", decay );
+	WriteSetting( "VUMeterDecay", decay );
 }
 
 void Settings::GetSpectrumAnalyserSettings( COLORREF& base, COLORREF& peak, COLORREF& background )
@@ -876,16 +876,16 @@ void Settings::GetSpectrumAnalyserSettings( COLORREF& base, COLORREF& peak, COLO
 	constexpr COLORREF kPeak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
 	constexpr COLORREF kBackground = RGB( 0x00 /*red*/, 0x00 /*green*/, 0x00 /*blue*/ );
 
-  base = ReadSetting<COLORREF>( "SpectrumAnalyserBase" ).value_or( kBase );
-  peak = ReadSetting<COLORREF>( "SpectrumAnalyserPeak" ).value_or( kPeak );
-  background = ReadSetting<COLORREF>( "SpectrumAnalyserBackground" ).value_or( kBackground );
+	base = ReadSetting<COLORREF>( "SpectrumAnalyserBase" ).value_or( kBase );
+	peak = ReadSetting<COLORREF>( "SpectrumAnalyserPeak" ).value_or( kPeak );
+	background = ReadSetting<COLORREF>( "SpectrumAnalyserBackground" ).value_or( kBackground );
 }
 
 void Settings::SetSpectrumAnalyserSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background )
 {
-  WriteSetting( "SpectrumAnalyserBase", base );
-  WriteSetting( "SpectrumAnalyserPeak", peak );
-  WriteSetting( "SpectrumAnalyserBackground", background );
+	WriteSetting( "SpectrumAnalyserBase", base );
+	WriteSetting( "SpectrumAnalyserPeak", peak );
+	WriteSetting( "SpectrumAnalyserBackground", background );
 }
 
 void Settings::GetPeakMeterSettings( COLORREF& base, COLORREF& peak, COLORREF& background )
@@ -894,16 +894,16 @@ void Settings::GetPeakMeterSettings( COLORREF& base, COLORREF& peak, COLORREF& b
 	constexpr COLORREF kPeak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
 	constexpr COLORREF kBackground = RGB( 0 /*red*/, 0 /*green*/, 0 /*blue*/ );
 
-  base = ReadSetting<COLORREF>( "PeakMeterBase" ).value_or( kBase );
-  peak = ReadSetting<COLORREF>( "PeakMeterPeak" ).value_or( kPeak );
-  background = ReadSetting<COLORREF>( "PeakMeterBackground" ).value_or( kBackground );
+	base = ReadSetting<COLORREF>( "PeakMeterBase" ).value_or( kBase );
+	peak = ReadSetting<COLORREF>( "PeakMeterPeak" ).value_or( kPeak );
+	background = ReadSetting<COLORREF>( "PeakMeterBackground" ).value_or( kBackground );
 }
 
 void Settings::SetPeakMeterSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background )
 {
-  WriteSetting( "PeakMeterBase", base );
-  WriteSetting( "PeakMeterPeak", peak );
-  WriteSetting( "PeakMeterBackground", background );
+	WriteSetting( "PeakMeterBase", base );
+	WriteSetting( "PeakMeterPeak", peak );
+	WriteSetting( "PeakMeterBackground", background );
 }
 
 void Settings::GetStartupPosition( int& x, int& y, int& width, int& height, bool& maximised, bool& minimised )
@@ -930,67 +930,67 @@ void Settings::GetStartupPosition( int& x, int& y, int& width, int& height, bool
 
 void Settings::SetStartupPosition( const int x, const int y, const int width, const int height, const bool maximised, const bool minimised )
 {
-  WriteSetting( "StartupX", x );
-  WriteSetting( "StartupY", y );
-  WriteSetting( "StartupWidth", width );
-  WriteSetting( "StartupHeight", height );
-  WriteSetting( "StartupMaximised", maximised );
-  WriteSetting( "StartupMinimised", minimised );
+	WriteSetting( "StartupX", x );
+	WriteSetting( "StartupY", y );
+	WriteSetting( "StartupWidth", width );
+	WriteSetting( "StartupHeight", height );
+	WriteSetting( "StartupMaximised", maximised );
+	WriteSetting( "StartupMinimised", minimised );
 }
 
 int Settings::GetVisualID()
 {
-  return ReadSetting<int>( "VisualID" ).value_or( 0 );
+	return ReadSetting<int>( "VisualID" ).value_or( 0 );
 }
 
 void Settings::SetVisualID( const int visualID )
 {
-  WriteSetting( "VisualID", visualID );
+	WriteSetting( "VisualID", visualID );
 }
 
 int Settings::GetSplitWidth()
 {
-  return ReadSetting<int>( "SplitWidth" ).value_or( 0 );
+	return ReadSetting<int>( "SplitWidth" ).value_or( 0 );
 }
 
 void Settings::SetSplitWidth( const int width )
 {
-  WriteSetting( "SplitWidth", width );
+	WriteSetting( "SplitWidth", width );
 }
 
 float Settings::GetVolume()
 {
-  return ReadSetting<float>( "Volume" ).value_or( 1.0f );
+	return ReadSetting<float>( "Volume" ).value_or( 1.0f );
 }
 
 void Settings::SetVolume( const float volume )
 {
-  WriteSetting( "Volume", volume );
+	WriteSetting( "Volume", volume );
 }
 
 std::wstring Settings::GetStartupPlaylist()
 {
-  return ReadSetting<std::wstring>( "StartupPlaylist" ).value_or( std::wstring() );
+	return ReadSetting<std::wstring>( "StartupPlaylist" ).value_or( std::wstring() );
 }
 
 void Settings::SetStartupPlaylist( const std::wstring& playlist )
 {
-  WriteSetting( "StartupPlaylist", playlist );
+	WriteSetting( "StartupPlaylist", playlist );
 }
 
 std::tuple<std::wstring, long, long> Settings::GetStartupFile()
 {
-  const auto filename = ReadSetting<std::wstring>( "StartupFilename" ).value_or( std::wstring() );
-  const auto cueStart = ReadSetting<long>( "StartupCueStart" ).value_or( -1 );
-  const auto cueEnd = ReadSetting<long>( "StartupCueEnd" ).value_or( -1 );
-  return std::make_tuple( filename, cueStart, cueEnd );
+	const auto filename = ReadSetting<std::wstring>( "StartupFilename" ).value_or( std::wstring() );
+	const auto cueStart = ReadSetting<long>( "StartupCueStart" ).value_or( -1 );
+	const auto cueEnd = ReadSetting<long>( "StartupCueEnd" ).value_or( -1 );
+	return std::make_tuple( filename, cueStart, cueEnd );
 }
 
 void Settings::SetStartupFile( const std::wstring& filename, const std::optional<long>& cueStart, const std::optional<long>& cueEnd )
 {
-  WriteSetting( "StartupFilename", filename );
-  WriteSetting( "StartupCueStart", cueStart.value_or( -1 ) );
-  WriteSetting( "StartupCueEnd", cueEnd.value_or( -1 ) );
+	WriteSetting( "StartupFilename", filename );
+	WriteSetting( "StartupCueStart", cueStart.value_or( -1 ) );
+	WriteSetting( "StartupCueEnd", cueEnd.value_or( -1 ) );
 }
 
 void Settings::GetCounterSettings( LOGFONT& font, COLORREF& fontColour, bool& showRemaining )
@@ -1008,9 +1008,9 @@ void Settings::GetCounterSettings( LOGFONT& font, COLORREF& fontColour, bool& sh
 
 void Settings::SetCounterSettings( const LOGFONT& font, const COLORREF fontColour, const bool showRemaining )
 {
-  WriteSetting( "CounterFont", font );
-  WriteSetting( "CounterFontColour", fontColour );
-  WriteSetting( "CounterRemaining", showRemaining );
+	WriteSetting( "CounterFont", font );
+	WriteSetting( "CounterFontColour", fontColour );
+	WriteSetting( "CounterRemaining", showRemaining );
 }
 
 void Settings::GetOutputSettings( std::wstring& deviceName, OutputMode& mode )
@@ -1028,8 +1028,8 @@ void Settings::GetOutputSettings( std::wstring& deviceName, OutputMode& mode )
 
 void Settings::SetOutputSettings( const std::wstring& deviceName, const OutputMode mode )
 {
-  WriteSetting( "OutputDevice", deviceName );
-  WriteSetting( "OutputMode", mode );
+	WriteSetting( "OutputDevice", deviceName );
+	WriteSetting( "OutputMode", mode );
 }
 
 void Settings::GetDefaultMODSettings( long long& mod, long long& mtm, long long& s3m, long long& xm, long long& it )
@@ -1066,11 +1066,11 @@ void Settings::GetMODSettings( long long& mod, long long& mtm, long long& s3m, l
 
 void Settings::SetMODSettings( const long long mod, const long long mtm, const long long s3m, const long long xm, const long long it )
 {
-  WriteSetting( "MOD", mod );
-  WriteSetting( "MTM", mtm );
-  WriteSetting( "S3M", s3m );
-  WriteSetting( "XM", xm );
-  WriteSetting( "IT", it );
+	WriteSetting( "MOD", mod );
+	WriteSetting( "MTM", mtm );
+	WriteSetting( "S3M", s3m );
+	WriteSetting( "XM", xm );
+	WriteSetting( "IT", it );
 }
 
 void Settings::GetDefaultGainSettings( GainMode& gainMode, LimitMode& limitMode, float& preamp )
@@ -1091,17 +1091,17 @@ void Settings::GetGainSettings( GainMode& gainMode, LimitMode& limitMode, float&
 		limitMode = std::clamp( *value, LimitMode::None, LimitMode::Soft );
 	}
 	if ( const auto value = ReadSetting<float>( "GainPreamp" ); value ) {
-    constexpr float kMinPreamp = -6.0f;
-    constexpr float kMaxPreamp = 12.0f;
+		constexpr float kMinPreamp = -6.0f;
+		constexpr float kMaxPreamp = 12.0f;
 		preamp = std::clamp( *value, kMinPreamp, kMaxPreamp );
 	}
 }
 
 void Settings::SetGainSettings( const GainMode gainMode, const LimitMode limitMode, const float preamp )
 {
-  WriteSetting( "GainMode", gainMode );
-  WriteSetting( "GainLimit", limitMode );
-  WriteSetting( "GainPreamp", preamp );
+	WriteSetting( "GainMode", gainMode );
+	WriteSetting( "GainLimit", limitMode );
+	WriteSetting( "GainPreamp", preamp );
 }
 
 void Settings::GetSystraySettings( bool& enable, bool& minimise, SystrayCommand& singleClick, SystrayCommand& doubleClick, SystrayCommand& tripleClick, SystrayCommand& quadClick )
@@ -1135,12 +1135,12 @@ void Settings::GetSystraySettings( bool& enable, bool& minimise, SystrayCommand&
 
 void Settings::SetSystraySettings( const bool enable, const bool minimise, const SystrayCommand singleClick, const SystrayCommand doubleClick, const SystrayCommand tripleClick, const SystrayCommand quadClick )
 {
-  WriteSetting( "SysTrayEnable", enable );
-  WriteSetting( "SysTrayMinimise", minimise );
-  WriteSetting( "SysTraySingleClick", singleClick );
-  WriteSetting( "SysTrayDoubleClick", doubleClick );
-  WriteSetting( "SysTrayTripleClick", tripleClick );
-  WriteSetting( "SysTrayQuadrupleClick", quadClick );
+	WriteSetting( "SysTrayEnable", enable );
+	WriteSetting( "SysTrayMinimise", minimise );
+	WriteSetting( "SysTraySingleClick", singleClick );
+	WriteSetting( "SysTrayDoubleClick", doubleClick );
+	WriteSetting( "SysTrayTripleClick", tripleClick );
+	WriteSetting( "SysTrayQuadrupleClick", quadClick );
 }
 
 void Settings::GetPlaybackSettings( bool& randomPlay, bool& repeatTrack, bool& repeatPlaylist, bool& crossfade )
@@ -1174,10 +1174,10 @@ void Settings::GetPlaybackSettings( bool& randomPlay, bool& repeatTrack, bool& r
 
 void Settings::SetPlaybackSettings( const bool randomPlay, const bool repeatTrack, const bool repeatPlaylist, const bool crossfade )
 {
-  WriteSetting( "RandomPlay", randomPlay );
-  WriteSetting( "RepeatTrack", repeatTrack );
-  WriteSetting( "RepeatPlaylist", repeatPlaylist );
-  WriteSetting( "Crossfade", crossfade );
+	WriteSetting( "RandomPlay", randomPlay );
+	WriteSetting( "RepeatTrack", repeatTrack );
+	WriteSetting( "RepeatPlaylist", repeatPlaylist );
+	WriteSetting( "Crossfade", crossfade );
 }
 
 void Settings::GetHotkeySettings( bool& enable, HotkeyList& hotkeys )
@@ -1245,7 +1245,7 @@ void Settings::SetHotkeySettings( const bool enable, const HotkeyList& hotkeys )
 
 		query = "DELETE FROM Hotkeys;";
 		sqlite3_exec( database, query.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-		
+
 		if ( !hotkeys.empty() ) {
 			stmt = nullptr;
 			query = "INSERT INTO Hotkeys (ID,Hotkey,Alt,Ctrl,Shift,Keyname) VALUES (?1,?2,?3,?4,?5,?6);";
@@ -1274,7 +1274,7 @@ Settings::PitchRange Settings::GetPitchRange()
 
 void Settings::SetPitchRange( const PitchRange range )
 {
-  WriteSetting( "PitchRange", range );
+	WriteSetting( "PitchRange", range );
 }
 
 Settings::PitchRangeMap Settings::GetPitchRangeOptions() const
@@ -1284,12 +1284,12 @@ Settings::PitchRangeMap Settings::GetPitchRangeOptions() const
 
 int Settings::GetOutputControlType()
 {
-  return ReadSetting<int>( "OutputControlType" ).value_or( 0 );
+	return ReadSetting<int>( "OutputControlType" ).value_or( 0 );
 }
 
 void Settings::SetOutputControlType( const int type )
 {
-  WriteSetting( "OutputControlType", type );
+	WriteSetting( "OutputControlType", type );
 }
 
 void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename, bool& addToLibrary, bool& joinTracks )
@@ -1327,10 +1327,10 @@ void Settings::GetExtractSettings( std::wstring& folder, std::wstring& filename,
 
 void Settings::SetExtractSettings( const std::wstring& folder, const std::wstring& filename, const bool addToLibrary, const bool joinTracks )
 {
-  WriteSetting( "ExtractFolder", folder );
-  WriteSetting( "ExtractFilename", filename );
-  WriteSetting( "ExtractToLibrary", addToLibrary );
-  WriteSetting( "ExtractJoin", joinTracks );
+	WriteSetting( "ExtractFolder", folder );
+	WriteSetting( "ExtractFilename", filename );
+	WriteSetting( "ExtractToLibrary", addToLibrary );
+	WriteSetting( "ExtractJoin", joinTracks );
 }
 
 Settings::EQ Settings::GetEQSettings()
@@ -1352,57 +1352,57 @@ Settings::EQ Settings::GetEQSettings()
 		eq.Preamp = std::clamp( *value, EQ::MinGain, EQ::MaxGain );
 	}
 	for ( auto& [ freq, gain ] : eq.Gains ) {
-    const std::string settingName = "EQ" + std::to_string( freq );
-	  if ( const auto value = ReadSetting<float>( settingName ); value ) {
-		  gain = std::clamp( *value, EQ::MinGain, EQ::MaxGain );
-	  }
-  }
+		const std::string settingName = "EQ" + std::to_string( freq );
+		if ( const auto value = ReadSetting<float>( settingName ); value ) {
+			gain = std::clamp( *value, EQ::MinGain, EQ::MaxGain );
+		}
+	}
 	return eq;
 }
 
 void Settings::SetEQSettings( const EQ& eq )
 {
-  WriteSetting( "EQVisible", eq.Visible );
-  WriteSetting( "EQX", eq.X );
-  WriteSetting( "EQY", eq.Y );
-  WriteSetting( "EQEnable", eq.Enabled );
-  WriteSetting( "EQPreamp", eq.Preamp );
+	WriteSetting( "EQVisible", eq.Visible );
+	WriteSetting( "EQX", eq.X );
+	WriteSetting( "EQY", eq.Y );
+	WriteSetting( "EQEnable", eq.Enabled );
+	WriteSetting( "EQPreamp", eq.Preamp );
 	for ( const auto& [ freq, gain ] : eq.Gains ) {
-    const std::string settingName = "EQ" + std::to_string( freq );
-    WriteSetting( settingName, gain );
-  }
+		const std::string settingName = "EQ" + std::to_string( freq );
+		WriteSetting( settingName, gain );
+	}
 }
 
 std::wstring Settings::GetEncoder()
 {
-  return ReadSetting<std::wstring>( "Encoder" ).value_or( std::wstring() );
+	return ReadSetting<std::wstring>( "Encoder" ).value_or( std::wstring() );
 }
 
 void Settings::SetEncoder( const std::wstring& encoder )
 {
-  WriteSetting( "Encoder", encoder );
+	WriteSetting( "Encoder", encoder );
 }
 
 std::string Settings::GetEncoderSettings( const std::wstring& encoder )
 {
 	const std::string settingName = WideStringToUTF8( L"Encoder_" + encoder );
-  return ReadSetting<std::string>( settingName ).value_or( std::string() );
+	return ReadSetting<std::string>( settingName ).value_or( std::string() );
 }
 
 void Settings::SetEncoderSettings( const std::wstring& encoder, const std::string& settings )
 {
 	const std::string settingName = WideStringToUTF8( L"Encoder_" + encoder );
-  WriteSetting( settingName, settings );
+	WriteSetting( settingName, settings );
 }
 
 std::wstring Settings::GetSoundFont()
 {
-  return ReadSetting<std::wstring>( "SoundFont" ).value_or( std::wstring() );
+	return ReadSetting<std::wstring>( "SoundFont" ).value_or( std::wstring() );
 }
 
 void Settings::SetSoundFont( const std::wstring& filename )
 {
-  WriteSetting( "SoundFont", filename );
+	WriteSetting( "SoundFont", filename );
 }
 
 bool Settings::GetToolbarEnabled( const int toolbarID )
@@ -1414,7 +1414,7 @@ bool Settings::GetToolbarEnabled( const int toolbarID )
 void Settings::SetToolbarEnabled( const int toolbarID, const bool enabled )
 {
 	const std::string toolbarName = "Toolbar" + std::to_string( toolbarID );
-  WriteSetting( toolbarName, enabled );
+	WriteSetting( toolbarName, enabled );
 }
 
 bool Settings::GetMergeDuplicates()
@@ -1424,15 +1424,15 @@ bool Settings::GetMergeDuplicates()
 
 void Settings::SetMergeDuplicates( const bool mergeDuplicates )
 {
-  WriteSetting( "HideDuplicates", mergeDuplicates );
+	WriteSetting( "HideDuplicates", mergeDuplicates );
 }
 
 std::wstring Settings::GetLastFolder( const std::string& folderType )
 {
-  const std::string settingName = "Folder" + folderType;
+	const std::string settingName = "Folder" + folderType;
 	std::wstring lastFolder = ReadSetting<std::wstring>( settingName ).value_or( std::wstring() );
 	if ( !lastFolder.empty() ) {
-		if ( ( lastFolder.back() == '\\'  ) || ( lastFolder.back() == '/' ) ) {
+		if ( ( lastFolder.back() == '\\' ) || ( lastFolder.back() == '/' ) ) {
 			lastFolder.pop_back();
 		}
 		if ( !FolderExists( lastFolder ) ) {
@@ -1445,7 +1445,7 @@ std::wstring Settings::GetLastFolder( const std::string& folderType )
 void Settings::SetLastFolder( const std::string& folderType, const std::wstring& folder )
 {
 	const std::string settingName = "Folder" + folderType;
-  WriteSetting( settingName, folder );
+	WriteSetting( settingName, folder );
 }
 
 bool Settings::GetScrobblerEnabled()
@@ -1691,7 +1691,7 @@ void Settings::SetTaskbarButtonColour( const COLORREF colour )
 
 bool Settings::GetTaskbarShowProgress()
 {
-  return ReadSetting<bool>( "TaskbarProgress" ).value_or( true );
+	return ReadSetting<bool>( "TaskbarProgress" ).value_or( true );
 }
 
 void Settings::SetTaskbarShowProgress( const bool showProgress )
@@ -1701,7 +1701,7 @@ void Settings::SetTaskbarShowProgress( const bool showProgress )
 
 bool Settings::GetWriteFileTags()
 {
-  return ReadSetting<bool>( "WriteFileTags" ).value_or( true );
+	return ReadSetting<bool>( "WriteFileTags" ).value_or( true );
 }
 
 void Settings::SetWriteFileTags( const bool write )
@@ -1711,7 +1711,7 @@ void Settings::SetWriteFileTags( const bool write )
 
 bool Settings::GetPreserveLastModifiedTime()
 {
-  return ReadSetting<bool>( "PreserveLastModified" ).value_or( false );
+	return ReadSetting<bool>( "PreserveLastModified" ).value_or( false );
 }
 
 void Settings::SetPreserveLastModifiedTime( const bool preserve )
@@ -1722,82 +1722,82 @@ void Settings::SetPreserveLastModifiedTime( const bool preserve )
 Settings::MODDecoder Settings::GetMODDecoder()
 {
 #ifndef _DEBUG
-  return std::clamp<MODDecoder>( ReadSetting<MODDecoder>( "MODDecoder" ).value_or( MODDecoder::OpenMPT ), MODDecoder::BASS, MODDecoder::OpenMPT );
+	return std::clamp<MODDecoder>( ReadSetting<MODDecoder>( "MODDecoder" ).value_or( MODDecoder::OpenMPT ), MODDecoder::BASS, MODDecoder::OpenMPT );
 #else
-  return MODDecoder::BASS;
+	return MODDecoder::BASS;
 #endif
 }
 
 void Settings::SetMODDecoder( const MODDecoder decoder )
 {
-  WriteSetting<MODDecoder>( "MODDecoder", decoder );
+	WriteSetting<MODDecoder>( "MODDecoder", decoder );
 }
 
 uint32_t Settings::GetMODSamplerate()
 {
-  constexpr uint32_t kDefaultSamplerate = 48000;
-  uint32_t samplerate = ReadSetting<uint32_t>( "MODSamplerate" ).value_or( kDefaultSamplerate );
-  constexpr auto supportedSampleRates = GetMODSupportedSamplerates();
-  if ( const auto it = std::find( supportedSampleRates.begin(), supportedSampleRates.end(), samplerate ); supportedSampleRates.end() == it ) {
-    samplerate = kDefaultSamplerate;
-  }
-  return samplerate;
+	constexpr uint32_t kDefaultSamplerate = 48000;
+	uint32_t samplerate = ReadSetting<uint32_t>( "MODSamplerate" ).value_or( kDefaultSamplerate );
+	constexpr auto supportedSampleRates = GetSupportedSamplerates();
+	if ( const auto it = std::find( supportedSampleRates.begin(), supportedSampleRates.end(), samplerate ); supportedSampleRates.end() == it ) {
+		samplerate = kDefaultSamplerate;
+	}
+	return samplerate;
 }
 
 void Settings::SetMODSamplerate( const uint32_t samplerate )
 {
-  WriteSetting<uint32_t>( "MODSamplerate", samplerate );
+	WriteSetting<uint32_t>( "MODSamplerate", samplerate );
 }
 
 void Settings::GetDefaultOpenMPTSettings( bool& fadeout, long& separation, long& ramping, long& interpolation )
 {
-  fadeout = false;
-  separation = 100;
-  ramping = -1;
-  interpolation = 0;
+	fadeout = false;
+	separation = 100;
+	ramping = -1;
+	interpolation = 0;
 }
 
 void Settings::GetOpenMPTSettings( bool& fadeout, long& separation, long& ramping, long& interpolation )
 {
-  GetDefaultOpenMPTSettings( fadeout, separation, ramping, interpolation );
-  if ( const auto setting = ReadSetting<bool>( "openmptFadeout" ) ) {
-    fadeout = *setting;
-  }
-  if ( const auto setting = ReadSetting<long>( "openmptSeparation" ) ) {
-    separation = std::clamp( *setting, 0l, 200l );
-  }
-  if ( const auto setting = ReadSetting<long>( "openmptRamping" ) ) {
-    constexpr auto supportedRamping = GetOpenMPTSupportedRamping();
-    if ( const auto it = std::find( supportedRamping.begin(), supportedRamping.end(), *setting ); supportedRamping.end() != it ) {
-      ramping = *setting;
-    }
-  }
-  if ( const auto setting = ReadSetting<long>( "openmptInterpolation" ) ) {
-    constexpr auto supportedInterpolation = GetOpenMPTSupportedInterpolation();
-    if ( const auto it = std::find( supportedInterpolation.begin(), supportedInterpolation.end(), *setting ); supportedInterpolation.end() != it ) {
-      interpolation = *setting;
-    }
-  }
+	GetDefaultOpenMPTSettings( fadeout, separation, ramping, interpolation );
+	if ( const auto setting = ReadSetting<bool>( "openmptFadeout" ) ) {
+		fadeout = *setting;
+	}
+	if ( const auto setting = ReadSetting<long>( "openmptSeparation" ) ) {
+		separation = std::clamp( *setting, 0l, 200l );
+	}
+	if ( const auto setting = ReadSetting<long>( "openmptRamping" ) ) {
+		constexpr auto supportedRamping = GetOpenMPTSupportedRamping();
+		if ( const auto it = std::find( supportedRamping.begin(), supportedRamping.end(), *setting ); supportedRamping.end() != it ) {
+			ramping = *setting;
+		}
+	}
+	if ( const auto setting = ReadSetting<long>( "openmptInterpolation" ) ) {
+		constexpr auto supportedInterpolation = GetOpenMPTSupportedInterpolation();
+		if ( const auto it = std::find( supportedInterpolation.begin(), supportedInterpolation.end(), *setting ); supportedInterpolation.end() != it ) {
+			interpolation = *setting;
+		}
+	}
 }
 
 void Settings::SetOpenMPTSettings( const bool fadeout, const long separation, const long ramping, const long interpolation )
 {
-  WriteSetting<bool>( "openmptFadeout", fadeout );
-  WriteSetting<long>( "openmptSeparation", separation );
-  WriteSetting<long>( "openmptRamping", ramping );
-  WriteSetting<long>( "openmptInterpolation", interpolation ); 
+	WriteSetting<bool>( "openmptFadeout", fadeout );
+	WriteSetting<long>( "openmptSeparation", separation );
+	WriteSetting<long>( "openmptRamping", ramping );
+	WriteSetting<long>( "openmptInterpolation", interpolation );
 }
 
 bool Settings::GetLoudnessNormalisation()
 {
-  bool enabled = false;
-  if ( const auto setting = ReadSetting<bool>( "LoudnessNormalisation" ) ) {
-    enabled = *setting;
-  } else if ( const auto gainMode = ReadSetting<GainMode>( "GainMode" ) ) {
-    // If the loudness normalisation setting is not present, initialise it based on the gain mode.
-	  enabled = ( GainMode::Track == *gainMode ) || ( GainMode::Album == *gainMode );
-  }
-  return enabled;
+	bool enabled = false;
+	if ( const auto setting = ReadSetting<bool>( "LoudnessNormalisation" ) ) {
+		enabled = *setting;
+	} else if ( const auto gainMode = ReadSetting<GainMode>( "GainMode" ) ) {
+		// If the loudness normalisation setting is not present, initialise it based on the gain mode.
+		enabled = ( GainMode::Track == *gainMode ) || ( GainMode::Album == *gainMode );
+	}
+	return enabled;
 }
 
 void Settings::SetLoudnessNormalisation( const bool enable )
@@ -1807,17 +1807,17 @@ void Settings::SetLoudnessNormalisation( const bool enable )
 
 Settings::TitleBarFormat Settings::GetTitleBarFormat()
 {
-  return std::clamp<TitleBarFormat>( ReadSetting<TitleBarFormat>( "TitleBarFormat" ).value_or( TitleBarFormat::ArtistTitle ), TitleBarFormat::ArtistTitle, TitleBarFormat::ApplicationName );
+	return std::clamp<TitleBarFormat>( ReadSetting<TitleBarFormat>( "TitleBarFormat" ).value_or( TitleBarFormat::ArtistTitle ), TitleBarFormat::ArtistTitle, TitleBarFormat::ApplicationName );
 }
 
 void Settings::SetTitleBarFormat( const TitleBarFormat format )
 {
-  WriteSetting<TitleBarFormat>( "TitleBarFormat", format );
+	WriteSetting<TitleBarFormat>( "TitleBarFormat", format );
 }
 
 bool Settings::GetFollowTrackSelection()
 {
-  return ReadSetting<bool>( "FollowTrackSelection" ).value_or( false );
+	return ReadSetting<bool>( "FollowTrackSelection" ).value_or( false );
 }
 
 void Settings::SetFollowTrackSelection( const bool enabled )
@@ -1860,7 +1860,7 @@ std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINS
 	std::wstring conductor = mediaInfo.GetConductor().empty() ? emptyConductor : mediaInfo.GetConductor();
 	WideStringReplaceInvalidFilenameCharacters( conductor, L"_", true /*replaceFolderDelimiters*/ );
 
-  std::wstring sourceFilename = mediaInfo.GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
+	std::wstring sourceFilename = mediaInfo.GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
 	WideStringReplaceInvalidFilenameCharacters( sourceFilename, L"_", true /*replaceFolderDelimiters*/ );
 
 	std::wstringstream ss;
@@ -1870,61 +1870,61 @@ std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINS
 	auto currentChar = extractFilename.begin();
 	while ( extractFilename.end() != currentChar ) {
 		switch ( *currentChar ) {
-			case '%' : {
+			case '%': {
 				const auto nextChar = 1 + currentChar;
 				if ( extractFilename.end() == nextChar ) {
 					outputFilename += *currentChar;
 				} else {
 					switch ( *nextChar ) {
-						case 'A' :
-						case 'a' : {
+						case 'A':
+						case 'a': {
 							outputFilename += artist;
 							++currentChar;
 							break;
 						}
-						case 'D' :
-						case 'd' : {
+						case 'D':
+						case 'd': {
 							outputFilename += album;
 							++currentChar;
 							break;
 						}
-						case 'N' :
-						case 'n' : {
+						case 'N':
+						case 'n': {
 							outputFilename += track;
 							++currentChar;
 							break;
 						}
-						case 'T' :
-						case 't' : {
+						case 'T':
+						case 't': {
 							outputFilename += title;
 							++currentChar;
 							break;
 						}
-						case 'F' :
-						case 'f' : {
+						case 'F':
+						case 'f': {
 							outputFilename += sourceFilename;
 							++currentChar;
 							break;
 						}
-						case 'P' :
-						case 'p' : {
+						case 'P':
+						case 'p': {
 							outputFilename += publisher;
 							++currentChar;
 							break;
 						}
-						case 'C' :
-						case 'c' : {
+						case 'C':
+						case 'c': {
 							outputFilename += composer;
 							++currentChar;
 							break;
 						}
-						case 'U' :
-						case 'u' : {
+						case 'U':
+						case 'u': {
 							outputFilename += conductor;
 							++currentChar;
 							break;
 						}
-						default : {
+						default: {
 							outputFilename += *currentChar;
 							break;
 						}
@@ -1932,7 +1932,7 @@ std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINS
 				}
 				break;
 			}
-			default : {
+			default: {
 				outputFilename += *currentChar;
 				break;
 			}
@@ -1967,4 +1967,26 @@ std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINS
 	};
 
 	return outputFilename;
+}
+
+bool Settings::GetResamplerSettings( uint32_t& samplerate, uint32_t& channels )
+{
+	const bool enabled = ReadSetting<bool>( "ResamplerEnabled" ).value_or( false );
+
+	constexpr uint32_t kDefaultSamplerate = 48000;
+	samplerate = ReadSetting<uint32_t>( "ResamplerRate" ).value_or( kDefaultSamplerate );
+	constexpr auto supportedSampleRates = GetSupportedSamplerates();
+	if ( const auto it = std::find( supportedSampleRates.begin(), supportedSampleRates.end(), samplerate ); supportedSampleRates.end() == it ) {
+		samplerate = kDefaultSamplerate;
+	}
+	channels = std::clamp( ReadSetting<uint32_t>( "ResamplerChannels" ).value_or( kDefaultSamplerate ), 1u, 2u );
+
+	return enabled;
+}
+
+void Settings::SetResamplerSettings( const bool enabled, const uint32_t samplerate, const uint32_t channels )
+{
+	WriteSetting<bool>( "ResamplerEnabled", enabled );
+	WriteSetting<uint32_t>( "ResamplerRate", samplerate );
+	WriteSetting<uint32_t>( "ResamplerChannels", channels );
 }

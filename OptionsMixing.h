@@ -28,14 +28,14 @@ private:
 	// Displays a soundfont file chooser dialog.
 	void ChooseSoundFont();
 
-  // Returns the currently selected preferred decoder.
+	// Returns the currently selected preferred decoder.
 	// 'hwnd' - dialog window handle.
-  Settings::MODDecoder GetPreferredDecoder( const HWND hwnd ) const;
+	Settings::MODDecoder GetPreferredDecoder( const HWND hwnd ) const;
 
 	// Dialog window handle.
 	HWND m_hWnd;
 
-  // Soundfont filename.
-  std::wstring m_SoundFont;
+	// Soundfont filename.
+	std::wstring m_SoundFont;
 };
 

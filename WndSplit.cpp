@@ -22,14 +22,14 @@ LRESULT CALLBACK WndSplit::SplitProc( HWND hwnd, UINT message, WPARAM wParam, LP
 	WndSplit* wndSplit = reinterpret_cast<WndSplit*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndSplit ) {
 		switch ( message ) {
-			case WM_PAINT : {
+			case WM_PAINT: {
 				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
 				FillRect( ps.hdc, &ps.rcPaint, HBRUSH( COLOR_3DFACE + 1 ) );
 				EndPaint( hwnd, &ps );
 				break;
 			}
-			case WM_MOUSEMOVE : {
+			case WM_MOUSEMOVE: {
 				if ( wndSplit->GetIsTracking() ) {
 					if ( wndSplit->GetIsDragging() ) {
 						POINT pt;
@@ -47,34 +47,34 @@ LRESULT CALLBACK WndSplit::SplitProc( HWND hwnd, UINT message, WPARAM wParam, LP
 				}
 				break;
 			}
-			case WM_MOUSELEAVE : {
+			case WM_MOUSELEAVE: {
 				wndSplit->SetIsTracking( false );
 				break;
 			}
-			case WM_LBUTTONDOWN : {
+			case WM_LBUTTONDOWN: {
 				if ( GetCapture() != hwnd ) {
 					SetCapture( hwnd );
 					wndSplit->SetIsDragging( true );
 				}
 				break;
 			}
-			case WM_LBUTTONUP : {
+			case WM_LBUTTONUP: {
 				if ( GetCapture() == hwnd ) {
 					ReleaseCapture();
 				}
 				break;
 			}
-			case WM_CAPTURECHANGED : {
+			case WM_CAPTURECHANGED: {
 				wndSplit->SetIsDragging( false );
 				break;
 			}
-			case WM_SIZE : {
+			case WM_SIZE: {
 				if ( SIZE_MINIMIZED != wParam ) {
 					wndSplit->Resize();
 				}
 				break;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 				break;
 			}
@@ -116,10 +116,7 @@ WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStat
 	m_hWnd = CreateWindowEx( 0, s_SplitClass, NULL, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndSplitID++ ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 
-	m_SplitPosition = m_Settings.GetSplitWidth();
-	if ( ( m_SplitPosition < s_MinSplit ) || ( m_SplitPosition > s_MaxSplit ) ) {
-		m_SplitPosition = s_DefaultSplit;
-	}
+	m_SplitPosition = std::clamp( m_Settings.GetSplitWidth(), s_MinSplit, s_MaxSplit );
 	Resize();
 }
 
@@ -202,7 +199,7 @@ void WndSplit::Resize()
 		RECT invalidParentRect = {};
 		invalidParentRect.right = splitRect.left;
 
-		if ( NULL != m_hWnd )	{
+		if ( NULL != m_hWnd ) {
 			const int x = static_cast<int>( splitRect.left );
 			const int y = static_cast<int>( splitRect.top );
 			const int width = static_cast<int>( splitRect.right - splitRect.left );
