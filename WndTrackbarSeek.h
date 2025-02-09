@@ -44,4 +44,3 @@ private:
 	// Current playlist represented by the trackbar.
 	Playlist::Ptr m_Playlist;
 };
-

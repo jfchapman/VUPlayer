@@ -102,7 +102,7 @@ bool FolderExists( const std::wstring& folder );
 
 // Replaces invalid characters in 'filename' with 'replacement'.
 // 'replaceFolderDelimiters' - whether folder delimiters should be replaced.
-void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const std::wstring& replacement, const bool replaceFolderDelimiters ); 
+void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const std::wstring& replacement, const bool replaceFolderDelimiters );
 
 // Converts a 'gain' value to a string (returns an empty string if the gain is not valid).
 std::string GainToString( const std::optional<float> gain );
@@ -251,18 +251,17 @@ inline long long GetCurrentTimestamp()
 template <typename T>
 T StripWhitespace( const T& str )
 {
-  const T kWhitespace { ' ', '\t' };
-  const auto start = str.find_first_not_of( kWhitespace );
-  const auto end = str.find_last_not_of( kWhitespace );
-  if ( ( T::npos != start ) && ( T::npos != end ) )
-    return str.substr( start, 1 + end - start );
-  return {};
+	const T kWhitespace{ ' ', '\t' };
+	const auto start = str.find_first_not_of( kWhitespace );
+	const auto end = str.find_last_not_of( kWhitespace );
+	if ( ( T::npos != start ) && ( T::npos != end ) )
+		return str.substr( start, 1 + end - start );
+	return {};
 }
 
 // Returns 'str' stripped of any enclosing double quotes.
 template <typename T>
 T StripQuotes( const T& str )
 {
-  return ( ( str.size() >= 2 ) && str.starts_with( '"' ) && str.ends_with( '"' ) ) ? str.substr( 1, str.size() - 2 ) : str;
+	return ( ( str.size() >= 2 ) && str.starts_with( '"' ) && str.ends_with( '"' ) ) ? str.substr( 1, str.size() - 2 ) : str;
 }
-

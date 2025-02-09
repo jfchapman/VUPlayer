@@ -33,10 +33,10 @@ public:
 
 private:
 	// Maps a hotkey ID to its settings.
-	typedef std::map<Hotkeys::ID,Settings::Hotkey> HotkeyMap;
+	typedef std::map<Hotkeys::ID, Settings::Hotkey> HotkeyMap;
 
 	// Maps a hotkey code to a string resource ID.
-	typedef std::map<int,UINT> HotkeyNameMap;
+	typedef std::map<int, UINT> HotkeyNameMap;
 
 	// Returns a 'hotkey' description.
 	std::wstring GetKeyDescription( const Settings::Hotkey& hotkey ) const;
@@ -55,4 +55,3 @@ private:
 	// Maps a hotkey code to a string resource ID (used for certain extended keys, when querying the key name fails).
 	static const HotkeyNameMap s_KeyNames;
 };
-

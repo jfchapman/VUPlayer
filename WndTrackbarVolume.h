@@ -2,7 +2,7 @@
 
 #include "WndTrackbar.h"
 
-class WndTrackbarVolume :	public WndTrackbar
+class WndTrackbarVolume : public WndTrackbar
 {
 public:
 	// 'instance' - module instance handle.

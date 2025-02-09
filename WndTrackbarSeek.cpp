@@ -61,17 +61,17 @@ void WndTrackbarSeek::Update( Output& output, const Playlist::Ptr playlist, cons
 	if ( !IsDragging() ) {
 		const Output::State state = output.GetState();
 		switch ( state ) {
-			case Output::State::Playing : {
+			case Output::State::Playing: {
 				m_OutputItem = output.GetCurrentPlaying();
 				m_Playlist.reset();
 				break;
 			}
-			case Output::State::Paused : {
+			case Output::State::Paused: {
 				m_OutputItem = output.GetCurrentPlaying();
 				m_Playlist.reset();
 				break;
 			}
-			case Output::State::Stopped : {
+			case Output::State::Stopped: {
 				m_OutputItem = {};
 				m_Playlist = playlist;
 				if ( selectedItem.ID > 0 ) {
@@ -79,7 +79,7 @@ void WndTrackbarSeek::Update( Output& output, const Playlist::Ptr playlist, cons
 				}
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}

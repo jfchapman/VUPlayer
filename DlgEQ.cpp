@@ -15,7 +15,7 @@ static const int s_SliderTicFreq = static_cast<int>( 3 * s_SliderScale );
 INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			DlgEQ* dialog = reinterpret_cast<DlgEQ*>( lParam );
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -24,26 +24,26 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			}
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			DlgEQ* dialog = reinterpret_cast<DlgEQ*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != dialog ) {
 				const WORD notificationCode = HIWORD( wParam );
 				if ( BN_CLICKED == notificationCode ) {
 					const WORD controlID = LOWORD( wParam );
 					switch ( controlID ) {
-						case IDC_EQ_ENABLE : {
+						case IDC_EQ_ENABLE: {
 							dialog->OnEnable();
 							break;
 						}
-						case IDC_EQ_RESET : {
+						case IDC_EQ_RESET: {
 							dialog->OnReset();
 							break;
 						}
-						case IDCANCEL : {
+						case IDCANCEL: {
 							dialog->ToggleVisibility();
 							break;
 						}
-						default : {
+						default: {
 							break;
 						}
 					}
@@ -51,14 +51,14 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			}
 			break;
 		}
-		case WM_VSCROLL : {
+		case WM_VSCROLL: {
 			DlgEQ* dialog = reinterpret_cast<DlgEQ*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != dialog ) {
 				dialog->OnSliderChange( reinterpret_cast<HWND>( lParam ) );
 			}
 			break;
 		}
-		case WM_NOTIFY : {
+		case WM_NOTIFY: {
 			LPNMHDR nmhdr = reinterpret_cast<LPNMHDR>( lParam );
 			if ( ( nullptr != nmhdr ) && ( nmhdr->code == TTN_GETDISPINFO ) ) {
 				DlgEQ* dialog = reinterpret_cast<DlgEQ*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
@@ -66,12 +66,12 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 					const HWND sliderWnd = reinterpret_cast<HWND>( nmhdr->idFrom );
 					const std::wstring tooltip = dialog->GetTooltip( sliderWnd );
 					LPNMTTDISPINFO info = reinterpret_cast<LPNMTTDISPINFO>( lParam );
-					wcscpy_s( info->szText, tooltip.c_str() );			
+					wcscpy_s( info->szText, tooltip.c_str() );
 				}
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			DlgEQ* dialog = reinterpret_cast<DlgEQ*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != dialog ) {
 				dialog->SaveSettings();
@@ -79,7 +79,7 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -154,7 +154,7 @@ void DlgEQ::OnInitDialog( const HWND hwnd )
 	}
 
 	// Set dialog position, and show if necessary.
-	if ( ( Settings::EQ::Centred == m_CurrentEQ.X ) || ( Settings::EQ::Centred == m_CurrentEQ.Y  ) ) {
+	if ( ( Settings::EQ::Centred == m_CurrentEQ.X ) || ( Settings::EQ::Centred == m_CurrentEQ.Y ) ) {
 		CentreDialog( m_hWnd );
 	} else {
 		WINDOWPLACEMENT placement = {};
@@ -253,7 +253,7 @@ int DlgEQ::GetPositionFromGain( const float gain ) const
 
 void DlgEQ::OnEnable()
 {
-	const bool enabled = ( BST_CHECKED ==  IsDlgButtonChecked( m_hWnd, IDC_EQ_ENABLE ) );
+	const bool enabled = ( BST_CHECKED == IsDlgButtonChecked( m_hWnd, IDC_EQ_ENABLE ) );
 	if ( enabled != m_CurrentEQ.Enabled ) {
 		m_CurrentEQ.Enabled = enabled;
 		m_Output.UpdateEQ( m_CurrentEQ );
@@ -285,7 +285,7 @@ void DlgEQ::OnReset()
 				if ( m_CurrentEQ.Gains.end() != gainIter ) {
 					gainIter->second = 0;
 					updateOutput = true;
-				}			
+				}
 			}
 		}
 	}

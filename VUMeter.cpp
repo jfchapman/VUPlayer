@@ -46,52 +46,52 @@ VUMeter::VUMeter( WndVisual& wndVisual, const bool stereo ) :
 	m_Decay( GetSettings().GetVUMeterDecay() ),
 	m_IsStereo( stereo )
 {
-  if ( !s_MeterLoaded ) {
-    // Load resources.
-    if ( HRSRC hResource = FindResource( nullptr, MAKEINTRESOURCE( IDR_VUMETER ), RT_RCDATA ); nullptr != hResource ) {
-      constexpr DWORD kHeaderBytes = 8;
-      if ( const DWORD resourceSize = SizeofResource( nullptr, hResource ); resourceSize > kHeaderBytes ) {
-        if ( HGLOBAL hGlobal = LoadResource( nullptr, hResource ); nullptr != hGlobal ) {
-          if ( const BYTE* resourceData = static_cast<const BYTE*>( LockResource( hGlobal ) ); nullptr != resourceData ) {
-            // Base image.
-            const DWORD* header = reinterpret_cast<const DWORD*>( resourceData );
-            s_MeterWidth = header[ 0 ];
-            s_MeterHeight = header[ 1 ];
-            if ( ( 0 != s_MeterWidth ) && ( 0 != s_MeterHeight ) ) {
-              if ( const DWORD imageBytes = s_MeterWidth * s_MeterHeight * 4; imageBytes < ( resourceSize - kHeaderBytes ) ) {
-                s_MeterBase = resourceData + kHeaderBytes;
-             
-                // Meter pin deltas.
-                const DWORD* data = reinterpret_cast<const DWORD*>( resourceData + kHeaderBytes + imageBytes );
-                const DWORD dataSize = ( resourceSize - imageBytes - kHeaderBytes ) / 4;
-                if ( ( dataSize > 0 ) && ( 0 == data[ dataSize - 1 ] ) ) {
-                  s_MeterPins.clear();
-                  s_MeterPins.push_back( data );
-                  DWORD offset = 0;
-                  bool pinsOK = true;
-                  do {
-                    do {
-                      pinsOK = ( data[ offset ] >> 8 ) < imageBytes;
-                    } while ( 0 != data[ offset++ ] );
+	if ( !s_MeterLoaded ) {
+		// Load resources.
+		if ( HRSRC hResource = FindResource( nullptr, MAKEINTRESOURCE( IDR_VUMETER ), RT_RCDATA ); nullptr != hResource ) {
+			constexpr DWORD kHeaderBytes = 8;
+			if ( const DWORD resourceSize = SizeofResource( nullptr, hResource ); resourceSize > kHeaderBytes ) {
+				if ( HGLOBAL hGlobal = LoadResource( nullptr, hResource ); nullptr != hGlobal ) {
+					if ( const BYTE* resourceData = static_cast<const BYTE*>( LockResource( hGlobal ) ); nullptr != resourceData ) {
+						// Base image.
+						const DWORD* header = reinterpret_cast<const DWORD*>( resourceData );
+						s_MeterWidth = header[ 0 ];
+						s_MeterHeight = header[ 1 ];
+						if ( ( 0 != s_MeterWidth ) && ( 0 != s_MeterHeight ) ) {
+							if ( const DWORD imageBytes = s_MeterWidth * s_MeterHeight * 4; imageBytes < ( resourceSize - kHeaderBytes ) ) {
+								s_MeterBase = resourceData + kHeaderBytes;
 
-                    if ( offset < dataSize ) {
-                      s_MeterPins.push_back( data + offset );
-                    }
-                  } while ( pinsOK && ( offset < dataSize ) );
+								// Meter pin deltas.
+								const DWORD* data = reinterpret_cast<const DWORD*>( resourceData + kHeaderBytes + imageBytes );
+								const DWORD dataSize = ( resourceSize - imageBytes - kHeaderBytes ) / 4;
+								if ( ( dataSize > 0 ) && ( 0 == data[ dataSize - 1 ] ) ) {
+									s_MeterPins.clear();
+									s_MeterPins.push_back( data );
+									DWORD offset = 0;
+									bool pinsOK = true;
+									do {
+										do {
+											pinsOK = ( data[ offset ] >> 8 ) < imageBytes;
+										} while ( 0 != data[ offset++ ] );
 
-                  s_MeterLoaded = pinsOK;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+										if ( offset < dataSize ) {
+											s_MeterPins.push_back( data + offset );
+										}
+									} while ( pinsOK && ( offset < dataSize ) );
 
-  if ( s_MeterLoaded ) {
-    m_MeterImage.resize( s_MeterWidth * s_MeterHeight * 4 );
-  }
+									s_MeterLoaded = pinsOK;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if ( s_MeterLoaded ) {
+		m_MeterImage.resize( s_MeterWidth * s_MeterHeight * 4 );
+	}
 }
 
 VUMeter::~VUMeter()
@@ -153,7 +153,7 @@ void VUMeter::RenderThreadHandler()
 
 bool VUMeter::GetLevels()
 {
-	auto& [ leftOutput, rightOutput ] = m_OutputLevel;
+	auto& [leftOutput, rightOutput] = m_OutputLevel;
 	GetOutput().GetLevels( leftOutput, rightOutput );
 	if ( !m_IsStereo ) {
 		if ( leftOutput > rightOutput ) {
@@ -197,49 +197,49 @@ bool VUMeter::GetLevels()
 
 void VUMeter::DrawPin( const int position )
 {
-  if ( s_MeterLoaded ) {
-    const int pos = std::clamp( position, 0, static_cast<int>( s_MeterPins.size() - 1 ) );
-    const DWORD* pinBuffer = s_MeterPins[ pos ];
-	  if ( m_MeterPin != pinBuffer ) {
-		  // Blank out the previous pin position.
-      std::copy( s_MeterBase, s_MeterBase + s_MeterWidth * s_MeterHeight * 4, m_MeterImage.data() );
+	if ( s_MeterLoaded ) {
+		const int pos = std::clamp( position, 0, static_cast<int>( s_MeterPins.size() - 1 ) );
+		const DWORD* pinBuffer = s_MeterPins[ pos ];
+		if ( m_MeterPin != pinBuffer ) {
+			// Blank out the previous pin position.
+			std::copy( s_MeterBase, s_MeterBase + s_MeterWidth * s_MeterHeight * 4, m_MeterImage.data() );
 
-		  // Draw the current pin.
-		  int index = 0;
-		  while ( 0 != pinBuffer[ index ] ) {
-			  m_MeterImage[ pinBuffer[ index ] >> 8 ] = static_cast<BYTE>( pinBuffer[ index ] & 0xff );
-			  ++index;
-		  }
+			// Draw the current pin.
+			int index = 0;
+			while ( 0 != pinBuffer[ index ] ) {
+				m_MeterImage[ pinBuffer[ index ] >> 8 ] = static_cast<BYTE>( pinBuffer[ index ] & 0xff );
+				++index;
+			}
 
-		  m_MeterPin = pinBuffer;
-	  }
-  }
+			m_MeterPin = pinBuffer;
+		}
+	}
 }
 
 void VUMeter::UpdateBitmaps( const float leftLevel, const float rightLevel )
 {
-  if ( s_MeterLoaded ) {
-	  auto& [ leftMeter, rightMeter ] = m_MeterPosition;
+	if ( s_MeterLoaded ) {
+		auto& [leftMeter, rightMeter] = m_MeterPosition;
 
-	  const int leftPosition = GetPinPosition( leftLevel );
-	  const int rightPosition = GetPinPosition( rightLevel );
+		const int leftPosition = GetPinPosition( leftLevel );
+		const int rightPosition = GetPinPosition( rightLevel );
 
-	  if ( ( leftMeter != leftPosition ) && m_BitmapLeft ) {
-		  leftMeter = leftPosition;
-		  DrawPin( leftMeter );
-		  const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, s_MeterWidth /*right*/, s_MeterHeight /*bottom*/ );
-		  const UINT32 pitch = s_MeterWidth * 4;
-		  m_BitmapLeft->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
-	  } 
+		if ( ( leftMeter != leftPosition ) && m_BitmapLeft ) {
+			leftMeter = leftPosition;
+			DrawPin( leftMeter );
+			const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, s_MeterWidth /*right*/, s_MeterHeight /*bottom*/ );
+			const UINT32 pitch = s_MeterWidth * 4;
+			m_BitmapLeft->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
+		}
 
-	  if ( ( rightMeter != rightPosition ) && m_BitmapRight ) {
-		  rightMeter = rightPosition;
-		  DrawPin( rightMeter );
-		  const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, s_MeterWidth /*right*/, s_MeterHeight /*bottom*/ );
-		  const UINT32 pitch = s_MeterWidth * 4;
-		  m_BitmapRight->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
-	  }
-  }
+		if ( ( rightMeter != rightPosition ) && m_BitmapRight ) {
+			rightMeter = rightPosition;
+			DrawPin( rightMeter );
+			const D2D1_RECT_U destRect = D2D1::RectU( 0 /*left*/, 0 /*top*/, s_MeterWidth /*right*/, s_MeterHeight /*bottom*/ );
+			const UINT32 pitch = s_MeterWidth * 4;
+			m_BitmapRight->CopyFromMemory( &destRect, m_MeterImage.data(), pitch );
+		}
+	}
 }
 
 void VUMeter::OnPaint()
@@ -323,9 +323,9 @@ void VUMeter::LoadResources( ID2D1DeviceContext* deviceContext )
 
 void VUMeter::FreeResources()
 {
-  m_BitmapLeft.Reset();
-  m_BitmapRight.Reset();
-  m_Brush.Reset();
+	m_BitmapLeft.Reset();
+	m_BitmapRight.Reset();
+	m_Brush.Reset();
 }
 
 int VUMeter::GetPinPosition( const float level )

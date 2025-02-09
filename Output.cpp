@@ -265,7 +265,7 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, S
 
 	SetVolume( m_Settings.GetVolume() );
 	if ( m_Settings.GetRetainPitchBalance() ) {
-		const auto [ pitch, balance ] = m_Settings.GetPitchBalance();
+		const auto [pitch, balance] = m_Settings.GetPitchBalance();
 		SetPitch( pitch );
 		SetBalance( balance );
 	}
@@ -491,7 +491,7 @@ void Output::Previous( const bool forcePrevious, const float seek )
 
 				if ( GetFollowTrackSelection() ) {
 					if ( const auto nextTrackToFollow = GetTrackToFollow( currentItem, true /*previous*/ ) ) {
-						const auto& [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
+						const auto& [playlist, nextTrack, selectTrack] = *nextTrackToFollow;
 						previousItem = nextTrack;
 						ChangePlaylist( playlist );
 					}
@@ -528,7 +528,7 @@ void Output::Next()
 
 		if ( GetFollowTrackSelection() ) {
 			if ( const auto nextTrackToFollow = GetTrackToFollow( currentItem ) ) {
-				const auto& [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
+				const auto& [playlist, nextTrack, selectTrack] = *nextTrackToFollow;
 				nextItem = nextTrack;
 				ChangePlaylist( playlist );
 			}
@@ -636,7 +636,7 @@ Output::Item Output::GetCurrentPlaying()
 		}
 		const auto streamTitleQueue = GetStreamTitleQueue();
 		for ( auto iter = streamTitleQueue.rbegin(); iter != streamTitleQueue.rend(); iter++ ) {
-			const auto& [ titlePosition, title ] = *iter;
+			const auto& [titlePosition, title] = *iter;
 			if ( titlePosition <= seconds ) {
 				currentItem.StreamTitle = title;
 				break;
@@ -706,7 +706,7 @@ DWORD Output::ReadSampleData( float* buffer, const DWORD byteCount, HSTREAM hand
 
 		if ( m_DecoderStream->SupportsStreamTitles() ) {
 			auto streamTitleQueue = GetStreamTitleQueue();
-			const auto [ seconds, displayTitle ] = m_DecoderStream->GetStreamTitle();
+			const auto [seconds, displayTitle] = m_DecoderStream->GetStreamTitle();
 			if ( m_StreamTitleQueue.empty() || ( seconds != m_StreamTitleQueue.back().first ) ) {
 				streamTitleQueue.push_back( { seconds, displayTitle } );
 				SetStreamTitleQueue( streamTitleQueue );
@@ -2178,7 +2178,7 @@ Output::OutputDecoderPtr Output::GetNextDecoder( Playlist::Item& item )
 		if ( GetRepeatTrack() ) {
 			nextItem = m_CurrentItemDecoding;
 		} else if ( const auto nextTrackToFollow = GetTrackToFollow( nextItem ) ) {
-			auto [ playlist, nextTrack, selectTrack ] = *nextTrackToFollow;
+			auto [playlist, nextTrack, selectTrack] = *nextTrackToFollow;
 			ChangePlaylist( playlist );
 			nextItem = nextTrack;
 			selectNextItem = selectTrack;
@@ -2334,7 +2334,7 @@ std::pair<Playlist::Ptr, Playlist::Items> Output::GetPlaylistInformationToFollow
 
 std::optional<std::tuple<Playlist::Ptr, Playlist::Item, bool>> Output::GetTrackToFollow( const Playlist::Item& currentItem, const bool previous )
 {
-	auto [ playlist, selectedItems ] = GetPlaylistInformationToFollow();
+	auto [playlist, selectedItems] = GetPlaylistInformationToFollow();
 	if ( !playlist || selectedItems.empty() ) {
 		std::lock_guard<std::mutex> lock( m_PlaylistMutex );
 		playlist = m_Playlist;
@@ -2343,9 +2343,9 @@ std::optional<std::tuple<Playlist::Ptr, Playlist::Item, bool>> Output::GetTrackT
 	}
 
 	auto foundItem = std::find_if( selectedItems.begin(), selectedItems.end(), [ id = currentItem.ID ] ( const Playlist::Item& item )
-	{
-		return ( id == item.ID );
-	} );
+		{
+			return ( id == item.ID );
+		} );
 
 	Playlist::Item nextTrack;
 	bool selectTrack = false;

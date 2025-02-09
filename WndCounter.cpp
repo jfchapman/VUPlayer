@@ -23,30 +23,30 @@ LRESULT CALLBACK WndCounter::CounterProc( HWND hwnd, UINT message, WPARAM wParam
 	WndCounter* wndCounter = reinterpret_cast<WndCounter*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndCounter ) {
 		switch ( message ) {
-			case WM_PAINT : {
+			case WM_PAINT: {
 				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
 				wndCounter->OnPaint( ps );
 				EndPaint( hwnd, &ps );
 				break;
 			}
-			case WM_ERASEBKGND : {
+			case WM_ERASEBKGND: {
 				return TRUE;
 			}
-			case WM_SIZE : {
+			case WM_SIZE: {
 				wndCounter->CentreFont();
 				break;
 			}
-			case WM_COMMAND : {
+			case WM_COMMAND: {
 				const UINT commandID = LOWORD( wParam );
 				wndCounter->OnCommand( commandID );
 				break;
 			}
-			case WM_LBUTTONDOWN : {
+			case WM_LBUTTONDOWN: {
 				wndCounter->Toggle();
 				break;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 				break;
 			}
@@ -243,24 +243,24 @@ bool WndCounter::ShowContextMenu( const POINT& position )
 void WndCounter::OnCommand( const UINT command )
 {
 	switch ( command ) {
-		case ID_VIEW_COUNTER_TRACKELAPSED :
-		case ID_VIEW_COUNTER_TRACKREMAINING : {
+		case ID_VIEW_COUNTER_TRACKELAPSED:
+		case ID_VIEW_COUNTER_TRACKREMAINING: {
 			SetTrackRemaining( ID_VIEW_COUNTER_TRACKREMAINING == command );
 			break;
 		}
-		case ID_VIEW_COUNTER_FONTSTYLE : {
+		case ID_VIEW_COUNTER_FONTSTYLE: {
 			OnSelectFont();
 			break;
 		}
-		case ID_VIEW_COUNTER_FONTCOLOUR : {
+		case ID_VIEW_COUNTER_FONTCOLOUR: {
 			OnSelectColour();
 			break;
 		}
-		case ID_TOOLBAR_COLOUR_BACKGROUND : {
+		case ID_TOOLBAR_COLOUR_BACKGROUND: {
 			SendMessage( GetParent( m_hWnd ), WM_COMMAND, command, 0 );
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}

@@ -37,7 +37,7 @@ static const UINT MSG_EXTRACTERROR = WM_APP + 91;
 INT_PTR CALLBACK CDDAExtract::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			CDDAExtract* dialog = reinterpret_cast<CDDAExtract*>( lParam );
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -46,47 +46,47 @@ INT_PTR CALLBACK CDDAExtract::DialogProc( HWND hwnd, UINT message, WPARAM wParam
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDCANCEL : {
+				case IDCANCEL: {
 					CDDAExtract* dialog = reinterpret_cast<CDDAExtract*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->Close();
 					}
 					return TRUE;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
 			break;
 		}
-		case WM_TIMER : {
+		case WM_TIMER: {
 			CDDAExtract* dialog = reinterpret_cast<CDDAExtract*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( ( nullptr != dialog ) && ( s_TimerID == wParam ) ) {
 				dialog->UpdateStatus();
 			}
 			break;
 		}
-		case MSG_EXTRACTFINISHED : {
+		case MSG_EXTRACTFINISHED: {
 			CDDAExtract* dialog = reinterpret_cast<CDDAExtract*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != dialog ) {
 				dialog->Close();
 			}
 			break;
 		}
-		case MSG_EXTRACTERROR : {
+		case MSG_EXTRACTERROR: {
 			CDDAExtract* dialog = reinterpret_cast<CDDAExtract*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != dialog ) {
 				dialog->Error( static_cast<WORD>( wParam ) );
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -167,7 +167,7 @@ void CDDAExtract::OnInitDialog( const HWND hwnd )
 	}
 
 	UpdateStatus();
-	
+
 	m_EncodeThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, EncodeThreadProc, this /*param*/, 0 /*flags*/, NULL /*threadId*/ );
 	m_ReadThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, ReadThreadProc, this /*param*/, 0 /*flags*/, NULL /*threadId*/ );
 
@@ -207,7 +207,7 @@ void CDDAExtract::Error( const WORD errorID )
 {
 	SetEvent( m_CancelEvent );
 	KillTimer( m_hWnd, s_TimerID );
-	
+
 	const int bufferSize = 256;
 	WCHAR buffer[ bufferSize ] = {};
 	if ( FALSE != LoadString( m_hInst, errorID, buffer, bufferSize ) ) {
@@ -217,12 +217,12 @@ void CDDAExtract::Error( const WORD errorID )
 
 	const HWND progressRead = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TRACK );
 	if ( nullptr != progressRead ) {
-		SendMessage( progressRead, PBM_SETPOS, m_ProgressRange, 0 );			
+		SendMessage( progressRead, PBM_SETPOS, m_ProgressRange, 0 );
 	}
 
 	const HWND progressEncode = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TOTAL );
 	if ( nullptr != progressEncode ) {
-		SendMessage( progressEncode, PBM_SETPOS, m_ProgressRange, 0 );			
+		SendMessage( progressEncode, PBM_SETPOS, m_ProgressRange, 0 );
 	}
 
 	LoadString( m_hInst, IDS_CLOSE, buffer, bufferSize );
@@ -235,7 +235,7 @@ void CDDAExtract::ReadHandler()
 	typedef std::set<CDDAMedia::Data> SectorSet;
 
 	// A map of CDDA sector sets.
-	typedef std::map<long,SectorSet> SectorMap;
+	typedef std::map<long, SectorSet> SectorMap;
 	SectorMap sectorMap;
 
 	// A cache of CDDA sectors.
@@ -285,7 +285,7 @@ void CDDAExtract::ReadHandler()
 						// Re-read all sectors on each pass, not just the remaining sectors, in an attempt to flush any cache on the device.
 						long sectorIndex = sectorStart;
 						while ( !Cancelled() && ( sectorIndex < sectorEnd ) && !sectorsRemaining.empty() ) {
-					
+
 							auto cacheIter = sectorCache.find( sectorIndex );
 							if ( sectorCache.end() == cacheIter ) {
 								sectorCache.clear();
@@ -328,7 +328,7 @@ void CDDAExtract::ReadHandler()
 							if ( !sectorsRemaining.empty() ) {
 								// For each inconsistent sector, take the modal value for each sample.
 								m_StatusPass.store( s_ReadFixingSectors );
-								typedef std::map<short,int> SampleMap;
+								typedef std::map<short, int> SampleMap;
 								SampleMap sampleMap;
 
 								auto sectorIter = sectorsRemaining.begin();
@@ -528,7 +528,7 @@ void CDDAExtract::EncodeHandler()
 									mediaInfo.SetGainAlbum( albumGain );
 
 									for ( auto& encodedMedia : encodedMediaList ) {
-										WriteAlbumTags( encodedMedia.GetFilename(), mediaInfo );					
+										WriteAlbumTags( encodedMedia.GetFilename(), mediaInfo );
 										if ( extractToLibrary || m_Library.GetMediaInfo( encodedMedia, false /*scanMedia*/ ) ) {
 											m_Library.GetMediaInfo( encodedMedia );
 										}
@@ -604,7 +604,7 @@ void CDDAExtract::UpdateStatus()
 			readStatus = buffer;
 			const HWND progressRead = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TRACK );
 			if ( nullptr != progressRead ) {
-				SendMessage( progressRead, PBM_SETPOS, m_ProgressRange, 0 );			
+				SendMessage( progressRead, PBM_SETPOS, m_ProgressRange, 0 );
 			}
 		} else {
 			if ( s_ReadFixingSectors == m_DisplayedPass ) {
@@ -681,7 +681,7 @@ void CDDAExtract::WriteTrackTags( const std::wstring& filename, const MediaInfo&
 	if ( !publisher.empty() ) {
 		tags.insert( Tags::value_type( Tag::Publisher, WideStringToUTF8( publisher ) ) );
 	}
-  const std::string track = ( mediaInfo.GetTrack() > 0 ) ? std::to_string( mediaInfo.GetTrack() ) : std::string();
+	const std::string track = ( mediaInfo.GetTrack() > 0 ) ? std::to_string( mediaInfo.GetTrack() ) : std::string();
 	if ( !track.empty() ) {
 		tags.insert( Tags::value_type( Tag::Track, track ) );
 	}

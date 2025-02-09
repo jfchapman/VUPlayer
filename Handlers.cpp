@@ -141,7 +141,7 @@ bool Handlers::SetTags( const MediaInfo& mediaInfo, Library& library ) const
 			}
 		}
 
-		for ( const auto& [ tag, value ] : fileTags ) {
+		for ( const auto& [tag, value] : fileTags ) {
 			tagsToWrite.insert( Tags::value_type( tag, {} ) );
 		}
 

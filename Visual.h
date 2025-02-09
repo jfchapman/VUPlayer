@@ -7,7 +7,7 @@ class Visual
 public:
 	// 'wndVisual' - Visual container window.
 	Visual( WndVisual& wndVisual );
-	
+
 	virtual ~Visual();
 
 	// Returns the required visual height, based on a given width.
@@ -28,8 +28,8 @@ public:
 	// Called when the system colours have changed.
 	virtual void OnSysColorChange() = 0;
 
-  // Called when the visual should free any resources.
-  virtual void FreeResources() = 0;
+	// Called when the visual should free any resources.
+	virtual void FreeResources() = 0;
 
 	// Returns the output object.
 	Output& GetOutput();
@@ -52,11 +52,10 @@ public:
 	// Returns whether hardware acceleration is enabled.
 	bool IsHardwareAccelerationEnabled() const;
 
-  // Returns the current DPI scaling factor.
-  float GetDPIScalingFactor() const;
+	// Returns the current DPI scaling factor.
+	float GetDPIScalingFactor() const;
 
 private:
 	// Visual container window.
 	WndVisual& m_WndVisual;
 };
-

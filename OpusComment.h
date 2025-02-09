@@ -22,7 +22,7 @@ public:
 	const std::string& GetVendor() const;
 
 	// Returns the user comment field/value pairs (UTF-8 encoded).
-	const std::vector<std::pair<std::string,std::string>>& GetUserComments() const;
+	const std::vector<std::pair<std::string, std::string>>& GetUserComments() const;
 
 	// Adds a user comment field/value pair (UTF-8 encoded).
 	void AddUserComment( const std::string& field, const std::string& value );
@@ -41,7 +41,7 @@ public:
 	// 'picture' - out, picture data.
 	// Returns whether the picture was got. 
 	// Note that if there are multiple pictures of the same type, the first one is returned.
-	bool GetPicture( const uint32_t pictureType, std::string& mimeType, std::string& description, 
+	bool GetPicture( const uint32_t pictureType, std::string& mimeType, std::string& description,
 		uint32_t& width, uint32_t& height, uint32_t& depth, uint32_t& colours, std::vector<uint8_t>& picture ) const;
 
 	// Adds a picture.
@@ -53,7 +53,7 @@ public:
 	// 'depth' - colour depth in bits per pixel.
 	// 'colours' - number of colours used for indexed colour pictures (GIF), or zero for non-indexed colour pictures.
 	// 'picture' - picture data.
-	void AddPicture( const uint32_t pictureType, const std::string& mimeType, const std::string& description, 
+	void AddPicture( const uint32_t pictureType, const std::string& mimeType, const std::string& description,
 		const uint32_t width, const uint32_t height, const uint32_t depth, const uint32_t colours, const std::vector<uint8_t>& picture );
 
 	// Removes all pictures matching the picture type.
@@ -88,13 +88,13 @@ private:
 	std::fstream m_Stream;
 
 	// Original Opus comment page(s), keyed by the file offset to the start of the page.
-	std::map<long long,OggPage> m_OriginalPages;
+	std::map<long long, OggPage> m_OriginalPages;
 
 	// Vendor string (UTF-8 encoded).
 	std::string m_Vendor;
 
 	// User comment name/value pairs (UTF-8 encoded).
-	std::vector<std::pair<std::string,std::string>> m_Comments;
+	std::vector<std::pair<std::string, std::string>> m_Comments;
 
 	// Trailing binary data.
 	std::vector<uint8_t> m_BinaryData;

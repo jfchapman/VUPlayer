@@ -1351,7 +1351,7 @@ Settings::EQ Settings::GetEQSettings()
 	if ( const auto value = ReadSetting<float>( "EQPreamp" ); value ) {
 		eq.Preamp = std::clamp( *value, EQ::MinGain, EQ::MaxGain );
 	}
-	for ( auto& [ freq, gain ] : eq.Gains ) {
+	for ( auto& [freq, gain] : eq.Gains ) {
 		const std::string settingName = "EQ" + std::to_string( freq );
 		if ( const auto value = ReadSetting<float>( settingName ); value ) {
 			gain = std::clamp( *value, EQ::MinGain, EQ::MaxGain );
@@ -1367,7 +1367,7 @@ void Settings::SetEQSettings( const EQ& eq )
 	WriteSetting( "EQY", eq.Y );
 	WriteSetting( "EQEnable", eq.Enabled );
 	WriteSetting( "EQPreamp", eq.Preamp );
-	for ( const auto& [ freq, gain ] : eq.Gains ) {
+	for ( const auto& [freq, gain] : eq.Gains ) {
 		const std::string settingName = "EQ" + std::to_string( freq );
 		WriteSetting( settingName, gain );
 	}
@@ -1655,7 +1655,7 @@ std::pair<float /*pitch*/, float /*balance*/> Settings::GetPitchBalance()
 	constexpr float kDefaultBalance = 0.0f;
 
 	auto setting = std::make_pair( kDefaultPitch, kDefaultBalance );
-	auto& [ pitch, balance ] = setting;
+	auto& [pitch, balance] = setting;
 	pitch = ReadSetting<float>( "Pitch" ).value_or( kDefaultPitch );
 	balance = ReadSetting<float>( "Balance" ).value_or( kDefaultBalance );
 	return setting;

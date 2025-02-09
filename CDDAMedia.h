@@ -85,8 +85,8 @@ public:
 	// Returns the MusicBrainz ID for disc queries.
 	std::pair<std::string /*discid*/, std::string /*toc*/> GetMusicBrainzDiscID() const;
 
-  // Returns the MusicBrainz ID ('discid'/'toc'), 'startCues' & the 'backingFile' for a 'playlist' (if it is suitable for a query).
-  static std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<long> /*startCues*/, std::wstring /*backingFile*/>> GetMusicBrainzPlaylistID( Playlist* const playlist );
+	// Returns the MusicBrainz ID ('discid'/'toc'), 'startCues' & the 'backingFile' for a 'playlist' (if it is suitable for a query).
+	static std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<long> /*startCues*/, std::wstring /*backingFile*/>> GetMusicBrainzPlaylistID( Playlist* const playlist );
 
 private:
 	// A string pair.
@@ -125,7 +125,7 @@ private:
 	// Returns the start sector of the CD audio 'track' from the 'toc'.
 	static long GetStartSector( const CDROM_TOC& toc, const long track );
 
-  // CD-ROM drive path.
+	// CD-ROM drive path.
 	const std::wstring m_DrivePath;
 
 	// Media library.

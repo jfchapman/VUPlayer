@@ -64,7 +64,7 @@ void Oscilloscope::RenderThreadHandler()
 {
 	DWORD result = 0;
 	do {
-		DoRender();	
+		DoRender();
 		result = WaitForSingleObject( m_RenderStopEvent, s_RenderThreadInterval );
 	} while ( WAIT_OBJECT_0 != result );
 }
@@ -105,7 +105,7 @@ void Oscilloscope::OnPaint()
 										sink->BeginFigure( point, D2D1_FIGURE_BEGIN_HOLLOW );
 										for ( long pos = 1; ( pos < width / scale ); pos++ ) {
 											point = D2D1::Point2F( static_cast<FLOAT>( pos ) /*x*/,
-													centrePoint - halfHeight * sampleData.at( scale * pos * channelCount + channelIndex ) /*y*/ );
+												centrePoint - halfHeight * sampleData.at( scale * pos * channelCount + channelIndex ) /*y*/ );
 											sink->AddLine( point );
 										}
 										sink->EndFigure( D2D1_FIGURE_END_OPEN );
@@ -144,22 +144,22 @@ void Oscilloscope::LoadResources( ID2D1DeviceContext* deviceContext )
 	if ( ( nullptr != deviceContext ) && !m_Colour && !m_BackgroundColour ) {
 		const COLORREF colour = GetSettings().GetOscilloscopeColour();
 		deviceContext->CreateSolidColorBrush( D2D1::ColorF(
-				static_cast<FLOAT>( GetRValue( colour ) ) / 0xff,
-				static_cast<FLOAT>( GetGValue( colour ) ) / 0xff,
-				static_cast<FLOAT>( GetBValue( colour ) ) / 0xff,
-				0xff ), &m_Colour );
+			static_cast<FLOAT>( GetRValue( colour ) ) / 0xff,
+			static_cast<FLOAT>( GetGValue( colour ) ) / 0xff,
+			static_cast<FLOAT>( GetBValue( colour ) ) / 0xff,
+			0xff ), &m_Colour );
 		const COLORREF background = GetSettings().GetOscilloscopeBackground();
 		deviceContext->CreateSolidColorBrush( D2D1::ColorF(
-				static_cast<FLOAT>( GetRValue( background ) ) / 0xff,
-				static_cast<FLOAT>( GetGValue( background ) ) / 0xff,
-				static_cast<FLOAT>( GetBValue( background ) ) / 0xff,
-				0xff ), &m_BackgroundColour );
+			static_cast<FLOAT>( GetRValue( background ) ) / 0xff,
+			static_cast<FLOAT>( GetGValue( background ) ) / 0xff,
+			static_cast<FLOAT>( GetBValue( background ) ) / 0xff,
+			0xff ), &m_BackgroundColour );
 		m_Weight = GetSettings().GetOscilloscopeWeight();
 	}
 }
 
 void Oscilloscope::FreeResources()
 {
-  m_Colour.Reset();
-  m_BackgroundColour.Reset();
+	m_Colour.Reset();
+	m_BackgroundColour.Reset();
 }

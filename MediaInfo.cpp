@@ -22,9 +22,9 @@ MediaInfo::MediaInfo( const long cddbID ) :
 
 bool MediaInfo::operator<( const MediaInfo& o ) const
 {
-	const bool lessThan = 
-		std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate, 
-			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, m_Composer, m_Conductor, m_Publisher,
+	const bool lessThan =
+		std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate,
+			m_Artist, m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, m_Composer, m_Conductor, m_Publisher,
 			m_Source, m_CDDB, m_GainTrack, m_GainAlbum, m_CueStart, m_CueEnd ) <
 
 		std::tie( o.m_Filename, o.m_Filetime, o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_BitsPerSample, o.m_Channels, o.m_Bitrate,
@@ -36,9 +36,9 @@ bool MediaInfo::operator<( const MediaInfo& o ) const
 
 bool MediaInfo::operator==( const MediaInfo& o ) const
 {
-	const bool equals = 
-		std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate, 
-			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, m_Composer, m_Conductor, m_Publisher,
+	const bool equals =
+		std::tie( m_Filename, m_Filetime, m_Filesize, m_Duration, m_SampleRate, m_BitsPerSample, m_Channels, m_Bitrate,
+			m_Artist, m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, m_Composer, m_Conductor, m_Publisher,
 			m_Source, m_CDDB, m_GainTrack, m_GainAlbum, m_CueStart, m_CueEnd ) ==
 
 		std::tie( o.m_Filename, o.m_Filetime, o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_BitsPerSample, o.m_Channels, o.m_Bitrate,
@@ -50,14 +50,14 @@ bool MediaInfo::operator==( const MediaInfo& o ) const
 
 bool MediaInfo::operator!=( const MediaInfo& o ) const
 {
-  return !operator==( o );
+	return !operator==( o );
 }
 
 MediaInfo::operator Tags() const
 {
 	Tags tags;
 	if ( !m_Album.empty() ) {
-		tags.insert( Tags::value_type( Tag::Album, WideStringToUTF8( m_Album ) ) );	
+		tags.insert( Tags::value_type( Tag::Album, WideStringToUTF8( m_Album ) ) );
 	}
 	if ( !m_Artist.empty() ) {
 		tags.insert( Tags::value_type( Tag::Artist, WideStringToUTF8( m_Artist ) ) );
@@ -66,23 +66,23 @@ MediaInfo::operator Tags() const
 		tags.insert( Tags::value_type( Tag::Comment, WideStringToUTF8( m_Comment ) ) );
 	}
 	if ( !m_Genre.empty() ) {
-		tags.insert( Tags::value_type( Tag::Genre, WideStringToUTF8( m_Genre ) ) );		
+		tags.insert( Tags::value_type( Tag::Genre, WideStringToUTF8( m_Genre ) ) );
 	}
 	if ( !m_Title.empty() ) {
 		tags.insert( Tags::value_type( Tag::Title, WideStringToUTF8( m_Title ) ) );
 	}
-  if ( !m_Version.empty() ) {
-    tags.insert( Tags::value_type( Tag::Version, WideStringToUTF8( m_Version ) ) );
-  }
-  if ( !m_Composer.empty() ) {
-    tags.insert( Tags::value_type( Tag::Composer, WideStringToUTF8( m_Composer ) ) );
-  }
-  if ( !m_Conductor.empty() ) {
-    tags.insert( Tags::value_type( Tag::Conductor, WideStringToUTF8( m_Conductor ) ) );
-  }
-  if ( !m_Publisher.empty() ) {
-    tags.insert( Tags::value_type( Tag::Publisher, WideStringToUTF8( m_Publisher ) ) );
-  }
+	if ( !m_Version.empty() ) {
+		tags.insert( Tags::value_type( Tag::Version, WideStringToUTF8( m_Version ) ) );
+	}
+	if ( !m_Composer.empty() ) {
+		tags.insert( Tags::value_type( Tag::Composer, WideStringToUTF8( m_Composer ) ) );
+	}
+	if ( !m_Conductor.empty() ) {
+		tags.insert( Tags::value_type( Tag::Conductor, WideStringToUTF8( m_Conductor ) ) );
+	}
+	if ( !m_Publisher.empty() ) {
+		tags.insert( Tags::value_type( Tag::Publisher, WideStringToUTF8( m_Publisher ) ) );
+	}
 	if ( m_Track > 0 ) {
 		tags.insert( Tags::value_type( Tag::Track, std::to_string( m_Track ) ) );
 	}
@@ -122,11 +122,11 @@ void MediaInfo::SetFiletime( const long long filetime )
 
 long long MediaInfo::GetFilesize( const bool applyCues ) const
 {
-  if ( m_CueStart && applyCues && ( m_Duration > 0 ) ) {
-    const float start = *m_CueStart / 75.f;
-    const float end = m_CueEnd ? ( *m_CueEnd / 75.f ) : m_Duration;
-    return std::clamp( static_cast<long long>( m_Filesize * ( end - start ) / m_Duration ), 0ll, m_Filesize );
-  }
+	if ( m_CueStart && applyCues && ( m_Duration > 0 ) ) {
+		const float start = *m_CueStart / 75.f;
+		const float end = m_CueEnd ? ( *m_CueEnd / 75.f ) : m_Duration;
+		return std::clamp( static_cast<long long>( m_Filesize * ( end - start ) / m_Duration ), 0ll, m_Filesize );
+	}
 	return m_Filesize;
 }
 
@@ -137,11 +137,11 @@ void MediaInfo::SetFilesize( const long long filesize )
 
 float MediaInfo::GetDuration( const bool applyCues ) const
 {
-  if ( m_CueStart && applyCues ) {
-    const float start = *m_CueStart / 75.f;
-    const float end = m_CueEnd ? ( *m_CueEnd / 75.f ) : m_Duration;
-    return ( start <= end ) ? ( end - start ) : 0.f;
-  }
+	if ( m_CueStart && applyCues ) {
+		const float start = *m_CueStart / 75.f;
+		const float end = m_CueEnd ? ( *m_CueEnd / 75.f ) : m_Duration;
+		return ( start <= end ) ? ( end - start ) : 0.f;
+	}
 	return m_Duration;
 }
 
@@ -313,8 +313,8 @@ std::wstring MediaInfo::GetTitle( const bool filenameAsTitle ) const
 {
 	std::wstring title = m_Title;
 	if ( title.empty() && filenameAsTitle ) {
-	  const std::filesystem::path path( m_Filename );
-	  title = IsURL( m_Filename ) ? path.filename().native() : GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
+		const std::filesystem::path path( m_Filename );
+		title = IsURL( m_Filename ) ? path.filename().native() : GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
 	}
 	return title;
 }
@@ -349,8 +349,8 @@ std::wstring MediaInfo::GetArtworkID( const bool checkFolder ) const
 {
 	std::wstring artworkID = m_ArtworkID;
 	if ( checkFolder && artworkID.empty() && !GetFilename().empty() && ( Source::File == GetSource() ) ) {
-		const std::array<std::wstring,2> artworkFileNames = { L"cover", L"folder" };
-		const std::array<std::wstring,2> artworkFileTypes = { L"jpg", L"png" };
+		const std::array<std::wstring, 2> artworkFileNames = { L"cover", L"folder" };
+		const std::array<std::wstring, 2> artworkFileTypes = { L"jpg", L"png" };
 		const std::filesystem::path filePath( GetFilename() );
 		for ( auto artworkFileName = artworkFileNames.begin(); artworkID.empty() && ( artworkFileNames.end() != artworkFileName ); artworkFileName++ ) {
 			for ( auto artworkFileType = artworkFileTypes.begin(); artworkID.empty() && ( artworkFileTypes.end() != artworkFileType ); artworkFileType++ ) {
@@ -373,28 +373,28 @@ void MediaInfo::SetArtworkID( const std::wstring& id )
 
 const std::optional<long>& MediaInfo::GetCueStart() const
 {
-  return m_CueStart;
+	return m_CueStart;
 }
 
 void MediaInfo::SetCueStart( const std::optional<long>& frames )
 {
-  m_CueStart = ( frames.has_value() && ( frames.value() < 0 ) ) ? std::nullopt : frames;
+	m_CueStart = ( frames.has_value() && ( frames.value() < 0 ) ) ? std::nullopt : frames;
 }
 
 const std::optional<long>& MediaInfo::GetCueEnd() const
 {
-  return m_CueEnd;
+	return m_CueEnd;
 }
 
 void MediaInfo::SetCueEnd( const std::optional<long>& frames )
 {
-  m_CueEnd = ( frames.has_value() && ( frames.value() < 0 ) ) ? std::nullopt : frames;
+	m_CueEnd = ( frames.has_value() && ( frames.value() < 0 ) ) ? std::nullopt : frames;
 }
 
 std::wstring MediaInfo::GetFilenameWithCues( const bool fullPath, const bool removeExtension ) const
 {
-  const auto filepath = ( fullPath && !removeExtension ) ? std::filesystem::path( m_Filename ) : std::filesystem::path( m_Filename ).filename();
-  return FormatCues( m_CueStart, m_CueEnd, removeExtension ? filepath.stem() : filepath );
+	const auto filepath = ( fullPath && !removeExtension ) ? std::filesystem::path( m_Filename ) : std::filesystem::path( m_Filename ).filename();
+	return FormatCues( m_CueStart, m_CueEnd, removeExtension ? filepath.stem() : filepath );
 }
 
 MediaInfo::Source MediaInfo::GetSource() const
@@ -409,9 +409,9 @@ long MediaInfo::GetCDDB() const
 
 bool MediaInfo::IsDuplicate( const MediaInfo& o ) const
 {
-	const bool isDuplicate = 
+	const bool isDuplicate =
 		std::tie( m_Filesize, m_Duration, m_SampleRate, m_Channels,
-			m_Artist,	m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, m_Composer, m_Conductor, m_Publisher,
+			m_Artist, m_Title, m_Album, m_Genre, m_Year, m_Comment, m_Track, m_Version, m_ArtworkID, m_Composer, m_Conductor, m_Publisher,
 			m_Source, m_CDDB, m_GainTrack, m_GainAlbum, m_CueStart, m_CueEnd ) ==
 
 		std::tie( o.m_Filesize, o.m_Duration, o.m_SampleRate, o.m_Channels,
@@ -430,9 +430,9 @@ bool MediaInfo::GetCommonInfo( const List& mediaList, MediaInfo& commonInfo )
 	std::set<std::wstring> genres;
 	std::set<std::wstring> comments;
 	std::set<std::wstring> artworks;
-  std::set<std::wstring> composers;
-  std::set<std::wstring> conductors;
-  std::set<std::wstring> publishers;
+	std::set<std::wstring> composers;
+	std::set<std::wstring> conductors;
+	std::set<std::wstring> publishers;
 	std::set<long> years;
 	std::set<long> tracks;
 
@@ -443,14 +443,14 @@ bool MediaInfo::GetCommonInfo( const List& mediaList, MediaInfo& commonInfo )
 		genres.insert( mediaInfo.GetGenre() );
 		comments.insert( mediaInfo.GetComment() );
 		artworks.insert( mediaInfo.GetArtworkID() );
-    composers.insert( mediaInfo.GetComposer() );
-    conductors.insert( mediaInfo.GetConductor() );
-    publishers.insert( mediaInfo.GetPublisher() );
+		composers.insert( mediaInfo.GetComposer() );
+		conductors.insert( mediaInfo.GetConductor() );
+		publishers.insert( mediaInfo.GetPublisher() );
 		years.insert( mediaInfo.GetYear() );
 		tracks.insert( mediaInfo.GetTrack() );
 
 		if ( ( artists.size() > 1 ) && ( titles.size() > 1 ) && ( albums.size() > 1 ) && ( genres.size() > 1 ) && ( comments.size() > 1 ) && ( artworks.size() > 1 ) &&
-        ( composers.size() > 1 ) && ( conductors.size() > 1 ) && ( publishers.size() > 1 ) && ( years.size() > 1 ) && ( tracks.size() > 1 ) ) {
+			( composers.size() > 1 ) && ( conductors.size() > 1 ) && ( publishers.size() > 1 ) && ( years.size() > 1 ) && ( tracks.size() > 1 ) ) {
 			break;
 		}
 	}
@@ -507,37 +507,37 @@ bool MediaInfo::GetCommonInfo( const List& mediaList, MediaInfo& commonInfo )
 
 std::wstring MediaInfo::FormatCues( const std::optional<long>& cueStart, const std::optional<long>& cueEnd, const std::wstring& value )
 {
-  if ( !cueStart )
-    return value;
+	if ( !cueStart )
+		return value;
 
-  const int startMinutes = *cueStart / 75 / 60;
-  const int startSeconds = *cueStart / 75 % 60;
-  const int startFrames = *cueStart % 75;
-  const int endMinutes = cueEnd ? ( *cueEnd / 75 / 60 ) : 99;
-  const int endSeconds = cueEnd ? ( *cueEnd / 75 % 60 ) : 99;
-  const int endFrames = cueEnd ? ( *cueEnd % 75 ) : 99;
-  return std::format( LR"({} [{:02}:{:02}:{:02} - {:02}:{:02}:{:02}])", value, startMinutes, startSeconds, startFrames, endMinutes, endSeconds, endFrames ); 
+	const int startMinutes = *cueStart / 75 / 60;
+	const int startSeconds = *cueStart / 75 % 60;
+	const int startFrames = *cueStart % 75;
+	const int endMinutes = cueEnd ? ( *cueEnd / 75 / 60 ) : 99;
+	const int endSeconds = cueEnd ? ( *cueEnd / 75 % 60 ) : 99;
+	const int endFrames = cueEnd ? ( *cueEnd % 75 ) : 99;
+	return std::format( LR"({} [{:02}:{:02}:{:02} - {:02}:{:02}:{:02}])", value, startMinutes, startSeconds, startFrames, endMinutes, endSeconds, endFrames );
 }
 
 MediaInfo MediaInfo::ExtractCues( const std::wstring& filepath )
 {
-  const std::wregex kCues( LR"((.+)\[(\d{2}):(\d{2}):(\d{2}) - (\d{2}):(\d{2}):(\d{2})\]$)" );
-  std::wsmatch match;
-  if ( std::regex_match( filepath, match, kCues ) && ( 8 == match.size() ) ) {
-    try {
-      MediaInfo info( StripWhitespace( match[ 1 ].str() ) );
-      const int startMinutes = std::stoi( match[ 2 ] );
-      const int startSeconds = std::stoi( match[ 3 ] );
-      const int startFrames = std::stoi( match[ 4 ] );
-      const int endMinutes = std::stoi( match[ 5 ] );
-      const int endSeconds = std::stoi( match[ 6 ] );
-      const int endFrames = std::stoi( match[ 7 ] );
-      info.SetCueStart( startMinutes * 60 * 75 + startSeconds * 75 + startFrames );
-      if ( !( ( 99 == endMinutes ) && ( 99 == endSeconds ) && ( 99 == endFrames ) ) ) {
-        info.SetCueEnd( endMinutes * 60 * 75 + endSeconds * 75 + endFrames );
-      }
-      return info;
-    } catch ( const std::logic_error& ) {}
-  }  
-  return filepath;
+	const std::wregex kCues( LR"((.+)\[(\d{2}):(\d{2}):(\d{2}) - (\d{2}):(\d{2}):(\d{2})\]$)" );
+	std::wsmatch match;
+	if ( std::regex_match( filepath, match, kCues ) && ( 8 == match.size() ) ) {
+		try {
+			MediaInfo info( StripWhitespace( match[ 1 ].str() ) );
+			const int startMinutes = std::stoi( match[ 2 ] );
+			const int startSeconds = std::stoi( match[ 3 ] );
+			const int startFrames = std::stoi( match[ 4 ] );
+			const int endMinutes = std::stoi( match[ 5 ] );
+			const int endSeconds = std::stoi( match[ 6 ] );
+			const int endFrames = std::stoi( match[ 7 ] );
+			info.SetCueStart( startMinutes * 60 * 75 + startSeconds * 75 + startFrames );
+			if ( !( ( 99 == endMinutes ) && ( 99 == endSeconds ) && ( 99 == endFrames ) ) ) {
+				info.SetCueEnd( endMinutes * 60 * 75 + endSeconds * 75 + endFrames );
+			}
+			return info;
+		} catch ( const std::logic_error& ) {}
+	}
+	return filepath;
 }

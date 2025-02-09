@@ -71,7 +71,7 @@ bool EncoderOpus::Write( float* samples, const long sampleCount )
 {
 	// For multi-channel streams, change from BASS to Opus channel ordering.
 	switch ( m_Channels ) {
-		case 3 : {
+		case 3: {
 			// (left, right, center) ->
 			// (left, center, right)
 			long offset = 0;
@@ -80,7 +80,7 @@ bool EncoderOpus::Write( float* samples, const long sampleCount )
 			}
 			break;
 		}
-		case 5 : {
+		case 5: {
 			// (front left, front right, front center, rear left, rear right) ->
 			// (front left, front center, front right, rear left, rear right)
 			long offset = 0;
@@ -89,13 +89,13 @@ bool EncoderOpus::Write( float* samples, const long sampleCount )
 			}
 			break;
 		}
-		case 6 : {
+		case 6: {
 			// (front left, front right, front center, LFE, rear left, rear right) ->
 			// (front left, front center, front right, rear left, rear right, LFE)
 			long offset = 0;
 			for ( long n = 0; n < sampleCount; n++, offset += m_Channels ) {
 				std::swap( samples[ offset + 1 ], samples[ offset + 2 ] );
-				const float lfe =	samples[ offset + 3 ];
+				const float lfe = samples[ offset + 3 ];
 				const float rearL = samples[ offset + 4 ];
 				const float rearR = samples[ offset + 5 ];
 				samples[ offset + 3 ] = rearL;
@@ -104,7 +104,7 @@ bool EncoderOpus::Write( float* samples, const long sampleCount )
 			}
 			break;
 		}
-		case 7 : {
+		case 7: {
 			// (front left, front right, front center, LFE, rear center, side left, side right) ->
 			// (front left, front center, front right, side left, side right, rear center, LFE)
 			long offset = 0;
@@ -121,7 +121,7 @@ bool EncoderOpus::Write( float* samples, const long sampleCount )
 			}
 			break;
 		}
-		case 8 : {
+		case 8: {
 			// (front left, front right, front center, LFE, rear left, rear right, side left, side right) ->
 			// (front left, front center, front right, side left, side right, rear left, rear right, LFE)
 			long offset = 0;

@@ -28,9 +28,9 @@ public:
 		CDDA,
 		Folder,
 		Streams,
-    Publisher,
-    Composer,
-    Conductor,
+		Publisher,
+		Composer,
+		Conductor,
 
 		_Undefined
 	};
@@ -57,9 +57,9 @@ public:
 	// Returns whether 'filename' is a supported playlist type.
 	static bool IsSupportedPlaylist( const std::wstring& filename );
 
-  // Extracts CUE files, and all files referenced by CUE files, from a set of 'filenames'.
-  // Returns just the CUE files, or nullopt if no CUE files were found.
-  static std::optional<std::set<std::filesystem::path>> ExtractCueFiles( std::set<std::filesystem::path>& filenames );
+	// Extracts CUE files, and all files referenced by CUE files, from a set of 'filenames'.
+	// Returns just the CUE files, or nullopt if no CUE files were found.
+	static std::optional<std::set<std::filesystem::path>> ExtractCueFiles( std::set<std::filesystem::path>& filenames );
 
 	// Column type.
 	enum class Column {
@@ -82,9 +82,9 @@ public:
 		GainAlbum,
 		Bitrate,
 		Filename,
-    Composer,
-    Conductor,
-    Publisher,
+		Composer,
+		Conductor,
+		Publisher,
 
 		_Undefined
 	};
@@ -103,7 +103,7 @@ public:
 	using Ptr = std::shared_ptr<Playlist>;
 
 	// A set of playlists.
-	using Set = std::set<Playlist::Ptr>;	
+	using Set = std::set<Playlist::Ptr>;
 
 	// Gets the playlist ID.
 	const std::string& GetID() const;
@@ -134,18 +134,18 @@ public:
 	// Returns true if the item/position was returned. 
 	bool GetItem( Item& item, int& position );
 
-  // Gets a playlist item.
-  // 'position' - item position.
-  Item GetItem( const int position );
+	// Gets a playlist item.
+	// 'position' - item position.
+	Item GetItem( const int position );
 
-  // Gets a playlist item ID.
-  // 'position' - item position.
-  long GetItemID( const int position );
+	// Gets a playlist item ID.
+	// 'position' - item position.
+	long GetItemID( const int position );
 
-  // Gets the position of an item in the playlist.
-  // 'itemID' - playlist item ID.
-  // Returns the item position, or -1 if the item ID was not found.
-  int GetItemPosition( const long itemID );
+	// Gets the position of an item in the playlist.
+	// 'itemID' - playlist item ID.
+	// Returns the item position, or -1 if the item ID was not found.
+	int GetItemPosition( const long itemID );
 
 	// Gets the next playlist item.
 	// 'currentItem' - the current item.
@@ -201,9 +201,9 @@ public:
 	// Returns whether the media information was removed.
 	bool RemoveItem( const MediaInfo& mediaInfo );
 
-  // Removes all filenames in the 'mediaList' from the playlist.
-  // Returns whether any files were removed.
-  bool RemoveFiles( const MediaInfo::List& mediaList );
+	// Removes all filenames in the 'mediaList' from the playlist.
+	// Returns whether any files were removed.
+	bool RemoveFiles( const MediaInfo::List& mediaList );
 
 	// Returns the number of items in the playlist.
 	long GetCount();
@@ -251,20 +251,20 @@ public:
 	// Returns whether the playlist contains 'filename' (with optional start & end cues).
 	bool ContainsFile( const std::wstring& filename, const std::optional<long>& cueStart = std::nullopt, const std::optional<long>& cueEnd = std::nullopt );
 
-  // Performs a case insensitive search for a title in the playlist.
-  // 'startIndex' - the index at which to start the search.
-  // 'searchTitle' - the title to search for.
-  // 'partial' - true to match any title which begins with the search string, false to perform an exact match. 
-  // 'wrap' - wraps round to the start of the playlist if a match is not found.
-  // Returns the matching item position, or -1 if there was no match.
-  int FindItem( const int startIndex, const std::wstring& searchTitle, const bool partial, const bool wrap );
+	// Performs a case insensitive search for a title in the playlist.
+	// 'startIndex' - the index at which to start the search.
+	// 'searchTitle' - the title to search for.
+	// 'partial' - true to match any title which begins with the search string, false to perform an exact match. 
+	// 'wrap' - wraps round to the start of the playlist if a match is not found.
+	// Returns the matching item position, or -1 if there was no match.
+	int FindItem( const int startIndex, const std::wstring& searchTitle, const bool partial, const bool wrap );
 
-  // Returns whether MusicBrainz queries can be performed using this playlist.
-  bool AllowMusicBrainzQueries();
+	// Returns whether MusicBrainz queries can be performed using this playlist.
+	bool AllowMusicBrainzQueries();
 
-  // Updates a playlist item using 'mediaInfo', or adds the item if a matching file was not found.
-  // Returns whether the item was found and updated.
-  bool UpdateOrAddItem( const MediaInfo& mediaInfo );
+	// Updates a playlist item using 'mediaInfo', or adds the item if a matching file was not found.
+	// Returns whether the item was found and updated.
+	bool UpdateOrAddItem( const MediaInfo& mediaInfo );
 
 private:
 	// Pending file thread proc.
@@ -294,7 +294,7 @@ private:
 	// Adds a VPL playlist 'filename' to this playlist.
 	// Returns whether any pending files were added to this playlist.
 	bool AddVPL( const std::wstring& filename );
-	
+
 	// Adds an M3U playlist 'filename' to this playlist.
 	// Returns whether any pending files were added to this playlist.
 	bool AddM3U( const std::wstring& filename );
@@ -303,20 +303,20 @@ private:
 	// Returns whether any pending files were added to this playlist.
 	bool AddPLS( const std::wstring& filename );
 
-  // Adds a CUE playlist 'filename' to this playlist.
-  // Returns whether any files were added to this playlist.
-  bool AddCUE( const std::wstring& filename );
+	// Adds a CUE playlist 'filename' to this playlist.
+	// Returns whether any files were added to this playlist.
+	bool AddCUE( const std::wstring& filename );
 
-  // Returns the position in the playlist of the 'itemID', or -1 if the item ID was not found.
-  // (Internal method with no lock).
-  int GetPositionNoLock( const long itemID );
+	// Returns the position in the playlist of the 'itemID', or -1 if the item ID was not found.
+	// (Internal method with no lock).
+	int GetPositionNoLock( const long itemID );
 
 	// Adds 'mediaInfo' to the playlist, returning the added item.
 	// 'position' - out, 0-based index of the added item position.
 	// 'addedAsDuplicate' - out, whether the item was added as a duplicate of an existing item (which is returned).
 	Item AddItem( const MediaInfo& mediaInfo, int& position, bool& addedAsDuplicate );
 
-  // Playlist ID.
+	// Playlist ID.
 	const std::string m_ID;
 
 	// Playlist name.
@@ -367,8 +367,8 @@ private:
 	// Shuffled playlist mutex.
 	std::mutex m_MutexShuffled;
 
-  // Maps a playlist item ID to its position in the playlist.
-  std::map<long, size_t> m_ItemIDPositions;
+	// Maps a playlist item ID to its position in the playlist.
+	std::map<long, size_t> m_ItemIDPositions;
 };
 
 // A list of playlists.

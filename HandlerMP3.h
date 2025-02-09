@@ -4,7 +4,7 @@
 #include <string>
 
 // MP3 encoder handler
-class HandlerMP3 :	public Handler
+class HandlerMP3 : public Handler
 {
 public:
 	HandlerMP3();

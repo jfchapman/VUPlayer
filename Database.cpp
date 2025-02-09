@@ -14,16 +14,16 @@ Database::Database( const std::wstring& filename, const Mode mode ) :
 
 	std::string databaseName;
 	switch ( m_Mode ) {
-		case Mode::Disk : {
+		case Mode::Disk: {
 			databaseName = WideStringToUTF8( m_Filename );
 			break;
 		}
-		case Mode::Memory : {
+		case Mode::Memory: {
 			databaseName = ":memory:";
 			break;
 		}
-		case Mode::Temp :
-		default : {
+		case Mode::Temp:
+		default: {
 			break;
 		}
 	}

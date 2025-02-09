@@ -45,4 +45,3 @@ public:
 	// 'isClassicTheme' - indicates whether the Windows classic theme is active.
 	virtual void OnSysColorChange( const bool isHighContrast, const bool isClassicTheme ) = 0;
 };
-

@@ -23,14 +23,14 @@ static constexpr UINT s_MinSwapChainSize = 4;
 static constexpr wchar_t s_VisualClass[] = L"VUVisualClass";
 
 // Oscilloscope weights
-static const std::map<UINT,float> s_OscilloscopeWeights = {
+static const std::map<UINT, float> s_OscilloscopeWeights = {
 		{ ID_OSCILLOSCOPE_WEIGHT_FINE, 1.0f },
 		{ ID_OSCILLOSCOPE_WEIGHT_NORMAL, 2.0f },
 		{ ID_OSCILLOSCOPE_WEIGHT_BOLD, 3.0f }
 };
 
 // VUMeter decay settings
-static const std::map<UINT,float> s_VUMeterDecay = {
+static const std::map<UINT, float> s_VUMeterDecay = {
 		{ ID_VUMETER_SLOWDECAY, VUMeterDecayMinimum },
 		{ ID_VUMETER_NORMALDECAY, VUMeterDecayNormal },
 		{ ID_VUMETER_FASTDECAY, VUMeterDecayMaximum }
@@ -41,31 +41,31 @@ LRESULT CALLBACK WndVisual::VisualProc( HWND hwnd, UINT message, WPARAM wParam, 
 	WndVisual* wndVisual = reinterpret_cast<WndVisual*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndVisual ) {
 		switch ( message ) {
-			case WM_PAINT : {
+			case WM_PAINT: {
 				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
 				wndVisual->OnPaint( ps );
 				EndPaint( hwnd, &ps );
 				break;
 			}
-			case WM_ERASEBKGND : {
+			case WM_ERASEBKGND: {
 				return TRUE;
 			}
-			case WM_WINDOWPOSCHANGING : {
+			case WM_WINDOWPOSCHANGING: {
 				WINDOWPOS* windowPos = reinterpret_cast<WINDOWPOS*>( lParam );
 				if ( nullptr != windowPos ) {
 					wndVisual->Resize( windowPos );
 				}
 				break;
 			}
-			case WM_CONTEXTMENU : {
+			case WM_CONTEXTMENU: {
 				POINT pt = {};
 				pt.x = LOWORD( lParam );
 				pt.y = HIWORD( lParam );
 				wndVisual->OnContextMenu( pt );
 				break;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 				break;
 			}
@@ -89,7 +89,7 @@ WndVisual::WndVisual( HINSTANCE instance, HWND parent, HWND rebarWnd, HWND statu
 	m_Visuals(),
 	m_CurrentVisual(),
 	m_HardwareAccelerationEnabled( m_Settings.GetHardwareAccelerationEnabled() ),
-  m_DPIScaling( GetDPIScaling() )
+	m_DPIScaling( GetDPIScaling() )
 {
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof( WNDCLASSEX );
@@ -122,16 +122,16 @@ WndVisual::WndVisual( HINSTANCE instance, HWND parent, HWND rebarWnd, HWND statu
 
 	int visualID = m_Settings.GetVisualID();
 	switch ( visualID ) {
-		case ID_VISUAL_VUMETER_STEREO :
-		case ID_VISUAL_VUMETER_MONO :
-		case ID_VISUAL_OSCILLOSCOPE :
-		case ID_VISUAL_SPECTRUMANALYSER :
-		case ID_VISUAL_ARTWORK :
-		case ID_VISUAL_PEAKMETER :
-		case ID_VISUAL_NONE : {
+		case ID_VISUAL_VUMETER_STEREO:
+		case ID_VISUAL_VUMETER_MONO:
+		case ID_VISUAL_OSCILLOSCOPE:
+		case ID_VISUAL_SPECTRUMANALYSER:
+		case ID_VISUAL_ARTWORK:
+		case ID_VISUAL_PEAKMETER:
+		case ID_VISUAL_NONE: {
 			break;
 		}
-		default : {
+		default: {
 			visualID = ID_VISUAL_ARTWORK;
 			break;
 		}
@@ -155,7 +155,7 @@ void WndVisual::ReleaseD2D()
 		const auto& visual = iter.second;
 		visual->FreeResources();
 	}
-  if ( m_D2DDeviceContext ) {
+	if ( m_D2DDeviceContext ) {
 		m_D2DDeviceContext.Reset();
 	}
 	if ( m_D2DSwapChain ) {
@@ -171,7 +171,7 @@ void WndVisual::InitD2D()
 	ReleaseD2D();
 
 	// Create Direct2D factory.
-	HRESULT hr = D2D1CreateFactory( D2D1_FACTORY_TYPE_MULTI_THREADED, __uuidof(ID2D1Factory1), &m_D2DFactory );
+	HRESULT hr = D2D1CreateFactory( D2D1_FACTORY_TYPE_MULTI_THREADED, __uuidof( ID2D1Factory1 ), &m_D2DFactory );
 	if ( SUCCEEDED( hr ) ) {
 		// Create Direct3D device.
 		IDXGIAdapter* adapter = NULL;
@@ -429,7 +429,7 @@ void WndVisual::SelectVisual( const long id )
 			visual->Hide();
 		}
 		m_CurrentVisual = 0;
-		
+
 		if ( const auto& visual = m_Visuals.find( id ); m_Visuals.end() != visual ) {
 			visual->second->Show();
 			m_CurrentVisual = id;
@@ -458,7 +458,7 @@ void WndVisual::OnContextMenu( const POINT& position )
 
 void WndVisual::DoRender()
 {
-  InvalidateRect( m_hWnd, nullptr, FALSE );
+	InvalidateRect( m_hWnd, nullptr, FALSE );
 }
 
 void WndVisual::OnOscilloscopeColour()
@@ -480,7 +480,7 @@ void WndVisual::OnOscilloscopeBackground()
 	VUPlayer* vuplayer = VUPlayer::Get();
 	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
 	if ( const auto colour = ChooseColour( m_hWnd, initialColour, customColours ); colour.has_value() ) {
-		m_Settings.SetOscilloscopeBackground( colour.value() );		
+		m_Settings.SetOscilloscopeBackground( colour.value() );
 		if ( const auto& visual = m_Visuals.find( ID_VISUAL_OSCILLOSCOPE ); m_Visuals.end() != visual ) {
 			visual->second->OnSettingsChange();
 		}
@@ -564,12 +564,12 @@ void WndVisual::OnVUMeterDecay( const UINT commandID )
 	}
 }
 
-std::map<UINT,float> WndVisual::GetOscilloscopeWeights() const
+std::map<UINT, float> WndVisual::GetOscilloscopeWeights() const
 {
 	return s_OscilloscopeWeights;
 }
 
-std::map<UINT,float> WndVisual::GetVUMeterDecayRates() const
+std::map<UINT, float> WndVisual::GetVUMeterDecayRates() const
 {
 	return s_VUMeterDecay;
 }
@@ -585,7 +585,7 @@ void WndVisual::ToggleHardwareAccelerationEnabled()
 {
 	m_HardwareAccelerationEnabled = !m_Settings.GetHardwareAccelerationEnabled();
 	m_Settings.SetHardwareAccelerationEnabled( m_HardwareAccelerationEnabled );
-	for ( const auto& [ id, visual ] : m_Visuals ) {
+	for ( const auto& [id, visual] : m_Visuals ) {
 		if ( nullptr != visual ) {
 			visual->OnSettingsChange();
 		}
@@ -600,7 +600,7 @@ bool WndVisual::IsHardwareAccelerationEnabled() const
 
 void WndVisual::OnSysColorChange()
 {
-	for ( const auto& [ id, visual ] : m_Visuals ) {
+	for ( const auto& [id, visual] : m_Visuals ) {
 		if ( nullptr != visual ) {
 			visual->OnSysColorChange();
 		}
@@ -609,10 +609,10 @@ void WndVisual::OnSysColorChange()
 
 void WndVisual::OnDisplayChange()
 {
-  m_DPIScaling = GetDPIScaling();
+	m_DPIScaling = GetDPIScaling();
 }
 
 float WndVisual::GetDPIScalingFactor() const
 {
-  return m_DPIScaling;
+	return m_DPIScaling;
 }

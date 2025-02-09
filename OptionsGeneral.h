@@ -34,8 +34,8 @@ private:
 	// Available output modes, paired with the resource ID of the description.
 	static std::vector<std::pair<Settings::OutputMode, int>> s_OutputModes;
 
-  // Available title bar text formats, paired with the the resource ID of the description.
-  static std::vector<std::pair<Settings::TitleBarFormat, int>> s_TitleBarFormats;
+	// Available title bar text formats, paired with the the resource ID of the description.
+	static std::vector<std::pair<Settings::TitleBarFormat, int>> s_TitleBarFormats;
 
 	// Refreshes the output device list based on the currently selected output mode.
 	// 'hwnd' - dialog window handle.

@@ -34,4 +34,3 @@ private:
 	// 'trackbarType' - currently displayed trackbar type.
 	void CreateButtons( const WndTrackbar::Type trackbarType );
 };
-

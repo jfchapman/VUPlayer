@@ -34,7 +34,7 @@ private:
 	typedef std::shared_ptr<CDDAMedia::Data> DataPtr;
 
 	// Maps media information to CD audio data.
-	typedef std::map<MediaInfo,DataPtr> MediaData;
+	typedef std::map<MediaInfo, DataPtr> MediaData;
 
 	// Dialog box procedure.
 	static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );

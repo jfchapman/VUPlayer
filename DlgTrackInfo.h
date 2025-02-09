@@ -105,7 +105,7 @@ private:
 	std::vector<BYTE> m_ChosenArtworkImage;
 
 	// List of playlist items (pairs of previous/updated information) to update before the dialog closes.
-	std::list<std::pair<Playlist::Item,Playlist::Item>> m_UpdateInfo;
+	std::list<std::pair<Playlist::Item, Playlist::Item>> m_UpdateInfo;
 
 	// Save thread handle.
 	HANDLE m_SaveThread;
@@ -113,4 +113,3 @@ private:
 	// Cancel save event handle.
 	HANDLE m_CancelSaveEvent;
 };
-

@@ -29,4 +29,3 @@ private:
 	// Sets whether the 'paused' button is shown.
 	void SetPaused( const bool paused ) const;
 };
-

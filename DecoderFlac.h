@@ -11,7 +11,7 @@ class DecoderFlac : public Decoder, public FLAC::Decoder::Stream
 {
 public:
 	// 'filename' - file name.
-  // 'context' - context for which the decoder is to be used.
+	// 'context' - context for which the decoder is to be used.
 	// Throws a std::runtime_error exception if the file could not be loaded.
 	DecoderFlac( const std::wstring& filename, const Context context );
 
@@ -29,7 +29,7 @@ public:
 
 protected:
 	// FLAC callbacks
-	FLAC__StreamDecoderReadStatus read_callback( FLAC__byte [], size_t * ) override;
+	FLAC__StreamDecoderReadStatus read_callback( FLAC__byte[], size_t * ) override;
 	FLAC__StreamDecoderSeekStatus seek_callback( FLAC__uint64 ) override;
 	FLAC__StreamDecoderTellStatus tell_callback( FLAC__uint64 * ) override;
 	FLAC__StreamDecoderLengthStatus length_callback( FLAC__uint64 * ) override;
@@ -57,4 +57,3 @@ private:
 	// Indicates whether this is a valid FLAC stream.
 	bool m_Valid;
 };
-

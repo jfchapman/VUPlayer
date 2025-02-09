@@ -69,7 +69,7 @@ private:
 	// 'tags' - out, tag information.
 	void ReadRIFFTags( const char* riffTags, Tags& tags ) const;
 
-  // Returns a temporary file name.
+	// Returns a temporary file name.
 	std::wstring GetTemporaryFilename() const;
 
 	// BASS midi plugin.

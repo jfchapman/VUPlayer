@@ -24,18 +24,18 @@ public:
 
 	// Playlist column information.
 	struct PlaylistColumn {
-		int ID;			// Column ID.
-		int Width;	// Column width.
+		int ID;     // Column ID.
+		int Width;  // Column width.
 	};
 
 	// Hotkey information.
 	struct Hotkey {
-		int ID;							// ID.
-		int Code;						// Key code.
-		bool Alt;						// Alt key modifier.
-		bool Ctrl;					// Control key modifier.
-		bool Shift;					// Shift key modifier.
-		std::wstring Name;	// Key name.
+		int ID;             // ID.
+		int Code;           // Key code.
+		bool Alt;           // Alt key modifier.
+		bool Ctrl;          // Control key modifier.
+		bool Shift;         // Shift key modifier.
+		std::wstring Name;  // Key name.
 	};
 
 	// Output mode.
@@ -124,13 +124,13 @@ public:
 		{
 		}
 
-		bool Visible;						// Indicates whether the EQ window is shown.
-		int X;									// EQ window X position.
-		int Y;									// EQ window Y position.
-		bool Enabled;						// Indicates whether EQ is enabled.
-		float Preamp;						// Preamp in the range -15 to +15dB.
-		GainMap Gains;					// Gains in the range -15 to +15dB.
-		float Bandwidth;				// Bandwidth in semitones.
+		bool Visible;     // Indicates whether the EQ window is shown.
+		int X;            // EQ window X position.
+		int Y;            // EQ window Y position.
+		bool Enabled;     // Indicates whether EQ is enabled.
+		float Preamp;     // Preamp in the range -15 to +15dB.
+		GainMap Gains;    // Gains in the range -15 to +15dB.
+		float Bandwidth;  // Bandwidth in semitones.
 	};
 
 	// A list of playlist columns.

@@ -99,7 +99,7 @@ public:
 	Playlist::Set OnUpdatedMedia( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo );
 
 	// Called when 'mediaList' has been deleted from the current playlist and removed from the media library.
-  // 'libraryMaintenance' - whether files have been removed from the library as a result of library maintenance.
+	// 'libraryMaintenance' - whether files have been removed from the library as a result of library maintenance.
 	void OnRemovedMedia( const MediaInfo::List& mediaList, const bool libraryMaintenance = false );
 
 	// Called when the optical disc drives need to be updated.
@@ -173,7 +173,7 @@ public:
 
 	// Called when a logical 'drive' has arrived.
 	void OnDriveArrived( const wchar_t drive );
-	
+
 	// Called when a logical 'drive' has been removed.
 	void OnDriveRemoved( const wchar_t drive );
 
@@ -200,8 +200,8 @@ public:
 	void OnSysColorChange( const bool isHighContrast );
 
 	// Called when the current output playlist changes.
-  // 'playlist' - playlist pointer (used for identification only, not for dereferencing).
-  // 'playlistType' - playlist type.
+	// 'playlist' - playlist pointer (used for identification only, not for dereferencing).
+	// 'playlistType' - playlist type.
 	void OnOutputPlaylistChange( const Playlist* const playlist, const Playlist::Type playlistType );
 
 	// Updates the icon the for current output playlist node.
@@ -217,11 +217,11 @@ public:
 	// Selects all text (only when a tree item label is being edited).
 	void OnSelectAll();
 
-  // Refreshes the tree item label for the user 'playlist'.
-  void RefreshUserPlaylistLabel( const Playlist::Ptr playlist );
+	// Refreshes the tree item label for the user 'playlist'.
+	void RefreshUserPlaylistLabel( const Playlist::Ptr playlist );
 
-  // Returns the folder playlist matching the 'playlistID', or nullptr if the playlist was not found.
-  Playlist::Ptr GetFolderPlaylist( const std::string& playlistID );
+	// Returns the folder playlist matching the 'playlistID', or nullptr if the playlist was not found.
+	Playlist::Ptr GetFolderPlaylist( const std::string& playlistID );
 
 private:
 	// Window procedure
@@ -244,7 +244,8 @@ private:
 		ScratchListUpdateInfo( Library& library, const HANDLE stopEvent, const MediaInfo::List& mediaList ) :
 			MediaLibrary( library ),
 			StopEvent( stopEvent ),
-			MediaList( mediaList ) {}
+			MediaList( mediaList ) {
+		}
 
 		Library& MediaLibrary;
 		HANDLE StopEvent;
@@ -252,23 +253,23 @@ private:
 	};
 
 	// Maps a tree item to a playlist.
-	using PlaylistMap = std::map<HTREEITEM,Playlist::Ptr>;
+	using PlaylistMap = std::map<HTREEITEM, Playlist::Ptr>;
 
 	// Maps a playlist type to an icon index.
-	using IconMap = std::map<Playlist::Type,int>;
+	using IconMap = std::map<Playlist::Type, int>;
 
 	// Maps a playlist type to an item order value.
-	using OrderMap = std::map<Playlist::Type,int>;
+	using OrderMap = std::map<Playlist::Type, int>;
 
 	// Root folder type.
 	enum class RootFolderType { UserFolder, Drive };
 
 	// Root folder information.
 	struct RootFolderInfo {
-		std::wstring Name;				// Folder name.
-		std::wstring Path;				// Folder path.
-		int IconIndex;						// Folder icon index.
-		RootFolderType Type;			// Folder type.
+		std::wstring Name;    // Folder name.
+		std::wstring Path;    // Folder path.
+		int IconIndex;        // Folder icon index.
+		RootFolderType Type;  // Folder type.
 
 		bool operator<( const RootFolderInfo& other ) const
 		{
@@ -285,13 +286,13 @@ private:
 	using RootFolderInfoList = std::list<RootFolderInfo>;
 
 	// Maps a tree item to folder information.
-	using RootFolderInfoMap = std::map<HTREEITEM,RootFolderInfo>;
+	using RootFolderInfoMap = std::map<HTREEITEM, RootFolderInfo>;
 
 	// Maps a string to a set of tree item nodes.
-	using StringToNodesMap = std::map<std::wstring,std::set<HTREEITEM>>;
+	using StringToNodesMap = std::map<std::wstring, std::set<HTREEITEM>>;
 
 	// Maps a menu command ID to a playlist.
-	using PlaylistMenuMap = std::map<UINT,Playlist::Ptr>;
+	using PlaylistMenuMap = std::map<UINT, Playlist::Ptr>;
 
 	// Searches the 'playlistMap' for the 'playlist'.
 	// Returns the corresponding tree item, or nullptr if the playlist was not found.
@@ -330,13 +331,13 @@ private:
 	// Adds publishers to the tree control.
 	void AddPublishers();
 
- 	// Adds composers to the tree control.
+	// Adds composers to the tree control.
 	void AddComposers();
 
- 	// Adds conductors to the tree control.
+	// Adds conductors to the tree control.
 	void AddConductors();
 
-  // Adds genres to the tree control.
+	// Adds genres to the tree control.
 	void AddGenres();
 
 	// Adds years to the tree control.
@@ -363,13 +364,13 @@ private:
 	// Removes publishers from the tree control.
 	void RemovePublishers();
 
- 	// Removes composers from the tree control.
+	// Removes composers from the tree control.
 	void RemoveComposers();
 
 	// Removes conductors from the tree control.
 	void RemoveConductors();
 
-  // Removes genres from the tree control.
+	// Removes genres from the tree control.
 	void RemoveGenres();
 
 	// Removes years from the tree control.
@@ -435,7 +436,7 @@ private:
 	// 'updatedPlaylists' - in/out, the playlists that have been updated.
 	void UpdateConductors( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists );
 
-  // Updates albums when media information has been updated.
+	// Updates albums when media information has been updated.
 	// 'parentItem' - the parent tree item containing the albums.
 	// 'previousMediaInfo' - previous media information
 	// 'updatedMediaInfo' - updated media information
@@ -584,19 +585,19 @@ private:
 	// Called when the Add to Playlist 'command' is received.
 	void OnAddToPlaylist( const UINT command );
 
-  // Adds a child album node, or updates the playlist of the child album node (if it already exists).
-  // 'parent' - parent of the child album node.
-  // 'mediaInfo' - media information containing the information to add/update.
-  // 'updatedPlaylist' - playlist set into which to add any updated playlist.
-  // Returns the added/updated child album node.
-  HTREEITEM AddOrUpdateChildAlbumNode( const HTREEITEM parent, const MediaInfo& mediaInfo, Playlist::Set& updatedPlaylists );
+	// Adds a child album node, or updates the playlist of the child album node (if it already exists).
+	// 'parent' - parent of the child album node.
+	// 'mediaInfo' - media information containing the information to add/update.
+	// 'updatedPlaylist' - playlist set into which to add any updated playlist.
+	// Returns the added/updated child album node.
+	HTREEITEM AddOrUpdateChildAlbumNode( const HTREEITEM parent, const MediaInfo& mediaInfo, Playlist::Set& updatedPlaylists );
 
-  // Removes an item from the playlist of a child album node (if it exists).
-  // 'parent' - parent of the child album node.
-  // 'mediaInfo' - media information containing the information to remove.
-  // 'updatedPlaylist' - playlist set into which to add any updated playlist.
-  // Returns the child album node which was updated, or nullptr if the child album node was not found.
-  HTREEITEM RemoveFromChildAlbumNode( const HTREEITEM parent, const MediaInfo& mediaInfo, Playlist::Set& updatedPlaylists );
+	// Removes an item from the playlist of a child album node (if it exists).
+	// 'parent' - parent of the child album node.
+	// 'mediaInfo' - media information containing the information to remove.
+	// 'updatedPlaylist' - playlist set into which to add any updated playlist.
+	// Returns the child album node which was updated, or nullptr if the child album node was not found.
+	HTREEITEM RemoveFromChildAlbumNode( const HTREEITEM parent, const MediaInfo& mediaInfo, Playlist::Set& updatedPlaylists );
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
@@ -619,13 +620,13 @@ private:
 	// Publishers node.
 	HTREEITEM m_NodePublishers;
 
-  // Composers node.
+	// Composers node.
 	HTREEITEM m_NodeComposers;
 
-  // Conductors node.
+	// Conductors node.
 	HTREEITEM m_NodeConductors;
 
-  // Genres node.
+	// Genres node.
 	HTREEITEM m_NodeGenres;
 
 	// Years node.
@@ -667,14 +668,14 @@ private:
 	// Albums.
 	PlaylistMap m_AlbumMap;
 
-  // Publishers.
-  PlaylistMap m_PublisherMap;
+	// Publishers.
+	PlaylistMap m_PublisherMap;
 
-  // Composers.
-  PlaylistMap m_ComposerMap;
+	// Composers.
+	PlaylistMap m_ComposerMap;
 
-  // Conductors.
-  PlaylistMap m_ConductorMap;
+	// Conductors.
+	PlaylistMap m_ConductorMap;
 
 	// Genres.
 	PlaylistMap m_GenreMap;
@@ -787,4 +788,3 @@ private:
 	// Root item ordering.
 	static OrderMap s_RootOrder;
 };
-

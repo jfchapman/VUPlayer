@@ -21,7 +21,7 @@ OpusComment::OpusComment( const std::wstring& filename, const bool readonly ) :
 	try {
 		const OggPage header( m_Stream );
 		if ( IsOpusHeader( header ) ) {
-		 	const uint32_t serial = header.GetSerialNumber();
+			const uint32_t serial = header.GetSerialNumber();
 			const uint32_t sequence = header.GetSequenceNumber();
 			uint32_t nextSequence = sequence;
 			std::vector<uint8_t> vorbisComment;
@@ -49,7 +49,7 @@ OpusComment::OpusComment( const std::wstring& filename, const bool readonly ) :
 									vorbisComment.insert( vorbisComment.end(), content.begin(), content.end() );
 								}
 								readComments = page.IsComplete();
-								m_OriginalPages.insert( std::map<long long,OggPage>::value_type( streamPos, page ) );
+								m_OriginalPages.insert( std::map<long long, OggPage>::value_type( streamPos, page ) );
 							}
 						}
 					}
@@ -111,7 +111,7 @@ OpusComment::OpusComment( const std::wstring& filename, const bool readonly ) :
 	}
 
 	if ( !readComments ) {
-		throw std::runtime_error( "Could not read Opus comments." );	
+		throw std::runtime_error( "Could not read Opus comments." );
 	}
 }
 
@@ -175,7 +175,7 @@ const std::string& OpusComment::GetVendor() const
 	return m_Vendor;
 }
 
-const std::vector<std::pair<std::string,std::string>>& OpusComment::GetUserComments() const
+const std::vector<std::pair<std::string, std::string>>& OpusComment::GetUserComments() const
 {
 	return m_Comments;
 }
@@ -197,7 +197,7 @@ void OpusComment::RemoveUserComment( const std::string& field )
 	}
 }
 
-bool OpusComment::GetPicture( const uint32_t pictureType, std::string& mimeType, std::string& description, 
+bool OpusComment::GetPicture( const uint32_t pictureType, std::string& mimeType, std::string& description,
 	uint32_t& width, uint32_t& height, uint32_t& depth, uint32_t& colours, std::vector<uint8_t>& picture ) const
 {
 	bool success = false;
@@ -253,8 +253,8 @@ bool OpusComment::GetPicture( const uint32_t pictureType, std::string& mimeType,
 	return success;
 }
 
-void OpusComment::AddPicture( const uint32_t pictureType, const std::string& mimeType, const std::string& description, 
-	const uint32_t width, const uint32_t height, const uint32_t depth, const uint32_t colours, const std::vector<uint8_t>& picture ) 
+void OpusComment::AddPicture( const uint32_t pictureType, const std::string& mimeType, const std::string& description,
+	const uint32_t width, const uint32_t height, const uint32_t depth, const uint32_t colours, const std::vector<uint8_t>& picture )
 {
 	if ( ( picture.size() > 0 ) && ( picture.size() < s_MaxCommentSize ) && ( width > 0 ) && ( height > 0 ) && ( depth > 0 ) && ( pictureType >= 0 ) && ( pictureType <= 20 ) ) {
 		if ( ( 1 == pictureType ) || ( 2 == pictureType ) ) {
@@ -319,7 +319,7 @@ void OpusComment::RemovePicture( const uint32_t type )
 		}
 		if ( eraseComment ) {
 			comment = m_Comments.erase( comment );
-		}	else {
+		} else {
 			++comment;
 		}
 	}
@@ -330,17 +330,17 @@ bool OpusComment::WriteComments()
 	bool wroteComments = false;
 
 	// Calculate the required size of the comment header content (excluding padding & Ogg page headers).
-	size_t modifiedContentSize = 8;										// Comment signature
-	modifiedContentSize += 4;													// Vendor length
-	modifiedContentSize += m_Vendor.size();						// Vendor string
-	modifiedContentSize += 4;													// User comments count
+	size_t modifiedContentSize = 8;                    // Comment signature
+	modifiedContentSize += 4;                          // Vendor length
+	modifiedContentSize += m_Vendor.size();            // Vendor string
+	modifiedContentSize += 4;                          // User comments count
 	for ( const auto& comment : m_Comments ) {
-		modifiedContentSize += 4;												// User comment length
-		modifiedContentSize += comment.first.size();		// User comment field
-		modifiedContentSize += 1;												// User comment delimiter
-		modifiedContentSize += comment.second.size();		// User comment value
+		modifiedContentSize += 4;                      // User comment length
+		modifiedContentSize += comment.first.size();   // User comment field
+		modifiedContentSize += 1;                      // User comment delimiter
+		modifiedContentSize += comment.second.size();  // User comment value
 	}
-	modifiedContentSize += m_BinaryData.size();				// Trailing binary data
+	modifiedContentSize += m_BinaryData.size();        // Trailing binary data
 
 	// Determine if we can modify the comment in-place.
 	size_t originalContentSize = 0;
@@ -412,7 +412,7 @@ bool OpusComment::WriteComments()
 	const uint32_t serial = m_OriginalPages.begin()->second.GetSerialNumber();
 
 	// Generate the new comment header pages, keyed by sequence number.
-	std::map<uint32_t,OggPage> modifiedPages;
+	std::map<uint32_t, OggPage> modifiedPages;
 	try {
 		uint32_t sequence = 1;
 		bool pagesRemaining = true;
@@ -420,10 +420,10 @@ bool OpusComment::WriteComments()
 			const bool isContinued = ( sequence > 1 );
 			const OggPage page( isContinued, serial, sequence, modifiedContent );
 			pagesRemaining = !page.IsComplete();
-			modifiedPages.insert( std::map<uint32_t,OggPage>::value_type( sequence, page ) );
+			modifiedPages.insert( std::map<uint32_t, OggPage>::value_type( sequence, page ) );
 			++sequence;
 		} while ( pagesRemaining );
-	} catch ( const std::runtime_error& )	{
+	} catch ( const std::runtime_error& ) {
 		modifiedPages.clear();
 	}
 
@@ -526,7 +526,7 @@ bool OpusComment::WriteComments()
 						ok = ( 0 == _wrename( tempFilename.c_str(), m_Filename.c_str() ) );
 					}
 				}
-				
+
 				if ( !ok ) {
 					_wunlink( tempFilename.c_str() );
 				}

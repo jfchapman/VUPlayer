@@ -11,7 +11,7 @@ class DecoderBin : public Decoder
 {
 public:
 	// 'filename' - file name.
-  // 'context' - context for which the decoder is to be used.
+	// 'context' - context for which the decoder is to be used.
 	// Throws a std::runtime_error exception if the file could not be loaded.
 	DecoderBin( const std::wstring& filename, const Context context );
 
@@ -29,6 +29,6 @@ private:
 	// File stream.
 	std::ifstream m_Stream;
 
-  // Scratch buffer.
-  std::vector<char> m_Buffer;
+	// Scratch buffer.
+	std::vector<char> m_Buffer;
 };

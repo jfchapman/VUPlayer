@@ -35,7 +35,7 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 				for ( DWORD i = 0; i < propCount; i++ ) {
 					PROPERTYKEY propKey = { 0 };
 					if ( SUCCEEDED( propStore->GetAt( i, &propKey ) ) ) {
-            PROPVARIANT propVar = {};
+						PROPVARIANT propVar = {};
 						if ( SUCCEEDED( propStore->GetValue( propKey, &propVar ) ) ) {
 							if ( PKEY_Music_AlbumArtist == propKey ) {
 								const std::wstring value = PropertyToString( propVar );
@@ -47,8 +47,8 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 								if ( !value.empty() ) {
 									tags.erase( Tag::Artist );
 									tags.insert( Tags::value_type( Tag::Artist, WideStringToUTF8( value ) ) );
-								}					
-							}	else if ( PKEY_Title == propKey ) {
+								}
+							} else if ( PKEY_Title == propKey ) {
 								const std::wstring value = PropertyToString( propVar );
 								if ( !value.empty() ) {
 									tags.insert( Tags::value_type( Tag::Title, WideStringToUTF8( value ) ) );
@@ -75,7 +75,7 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 									if ( !version.empty() ) {
 										tags.insert( Tags::value_type( Tag::Version, WideStringToUTF8( version ) ) );
 									}
-								}						
+								}
 							} else if ( PKEY_Media_Year == propKey ) {
 								const std::wstring value = PropertyToString( propVar );
 								if ( !value.empty() ) {
@@ -100,8 +100,8 @@ bool ShellMetadata::Get( const std::wstring& filename, Tags& tags )
 								const std::wstring value = PropertyToString( propVar );
 								if ( !value.empty() ) {
 									tags.insert( Tags::value_type( Tag::Publisher, WideStringToUTF8( value ) ) );
-								}           
-              } else if ( PKEY_ThumbnailStream == propKey ) {
+								}
+							} else if ( PKEY_ThumbnailStream == propKey ) {
 								if ( VT_STREAM == propVar.vt ) {
 									IStream* stream = propVar.pStream;
 									if ( nullptr != stream ) {
@@ -143,8 +143,8 @@ bool ShellMetadata::Set( const std::wstring& filename, const Tags& tags )
 			break;
 		}
 	}
-  if ( !anySupportedTags )
-    return true;
+	if ( !anySupportedTags )
+		return true;
 
 	bool success = false;
 	IShellItem2* item = nullptr;
@@ -164,83 +164,83 @@ bool ShellMetadata::Set( const std::wstring& filename, const Tags& tags )
 				PROPVARIANT propVar = {};
 				bool updateTag = true;
 				switch ( tag ) {
-					case Tag::Album : {
+					case Tag::Album: {
 						propKey = PKEY_Music_AlbumTitle;
-            if ( !value.empty() ) {
+						if ( !value.empty() ) {
 							hr = InitPropVariantFromString( value.c_str(), &propVar );
-            }
+						}
 						break;
 					}
-					case Tag::Artist : {
+					case Tag::Artist: {
 						propKey = PKEY_Music_Artist;
-            if ( !value.empty() ) {
+						if ( !value.empty() ) {
 							hr = InitPropVariantFromString( value.c_str(), &propVar );
-            }
+						}
 						break;
 					}
-					case Tag::Comment : {
+					case Tag::Comment: {
 						propKey = PKEY_Comment;
-            if ( !value.empty() ) {
+						if ( !value.empty() ) {
 							hr = InitPropVariantFromString( value.c_str(), &propVar );
-            }
+						}
 						break;
 					}
-					case Tag::Genre : {
+					case Tag::Genre: {
 						propKey = PKEY_Music_Genre;
-            if ( !value.empty() ) {
+						if ( !value.empty() ) {
 							hr = InitPropVariantFromString( value.c_str(), &propVar );
-            }
+						}
 						break;
 					}
-					case Tag::Title : {
+					case Tag::Title: {
 						propKey = PKEY_Title;
-            if ( !value.empty() ) {
+						if ( !value.empty() ) {
 							hr = InitPropVariantFromString( value.c_str(), &propVar );
-            }
+						}
 						break;
 					}
-					case Tag::Composer : {
+					case Tag::Composer: {
 						propKey = PKEY_Music_Composer;
-            if ( !value.empty() ) {
+						if ( !value.empty() ) {
 							hr = InitPropVariantFromString( value.c_str(), &propVar );
-            }
+						}
 						break;
 					}
-					case Tag::Conductor : {
+					case Tag::Conductor: {
 						propKey = PKEY_Music_Conductor;
-            if ( !value.empty() ) {
+						if ( !value.empty() ) {
 							hr = InitPropVariantFromString( value.c_str(), &propVar );
-            }
+						}
 						break;
 					}
-					case Tag::Publisher : {
+					case Tag::Publisher: {
 						propKey = PKEY_Media_Publisher;
-            if ( !value.empty() ) {
+						if ( !value.empty() ) {
 							hr = InitPropVariantFromString( value.c_str(), &propVar );
-            }
+						}
 						break;
-					}       
-          case Tag::Track : {
+					}
+					case Tag::Track: {
 						propKey = PKEY_Music_TrackNumber;
-            if ( !value.empty() ) {
-              try {
-							  hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
-              } catch ( const std::logic_error& ) {
-              }
-            }
+						if ( !value.empty() ) {
+							try {
+								hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
+							} catch ( const std::logic_error& ) {
+							}
+						}
 						break;
 					}
-					case Tag::Year : {
+					case Tag::Year: {
 						propKey = PKEY_Media_Year;
-            if ( !value.empty() ) {
-              try {
-							  hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
-              } catch ( const std::logic_error& ) {
-              }
-            }
+						if ( !value.empty() ) {
+							try {
+								hr = InitPropVariantFromUInt32( std::stoul( value ), &propVar );
+							} catch ( const std::logic_error& ) {
+							}
+						}
 						break;
 					}
-					case Tag::Artwork : {
+					case Tag::Artwork: {
 						propKey = PKEY_ThumbnailStream;
 						if ( nullptr == thumbnailStream ) {
 							const std::vector<BYTE> imageBytes = Base64Decode( tagIter->second );
@@ -264,7 +264,7 @@ bool ShellMetadata::Set( const std::wstring& filename, const Tags& tags )
 						}
 						break;
 					}
-					default : {
+					default: {
 						updateTag = false;
 						break;
 					}

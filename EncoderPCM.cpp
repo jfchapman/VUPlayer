@@ -58,39 +58,39 @@ bool EncoderPCM::Open( std::wstring& filename, const long sampleRate, const long
 			m_wavFormatExtensible->Samples.wValidBitsPerSample = 24;
 
 			switch ( m_channels ) {
-				case 1 : {
+				case 1: {
 					m_wavFormatExtensible->dwChannelMask = SPEAKER_FRONT_CENTER;
 					break;
 				}
-				case 2 : {
+				case 2: {
 					m_wavFormatExtensible->dwChannelMask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT;
 					break;
 				}
-				case 3 : {
+				case 3: {
 					m_wavFormatExtensible->dwChannelMask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_CENTER;
 					break;
 				}
-				case 4 : {
+				case 4: {
 					m_wavFormatExtensible->dwChannelMask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT | SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT;
 					break;
 				}
-				case 5 : {
+				case 5: {
 					m_wavFormatExtensible->dwChannelMask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_CENTER | SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT;
 					break;
 				}
-				case 6 : {
+				case 6: {
 					m_wavFormatExtensible->dwChannelMask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_CENTER | SPEAKER_LOW_FREQUENCY | SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT;
 					break;
 				}
-				case 7 : {
+				case 7: {
 					m_wavFormatExtensible->dwChannelMask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_CENTER | SPEAKER_LOW_FREQUENCY | SPEAKER_BACK_CENTER | SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT;
 					break;
 				}
-				case 8 : {
+				case 8: {
 					m_wavFormatExtensible->dwChannelMask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT | SPEAKER_FRONT_CENTER | SPEAKER_LOW_FREQUENCY | SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT | SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT;
 					break;
 				}
-				default : {
+				default: {
 					m_wavFormatExtensible->dwChannelMask = SPEAKER_ALL;
 					break;
 				}
@@ -154,7 +154,7 @@ bool EncoderPCM::Write( float* samples, const long sampleCount )
 	bool success = false;
 	const size_t outputBufferSize = static_cast<size_t>( m_channels * sampleCount );
 	switch ( m_bitsPerSample ) {
-		case 8 : {		
+		case 8: {
 			m_buffer8.resize( outputBufferSize );
 			for ( size_t sampleIndex = 0; sampleIndex < outputBufferSize; sampleIndex++ ) {
 				m_buffer8[ sampleIndex ] = FloatToUnsigned8( samples[ sampleIndex ] );
@@ -165,7 +165,7 @@ bool EncoderPCM::Write( float* samples, const long sampleCount )
 			}
 			break;
 		}
-		case 16 : {
+		case 16: {
 			m_buffer16.resize( outputBufferSize );
 			for ( size_t sampleIndex = 0; sampleIndex < outputBufferSize; sampleIndex++ ) {
 				m_buffer16[ sampleIndex ] = FloatTo16( samples[ sampleIndex ] );
@@ -176,7 +176,7 @@ bool EncoderPCM::Write( float* samples, const long sampleCount )
 			}
 			break;
 		}
-		case 24 : {
+		case 24: {
 			m_buffer8.resize( 3 * outputBufferSize );
 			for ( size_t sampleIndex = 0; sampleIndex < outputBufferSize; sampleIndex++ ) {
 				const int32_t value = FloatTo24( samples[ sampleIndex ] );
@@ -219,7 +219,7 @@ void EncoderPCM::Close()
 				const DWORD dataSize32 = 0xffffffff;
 				fwrite( &dataSize32, 4, 1, m_file );
 			}
-			if ( 0 == _fseeki64( m_file, m_junkChunkOffset, SEEK_SET ) ) {	
+			if ( 0 == _fseeki64( m_file, m_junkChunkOffset, SEEK_SET ) ) {
 				fwrite( "ds64", 1, 4, m_file );
 				fwrite( &kChunkSizeDS64, 1, 4, m_file );
 
@@ -233,7 +233,7 @@ void EncoderPCM::Close()
 					uint32_t tableLength;
 				};
 
-				ds64chunk ds64 = {}; 
+				ds64chunk ds64 = {};
 				static_assert( sizeof( ds64chunk ) == kChunkSizeDS64 );
 
 				ds64.riffSizeLow = riffSize & 0xffffffff;

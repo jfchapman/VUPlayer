@@ -48,7 +48,7 @@ static const UINT MSG_SAVECOMPLETED = WM_APP + 66;
 INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( lParam );
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -57,20 +57,20 @@ INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDOK : {
+				case IDOK: {
 					DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnSave( hwnd );
 					}
 					return TRUE;
 				}
-				case IDCANCEL : {
+				case IDCANCEL: {
 					HWND hwndClose = GetDlgItem( hwnd, IDCANCEL );
 					if ( IsWindowVisible( hwndClose ) ) {
 						EndDialog( hwnd, IDCANCEL );
@@ -78,66 +78,66 @@ INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 						DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 						if ( nullptr != dialog ) {
 							dialog->OnCancelSave();
-						}					
+						}
 					}
 					return TRUE;
 				}
-				case IDC_TRACKINFO_CANCELSAVE : {
+				case IDC_TRACKINFO_CANCELSAVE: {
 					DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnCancelSave();
-					}					
+					}
 					break;
 				}
-				case IDC_TRACKINFO_CHOOSEARTWORK : {
+				case IDC_TRACKINFO_CHOOSEARTWORK: {
 					DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnChooseArtwork( hwnd );
 					}
 					break;
 				}
-				case IDC_TRACKINFO_EXPORTARTWORK : {
+				case IDC_TRACKINFO_EXPORTARTWORK: {
 					DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnExportArtwork( hwnd );
 					}
 					break;
 				}
-				case IDC_TRACKINFO_CLEARARTWORK : {
+				case IDC_TRACKINFO_CLEARARTWORK: {
 					DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnClearArtwork( hwnd );
 					}
 					break;
 				}
-				case ID_TRACKINFOMENU_CUT : {
+				case ID_TRACKINFOMENU_CUT: {
 					DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnCutCopyArtwork( hwnd, true /*cut*/ );
 					}
 					break;
 				}
-				case ID_TRACKINFOMENU_COPY : {
+				case ID_TRACKINFOMENU_COPY: {
 					DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnCutCopyArtwork( hwnd, false /*cut*/ );
 					}
 					break;
 				}
-				case ID_TRACKINFOMENU_PASTE : {
+				case ID_TRACKINFOMENU_PASTE: {
 					DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnPasteArtwork( hwnd );
 					}
 					break;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
 			break;
 		}
-		case WM_DRAWITEM : {
+		case WM_DRAWITEM: {
 			DRAWITEMSTRUCT* drawitem = reinterpret_cast<DRAWITEMSTRUCT*>( lParam );
 			DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( ( nullptr != drawitem ) && ( nullptr != dialog ) ) {
@@ -145,7 +145,7 @@ INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 			}
 			break;
 		}
-		case WM_LBUTTONDBLCLK : {
+		case WM_LBUTTONDBLCLK: {
 			POINT pt = { GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ) };
 			ClientToScreen( hwnd, &pt );
 			const HWND artworkWnd = GetDlgItem( hwnd, IDC_TRACKINFO_ARTWORK );
@@ -157,11 +157,11 @@ INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 					if ( nullptr != dialog ) {
 						dialog->OnChooseArtwork( hwnd );
 					}
-				}	
+				}
 			}
 			break;
 		}
-		case WM_CONTEXTMENU : {
+		case WM_CONTEXTMENU: {
 			POINT pt = { GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ) };
 			const HWND artworkWnd = GetDlgItem( hwnd, IDC_TRACKINFO_ARTWORK );
 			if ( nullptr != artworkWnd && ( TRUE == IsWindowEnabled( artworkWnd ) ) ) {
@@ -171,21 +171,21 @@ INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 					DlgTrackInfo* dialog = reinterpret_cast<DlgTrackInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnArtworkContextMenu( hwnd, pt );
-					}					
+					}
 				}
 			}
 			break;
 		}
-		case MSG_UPDATEPROGRESS : {
+		case MSG_UPDATEPROGRESS: {
 			HWND hwndProgress = GetDlgItem( hwnd, IDC_TRACKINFO_PROGRESS );
 			SendMessage( hwndProgress, PBM_SETPOS, wParam, lParam );
 			break;
 		}
-		case MSG_SAVECOMPLETED : {
+		case MSG_SAVECOMPLETED: {
 			EndDialog( hwnd, IDOK );
 			return TRUE;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -239,12 +239,12 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		}
 	}
 
-  // Ensure item information is up to date before editing.
-  for ( auto& item : m_Items ) {
-    if ( MediaInfo mediaInfo( item.Info ); m_Library.GetMediaInfo( mediaInfo ) ) {
-      item.Info = mediaInfo;
-    }
-  }
+	// Ensure item information is up to date before editing.
+	for ( auto& item : m_Items ) {
+		if ( MediaInfo mediaInfo( item.Info ); m_Library.GetMediaInfo( mediaInfo ) ) {
+			item.Info = mediaInfo;
+		}
+	}
 
 	if ( ( m_Items.size() > 1 ) || ( !m_Items.empty() && !m_Items.front().Duplicates.empty() ) ) {
 		const int bufSize = 64;
@@ -256,9 +256,9 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		bool sameArtist = true;
 		bool sameTitle = true;
 		bool sameAlbum = true;
-    bool samePublisher = true;
-    bool sameComposer = true;
-    bool sameConductor = true;
+		bool samePublisher = true;
+		bool sameComposer = true;
+		bool sameConductor = true;
 		bool sameGenre = true;
 		bool sameYear = true;
 		bool sameTrack = true;
@@ -267,9 +267,9 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		std::wstring artist = iter->Info.GetArtist();
 		std::wstring title = iter->Info.GetTitle();
 		std::wstring album = iter->Info.GetAlbum();
-    std::wstring publisher = iter->Info.GetPublisher();
-    std::wstring composer = iter->Info.GetComposer();
-    std::wstring conductor = iter->Info.GetConductor();
+		std::wstring publisher = iter->Info.GetPublisher();
+		std::wstring composer = iter->Info.GetComposer();
+		std::wstring conductor = iter->Info.GetConductor();
 		std::wstring genre = iter->Info.GetGenre();
 		long year = iter->Info.GetYear();
 		long track = iter->Info.GetTrack();
@@ -324,9 +324,9 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		m_InitialInfo.SetArtist( artist );
 		m_InitialInfo.SetTitle( title );
 		m_InitialInfo.SetAlbum( album );
-    m_InitialInfo.SetPublisher( publisher );
-    m_InitialInfo.SetComposer( composer );
-    m_InitialInfo.SetConductor( conductor );
+		m_InitialInfo.SetPublisher( publisher );
+		m_InitialInfo.SetComposer( composer );
+		m_InitialInfo.SetConductor( conductor );
 		m_InitialInfo.SetGenre( genre );
 		m_InitialInfo.SetYear( year );
 		m_InitialInfo.SetTrack( track );
@@ -334,16 +334,16 @@ void DlgTrackInfo::OnInitDialog( HWND hwnd )
 		m_InitialInfo.SetArtworkID( artworkID );
 	} else if ( !m_Items.empty() ) {
 		m_InitialInfo = m_Items.begin()->Info;
-		SetDlgItemText( hwnd, IDC_TRACKINFO_FILENAME, m_InitialInfo.GetFilenameWithCues( true /*fullPath*/).c_str() );
+		SetDlgItemText( hwnd, IDC_TRACKINFO_FILENAME, m_InitialInfo.GetFilenameWithCues( true /*fullPath*/ ).c_str() );
 	}
 
 	SetDlgItemText( hwnd, IDC_TRACKINFO_ARTIST, m_InitialInfo.GetArtist().c_str() );
 	SetDlgItemText( hwnd, IDC_TRACKINFO_TITLE, m_InitialInfo.GetTitle().c_str() );
 	SetDlgItemText( hwnd, IDC_TRACKINFO_ALBUM, m_InitialInfo.GetAlbum().c_str() );
-  SetDlgItemText( hwnd, IDC_TRACKINFO_PUBLISHER, m_InitialInfo.GetPublisher().c_str() );
-  SetDlgItemText( hwnd, IDC_TRACKINFO_COMPOSER, m_InitialInfo.GetComposer().c_str() );
-  SetDlgItemText( hwnd, IDC_TRACKINFO_CONDUCTOR, m_InitialInfo.GetConductor().c_str() );
-  SetDlgItemText( hwnd, IDC_TRACKINFO_GENRE, m_InitialInfo.GetGenre().c_str() );
+	SetDlgItemText( hwnd, IDC_TRACKINFO_PUBLISHER, m_InitialInfo.GetPublisher().c_str() );
+	SetDlgItemText( hwnd, IDC_TRACKINFO_COMPOSER, m_InitialInfo.GetComposer().c_str() );
+	SetDlgItemText( hwnd, IDC_TRACKINFO_CONDUCTOR, m_InitialInfo.GetConductor().c_str() );
+	SetDlgItemText( hwnd, IDC_TRACKINFO_GENRE, m_InitialInfo.GetGenre().c_str() );
 	if ( m_InitialInfo.GetYear() > 0 ) {
 		SetDlgItemInt( hwnd, IDC_TRACKINFO_YEAR, static_cast<UINT>( m_InitialInfo.GetYear() ), FALSE /*signed*/ );
 	}
@@ -393,7 +393,7 @@ std::unique_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const MediaInfo& medi
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {
 			bitmap = vuplayer->GetPlaceholderImage();
-		}	
+		}
 	}
 	return bitmap;
 }
@@ -410,7 +410,7 @@ std::unique_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const std::vector<BYT
 					bitmap = std::make_unique<Gdiplus::Bitmap>( stream );
 				} catch ( ... ) {
 				}
-			}	
+			}
 			stream->Release();
 		}
 	}
@@ -418,7 +418,7 @@ std::unique_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const std::vector<BYT
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {
 			bitmap = vuplayer->GetPlaceholderImage();
-		}	
+		}
 	}
 	return bitmap;
 }
@@ -474,7 +474,7 @@ void DlgTrackInfo::OnChooseArtwork( HWND hwnd )
 				}
 			}
 			fileStream.close();
-		}			
+		}
 
 		const std::filesystem::path path( filename );
 		m_Settings.SetLastFolder( s_ArtworkFolderSetting, path.parent_path() );
@@ -680,7 +680,7 @@ void DlgTrackInfo::OnPasteArtwork( HWND hwnd )
 							}
 						}
 						stream->Release();
-					}							
+					}
 				}
 			} catch ( ... ) {
 			}

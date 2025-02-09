@@ -14,9 +14,9 @@ public:
 	// Database access mode.
 	enum class Mode
 	{
-		Disk,		// Direct access from disk.
-		Temp,		// Use a temporary (disk & memory cached) copy of the database, which gets flushed back out to disk when closed.
-		Memory	// Use a pure in-memory copy of the database, which gets flushed back out to disk when closed.
+		Disk,   // Direct access from disk.
+		Temp,   // Use a temporary (disk & memory cached) copy of the database, which gets flushed back out to disk when closed.
+		Memory  // Use a pure in-memory copy of the database, which gets flushed back out to disk when closed.
 	};
 
 	// 'filename' - database file name.
@@ -48,6 +48,5 @@ private:
 	std::mutex m_LogMutex;
 
 	// Error log, pairing a SQLite error code with the error description.
-	std::list<std::pair<int,std::string>> m_Log;
+	std::list<std::pair<int, std::string>> m_Log;
 };
-

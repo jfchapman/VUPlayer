@@ -133,7 +133,7 @@ void OggPage::SetEOS( const bool eos )
 
 uint64_t OggPage::GetGranulePosition() const
 {
-	const uint64_t granule = 
+	const uint64_t granule =
 		( static_cast<uint64_t>( m_Header[ 13 ] ) << 56 ) |
 		( static_cast<uint64_t>( m_Header[ 12 ] ) << 48 ) |
 		( static_cast<uint64_t>( m_Header[ 11 ] ) << 40 ) |

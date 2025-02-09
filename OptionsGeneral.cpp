@@ -35,7 +35,7 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 	std::wstring settingDevice;
 	Settings::OutputMode settingMode;
 	GetSettings().GetOutputSettings( settingDevice, settingMode );
-	
+
 	if ( const HWND hwndMode = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MODE ); nullptr != hwndMode ) {
 		const int bufferSize = MAX_PATH;
 		WCHAR buffer[ bufferSize ];
@@ -61,12 +61,12 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 	RefreshOutputDeviceList( hwnd );
 
 	// Miscellaneous settings
-  const auto settingTitleBar = GetSettings().GetTitleBarFormat();
-  if ( const HWND hwndTitleBar = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_TITLEBAR ); nullptr != hwndTitleBar ) {
+	const auto settingTitleBar = GetSettings().GetTitleBarFormat();
+	if ( const HWND hwndTitleBar = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_TITLEBAR ); nullptr != hwndTitleBar ) {
 		const int bufferSize = MAX_PATH;
 		WCHAR buffer[ bufferSize ];
 		const HINSTANCE instance = GetInstanceHandle();
-		for ( const auto& [ format, resourceID ] : s_TitleBarFormats ) {
+		for ( const auto& [format, resourceID] : s_TitleBarFormats ) {
 			LoadString( instance, resourceID, buffer, bufferSize );
 			ComboBox_AddString( hwndTitleBar, buffer );
 			ComboBox_SetItemData( hwndTitleBar, ComboBox_GetCount( hwndTitleBar ) - 1, static_cast<LPARAM>( format ) );
@@ -77,7 +77,7 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		if ( -1 == ComboBox_GetCurSel( hwndTitleBar ) ) {
 			ComboBox_SetCurSel( hwndTitleBar, 0 );
 		}
-  }
+	}
 
 	const bool mergeDuplicates = GetSettings().GetMergeDuplicates();
 	if ( const HWND hwndMergeDuplicates = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_HIDEDUPLICATES ); nullptr != hwndMergeDuplicates ) {
@@ -100,7 +100,7 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		Button_SetCheck( hwndMusicBrainz, ( musicbrainzEnabled ? BST_CHECKED : BST_UNCHECKED ) );
 	}
 
-  VUPlayer* vuplayer = VUPlayer::Get();
+	VUPlayer* vuplayer = VUPlayer::Get();
 	const bool scrobblerAvailable = ( nullptr != vuplayer ) && vuplayer->IsScrobblerAvailable();
 	const HWND hwndScrobblerEnable = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SCROBBLER_ENABLE );
 	if ( nullptr != hwndScrobblerEnable ) {
@@ -113,17 +113,17 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		ShowWindow( hwndScrobblerAuthorise, SW_HIDE );
 	}
 
-  // Tagging settings
-  const bool writeFileTags = GetSettings().GetWriteFileTags();
-  if ( const HWND hwndWriteFileTags = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_WRITETAGS ); nullptr != hwndWriteFileTags ) {
-    Button_SetCheck( hwndWriteFileTags, ( writeFileTags ? BST_CHECKED : BST_UNCHECKED ) );
-  }
+	// Tagging settings
+	const bool writeFileTags = GetSettings().GetWriteFileTags();
+	if ( const HWND hwndWriteFileTags = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_WRITETAGS ); nullptr != hwndWriteFileTags ) {
+		Button_SetCheck( hwndWriteFileTags, ( writeFileTags ? BST_CHECKED : BST_UNCHECKED ) );
+	}
 
-  if ( const HWND hwndPreserveFiletime = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_PRESERVE_FILETIME ); nullptr != hwndPreserveFiletime ) {
-    const bool preserveFiletime = GetSettings().GetPreserveLastModifiedTime();
-    Button_SetCheck( hwndPreserveFiletime, ( preserveFiletime ? BST_CHECKED : BST_UNCHECKED ) );
-    EnableWindow( hwndPreserveFiletime, writeFileTags ? TRUE : FALSE );
-  }
+	if ( const HWND hwndPreserveFiletime = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_PRESERVE_FILETIME ); nullptr != hwndPreserveFiletime ) {
+		const bool preserveFiletime = GetSettings().GetPreserveLastModifiedTime();
+		Button_SetCheck( hwndPreserveFiletime, ( preserveFiletime ? BST_CHECKED : BST_UNCHECKED ) );
+		EnableWindow( hwndPreserveFiletime, writeFileTags ? TRUE : FALSE );
+	}
 }
 
 void OptionsGeneral::OnSave( const HWND hwnd )
@@ -134,8 +134,8 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 	GetSettings().SetOutputSettings( device, mode );
 
 	// Miscellaneous settings
-  const auto titleBarFormat = GetSelectedTitleBarFormat( hwnd );
-  GetSettings().SetTitleBarFormat( titleBarFormat );
+	const auto titleBarFormat = GetSelectedTitleBarFormat( hwnd );
+	GetSettings().SetTitleBarFormat( titleBarFormat );
 
 	const bool mergeDuplicates = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_HIDEDUPLICATES ) ) );
 	GetSettings().SetMergeDuplicates( mergeDuplicates );
@@ -146,14 +146,14 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 	const bool retainPitchBalance = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_RETAIN_PITCHBALANCE ) ) );
 	GetSettings().SetRetainPitchBalance( retainPitchBalance );
 
-  // Remote settings
+	// Remote settings
 	const bool musicbrainzEnabled = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_MUSICBRAINZ_ENABLE ) ) );
 	GetSettings().SetMusicBrainzEnabled( musicbrainzEnabled );
 
 	const bool enableScrobbler = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_SCROBBLER_ENABLE ) ) );
 	GetSettings().SetScrobblerEnabled( enableScrobbler );
 
-  // Tagging settings
+	// Tagging settings
 	const bool writeFileTags = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_WRITETAGS ) ) );
 	GetSettings().SetWriteFileTags( writeFileTags );
 
@@ -170,28 +170,28 @@ void OptionsGeneral::OnCommand( const HWND hwnd, const WPARAM wParam, const LPAR
 			RefreshOutputDeviceList( hwnd );
 		}
 	} else if ( BN_CLICKED == notificationCode ) {
-    switch ( controlID ) {
-      case IDC_OPTIONS_MODE_ADVANCED : {
-			  const Settings::OutputMode mode = GetSelectedMode( hwnd );
-			  switch ( mode ) {
-				  case Settings::OutputMode::WASAPIExclusive : {
-					  DlgAdvancedWasapi dialog( GetInstanceHandle(), hwnd, GetSettings() );
-					  break;
-				  }
-				  case Settings::OutputMode::ASIO : {
-					  DlgAdvancedASIO dialog( GetInstanceHandle(), hwnd, GetSettings() );
-					  break;
-				  }
-			  }
-        break;
-      }
-			case IDC_OPTIONS_GENERAL_WRITETAGS : {
-	      const bool enablePreserveFiletime = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_WRITETAGS ) ) );
-        EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_PRESERVE_FILETIME ), enablePreserveFiletime ? TRUE : FALSE );
+		switch ( controlID ) {
+			case IDC_OPTIONS_MODE_ADVANCED: {
+				const Settings::OutputMode mode = GetSelectedMode( hwnd );
+				switch ( mode ) {
+					case Settings::OutputMode::WASAPIExclusive: {
+						DlgAdvancedWasapi dialog( GetInstanceHandle(), hwnd, GetSettings() );
+						break;
+					}
+					case Settings::OutputMode::ASIO: {
+						DlgAdvancedASIO dialog( GetInstanceHandle(), hwnd, GetSettings() );
+						break;
+					}
+				}
 				break;
 			}
-    }
-  }
+			case IDC_OPTIONS_GENERAL_WRITETAGS: {
+				const bool enablePreserveFiletime = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_WRITETAGS ) ) );
+				EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_PRESERVE_FILETIME ), enablePreserveFiletime ? TRUE : FALSE );
+				break;
+			}
+		}
+	}
 }
 
 void OptionsGeneral::OnNotify( const HWND /*hwnd*/, const WPARAM /*wParam*/, const LPARAM lParam )
@@ -245,7 +245,7 @@ void OptionsGeneral::RefreshOutputDeviceList( const HWND hwnd )
 			HWND hwndAdvanced = GetDlgItem( hwnd, IDC_OPTIONS_MODE_ADVANCED );
 			if ( nullptr != hwndAdvanced ) {
 				if ( Settings::OutputMode::Standard != GetSelectedMode( hwnd ) ) {
-					EnableWindow( hwndAdvanced, TRUE );				
+					EnableWindow( hwndAdvanced, TRUE );
 				} else {
 					EnableWindow( hwndAdvanced, FALSE );
 				}

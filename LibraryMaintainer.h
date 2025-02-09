@@ -19,13 +19,13 @@ public:
 	// A callback for when a new 'file' is added to the library. 
 	using FileAddedCallback = std::function<void( const std::filesystem::path& file )>;
 
-  // A callback for when library maintenance has finished.
-  // 'removedFiles' - all files that have been removed from the library.
-  using FinishedCallback = std::function<void( const MediaInfo::List& removedFiles )>;
+	// A callback for when library maintenance has finished.
+	// 'removedFiles' - all files that have been removed from the library.
+	using FinishedCallback = std::function<void( const MediaInfo::List& removedFiles )>;
 
 	// Starts library maintenance.
-  // 'fileAddedCallback' - callback for when a new file is added to the library.
-  // 'finishedCallback' - callback for when library maintenance has finished.
+	// 'fileAddedCallback' - callback for when a new file is added to the library.
+	// 'finishedCallback' - callback for when library maintenance has finished.
 	void Start( FileAddedCallback fileAddedCallback, FinishedCallback finishedCallback );
 
 	// Stops library maintenance.
@@ -86,7 +86,6 @@ private:
 	// A callback for when a new file is added to the library. 
 	FileAddedCallback m_FileAddedCallback;
 
-  // A callback for when library maintenance has finished.
-  FinishedCallback m_FinishedCallback;
+	// A callback for when library maintenance has finished.
+	FinishedCallback m_FinishedCallback;
 };
-

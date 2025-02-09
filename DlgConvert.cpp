@@ -13,7 +13,7 @@ static const long s_AllTracksID = 0;
 INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			DlgConvert* dialog = reinterpret_cast<DlgConvert*>( lParam );
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -22,14 +22,14 @@ INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDCANCEL : 
-				case IDOK : {
+				case IDCANCEL:
+				case IDOK: {
 					DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( ( nullptr != dialog ) && dialog->OnClose( ( IDOK == LOWORD( wParam ) ) ) ) {
 						EndDialog( hwnd, 0 );
@@ -37,37 +37,37 @@ INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 					}
 					break;
 				}
-				case IDC_CONVERT_BROWSE : {
+				case IDC_CONVERT_BROWSE: {
 					DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->ChooseFolder();
 					}
 					break;
 				}
-				case IDC_CONVERT_FILENAME : {
+				case IDC_CONVERT_FILENAME: {
 					DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnFilenameFormat();
 					}
 					break;
 				}
-				case IDC_CONVERT_CONFIGURE : {
+				case IDC_CONVERT_CONFIGURE: {
 					DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnConfigure();
 					}
 					break;
 				}
-				case IDC_CONVERT_FORMAT : {
+				case IDC_CONVERT_FORMAT: {
 					if ( CBN_SELCHANGE == HIWORD( wParam ) ) {
 						DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 						if ( nullptr != dialog ) {
 							dialog->UpdateSelectedEncoder();
-						}					
+						}
 					}
 					break;
 				}
-				default : {
+				default: {
 					const WORD notificationCode = HIWORD( wParam );
 					if ( BN_CLICKED == notificationCode ) {
 						const WORD controlID = LOWORD( wParam );
@@ -75,7 +75,7 @@ INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 							DlgConvert* dialog = reinterpret_cast<DlgConvert*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 							if ( nullptr != dialog ) {
 								dialog->UpdateDestinationControls();
-							}					
+							}
 						}
 					}
 					break;
@@ -83,7 +83,7 @@ INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 			}
 			break;
 		}
-		case WM_NOTIFY : {
+		case WM_NOTIFY: {
 			LPNMHDR nmhdr = reinterpret_cast<LPNMHDR>( lParam );
 			if ( ( nullptr != nmhdr ) && ( nmhdr->code == LVN_ITEMCHANGED ) ) {
 				LPNMLISTVIEW nmListView = reinterpret_cast<LPNMLISTVIEW>( lParam );
@@ -97,7 +97,7 @@ INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -183,7 +183,7 @@ void DlgConvert::OnInitDialog( const HWND hwnd )
 				if ( state ) {
 					m_CheckedItems.insert( s_AllTracksID );
 				}
-			}		
+			}
 		}
 
 		// Add track list.
@@ -227,7 +227,7 @@ void DlgConvert::OnInitDialog( const HWND hwnd )
 	if ( CB_ERR == ComboBox_SelectString( wndEncoders, -1, encoder.c_str() ) ) {
 		ComboBox_SetCurSel( wndEncoders, 0 );
 	}
-	
+
 	UpdateSelectedEncoder();
 
 	UpdateFolderControl();
@@ -346,7 +346,7 @@ void DlgConvert::UpdateCheckedItems( const int itemIndex )
 				} else {
 					m_CheckedItems.clear();
 				}
-					
+
 				const int itemCount = ListView_GetItemCount( listWnd );
 				for ( int index = 0; index < itemCount; index++ ) {
 					ListView_SetCheckState( listWnd, index, isChecked );
@@ -406,7 +406,7 @@ void DlgConvert::UpdateDestinationControls()
 
 	if ( !enableJoinTracks && enableIndividualTracks && ( BST_CHECKED == IsDlgButtonChecked( m_hWnd, IDC_CONVERT_JOIN ) ) ) {
 		CheckDlgButton( m_hWnd, IDC_CONVERT_INDIVIDUAL, BST_CHECKED );
-		CheckDlgButton( m_hWnd, IDC_CONVERT_JOIN, BST_UNCHECKED );		
+		CheckDlgButton( m_hWnd, IDC_CONVERT_JOIN, BST_UNCHECKED );
 	}
 
 	const bool enableConvertFolder = enableIndividualTracks && ( BST_CHECKED == IsDlgButtonChecked( m_hWnd, IDC_CONVERT_INDIVIDUAL ) );
@@ -454,9 +454,9 @@ bool DlgConvert::OnClose( const bool ok )
 					const std::wstring ext = WideStringToLower( m_JoinFilename.substr( 1 + pos ) );
 					const std::set<std::wstring> fileExtensions = m_SelectedEncoder->GetSupportedFileExtensions();
 					const auto foundExt = std::find_if( fileExtensions.begin(), fileExtensions.end(), [ &ext ] ( const std::wstring& entry )
-					{
-						return ( ext == WideStringToLower( entry ) );
-					} );
+						{
+							return ( ext == WideStringToLower( entry ) );
+						} );
 					if ( fileExtensions.end() != foundExt ) {
 						m_JoinFilename = m_JoinFilename.substr( 0 /*offset*/, pos );
 					}

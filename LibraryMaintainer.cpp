@@ -24,7 +24,7 @@ LibraryMaintainer::LibraryMaintainer( const HINSTANCE instance, Library& library
 	m_StatusScanningComputer(),
 	m_StatusUpdatingLibrary(),
 	m_FileAddedCallback( nullptr ),
-  m_FinishedCallback( nullptr )
+	m_FinishedCallback( nullptr )
 {
 	const int bufSize = 64;
 	WCHAR buf[ bufSize ] = {};
@@ -49,7 +49,7 @@ void LibraryMaintainer::Start( FileAddedCallback fileAddedCallback, FinishedCall
 {
 	Stop();
 	m_FileAddedCallback = fileAddedCallback;
-  m_FinishedCallback = finishedCallback;
+	m_FinishedCallback = finishedCallback;
 	m_Thread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, MaintainerThreadProc, reinterpret_cast<LPVOID>( this ), 0 /*flags*/, NULL /*threadId*/ );
 	if ( nullptr != m_Thread ) {
 		SetThreadPriority( m_Thread, THREAD_MODE_BACKGROUND_BEGIN );
@@ -68,7 +68,7 @@ void LibraryMaintainer::Stop()
 	ResetEvent( m_StopEvent );
 	SetStatus( {} );
 	m_FileAddedCallback = nullptr;
-  m_FinishedCallback = nullptr;
+	m_FinishedCallback = nullptr;
 }
 
 bool LibraryMaintainer::IsActive() const
@@ -112,8 +112,8 @@ void LibraryMaintainer::Handler()
 			}
 		}
 
-    // Make a note of all files that are removed from the library.
-    MediaInfo::List removedFiles;
+		// Make a note of all files that are removed from the library.
+		MediaInfo::List removedFiles;
 
 		// Refresh library information for all the files.
 		if ( WAIT_OBJECT_0 != WaitForSingleObject( m_StopEvent, 0 ) ) {
@@ -129,15 +129,15 @@ void LibraryMaintainer::Handler()
 				MediaInfo mediaInfo( path->c_str() );
 				if ( m_Library.GetMediaInfo( mediaInfo, true /*scanMedia*/, true /*sendNotification*/, true /*removeMissing*/ ) ) {
 					if ( ( nullptr != m_FileAddedCallback ) && ( existingFiles.end() == existingFiles.find( *path ) ) ) {
-						m_FileAddedCallback( *path );						
+						m_FileAddedCallback( *path );
 					}
 				} else {
-          removedFiles.push_back( mediaInfo );
-        }
+					removedFiles.push_back( mediaInfo );
+				}
 			}
-      if ( nullptr != m_FinishedCallback ) {
-        m_FinishedCallback( removedFiles );
-      }
+			if ( nullptr != m_FinishedCallback ) {
+				m_FinishedCallback( removedFiles );
+			}
 		}
 	}
 
@@ -190,7 +190,7 @@ void LibraryMaintainer::ScanFolder( const std::filesystem::path& folder, std::se
 					std::wstring status = m_StatusScanningComputer;
 					WideStringReplace( status, L"%", std::to_wstring( mediaFiles.size() ) );
 					status += L" - " + TruncatePath( path );
-					SetStatus( status );			
+					SetStatus( status );
 				}
 			}
 			found = FindNextFile( handle, &findData );

@@ -16,7 +16,7 @@ bool DlgOptions::s_IsCentred = false;
 INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			PROPSHEETPAGE* page = reinterpret_cast<PROPSHEETPAGE*>( lParam );
 			if ( nullptr != page ) {
 				Options* options = reinterpret_cast<Options*>( page->lParam );
@@ -31,11 +31,11 @@ INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam
 			}
 			return TRUE;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_NOTIFY : {
+		case WM_NOTIFY: {
 			LPPSHNOTIFY pshNotify = reinterpret_cast<LPPSHNOTIFY>( lParam );
 			if ( nullptr != pshNotify ) {
 				Options* options = reinterpret_cast<Options*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
@@ -53,18 +53,18 @@ INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam
 			}
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			Options* options = reinterpret_cast<Options*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != options ) {
 				options->OnCommand( hwnd, wParam, lParam );
-			}				
+			}
 			break;
 		}
-		case WM_DRAWITEM : {
+		case WM_DRAWITEM: {
 			Options* options = reinterpret_cast<Options*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != options ) {
 				options->OnDrawItem( hwnd, wParam, lParam );
-			}				
+			}
 			break;
 		}
 	}
@@ -94,7 +94,7 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 	propPageGeneral.pfnDlgProc = OptionsProc;
 	propPageGeneral.lParam = reinterpret_cast<LPARAM>( &optionsGeneral );
 	pages.at( 0 ) = CreatePropertySheetPage( &propPageGeneral );
-	
+
 	// Taskbar property page
 	PROPSHEETPAGE propPageTaskbar = {};
 	propPageTaskbar.dwSize = sizeof( PROPSHEETPAGE );

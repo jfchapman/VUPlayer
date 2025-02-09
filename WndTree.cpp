@@ -50,32 +50,32 @@ static constexpr UINT MSG_TREEMENU_ADDTOPLAYLIST_END = MSG_TREEMENU_ADDTOPLAYLIS
 
 // Root item ordering.
 WndTree::OrderMap WndTree::s_RootOrder = {
-	{ Playlist::Type::Folder,			1 },
-	{ Playlist::Type::CDDA,				2 },
-	{ Playlist::Type::User,				3 },
-	{ Playlist::Type::Favourites,	4 },
-	{ Playlist::Type::Streams,		5 },
-	{ Playlist::Type::All,				6 },
-	{ Playlist::Type::Artist,			7 },
-	{ Playlist::Type::Album,			8 },
-	{ Playlist::Type::Publisher,	9 },
-	{ Playlist::Type::Composer,		10 },
-	{ Playlist::Type::Conductor,	11 },
-	{ Playlist::Type::Genre,			12 },
-	{ Playlist::Type::Year,				13 }
+	{ Playlist::Type::Folder,      1 },
+	{ Playlist::Type::CDDA,        2 },
+	{ Playlist::Type::User,        3 },
+	{ Playlist::Type::Favourites,  4 },
+	{ Playlist::Type::Streams,     5 },
+	{ Playlist::Type::All,         6 },
+	{ Playlist::Type::Artist,      7 },
+	{ Playlist::Type::Album,       8 },
+	{ Playlist::Type::Publisher,   9 },
+	{ Playlist::Type::Composer,    10 },
+	{ Playlist::Type::Conductor,   11 },
+	{ Playlist::Type::Genre,       12 },
+	{ Playlist::Type::Year,        13 }
 };
 
 LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndTree* wndTree = reinterpret_cast<WndTree*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndTree ) {
-		switch( message )	{
-			case WM_COMMAND : {
+		switch ( message ) {
+			case WM_COMMAND: {
 				const UINT commandID = LOWORD( wParam );
 				wndTree->OnCommand( commandID );
 				break;
 			}
-			case WM_CONTEXTMENU : {
+			case WM_CONTEXTMENU: {
 				POINT pt = {};
 				if ( -1 == lParam ) {
 					HTREEITEM item = TreeView_GetSelection( hwnd );
@@ -91,7 +91,7 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 						if ( FALSE == IntersectRect( &intersectRect, &itemRect, &clientRect ) ) {
 							item = TreeView_GetFirstVisible( hwnd );
 							TreeView_GetItemRect( hwnd, item, &itemRect, TRUE );
-						}						
+						}
 						pt.x = itemRect.left;
 						pt.y = itemRect.bottom;
 					}
@@ -103,13 +103,13 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				wndTree->OnContextMenu( pt );
 				break;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndTree->GetDefaultWndProc() ) );
 				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 				wndTree->OnDestroy();
 				break;
 			}
-			case WM_RBUTTONDOWN : {
+			case WM_RBUTTONDOWN: {
 				TVHITTESTINFO hittest = {};
 				hittest.pt = { GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ) };
 				TreeView_HitTest( hwnd, &hittest );
@@ -118,7 +118,7 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				}
 				break;
 			}
-			case MSG_FOLDERADD : {
+			case MSG_FOLDERADD: {
 				const std::wstring* folder = reinterpret_cast<std::wstring*>( lParam );
 				if ( nullptr != folder ) {
 					wndTree->OnFolderAdd( reinterpret_cast<HTREEITEM>( wParam ), *folder );
@@ -126,11 +126,11 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				}
 				break;
 			}
-			case MSG_FOLDERDELETE : {
+			case MSG_FOLDERDELETE: {
 				wndTree->OnFolderDelete( reinterpret_cast<HTREEITEM>( wParam ) );
 				break;
 			}
-			case MSG_FOLDERRENAME : {
+			case MSG_FOLDERRENAME: {
 				const std::wstring* oldFolderPath = reinterpret_cast<std::wstring*>( wParam );
 				const std::wstring* newFolderPath = reinterpret_cast<std::wstring*>( lParam );
 				if ( ( nullptr != oldFolderPath ) && ( nullptr != newFolderPath ) ) {
@@ -140,13 +140,13 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				delete newFolderPath;
 				break;
 			}
-      case MSG_OUTPUTPLAYLISTCHANGED : {
-        const Playlist* const playlist = reinterpret_cast<Playlist*>( wParam );
-        const Playlist::Type playlistType = static_cast<Playlist::Type>( lParam );
-        wndTree->OnOutputPlaylistChange( playlist, playlistType );
-        break;
-      }
-			default : {
+			case MSG_OUTPUTPLAYLISTCHANGED: {
+				const Playlist* const playlist = reinterpret_cast<Playlist*>( wParam );
+				const Playlist::Type playlistType = static_cast<Playlist::Type>( lParam );
+				wndTree->OnOutputPlaylistChange( playlist, playlistType );
+				break;
+			}
+			default: {
 				break;
 			}
 		}
@@ -158,15 +158,15 @@ LRESULT CALLBACK WndTree::EditControlProc( HWND hwnd, UINT message, WPARAM wPara
 {
 	WndTree* wndTree = reinterpret_cast<WndTree*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndTree ) {
-		switch( message ) {
-			case WM_DESTROY : {
+		switch ( message ) {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndTree->GetEditControlWndProc() ) );
 				break;
 			}
-			case WM_GETDLGCODE : {
+			case WM_GETDLGCODE: {
 				return DLGC_WANTALLKEYS;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -211,9 +211,9 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_NodeArtists( nullptr ),
 	m_NodeAlbums( nullptr ),
 	m_NodeGenres( nullptr ),
-  m_NodePublishers( nullptr ),
-  m_NodeComposers( nullptr ),
-  m_NodeConductors( nullptr ),
+	m_NodePublishers( nullptr ),
+	m_NodeComposers( nullptr ),
+	m_NodeConductors( nullptr ),
 	m_NodeYears( nullptr ),
 	m_NodeAll( nullptr ),
 	m_NodeFavourites( nullptr ),
@@ -227,9 +227,9 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_PlaylistMap(),
 	m_ArtistMap(),
 	m_AlbumMap(),
-  m_PublisherMap(),
-  m_ComposerMap(),
-  m_ConductorMap(),
+	m_PublisherMap(),
+	m_ComposerMap(),
+	m_ConductorMap(),
 	m_GenreMap(),
 	m_YearMap(),
 	m_CDDAMap(),
@@ -344,17 +344,17 @@ HTREEITEM WndTree::GetStartupItem()
 
 		if ( nullptr == selectedItem ) {
 			if ( const UINT driveType = GetDriveType( startupPlaylist.c_str() ); ( DRIVE_CDROM == driveType ) ) {
-				const auto& [ startupFilename, cueStart, cueEnd ] = m_Settings.GetStartupFile();
+				const auto& [startupFilename, cueStart, cueEnd] = m_Settings.GetStartupFile();
 				for ( const auto& cddaDrive : m_CDDAMap ) {
 					if ( cddaDrive.second ) {
 						const auto playlistItems = cddaDrive.second->GetItems();
 						const auto foundItem = std::find_if( playlistItems.begin(), playlistItems.end(), [ startupFilename ] ( const Playlist::Item& item )
-						{
-							return startupFilename == item.Info.GetFilename();
-						} );
+							{
+								return startupFilename == item.Info.GetFilename();
+							} );
 						if ( playlistItems.end() != foundItem ) {
 							selectedItem = cddaDrive.first;
-							TreeView_SelectItem( m_hWnd, selectedItem );							
+							TreeView_SelectItem( m_hWnd, selectedItem );
 							break;
 						}
 					}
@@ -392,20 +392,20 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 	if ( playlist ) {
 		const Playlist::Type type = playlist->GetType();
 		switch ( type ) {
-			case Playlist::Type::User : {
+			case Playlist::Type::User: {
 				startupPlaylist = UTF8ToWideString( playlist->GetID() );
 				break;
 			}
-			case Playlist::Type::All :
-			case Playlist::Type::Favourites : {
+			case Playlist::Type::All:
+			case Playlist::Type::Favourites: {
 				startupPlaylist = playlist->GetName();
 				break;
 			}
-			case Playlist::Type::Streams : {
+			case Playlist::Type::Streams: {
 				startupPlaylist = UTF8ToWideString( s_StreamsListID );
 				break;
 			}
-			case Playlist::Type::Artist : {
+			case Playlist::Type::Artist: {
 				for ( const auto& artist : m_ArtistMap ) {
 					const Playlist::Ptr artistPlaylist = artist.second;
 					if ( artistPlaylist && ( artistPlaylist->GetID() == playlist->GetID() ) ) {
@@ -416,7 +416,7 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 				}
 				break;
 			}
-			case Playlist::Type::Publisher : {
+			case Playlist::Type::Publisher: {
 				for ( const auto& publisher : m_PublisherMap ) {
 					const Playlist::Ptr publisherPlaylist = publisher.second;
 					if ( publisherPlaylist && ( publisherPlaylist->GetID() == playlist->GetID() ) ) {
@@ -427,7 +427,7 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 				}
 				break;
 			}
-			case Playlist::Type::Composer : {
+			case Playlist::Type::Composer: {
 				for ( const auto& composer : m_ComposerMap ) {
 					const Playlist::Ptr composerPlaylist = composer.second;
 					if ( composerPlaylist && ( composerPlaylist->GetID() == playlist->GetID() ) ) {
@@ -438,7 +438,7 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 				}
 				break;
 			}
-			case Playlist::Type::Conductor : {
+			case Playlist::Type::Conductor: {
 				for ( const auto& conductor : m_ConductorMap ) {
 					const Playlist::Ptr conductorPlaylist = conductor.second;
 					if ( conductorPlaylist && ( conductorPlaylist->GetID() == playlist->GetID() ) ) {
@@ -449,7 +449,7 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 				}
 				break;
 			}
-			case Playlist::Type::Album : {
+			case Playlist::Type::Album: {
 				for ( const auto& album : m_AlbumMap ) {
 					const Playlist::Ptr albumPlaylist = album.second;
 					if ( albumPlaylist && ( albumPlaylist->GetID() == playlist->GetID() ) ) {
@@ -466,7 +466,7 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 				}
 				break;
 			}
-			case Playlist::Type::Genre : {
+			case Playlist::Type::Genre: {
 				for ( const auto& genre : m_GenreMap ) {
 					const Playlist::Ptr genrePlaylist = genre.second;
 					if ( genrePlaylist && ( genrePlaylist->GetID() == playlist->GetID() ) ) {
@@ -477,7 +477,7 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 				}
 				break;
 			}
-      case Playlist::Type::Year : {
+			case Playlist::Type::Year: {
 				for ( const auto& year : m_YearMap ) {
 					const Playlist::Ptr yearPlaylist = year.second;
 					if ( yearPlaylist && ( yearPlaylist->GetID() == playlist->GetID() ) ) {
@@ -488,18 +488,18 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 				}
 				break;
 			}
-			case Playlist::Type::Folder : {
+			case Playlist::Type::Folder: {
 				startupPlaylist = playlist->GetName();
 				break;
 			}
-			case Playlist::Type::CDDA : {
+			case Playlist::Type::CDDA: {
 				if ( const auto items = playlist->GetItems(); !items.empty() ) {
 					std::filesystem::path path( items.front().Info.GetFilename() );
 					startupPlaylist = path.root_path();
 				}
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -510,78 +510,78 @@ void WndTree::SaveStartupPlaylist( const Playlist::Ptr playlist )
 void WndTree::OnCommand( const UINT command )
 {
 	switch ( command ) {
-		case ID_FILE_NEWPLAYLIST : {
+		case ID_FILE_NEWPLAYLIST: {
 			NewPlaylist( true /*editTitle*/ );
 			break;
 		}
-		case ID_FILE_DELETEPLAYLIST : {
+		case ID_FILE_DELETEPLAYLIST: {
 			DeleteSelectedPlaylist();
 			break;
 		}
-		case ID_FILE_RENAMEPLAYLIST : {
+		case ID_FILE_RENAMEPLAYLIST: {
 			RenameSelectedPlaylist();
 			break;
 		}
-		case ID_FILE_IMPORTPLAYLIST : {
+		case ID_FILE_IMPORTPLAYLIST: {
 			ImportPlaylist();
 			break;
 		}
-		case ID_FILE_EXPORTPLAYLIST : {
+		case ID_FILE_EXPORTPLAYLIST: {
 			ExportSelectedPlaylist();
 			break;
 		}
-		case ID_TREEMENU_FONTSTYLE : {
+		case ID_TREEMENU_FONTSTYLE: {
 			OnSelectFont();
 			break;
 		}
-		case ID_TREEMENU_FONTCOLOUR :
-		case ID_TREEMENU_BACKGROUNDCOLOUR :
-		case ID_TREEMENU_HIGHLIGHTCOLOUR :
-		case ID_TREEMENU_ICONCOLOUR : {
+		case ID_TREEMENU_FONTCOLOUR:
+		case ID_TREEMENU_BACKGROUNDCOLOUR:
+		case ID_TREEMENU_HIGHLIGHTCOLOUR:
+		case ID_TREEMENU_ICONCOLOUR: {
 			OnSelectColour( command );
 			break;
 		}
-		case ID_TREEMENU_FAVOURITES : {
+		case ID_TREEMENU_FAVOURITES: {
 			OnFavourites();
 			break;
 		}
-		case ID_TREEMENU_STREAMS : {
+		case ID_TREEMENU_STREAMS: {
 			OnStreams();
 			break;
 		}
-		case ID_TREEMENU_ALLTRACKS : {
+		case ID_TREEMENU_ALLTRACKS: {
 			OnAllTracks();
 			break;
 		}
-		case ID_TREEMENU_ARTISTS : {
+		case ID_TREEMENU_ARTISTS: {
 			OnArtists();
 			break;
 		}
-		case ID_TREEMENU_PUBLISHERS : {
+		case ID_TREEMENU_PUBLISHERS: {
 			OnPublishers();
 			break;
 		}
-		case ID_TREEMENU_COMPOSERS : {
+		case ID_TREEMENU_COMPOSERS: {
 			OnComposers();
 			break;
 		}
-		case ID_TREEMENU_CONDUCTORS : {
+		case ID_TREEMENU_CONDUCTORS: {
 			OnConductors();
 			break;
 		}
-		case ID_TREEMENU_ALBUMS : {
+		case ID_TREEMENU_ALBUMS: {
 			OnAlbums();
 			break;
 		}
-		case ID_TREEMENU_GENRES : {
+		case ID_TREEMENU_GENRES: {
 			OnGenres();
 			break;
 		}
-		case ID_TREEMENU_YEARS : {
+		case ID_TREEMENU_YEARS: {
 			OnYears();
 			break;
 		}
-		default : {
+		default: {
 			if ( ( command >= MSG_TREEMENU_ADDTOPLAYLIST_START ) && ( command <= MSG_TREEMENU_ADDTOPLAYLIST_END ) ) {
 				OnAddToPlaylist( command );
 			} else {
@@ -619,7 +619,7 @@ void WndTree::OnContextMenu( const POINT& position )
 			const HTREEITEM hSelectedItem = TreeView_GetSelection( m_hWnd );
 			const Playlist::Ptr playlist = GetPlaylist( hSelectedItem );
 
-			if ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) {		
+			if ( playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) {
 				const int bufferSize = 64;
 				WCHAR buffer[ bufferSize ] = {};
 				LoadString( m_hInst, IDS_EXTRACT_TRACKS, buffer, bufferSize );
@@ -740,7 +740,7 @@ Playlist::Ptr WndTree::NewPlaylist( const bool editTitle )
 	tvInsert.hParent = m_NodePlaylists;
 	tvInsert.hInsertAfter = TVI_SORT;
 	tvInsert.itemex = tvItem;
-	TreeView_SelectItem( m_hWnd , NULL /*hItem*/ );
+	TreeView_SelectItem( m_hWnd, NULL /*hItem*/ );
 	HTREEITEM hItem = TreeView_InsertItem( m_hWnd, &tvInsert );
 
 	Playlist::Ptr playlist( new Playlist( m_Library, Playlist::Type::User ) );
@@ -786,26 +786,26 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 	Playlist::Ptr playlist;
 	const Playlist::Type type = GetItemType( node );
 	switch ( type ) {
-		case Playlist::Type::User : {
+		case Playlist::Type::User: {
 			const auto iter = m_PlaylistMap.find( node );
 			if ( m_PlaylistMap.end() != iter ) {
 				playlist = iter->second;
 			}
 			break;
 		}
-		case Playlist::Type::All : {
+		case Playlist::Type::All: {
 			playlist = m_PlaylistAll;
 			break;
 		}
-		case Playlist::Type::Favourites : {
+		case Playlist::Type::Favourites: {
 			playlist = m_PlaylistFavourites;
 			break;
 		}
-		case Playlist::Type::Streams : {
+		case Playlist::Type::Streams: {
 			playlist = m_PlaylistStreams;
 			break;
 		}
-		case Playlist::Type::Artist : {
+		case Playlist::Type::Artist: {
 			const auto artistItem = m_ArtistMap.find( node );
 			if ( m_ArtistMap.end() != artistItem ) {
 				playlist = artistItem->second;
@@ -821,7 +821,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			}
 			break;
 		}
-		case Playlist::Type::Publisher : {
+		case Playlist::Type::Publisher: {
 			const auto publisherItem = m_PublisherMap.find( node );
 			if ( m_PublisherMap.end() != publisherItem ) {
 				playlist = publisherItem->second;
@@ -837,7 +837,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			}
 			break;
 		}
-		case Playlist::Type::Composer : {
+		case Playlist::Type::Composer: {
 			const auto composerItem = m_ComposerMap.find( node );
 			if ( m_ComposerMap.end() != composerItem ) {
 				playlist = composerItem->second;
@@ -853,7 +853,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			}
 			break;
 		}
-		case Playlist::Type::Conductor : {
+		case Playlist::Type::Conductor: {
 			const auto conductorItem = m_ConductorMap.find( node );
 			if ( m_ConductorMap.end() != conductorItem ) {
 				playlist = conductorItem->second;
@@ -869,7 +869,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			}
 			break;
 		}
-    case Playlist::Type::Album : {
+		case Playlist::Type::Album: {
 			const auto albumItem = m_AlbumMap.find( node );
 			if ( m_AlbumMap.end() != albumItem ) {
 				playlist = albumItem->second;
@@ -880,37 +880,37 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 				MediaInfo::List mediaList;
 				const HTREEITEM parentNode = TreeView_GetParent( m_hWnd, node );
 				const Playlist::Type parentType = GetItemType( parentNode );
-        switch ( parentType ) {
-          case Playlist::Type::Artist : {
-					  const std::wstring artist = GetItemLabel( parentNode );
-					  const std::wstring album = GetItemLabel( node );
-					  mediaList = m_Library.GetMediaByArtistAndAlbum( artist, album );
-            break;
-          }
-          case Playlist::Type::Publisher : {
-					  const std::wstring publisher = GetItemLabel( parentNode );
-					  const std::wstring album = GetItemLabel( node );
-					  mediaList = m_Library.GetMediaByPublisherAndAlbum( publisher, album );
-            break;
-          }
-          case Playlist::Type::Composer : {
-					  const std::wstring composer = GetItemLabel( parentNode );
-					  const std::wstring album = GetItemLabel( node );
-					  mediaList = m_Library.GetMediaByComposerAndAlbum( composer, album );
-            break;
-          }
-          case Playlist::Type::Conductor : {
-					  const std::wstring conductor = GetItemLabel( parentNode );
-					  const std::wstring album = GetItemLabel( node );
-					  mediaList = m_Library.GetMediaByConductorAndAlbum( conductor, album );
-            break;
-          }
-          default : {
-					  const std::wstring album = GetItemLabel( node );
-					  mediaList = m_Library.GetMediaByAlbum( album );
-            break;
-          }
-        }
+				switch ( parentType ) {
+					case Playlist::Type::Artist: {
+						const std::wstring artist = GetItemLabel( parentNode );
+						const std::wstring album = GetItemLabel( node );
+						mediaList = m_Library.GetMediaByArtistAndAlbum( artist, album );
+						break;
+					}
+					case Playlist::Type::Publisher: {
+						const std::wstring publisher = GetItemLabel( parentNode );
+						const std::wstring album = GetItemLabel( node );
+						mediaList = m_Library.GetMediaByPublisherAndAlbum( publisher, album );
+						break;
+					}
+					case Playlist::Type::Composer: {
+						const std::wstring composer = GetItemLabel( parentNode );
+						const std::wstring album = GetItemLabel( node );
+						mediaList = m_Library.GetMediaByComposerAndAlbum( composer, album );
+						break;
+					}
+					case Playlist::Type::Conductor: {
+						const std::wstring conductor = GetItemLabel( parentNode );
+						const std::wstring album = GetItemLabel( node );
+						mediaList = m_Library.GetMediaByConductorAndAlbum( conductor, album );
+						break;
+					}
+					default: {
+						const std::wstring album = GetItemLabel( node );
+						mediaList = m_Library.GetMediaByAlbum( album );
+						break;
+					}
+				}
 
 				for ( const auto& mediaInfo : mediaList ) {
 					playlist->AddItem( mediaInfo );
@@ -918,7 +918,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			}
 			break;
 		}
-		case Playlist::Type::Genre : {
+		case Playlist::Type::Genre: {
 			const auto genreItem = m_GenreMap.find( node );
 			if ( m_GenreMap.end() != genreItem ) {
 				playlist = genreItem->second;
@@ -934,7 +934,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			}
 			break;
 		}
-		case Playlist::Type::Year : {
+		case Playlist::Type::Year: {
 			const auto yearItem = m_YearMap.find( node );
 			if ( m_YearMap.end() != yearItem ) {
 				playlist = yearItem->second;
@@ -953,14 +953,14 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			}
 			break;
 		}
-		case Playlist::Type::CDDA : {
+		case Playlist::Type::CDDA: {
 			const auto iter = m_CDDAMap.find( node );
 			if ( m_CDDAMap.end() != iter ) {
 				playlist = iter->second;
 			}
 			break;
 		}
-		case Playlist::Type::Folder : {
+		case Playlist::Type::Folder: {
 			std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
 			const auto folderItem = m_FolderPlaylistMap.find( node );
 			if ( m_FolderPlaylistMap.end() != folderItem ) {
@@ -975,7 +975,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			AddFolderTracks( node, playlist );
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -1053,7 +1053,7 @@ void WndTree::OnDestroy()
 		}
 	}
 
-  for ( const auto& iter : m_AlbumMap ) {
+	for ( const auto& iter : m_AlbumMap ) {
 		if ( iter.second ) {
 			iter.second->StopPendingThread();
 		}
@@ -1403,9 +1403,9 @@ void WndTree::ApplySettings()
 	bool albums = false;
 	bool genres = false;
 	bool years = false;
-  bool publishers = false;
-  bool composers = false;
-  bool conductors = false;
+	bool publishers = false;
+	bool composers = false;
+	bool conductors = false;
 	m_Settings.GetTreeSettings( logFont, m_ColourFont, m_ColourBackground, m_ColourHighlight, m_ColourIcon, favourites, streams, allTracks, artists, albums, genres, years, publishers, composers, conductors );
 	SetColours();
 	SetFont( logFont );
@@ -1435,23 +1435,23 @@ void WndTree::OnSelectColour( const UINT commandID )
 {
 	COLORREF initialColour = 0;
 	switch ( commandID ) {
-		case ID_TREEMENU_FONTCOLOUR : {
+		case ID_TREEMENU_FONTCOLOUR: {
 			initialColour = GetFontColour();
 			break;
 		}
-		case ID_TREEMENU_BACKGROUNDCOLOUR : {
+		case ID_TREEMENU_BACKGROUNDCOLOUR: {
 			initialColour = GetBackgroundColour();
 			break;
 		}
-		case ID_TREEMENU_HIGHLIGHTCOLOUR : {
+		case ID_TREEMENU_HIGHLIGHTCOLOUR: {
 			initialColour = GetHighlightColour();
 			break;
 		}
-		case ID_TREEMENU_ICONCOLOUR : {
+		case ID_TREEMENU_ICONCOLOUR: {
 			initialColour = GetIconColour();
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -1460,26 +1460,26 @@ void WndTree::OnSelectColour( const UINT commandID )
 	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
 	if ( const auto colour = ChooseColour( m_hWnd, initialColour, customColours ); colour.has_value() ) {
 		switch ( commandID ) {
-			case ID_TREEMENU_FONTCOLOUR : {
+			case ID_TREEMENU_FONTCOLOUR: {
 				m_ColourFont = colour.value();
 				SetColours();
 				break;
 			}
-			case ID_TREEMENU_BACKGROUNDCOLOUR : {
+			case ID_TREEMENU_BACKGROUNDCOLOUR: {
 				m_ColourBackground = colour.value();
 				SetColours();
 				break;
 			}
-			case ID_TREEMENU_HIGHLIGHTCOLOUR : {
+			case ID_TREEMENU_HIGHLIGHTCOLOUR: {
 				m_ColourHighlight = colour.value();
 				break;
 			}
-			case ID_TREEMENU_ICONCOLOUR : {
+			case ID_TREEMENU_ICONCOLOUR: {
 				m_ColourIcon = colour.value();
 				CreateImageList();
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -1789,7 +1789,7 @@ void WndTree::AddCDDA()
 			const HTREEITEM cddaItem = TreeView_InsertItem( m_hWnd, &tvInsert );
 			if ( nullptr != cddaItem ) {
 				m_CDDAMap.insert( PlaylistMap::value_type( cddaItem, cddaPlaylist ) );
-			}		
+			}
 		}
 	}
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
@@ -1826,7 +1826,7 @@ void WndTree::RemoveTreeItem( const HTREEITEM item )
 	std::set<HTREEITEM> itemsToRemove( { item } );
 	GetAllChildren( item, itemsToRemove );
 
-	HTREEITEM selectNewItem = nullptr; 
+	HTREEITEM selectNewItem = nullptr;
 	HTREEITEM selectedItem = TreeView_GetSelection( m_hWnd );
 	if ( itemsToRemove.end() != itemsToRemove.find( selectedItem ) ) {
 		selectNewItem = TreeView_GetNextSibling( m_hWnd, item );
@@ -1841,43 +1841,43 @@ void WndTree::RemoveTreeItem( const HTREEITEM item )
 	for ( const auto& itemToRemove : itemsToRemove ) {
 		const Playlist::Type type = GetItemType( itemToRemove );
 		switch ( type ) {
-			case Playlist::Type::User : {
+			case Playlist::Type::User: {
 				m_PlaylistMap.erase( itemToRemove );
 				break;
 			}
-			case Playlist::Type::Album : {
+			case Playlist::Type::Album: {
 				m_AlbumMap.erase( itemToRemove );
 				break;
 			}
-			case Playlist::Type::Artist : {
+			case Playlist::Type::Artist: {
 				m_ArtistMap.erase( itemToRemove );
 				break;
 			}
-			case Playlist::Type::Publisher : {
+			case Playlist::Type::Publisher: {
 				m_PublisherMap.erase( itemToRemove );
 				break;
 			}
-			case Playlist::Type::Composer : {
+			case Playlist::Type::Composer: {
 				m_ComposerMap.erase( itemToRemove );
 				break;
 			}
-			case Playlist::Type::Conductor : {
+			case Playlist::Type::Conductor: {
 				m_ConductorMap.erase( itemToRemove );
 				break;
 			}
-			case Playlist::Type::Genre : {
+			case Playlist::Type::Genre: {
 				m_GenreMap.erase( itemToRemove );
 				break;
 			}
-			case Playlist::Type::Year : {
+			case Playlist::Type::Year: {
 				m_YearMap.erase( itemToRemove );
 				break;
 			}
-			case Playlist::Type::CDDA : {
+			case Playlist::Type::CDDA: {
 				m_CDDAMap.erase( itemToRemove );
 				break;
 			}
-			case Playlist::Type::Folder : {
+			case Playlist::Type::Folder: {
 				{
 					std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
 					m_FolderPlaylistMap.erase( itemToRemove );
@@ -1885,7 +1885,7 @@ void WndTree::RemoveTreeItem( const HTREEITEM item )
 				RemoveFromFolderNodesMap( itemToRemove );
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -1900,19 +1900,19 @@ void WndTree::RemoveTreeItem( const HTREEITEM item )
 
 Playlist::Type WndTree::GetItemType( const HTREEITEM item ) const
 {
-	const auto [ type, originalIconIndex, itemOrder ] = GetItemData( item );
+	const auto [type, originalIconIndex, itemOrder] = GetItemData( item );
 	return type;
 }
 
 int WndTree::GetItemOrder( const HTREEITEM item ) const
 {
-	const auto [ type, originalIconIndex, itemOrder ] = GetItemData( item );
+	const auto [type, originalIconIndex, itemOrder] = GetItemData( item );
 	return itemOrder;
 }
 
 int WndTree::GetOriginalIconIndex( const HTREEITEM item ) const
 {
-	const auto [ type, originalIconIndex, itemOrder ] = GetItemData( item );
+	const auto [type, originalIconIndex, itemOrder] = GetItemData( item );
 	return originalIconIndex;
 }
 
@@ -1948,9 +1948,9 @@ Playlist::Set WndTree::OnUpdatedMedia( const MediaInfo& previousMediaInfo, const
 		UpdateCDDA( updatedMediaInfo, updatedPlaylists );
 	} else {
 		UpdateArtists( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-    UpdatePublishers( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-    UpdateComposers( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-    UpdateConductors( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdatePublishers( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdateComposers( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdateConductors( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateAlbums( m_NodeAlbums, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateGenres( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateYears( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
@@ -1969,12 +1969,12 @@ void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList, const bool libra
 	for ( const auto& previousMediaInfo : mediaList ) {
 		Playlist::Set updatedPlaylists;
 		MediaInfo updatedMediaInfo( previousMediaInfo.GetFilename() );
-    updatedMediaInfo.SetCueStart( previousMediaInfo.GetCueStart() );
-    updatedMediaInfo.SetCueEnd( previousMediaInfo.GetCueEnd() );
+		updatedMediaInfo.SetCueStart( previousMediaInfo.GetCueStart() );
+		updatedMediaInfo.SetCueEnd( previousMediaInfo.GetCueEnd() );
 		UpdateArtists( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-    UpdatePublishers( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-    UpdateComposers( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
-    UpdateConductors( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdatePublishers( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdateComposers( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
+		UpdateConductors( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateAlbums( m_NodeAlbums, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateGenres( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateYears( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
@@ -1985,9 +1985,9 @@ void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList, const bool libra
 			m_PlaylistStreams->RemoveItem( previousMediaInfo );
 		}
 	}
-  if ( m_PlaylistAll && libraryMaintenance ) {
-    m_PlaylistAll->RemoveFiles( mediaList );
-  }
+	if ( m_PlaylistAll && libraryMaintenance ) {
+		m_PlaylistAll->RemoveFiles( mediaList );
+	}
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 }
 
@@ -2081,8 +2081,8 @@ void WndTree::UpdateCDDA( const MediaInfo& updatedMediaInfo, Playlist::Set& upda
 
 void WndTree::UpdateArtists( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists )
 {
-  if ( previousMediaInfo.GetArtist().empty() && updatedMediaInfo.GetArtist().empty() )
-    return;
+	if ( previousMediaInfo.GetArtist().empty() && updatedMediaInfo.GetArtist().empty() )
+		return;
 
 	if ( nullptr != m_NodeArtists ) {
 		const std::wstring& previousArtist = previousMediaInfo.GetArtist();
@@ -2092,16 +2092,16 @@ void WndTree::UpdateArtists( const MediaInfo& previousMediaInfo, const MediaInfo
 
 		if ( previousArtist == updatedArtist ) {
 			HTREEITEM artistNode = TreeView_GetChild( m_hWnd, m_NodeArtists );
-      while ( nullptr != artistNode ) {
+			while ( nullptr != artistNode ) {
 				const std::wstring artist = GetItemLabel( artistNode );
-        if ( artist == updatedArtist ) {
-          break;
-        }
-        artistNode = TreeView_GetNextSibling( m_hWnd, artistNode );
-      }
-      if ( nullptr == artistNode ) {
+				if ( artist == updatedArtist ) {
+					break;
+				}
+				artistNode = TreeView_GetNextSibling( m_hWnd, artistNode );
+			}
+			if ( nullptr == artistNode ) {
 				artistNode = AddTreeItem( m_NodeArtists, updatedArtist, Playlist::Type::Artist );
-      }
+			}
 
 			if ( nullptr != artistNode ) {
 				UpdateAlbums( artistNode, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
@@ -2109,7 +2109,7 @@ void WndTree::UpdateArtists( const MediaInfo& previousMediaInfo, const MediaInfo
 				const auto artistPlaylist = m_ArtistMap.find( artistNode );
 				if ( m_ArtistMap.end() != artistPlaylist ) {
 					if ( Playlist::Ptr playlist = artistPlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-            updatedPlaylists.insert( playlist );
+						updatedPlaylists.insert( playlist );
 					}
 				}
 			}
@@ -2121,8 +2121,8 @@ void WndTree::UpdateArtists( const MediaInfo& previousMediaInfo, const MediaInfo
 
 			while ( ( nullptr != artistNode ) && ( !handledPreviousArtist || !handledUpdatedArtist ) ) {
 				const std::wstring artist = GetItemLabel( artistNode );
-        handledPreviousArtist = ( previousArtist == artist );
-				if ( handledPreviousArtist && ( previousArtist != updatedArtist ) ) {			
+				handledPreviousArtist = ( previousArtist == artist );
+				if ( handledPreviousArtist && ( previousArtist != updatedArtist ) ) {
 
 					const auto artistPlaylist = m_ArtistMap.find( artistNode );
 					if ( m_ArtistMap.end() != artistPlaylist ) {
@@ -2133,11 +2133,11 @@ void WndTree::UpdateArtists( const MediaInfo& previousMediaInfo, const MediaInfo
 						}
 					}
 
-          if ( const auto albumNode = RemoveFromChildAlbumNode( artistNode, previousMediaInfo, updatedPlaylists ); nullptr != albumNode ) {
-            if ( !m_Library.GetArtistAndAlbumExists( artist, previousAlbum ) ) {
-              RemoveTreeItem( albumNode );
-            }
-          }
+					if ( const auto albumNode = RemoveFromChildAlbumNode( artistNode, previousMediaInfo, updatedPlaylists ); nullptr != albumNode ) {
+						if ( !m_Library.GetArtistAndAlbumExists( artist, previousAlbum ) ) {
+							RemoveTreeItem( albumNode );
+						}
+					}
 
 					if ( !m_Library.GetArtistExists( artist ) ) {
 						artistNodeToRemove = artistNode;
@@ -2147,10 +2147,10 @@ void WndTree::UpdateArtists( const MediaInfo& previousMediaInfo, const MediaInfo
 					const auto artistPlaylist = m_ArtistMap.find( artistNode );
 					if ( m_ArtistMap.end() != artistPlaylist ) {
 						if ( Playlist::Ptr playlist = artistPlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-              updatedPlaylists.insert( playlist );
+							updatedPlaylists.insert( playlist );
 						}
 					}
-          AddOrUpdateChildAlbumNode( artistNode, updatedMediaInfo, updatedPlaylists );
+					AddOrUpdateChildAlbumNode( artistNode, updatedMediaInfo, updatedPlaylists );
 					handledUpdatedArtist = true;
 				}
 
@@ -2166,15 +2166,15 @@ void WndTree::UpdateArtists( const MediaInfo& previousMediaInfo, const MediaInfo
 
 			if ( nullptr != artistNodeToRemove ) {
 				RemoveTreeItem( artistNodeToRemove );
-			}			
+			}
 		}
 	}
 }
 
 void WndTree::UpdatePublishers( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists )
 {
-  if ( previousMediaInfo.GetPublisher().empty() && updatedMediaInfo.GetPublisher().empty() )
-    return;
+	if ( previousMediaInfo.GetPublisher().empty() && updatedMediaInfo.GetPublisher().empty() )
+		return;
 
 	if ( nullptr != m_NodePublishers ) {
 		const std::wstring& previousPublisher = previousMediaInfo.GetPublisher();
@@ -2184,16 +2184,16 @@ void WndTree::UpdatePublishers( const MediaInfo& previousMediaInfo, const MediaI
 
 		if ( previousPublisher == updatedPublisher ) {
 			HTREEITEM publisherNode = TreeView_GetChild( m_hWnd, m_NodePublishers );
-      while ( nullptr != publisherNode ) {
+			while ( nullptr != publisherNode ) {
 				const std::wstring publisher = GetItemLabel( publisherNode );
-        if ( publisher == updatedPublisher ) {
-          break;
-        }
-        publisherNode = TreeView_GetNextSibling( m_hWnd, publisherNode );
-      }
-      if ( nullptr == publisherNode ) {
+				if ( publisher == updatedPublisher ) {
+					break;
+				}
+				publisherNode = TreeView_GetNextSibling( m_hWnd, publisherNode );
+			}
+			if ( nullptr == publisherNode ) {
 				publisherNode = AddTreeItem( m_NodePublishers, updatedPublisher, Playlist::Type::Publisher );
-      }
+			}
 
 			if ( nullptr != publisherNode ) {
 				UpdateAlbums( publisherNode, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
@@ -2201,7 +2201,7 @@ void WndTree::UpdatePublishers( const MediaInfo& previousMediaInfo, const MediaI
 				const auto publisherPlaylist = m_PublisherMap.find( publisherNode );
 				if ( m_PublisherMap.end() != publisherPlaylist ) {
 					if ( Playlist::Ptr playlist = publisherPlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-            updatedPlaylists.insert( playlist );
+						updatedPlaylists.insert( playlist );
 					}
 				}
 			}
@@ -2213,8 +2213,8 @@ void WndTree::UpdatePublishers( const MediaInfo& previousMediaInfo, const MediaI
 
 			while ( ( nullptr != publisherNode ) && ( !handledPreviousPublisher || !handledUpdatedPublisher ) ) {
 				const std::wstring publisher = GetItemLabel( publisherNode );
-        handledPreviousPublisher = ( previousPublisher == publisher );
-				if ( handledPreviousPublisher && ( previousPublisher != updatedPublisher ) ) {			
+				handledPreviousPublisher = ( previousPublisher == publisher );
+				if ( handledPreviousPublisher && ( previousPublisher != updatedPublisher ) ) {
 
 					const auto publisherPlaylist = m_PublisherMap.find( publisherNode );
 					if ( m_PublisherMap.end() != publisherPlaylist ) {
@@ -2225,11 +2225,11 @@ void WndTree::UpdatePublishers( const MediaInfo& previousMediaInfo, const MediaI
 						}
 					}
 
-          if ( const auto albumNode = RemoveFromChildAlbumNode( publisherNode, previousMediaInfo, updatedPlaylists ); nullptr != albumNode ) {
-            if ( !m_Library.GetPublisherAndAlbumExists( publisher, previousAlbum ) ) {
-              RemoveTreeItem( albumNode );
-            }
-          }
+					if ( const auto albumNode = RemoveFromChildAlbumNode( publisherNode, previousMediaInfo, updatedPlaylists ); nullptr != albumNode ) {
+						if ( !m_Library.GetPublisherAndAlbumExists( publisher, previousAlbum ) ) {
+							RemoveTreeItem( albumNode );
+						}
+					}
 
 					if ( !m_Library.GetPublisherExists( publisher ) ) {
 						publisherNodeToRemove = publisherNode;
@@ -2239,10 +2239,10 @@ void WndTree::UpdatePublishers( const MediaInfo& previousMediaInfo, const MediaI
 					const auto publisherPlaylist = m_PublisherMap.find( publisherNode );
 					if ( m_PublisherMap.end() != publisherPlaylist ) {
 						if ( Playlist::Ptr playlist = publisherPlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-              updatedPlaylists.insert( playlist );
+							updatedPlaylists.insert( playlist );
 						}
 					}
-          AddOrUpdateChildAlbumNode( publisherNode, updatedMediaInfo, updatedPlaylists );
+					AddOrUpdateChildAlbumNode( publisherNode, updatedMediaInfo, updatedPlaylists );
 					handledUpdatedPublisher = true;
 				}
 
@@ -2258,15 +2258,15 @@ void WndTree::UpdatePublishers( const MediaInfo& previousMediaInfo, const MediaI
 
 			if ( nullptr != publisherNodeToRemove ) {
 				RemoveTreeItem( publisherNodeToRemove );
-			}			
+			}
 		}
 	}
 }
 
 void WndTree::UpdateComposers( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists )
 {
-  if ( previousMediaInfo.GetComposer().empty() && updatedMediaInfo.GetComposer().empty() )
-    return;
+	if ( previousMediaInfo.GetComposer().empty() && updatedMediaInfo.GetComposer().empty() )
+		return;
 
 	if ( nullptr != m_NodeComposers ) {
 		const std::wstring& previousComposer = previousMediaInfo.GetComposer();
@@ -2276,16 +2276,16 @@ void WndTree::UpdateComposers( const MediaInfo& previousMediaInfo, const MediaIn
 
 		if ( previousComposer == updatedComposer ) {
 			HTREEITEM composerNode = TreeView_GetChild( m_hWnd, m_NodeComposers );
-      while ( nullptr != composerNode ) {
+			while ( nullptr != composerNode ) {
 				const std::wstring composer = GetItemLabel( composerNode );
-        if ( composer == updatedComposer ) {
-          break;
-        }
-        composerNode = TreeView_GetNextSibling( m_hWnd, composerNode );
-      }
-      if ( nullptr == composerNode ) {
+				if ( composer == updatedComposer ) {
+					break;
+				}
+				composerNode = TreeView_GetNextSibling( m_hWnd, composerNode );
+			}
+			if ( nullptr == composerNode ) {
 				composerNode = AddTreeItem( m_NodeComposers, updatedComposer, Playlist::Type::Composer );
-      }
+			}
 
 			if ( nullptr != composerNode ) {
 				UpdateAlbums( composerNode, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
@@ -2293,7 +2293,7 @@ void WndTree::UpdateComposers( const MediaInfo& previousMediaInfo, const MediaIn
 				const auto composerPlaylist = m_ComposerMap.find( composerNode );
 				if ( m_ComposerMap.end() != composerPlaylist ) {
 					if ( Playlist::Ptr playlist = composerPlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-            updatedPlaylists.insert( playlist );
+						updatedPlaylists.insert( playlist );
 					}
 				}
 			}
@@ -2305,8 +2305,8 @@ void WndTree::UpdateComposers( const MediaInfo& previousMediaInfo, const MediaIn
 
 			while ( ( nullptr != composerNode ) && ( !handledPreviousComposer || !handledUpdatedComposer ) ) {
 				const std::wstring composer = GetItemLabel( composerNode );
-        handledPreviousComposer = ( previousComposer == composer );
-				if ( handledPreviousComposer && ( previousComposer != updatedComposer ) ) {			
+				handledPreviousComposer = ( previousComposer == composer );
+				if ( handledPreviousComposer && ( previousComposer != updatedComposer ) ) {
 
 					const auto composerPlaylist = m_ComposerMap.find( composerNode );
 					if ( m_ComposerMap.end() != composerPlaylist ) {
@@ -2317,11 +2317,11 @@ void WndTree::UpdateComposers( const MediaInfo& previousMediaInfo, const MediaIn
 						}
 					}
 
-          if ( const auto albumNode = RemoveFromChildAlbumNode( composerNode, previousMediaInfo, updatedPlaylists ); nullptr != albumNode ) {
-            if ( !m_Library.GetComposerAndAlbumExists( composer, previousAlbum ) ) {
-              RemoveTreeItem( albumNode );
-            }
-          }
+					if ( const auto albumNode = RemoveFromChildAlbumNode( composerNode, previousMediaInfo, updatedPlaylists ); nullptr != albumNode ) {
+						if ( !m_Library.GetComposerAndAlbumExists( composer, previousAlbum ) ) {
+							RemoveTreeItem( albumNode );
+						}
+					}
 
 					if ( !m_Library.GetComposerExists( composer ) ) {
 						composerNodeToRemove = composerNode;
@@ -2331,10 +2331,10 @@ void WndTree::UpdateComposers( const MediaInfo& previousMediaInfo, const MediaIn
 					const auto composerPlaylist = m_ComposerMap.find( composerNode );
 					if ( m_ComposerMap.end() != composerPlaylist ) {
 						if ( Playlist::Ptr playlist = composerPlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-              updatedPlaylists.insert( playlist );
+							updatedPlaylists.insert( playlist );
 						}
 					}
-          AddOrUpdateChildAlbumNode( composerNode, updatedMediaInfo, updatedPlaylists );
+					AddOrUpdateChildAlbumNode( composerNode, updatedMediaInfo, updatedPlaylists );
 					handledUpdatedComposer = true;
 				}
 
@@ -2350,15 +2350,15 @@ void WndTree::UpdateComposers( const MediaInfo& previousMediaInfo, const MediaIn
 
 			if ( nullptr != composerNodeToRemove ) {
 				RemoveTreeItem( composerNodeToRemove );
-			}			
+			}
 		}
 	}
 }
 
 void WndTree::UpdateConductors( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists )
 {
-  if ( previousMediaInfo.GetConductor().empty() && updatedMediaInfo.GetConductor().empty() )
-    return;
+	if ( previousMediaInfo.GetConductor().empty() && updatedMediaInfo.GetConductor().empty() )
+		return;
 
 	if ( nullptr != m_NodeConductors ) {
 		const std::wstring& previousConductor = previousMediaInfo.GetConductor();
@@ -2368,16 +2368,16 @@ void WndTree::UpdateConductors( const MediaInfo& previousMediaInfo, const MediaI
 
 		if ( previousConductor == updatedConductor ) {
 			HTREEITEM conductorNode = TreeView_GetChild( m_hWnd, m_NodeConductors );
-      while ( nullptr != conductorNode ) {
+			while ( nullptr != conductorNode ) {
 				const std::wstring conductor = GetItemLabel( conductorNode );
-        if ( conductor == updatedConductor ) {
-          break;
-        }
-        conductorNode = TreeView_GetNextSibling( m_hWnd, conductorNode );
-      }
-      if ( nullptr == conductorNode ) {
+				if ( conductor == updatedConductor ) {
+					break;
+				}
+				conductorNode = TreeView_GetNextSibling( m_hWnd, conductorNode );
+			}
+			if ( nullptr == conductorNode ) {
 				conductorNode = AddTreeItem( m_NodeConductors, updatedConductor, Playlist::Type::Conductor );
-      }
+			}
 
 			if ( nullptr != conductorNode ) {
 				UpdateAlbums( conductorNode, previousMediaInfo, updatedMediaInfo, updatedPlaylists );
@@ -2385,7 +2385,7 @@ void WndTree::UpdateConductors( const MediaInfo& previousMediaInfo, const MediaI
 				const auto conductorPlaylist = m_ConductorMap.find( conductorNode );
 				if ( m_ConductorMap.end() != conductorPlaylist ) {
 					if ( Playlist::Ptr playlist = conductorPlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-            updatedPlaylists.insert( playlist );
+						updatedPlaylists.insert( playlist );
 					}
 				}
 			}
@@ -2397,8 +2397,8 @@ void WndTree::UpdateConductors( const MediaInfo& previousMediaInfo, const MediaI
 
 			while ( ( nullptr != conductorNode ) && ( !handledPreviousConductor || !handledUpdatedConductor ) ) {
 				const std::wstring conductor = GetItemLabel( conductorNode );
-        handledPreviousConductor = ( previousConductor == conductor );
-				if ( handledPreviousConductor && ( previousConductor != updatedConductor ) ) {			
+				handledPreviousConductor = ( previousConductor == conductor );
+				if ( handledPreviousConductor && ( previousConductor != updatedConductor ) ) {
 
 					const auto conductorPlaylist = m_ConductorMap.find( conductorNode );
 					if ( m_ConductorMap.end() != conductorPlaylist ) {
@@ -2409,11 +2409,11 @@ void WndTree::UpdateConductors( const MediaInfo& previousMediaInfo, const MediaI
 						}
 					}
 
-          if ( const auto albumNode = RemoveFromChildAlbumNode( conductorNode, previousMediaInfo, updatedPlaylists ); nullptr != albumNode ) {
-            if ( !m_Library.GetConductorAndAlbumExists( conductor, previousAlbum ) ) {
-              RemoveTreeItem( albumNode );
-            }
-          }
+					if ( const auto albumNode = RemoveFromChildAlbumNode( conductorNode, previousMediaInfo, updatedPlaylists ); nullptr != albumNode ) {
+						if ( !m_Library.GetConductorAndAlbumExists( conductor, previousAlbum ) ) {
+							RemoveTreeItem( albumNode );
+						}
+					}
 
 					if ( !m_Library.GetConductorExists( conductor ) ) {
 						conductorNodeToRemove = conductorNode;
@@ -2423,10 +2423,10 @@ void WndTree::UpdateConductors( const MediaInfo& previousMediaInfo, const MediaI
 					const auto conductorPlaylist = m_ConductorMap.find( conductorNode );
 					if ( m_ConductorMap.end() != conductorPlaylist ) {
 						if ( Playlist::Ptr playlist = conductorPlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-              updatedPlaylists.insert( playlist );
+							updatedPlaylists.insert( playlist );
 						}
 					}
-          AddOrUpdateChildAlbumNode( conductorNode, updatedMediaInfo, updatedPlaylists );
+					AddOrUpdateChildAlbumNode( conductorNode, updatedMediaInfo, updatedPlaylists );
 					handledUpdatedConductor = true;
 				}
 
@@ -2442,15 +2442,15 @@ void WndTree::UpdateConductors( const MediaInfo& previousMediaInfo, const MediaI
 
 			if ( nullptr != conductorNodeToRemove ) {
 				RemoveTreeItem( conductorNodeToRemove );
-			}			
+			}
 		}
 	}
 }
 
 void WndTree::UpdateAlbums( const HTREEITEM parentItem, const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists )
 {
-  if ( previousMediaInfo.GetAlbum().empty() && updatedMediaInfo.GetAlbum().empty() )
-    return;
+	if ( previousMediaInfo.GetAlbum().empty() && updatedMediaInfo.GetAlbum().empty() )
+		return;
 
 	if ( nullptr != parentItem ) {
 		const std::wstring& previousAlbum = previousMediaInfo.GetAlbum();
@@ -2462,7 +2462,7 @@ void WndTree::UpdateAlbums( const HTREEITEM parentItem, const MediaInfo& previou
 
 		while ( ( nullptr != albumNode ) && ( !handledPrevious || !handledUpdated ) ) {
 			const std::wstring album = GetItemLabel( albumNode );
-      handledPrevious = ( previousAlbum == album );
+			handledPrevious = ( previousAlbum == album );
 			if ( handledPrevious && ( previousAlbum != updatedAlbum ) ) {
 				const auto albumPlaylist = m_AlbumMap.find( albumNode );
 				if ( m_AlbumMap.end() != albumPlaylist ) {
@@ -2479,9 +2479,9 @@ void WndTree::UpdateAlbums( const HTREEITEM parentItem, const MediaInfo& previou
 				const auto albumPlaylist = m_AlbumMap.find( albumNode );
 				if ( m_AlbumMap.end() != albumPlaylist ) {
 					if ( Playlist::Ptr playlist = albumPlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-					  updatedPlaylists.insert( playlist );
+						updatedPlaylists.insert( playlist );
 					}
-				}				
+				}
 				handledUpdated = true;
 			}
 			albumNode = TreeView_GetNextSibling( m_hWnd, albumNode );
@@ -2498,8 +2498,8 @@ void WndTree::UpdateAlbums( const HTREEITEM parentItem, const MediaInfo& previou
 
 void WndTree::UpdateGenres( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists )
 {
-  if ( previousMediaInfo.GetGenre().empty() && updatedMediaInfo.GetGenre().empty() )
-    return;
+	if ( previousMediaInfo.GetGenre().empty() && updatedMediaInfo.GetGenre().empty() )
+		return;
 
 	if ( nullptr != m_NodeGenres ) {
 		const std::wstring& previousGenre = previousMediaInfo.GetGenre();
@@ -2511,7 +2511,7 @@ void WndTree::UpdateGenres( const MediaInfo& previousMediaInfo, const MediaInfo&
 
 		while ( ( nullptr != genreNode ) && ( !handledPrevious || !handledUpdated ) ) {
 			const std::wstring genre = GetItemLabel( genreNode );
-      handledPrevious = ( previousGenre == genre );
+			handledPrevious = ( previousGenre == genre );
 			if ( handledPrevious && ( previousGenre != updatedGenre ) ) {
 				const auto genrePlaylist = m_GenreMap.find( genreNode );
 				if ( m_GenreMap.end() != genrePlaylist ) {
@@ -2528,9 +2528,9 @@ void WndTree::UpdateGenres( const MediaInfo& previousMediaInfo, const MediaInfo&
 				const auto genrePlaylist = m_GenreMap.find( genreNode );
 				if ( m_GenreMap.end() != genrePlaylist ) {
 					if ( Playlist::Ptr playlist = genrePlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-  				  updatedPlaylists.insert( playlist );
+						updatedPlaylists.insert( playlist );
 					}
-				}				
+				}
 				handledUpdated = true;
 			}
 			genreNode = TreeView_GetNextSibling( m_hWnd, genreNode );
@@ -2547,8 +2547,8 @@ void WndTree::UpdateGenres( const MediaInfo& previousMediaInfo, const MediaInfo&
 
 void WndTree::UpdateYears( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo, Playlist::Set& updatedPlaylists )
 {
-  if ( ( ( previousMediaInfo.GetYear() < MINYEAR ) || ( previousMediaInfo.GetYear() > MAXYEAR ) ) && ( ( updatedMediaInfo.GetYear() < MINYEAR ) || ( updatedMediaInfo.GetYear() > MAXYEAR ) ) )
-    return;
+	if ( ( ( previousMediaInfo.GetYear() < MINYEAR ) || ( previousMediaInfo.GetYear() > MAXYEAR ) ) && ( ( updatedMediaInfo.GetYear() < MINYEAR ) || ( updatedMediaInfo.GetYear() > MAXYEAR ) ) )
+		return;
 
 	if ( nullptr != m_NodeYears ) {
 		const long previousYearValue = previousMediaInfo.GetYear();
@@ -2562,7 +2562,7 @@ void WndTree::UpdateYears( const MediaInfo& previousMediaInfo, const MediaInfo& 
 
 		while ( ( nullptr != yearNode ) && ( !handledPrevious || !handledUpdated ) ) {
 			const std::wstring year = GetItemLabel( yearNode );
-      handledPrevious = ( previousYear == year );
+			handledPrevious = ( previousYear == year );
 			if ( handledPrevious && ( previousYear != updatedYear ) ) {
 				const auto yearPlaylist = m_YearMap.find( yearNode );
 				if ( m_YearMap.end() != yearPlaylist ) {
@@ -2579,9 +2579,9 @@ void WndTree::UpdateYears( const MediaInfo& previousMediaInfo, const MediaInfo& 
 				const auto yearPlaylist = m_YearMap.find( yearNode );
 				if ( m_YearMap.end() != yearPlaylist ) {
 					if ( Playlist::Ptr playlist = yearPlaylist->second; playlist && playlist->UpdateOrAddItem( updatedMediaInfo ) ) {
-  				  updatedPlaylists.insert( playlist );
+						updatedPlaylists.insert( playlist );
 					}
-				}				
+				}
 				handledUpdated = true;
 			}
 			yearNode = TreeView_GetNextSibling( m_hWnd, yearNode );
@@ -2600,43 +2600,43 @@ bool WndTree::IsShown( const UINT commandID ) const
 {
 	bool isShown = false;
 	switch ( commandID ) {
-		case ID_TREEMENU_FAVOURITES : {
+		case ID_TREEMENU_FAVOURITES: {
 			isShown = ( nullptr != m_NodeFavourites );
 			break;
 		}
-		case ID_TREEMENU_STREAMS : {
+		case ID_TREEMENU_STREAMS: {
 			isShown = ( nullptr != m_NodeStreams );
 			break;
 		}
-		case ID_TREEMENU_ALLTRACKS : {
+		case ID_TREEMENU_ALLTRACKS: {
 			isShown = ( nullptr != m_NodeAll );
 			break;
 		}
-		case ID_TREEMENU_ARTISTS : {
+		case ID_TREEMENU_ARTISTS: {
 			isShown = ( nullptr != m_NodeArtists );
 			break;
 		}
-		case ID_TREEMENU_PUBLISHERS : {
+		case ID_TREEMENU_PUBLISHERS: {
 			isShown = ( nullptr != m_NodePublishers );
 			break;
 		}
-		case ID_TREEMENU_COMPOSERS : {
+		case ID_TREEMENU_COMPOSERS: {
 			isShown = ( nullptr != m_NodeComposers );
 			break;
 		}
-		case ID_TREEMENU_CONDUCTORS : {
+		case ID_TREEMENU_CONDUCTORS: {
 			isShown = ( nullptr != m_NodeConductors );
 			break;
 		}
-		case ID_TREEMENU_ALBUMS : {
+		case ID_TREEMENU_ALBUMS: {
 			isShown = ( nullptr != m_NodeAlbums );
 			break;
 		}
-		case ID_TREEMENU_GENRES : {
+		case ID_TREEMENU_GENRES: {
 			isShown = ( nullptr != m_NodeGenres );
 			break;
 		}
-		case ID_TREEMENU_YEARS : {
+		case ID_TREEMENU_YEARS: {
 			isShown = ( nullptr != m_NodeYears );
 			break;
 		}
@@ -2918,13 +2918,13 @@ void WndTree::Populate()
 	}
 	for ( const auto& item : itemsToDelete ) {
 		TreeView_DeleteItem( m_hWnd, item );
-	}	
+	}
 
 	m_PlaylistMap.clear();
 	m_ArtistMap.clear();
-  m_PublisherMap.clear();
-  m_ComposerMap.clear();
-  m_ConductorMap.clear();
+	m_PublisherMap.clear();
+	m_ComposerMap.clear();
+	m_ConductorMap.clear();
 	m_AlbumMap.clear();
 	m_GenreMap.clear();
 	m_YearMap.clear();
@@ -2946,9 +2946,9 @@ void WndTree::Populate()
 	bool albums = true;
 	bool genres = true;
 	bool years = true;
-  bool publishers = false;
-  bool composers = false;
-  bool conductors = false;
+	bool publishers = false;
+	bool composers = false;
+	bool conductors = false;
 	m_Settings.GetTreeSettings( font, fontColour, backgroundColour, highlightColour, iconColour, favourites, streams, allTracks, artists, albums, genres, years, publishers, composers, conductors );
 	if ( favourites ) {
 		AddFavourites();
@@ -2965,15 +2965,15 @@ void WndTree::Populate()
 	if ( albums ) {
 		AddAlbums();
 	}
-  if ( publishers ) {
-    AddPublishers();
-  }
-  if ( composers ) {
-    AddComposers();
-  }
-  if ( conductors ) {
-    AddConductors();
-  }
+	if ( publishers ) {
+		AddPublishers();
+	}
+	if ( composers ) {
+		AddComposers();
+	}
+	if ( conductors ) {
+		AddConductors();
+	}
 	if ( genres ) {
 		AddGenres();
 	}
@@ -3011,7 +3011,7 @@ void WndTree::CreateImageList()
 	const HIMAGELIST previousImageList = TreeView_GetImageList( m_hWnd, TVSIL_NORMAL );
 	if ( m_ImageList = ImageList_Create( iconSize, iconSize, ILC_COLOR32, 0 /*initial*/, imageCount /*grow*/ ); nullptr != m_ImageList ) {
 		const COLORREF colour = m_IsHighContrast ? GetSysColor( COLOR_HIGHLIGHT ) : GetIconColour();
-		for ( const auto &[ playlistType, iconID ] : treeIconResourceMap ) {
+		for ( const auto &[playlistType, iconID] : treeIconResourceMap ) {
 			if ( const HBITMAP hBitmap = CreateColourBitmap( m_hInst, iconID, iconSize, colour ); nullptr != hBitmap ) {
 				const int iconIndex = ImageList_Add( m_ImageList, hBitmap, nullptr /*mask*/ );
 				m_IconMap.insert( IconMap::value_type( playlistType, iconIndex ) );
@@ -3165,7 +3165,7 @@ void WndTree::OnRefreshDiscDrives()
 	}
 
 	std::string currentOutputPlaylistID;
-	for ( const auto& [ node, playlist ] : m_CDDAMap ) {
+	for ( const auto& [node, playlist] : m_CDDAMap ) {
 		if ( playlist && ( node == m_NodeCurrentOutput ) ) {
 			currentOutputPlaylistID = playlist->GetID();
 			break;
@@ -3176,7 +3176,7 @@ void WndTree::OnRefreshDiscDrives()
 	AddCDDA();
 
 	if ( !currentOutputPlaylistID.empty() ) {
-		for ( const auto& [ node, playlist ] : m_CDDAMap ) {
+		for ( const auto& [node, playlist] : m_CDDAMap ) {
 			if ( playlist && ( playlist->GetID() == currentOutputPlaylistID ) ) {
 				m_NodeCurrentOutput = node;
 				break;
@@ -3185,7 +3185,7 @@ void WndTree::OnRefreshDiscDrives()
 	}
 
 	if ( !currentSelectedPlaylistID.empty() ) {
-		for ( const auto& [ node, playlist ] : m_CDDAMap ) {
+		for ( const auto& [node, playlist] : m_CDDAMap ) {
 			if ( playlist && ( playlist->GetID() == currentSelectedPlaylistID ) ) {
 				TreeView_SelectItem( m_hWnd, node );
 				break;
@@ -3257,9 +3257,9 @@ void WndTree::RefreshComputerNode()
 	// Add any new drives to the tree control.
 	for ( const auto& drive : currentDrives ) {
 		const auto foundDrive = std::find_if( m_RootComputerFolders.begin(), m_RootComputerFolders.end(), [ &drive ] ( const RootFolderInfoMap::value_type& folderInfo )
-		{
-			return ( drive == folderInfo.second );
-		} );
+			{
+				return ( drive == folderInfo.second );
+			} );
 
 		if ( m_RootComputerFolders.end() == foundDrive ) {
 			TVITEMEX tvItem = {};
@@ -3294,10 +3294,10 @@ void WndTree::RefreshComputerNode()
 				AddSubFolders( hItem );
 			}
 
-			m_FolderMonitor.AddFolder( drive.Path, [ this ]( const FolderMonitor::Event monitorEvent, const std::wstring& oldFilename, const std::wstring& newFilename )
-			{
-				OnFolderMonitorCallback( monitorEvent, oldFilename, newFilename );
-			} );
+			m_FolderMonitor.AddFolder( drive.Path, [ this ] ( const FolderMonitor::Event monitorEvent, const std::wstring& oldFilename, const std::wstring& newFilename )
+				{
+					OnFolderMonitorCallback( monitorEvent, oldFilename, newFilename );
+				} );
 		}
 	}
 
@@ -3390,7 +3390,7 @@ WndTree::RootFolderInfoList WndTree::GetComputerDrives() const
 std::set<std::wstring> WndTree::GetSubFolders( const std::wstring& parent ) const
 {
 	std::set<std::wstring> subfolders;
-	
+
 	std::wstring filename = parent;
 	if ( !filename.empty() && ( filename.back() != '\\' ) && ( filename.back() != '/' ) ) {
 		filename += '\\';
@@ -3507,11 +3507,11 @@ void WndTree::AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist )
 			m_AddedFolderTracks[ item ] = fileNames;
 		}
 
-    if ( const auto cueFiles = Playlist::ExtractCueFiles( fileNames ) ) {
-      for ( const auto& cueFile : *cueFiles ) {
-        playlist->AddPlaylist( cueFile );
-      }
-    } 
+		if ( const auto cueFiles = Playlist::ExtractCueFiles( fileNames ) ) {
+			for ( const auto& cueFile : *cueFiles ) {
+				playlist->AddPlaylist( cueFile );
+			}
+		}
 
 		for ( const auto& fileName : fileNames ) {
 			playlist->AddPending( fileName.native() );
@@ -3528,10 +3528,10 @@ void WndTree::OnDriveRemoved( const wchar_t drive )
 {
 	std::list<HTREEITEM> itemsToDelete;
 	const auto foundItem = std::find_if( m_RootComputerFolders.begin(), m_RootComputerFolders.end(), [ drive ] ( const RootFolderInfoMap::value_type& folderInfo )
-	{
-		const bool found = ( RootFolderType::Drive == folderInfo.second.Type ) && ( 0 == folderInfo.second.Path.find( drive ) );
-		return found;
-	} );
+		{
+			const bool found = ( RootFolderType::Drive == folderInfo.second.Type ) && ( 0 == folderInfo.second.Path.find( drive ) );
+			return found;
+		} );
 
 	if ( m_RootComputerFolders.end() != foundItem ) {
 		RemoveTreeItem( foundItem->first );
@@ -3546,7 +3546,7 @@ void WndTree::OnDeviceHandleRemoved( const HANDLE handle )
 
 void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, const std::wstring& oldFilename, const std::wstring& newFilename )
 {
-	const std::wstring& folder = 
+	const std::wstring& folder =
 		( ( FolderMonitor::Event::FolderRenamed == monitorEvent ) || ( FolderMonitor::Event::FolderCreated == monitorEvent ) || ( FolderMonitor::Event::FolderDeleted == monitorEvent ) ) ?
 		oldFilename :
 		oldFilename.substr( 0 /*offset*/, oldFilename.find_last_of( L"/\\" ) );
@@ -3555,19 +3555,19 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 	std::lock_guard<std::mutex> playlistLock( m_FolderPlaylistMapMutex );
 
 	switch ( monitorEvent ) {
-		case FolderMonitor::Event::FolderRenamed : {
+		case FolderMonitor::Event::FolderRenamed: {
 			const size_t pos = newFilename.find_last_of( L"/\\" );
 			if ( std::wstring::npos != pos ) {
 				const auto folderIter = m_FolderNodesMap.find( folder );
 				if ( m_FolderNodesMap.end() != folderIter ) {
 					std::wstring* oldFolderPath = new std::wstring( oldFilename );
 					std::wstring* newFolderPath = new std::wstring( newFilename );
-					PostMessage( m_hWnd, MSG_FOLDERRENAME, reinterpret_cast<WPARAM>( oldFolderPath ), reinterpret_cast<LPARAM>( newFolderPath ) );					
+					PostMessage( m_hWnd, MSG_FOLDERRENAME, reinterpret_cast<WPARAM>( oldFolderPath ), reinterpret_cast<LPARAM>( newFolderPath ) );
 				}
 			}
 			break;
 		}
-		case FolderMonitor::Event::FolderCreated : {
+		case FolderMonitor::Event::FolderCreated: {
 			const size_t pos = folder.find_last_of( L"/\\" );
 			if ( std::wstring::npos != pos ) {
 				const std::wstring parentFolder( folder.substr( 0 /*offset*/, pos ) );
@@ -3581,7 +3581,7 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			}
 			break;
 		}
-		case FolderMonitor::Event::FolderDeleted : {
+		case FolderMonitor::Event::FolderDeleted: {
 			const auto folderIter = m_FolderNodesMap.find( folder );
 			if ( m_FolderNodesMap.end() != folderIter ) {
 				for ( const auto& node : folderIter->second ) {
@@ -3590,7 +3590,7 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			}
 			break;
 		}
-		case FolderMonitor::Event::FileRenamed : {
+		case FolderMonitor::Event::FileRenamed: {
 			if ( !IgnoreFileMonitorEvent( oldFilename ) && !IgnoreFileMonitorEvent( newFilename ) ) {
 				const auto folderIter = m_FolderNodesMap.find( folder );
 				if ( m_FolderNodesMap.end() != folderIter ) {
@@ -3600,14 +3600,14 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 						if ( m_FolderPlaylistMap.end() != playlistIter ) {
 							Playlist::Ptr playlist = playlistIter->second;
 							if ( playlist ) {
-							  playlist->RemoveItem( MediaInfo( oldFilename ) );
-                if ( playlist->ContainsFile( newFilename ) ) {
-				          std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
-				          m_FilesModified.insert( newFilename );
-				          SetEvent( m_FileModifiedWakeEvent );
-                } else {
-							    playlist->AddPending( newFilename );
-                }
+								playlist->RemoveItem( MediaInfo( oldFilename ) );
+								if ( playlist->ContainsFile( newFilename ) ) {
+									std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
+									m_FilesModified.insert( newFilename );
+									SetEvent( m_FileModifiedWakeEvent );
+								} else {
+									playlist->AddPending( newFilename );
+								}
 							}
 						}
 					}
@@ -3615,7 +3615,7 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			}
 			break;
 		}
-		case FolderMonitor::Event::FileCreated : {
+		case FolderMonitor::Event::FileCreated: {
 			if ( !IgnoreFileMonitorEvent( newFilename ) ) {
 				const auto folderIter = m_FolderNodesMap.find( folder );
 				if ( m_FolderNodesMap.end() != folderIter ) {
@@ -3625,13 +3625,13 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 						if ( m_FolderPlaylistMap.end() != playlistIter ) {
 							Playlist::Ptr playlist = playlistIter->second;
 							if ( playlist ) {
-                if ( playlist->ContainsFile( newFilename ) ) {
-				          std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
-				          m_FilesModified.insert( newFilename );
-				          SetEvent( m_FileModifiedWakeEvent );
-                } else {
-								  playlist->AddPending( newFilename );
-                }
+								if ( playlist->ContainsFile( newFilename ) ) {
+									std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
+									m_FilesModified.insert( newFilename );
+									SetEvent( m_FileModifiedWakeEvent );
+								} else {
+									playlist->AddPending( newFilename );
+								}
 							}
 						}
 					}
@@ -3639,7 +3639,7 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			}
 			break;
 		}
-		case FolderMonitor::Event::FileModified : {
+		case FolderMonitor::Event::FileModified: {
 			if ( !IgnoreFileMonitorEvent( newFilename ) ) {
 				std::lock_guard<std::mutex> lock( m_FilesModifiedMutex );
 				m_FilesModified.insert( newFilename );
@@ -3647,7 +3647,7 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			}
 			break;
 		}
-		case FolderMonitor::Event::FileDeleted : {
+		case FolderMonitor::Event::FileDeleted: {
 			if ( !IgnoreFileMonitorEvent( oldFilename ) ) {
 				const auto folderIter = m_FolderNodesMap.find( folder );
 				if ( m_FolderNodesMap.end() != folderIter ) {
@@ -3665,7 +3665,7 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -3689,8 +3689,8 @@ void WndTree::OnFileModifiedHandler()
 		} else {
 			MediaInfo mediaInfo( filename );
 			if ( m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/ ) ) {
-			  m_Library.GetMediaInfo( mediaInfo );
-      }
+				m_Library.GetMediaInfo( mediaInfo );
+			}
 		}
 	}
 }
@@ -3989,7 +3989,7 @@ void WndTree::SetMergeDuplicates( const bool mergeDuplicates )
 		for ( const auto& iter : m_YearMap ) {
 			playlists.insert( iter.second );
 		}
-		
+
 		for ( const auto& playlist : playlists ) {
 			if ( playlist ) {
 				playlist->SetMergeDuplicates( m_MergeDuplicates );
@@ -4001,19 +4001,19 @@ void WndTree::SetMergeDuplicates( const bool mergeDuplicates )
 bool WndTree::IgnoreFileMonitorEvent( const std::wstring& filename ) const
 {
 	bool ignore = true;
-  if ( !m_Library.HasRecentlyWrittenTag( filename ) ) {
-	  const std::filesystem::path filepath( filename );
-	  const std::wstring folder = filepath.parent_path();
+	if ( !m_Library.HasRecentlyWrittenTag( filename ) ) {
+		const std::filesystem::path filepath( filename );
+		const std::wstring folder = filepath.parent_path();
 
-	  // Note that the folder playlist map mutex has already been locked by the callback handler.
-	  for ( const auto& [ treeItem, playlist ] : m_FolderPlaylistMap ) {
-		  if ( playlist && ( folder == playlist->GetName() ) ) {
-			  ignore = false;
-			  break;
-		  }
-	  }
-  }
-  return ignore;
+		// Note that the folder playlist map mutex has already been locked by the callback handler.
+		for ( const auto& [treeItem, playlist] : m_FolderPlaylistMap ) {
+			if ( playlist && ( folder == playlist->GetName() ) ) {
+				ignore = false;
+				break;
+			}
+		}
+	}
+	return ignore;
 }
 
 Playlist::Ptr WndTree::SelectAudioCD( const wchar_t drive )
@@ -4065,7 +4065,7 @@ void WndTree::SetColours()
 {
 	if ( m_IsHighContrast ) {
 		TreeView_SetTextColor( m_hWnd, GetSysColor( COLOR_WINDOWTEXT ) );
-		TreeView_SetBkColor( m_hWnd, GetSysColor( COLOR_WINDOW ) );	
+		TreeView_SetBkColor( m_hWnd, GetSysColor( COLOR_WINDOW ) );
 	} else {
 		TreeView_SetTextColor( m_hWnd, m_ColourFont );
 		TreeView_SetBkColor( m_hWnd, m_ColourBackground );
@@ -4088,56 +4088,56 @@ void WndTree::OnOutputPlaylistChange( const Playlist* const playlist, const Play
 {
 	HTREEITEM outputNode = nullptr;
 	switch ( playlistType ) {
-		case Playlist::Type::User : {
+		case Playlist::Type::User: {
 			outputNode = FindPlaylist( m_PlaylistMap, playlist );
 			break;
 		}
-		case Playlist::Type::All : {
+		case Playlist::Type::All: {
 			outputNode = m_NodeAll;
 			break;
 		}
-		case Playlist::Type::Artist : {
+		case Playlist::Type::Artist: {
 			outputNode = FindPlaylist( m_ArtistMap, playlist );
 			break;
 		}
-		case Playlist::Type::Publisher : {
+		case Playlist::Type::Publisher: {
 			outputNode = FindPlaylist( m_PublisherMap, playlist );
 			break;
 		}
-		case Playlist::Type::Composer : {
+		case Playlist::Type::Composer: {
 			outputNode = FindPlaylist( m_ComposerMap, playlist );
 			break;
 		}
-		case Playlist::Type::Conductor : {
+		case Playlist::Type::Conductor: {
 			outputNode = FindPlaylist( m_ConductorMap, playlist );
 			break;
 		}
-		case Playlist::Type::Album : {
+		case Playlist::Type::Album: {
 			outputNode = FindPlaylist( m_AlbumMap, playlist );
 			break;
 		}
-		case Playlist::Type::Genre : {
+		case Playlist::Type::Genre: {
 			outputNode = FindPlaylist( m_GenreMap, playlist );
 			break;
 		}
-		case Playlist::Type::Year : {
+		case Playlist::Type::Year: {
 			outputNode = FindPlaylist( m_YearMap, playlist );
 			break;
 		}
-		case Playlist::Type::Favourites : {
+		case Playlist::Type::Favourites: {
 			outputNode = m_NodeFavourites;
 			break;
 		}
-		case Playlist::Type::CDDA : {
+		case Playlist::Type::CDDA: {
 			outputNode = FindPlaylist( m_CDDAMap, playlist );
 			break;
 		}
-		case Playlist::Type::Folder : {
+		case Playlist::Type::Folder: {
 			std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
 			outputNode = FindPlaylist( m_FolderPlaylistMap, playlist );
 			break;
 		}
-		case Playlist::Type::Streams : {
+		case Playlist::Type::Streams: {
 			outputNode = m_NodeStreams;
 			break;
 		}
@@ -4172,7 +4172,7 @@ HTREEITEM WndTree::FindPlaylist( const PlaylistMap& playlistMap, const Playlist*
 {
 	const auto item = std::find_if( playlistMap.begin(), playlistMap.end(), [ playlist ] ( const PlaylistMap::value_type& entry ) {
 		return entry.second.get() == playlist;
-	} );
+		} );
 	return ( playlistMap.end() == item ) ? nullptr : item->first;
 }
 
@@ -4183,7 +4183,7 @@ LPARAM WndTree::CreateItemData( const Playlist::Type playlistType, const int ori
 
 std::tuple<Playlist::Type, int, int> WndTree::GetItemData( const HTREEITEM item ) const
 {
-	auto [ type, originalIconIndex, itemOrder ] = std::make_tuple( Playlist::Type::_Undefined, 0, 0 );
+	auto [type, originalIconIndex, itemOrder] = std::make_tuple( Playlist::Type::_Undefined, 0, 0 );
 
 	TVITEMEX tvItem = {};
 	tvItem.mask = TVIF_PARAM;
@@ -4214,7 +4214,7 @@ void WndTree::OnCutCopy( const bool cut )
 					if ( OpenClipboard( m_hWnd ) ) {
 						if ( const HGLOBAL mem = GlobalAlloc( GMEM_MOVEABLE, ( clipboardText.size() + 1 ) * sizeof( WCHAR ) ); nullptr != mem ) {
 							if ( LPWSTR destString = static_cast<LPWSTR>( GlobalLock( mem ) ); nullptr != destString ) {
-								wcscpy_s( destString, clipboardText.size() + 1, clipboardText.c_str() );			
+								wcscpy_s( destString, clipboardText.size() + 1, clipboardText.c_str() );
 								GlobalUnlock( mem );
 								EmptyClipboard();
 								SetClipboardData( CF_UNICODETEXT, mem );
@@ -4246,7 +4246,7 @@ void WndTree::OnPaste()
 					clipboardText = str;
 					GlobalUnlock( handle );
 					clipboardHasText = true;
-				}	
+				}
 			} else {
 				handle = GetClipboardData( CF_TEXT );
 				if ( nullptr != handle ) {
@@ -4255,7 +4255,7 @@ void WndTree::OnPaste()
 						clipboardText = AnsiCodePageToWideString( str );
 						GlobalUnlock( handle );
 						clipboardHasText = true;
-					}	
+					}
 				}
 			}
 			CloseClipboard();
@@ -4288,9 +4288,9 @@ void WndTree::InsertAddToPlaylists( const HMENU menu, const UINT insertAfterItem
 					if ( const HTREEITEM parentItem = TreeView_GetParent( m_hWnd, TreeView_GetSelection( m_hWnd ) ); nullptr == parentItem ) {
 						const auto playlistType = currentPlaylist->GetType();
 						switch ( playlistType ) {
-							case Playlist::Type::All :
-							case Playlist::Type::Favourites :
-							case Playlist::Type::Streams : {
+							case Playlist::Type::All:
+							case Playlist::Type::Favourites:
+							case Playlist::Type::Streams: {
 								enableMenu = true;
 								break;
 							}
@@ -4311,7 +4311,7 @@ void WndTree::InsertAddToPlaylists( const HMENU menu, const UINT insertAfterItem
 							if ( ++commandID > MSG_TREEMENU_ADDTOPLAYLIST_END ) {
 								break;
 							}
-						}		
+						}
 					}
 				}
 				if ( insertSeparator ) {
@@ -4336,20 +4336,20 @@ void WndTree::OnAddToPlaylist( const UINT command )
 		if ( sourcePlaylist && targetPlaylist && ( sourcePlaylist != targetPlaylist ) ) {
 			const auto sourcePlaylistType = sourcePlaylist->GetType();
 			switch ( sourcePlaylistType ) {
-				case Playlist::Type::User :
-				case Playlist::Type::All :
-				case Playlist::Type::Album :
-				case Playlist::Type::Genre :
-				case Playlist::Type::Year :
-				case Playlist::Type::Favourites :
-				case Playlist::Type::Streams : {
+				case Playlist::Type::User:
+				case Playlist::Type::All:
+				case Playlist::Type::Album:
+				case Playlist::Type::Genre:
+				case Playlist::Type::Year:
+				case Playlist::Type::Favourites:
+				case Playlist::Type::Streams: {
 					const auto items = sourcePlaylist->GetItems();
 					for ( const auto& item : items ) {
 						targetPlaylist->AddPending( item.Info );
 					}
 					break;
 				}
-				case Playlist::Type::Artist : {
+				case Playlist::Type::Artist: {
 					const auto& artist = sourcePlaylist->GetName();
 					const auto items = m_Library.GetMediaByArtist( artist );
 					for ( const auto& item : items ) {
@@ -4357,7 +4357,7 @@ void WndTree::OnAddToPlaylist( const UINT command )
 					}
 					break;
 				}
-				case Playlist::Type::Publisher : {
+				case Playlist::Type::Publisher: {
 					const auto& publisher = sourcePlaylist->GetName();
 					const auto items = m_Library.GetMediaByPublisher( publisher );
 					for ( const auto& item : items ) {
@@ -4365,7 +4365,7 @@ void WndTree::OnAddToPlaylist( const UINT command )
 					}
 					break;
 				}
-				case Playlist::Type::Composer : {
+				case Playlist::Type::Composer: {
 					const auto& composer = sourcePlaylist->GetName();
 					const auto items = m_Library.GetMediaByComposer( composer );
 					for ( const auto& item : items ) {
@@ -4373,7 +4373,7 @@ void WndTree::OnAddToPlaylist( const UINT command )
 					}
 					break;
 				}
-				case Playlist::Type::Conductor : {
+				case Playlist::Type::Conductor: {
 					const auto& conductor = sourcePlaylist->GetName();
 					const auto items = m_Library.GetMediaByConductor( conductor );
 					for ( const auto& item : items ) {
@@ -4381,20 +4381,20 @@ void WndTree::OnAddToPlaylist( const UINT command )
 					}
 					break;
 				}
-				case Playlist::Type::Folder : {
-          std::set<std::filesystem::path> filepaths;
-          std::error_code ec;
+				case Playlist::Type::Folder: {
+					std::set<std::filesystem::path> filepaths;
+					std::error_code ec;
 					for ( const auto& entry : std::filesystem::recursive_directory_iterator( sourcePlaylist->GetName(), ec ) ) {
 						if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
 							filepaths.insert( entry.path() );
 						}
 					}
-          for ( const auto& filepath : filepaths ) {
-            targetPlaylist->AddPending( MediaInfo( filepath ) );
-          }
+					for ( const auto& filepath : filepaths ) {
+						targetPlaylist->AddPending( MediaInfo( filepath ) );
+					}
 					break;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
@@ -4405,23 +4405,23 @@ void WndTree::OnAddToPlaylist( const UINT command )
 
 void WndTree::RefreshUserPlaylistLabel( const Playlist::Ptr playlist )
 {
-  if ( !playlist )
-    return;
+	if ( !playlist )
+		return;
 
-  for ( const auto& [ itemNode, itemPlaylist ] : m_PlaylistMap ) {
-    if ( itemPlaylist == playlist ) {
-      SetItemLabel( itemNode, playlist->GetName() );
-      TreeView_SortChildren( m_hWnd, m_NodePlaylists, FALSE /*recurse*/ );
-      break;
-    }
-  }
+	for ( const auto& [itemNode, itemPlaylist] : m_PlaylistMap ) {
+		if ( itemPlaylist == playlist ) {
+			SetItemLabel( itemNode, playlist->GetName() );
+			TreeView_SortChildren( m_hWnd, m_NodePlaylists, FALSE /*recurse*/ );
+			break;
+		}
+	}
 }
 
 HTREEITEM WndTree::AddOrUpdateChildAlbumNode( const HTREEITEM parent, const MediaInfo& mediaInfo, Playlist::Set& updatedPlaylists )
 {
-  const auto& albumName = mediaInfo.GetAlbum();
-  if ( albumName.empty() )
-    return nullptr;
+	const auto& albumName = mediaInfo.GetAlbum();
+	if ( albumName.empty() )
+		return nullptr;
 
 	HTREEITEM albumNode = TreeView_GetChild( m_hWnd, parent );
 	while ( nullptr != albumNode ) {
@@ -4438,14 +4438,14 @@ HTREEITEM WndTree::AddOrUpdateChildAlbumNode( const HTREEITEM parent, const Medi
 	if ( nullptr == albumNode ) {
 		albumNode = AddTreeItem( parent, albumName, Playlist::Type::Album );
 	}
-  return albumNode;
+	return albumNode;
 }
 
 HTREEITEM WndTree::RemoveFromChildAlbumNode( const HTREEITEM parent, const MediaInfo& mediaInfo, Playlist::Set& updatedPlaylists )
 {
-  const auto& albumName = mediaInfo.GetAlbum();
-  if ( albumName.empty() )
-    return nullptr;
+	const auto& albumName = mediaInfo.GetAlbum();
+	if ( albumName.empty() )
+		return nullptr;
 
 	HTREEITEM albumNode = TreeView_GetChild( m_hWnd, parent );
 	while ( nullptr != albumNode ) {
@@ -4459,15 +4459,15 @@ HTREEITEM WndTree::RemoveFromChildAlbumNode( const HTREEITEM parent, const Media
 		}
 		albumNode = TreeView_GetNextSibling( m_hWnd, albumNode );
 	}
-  return albumNode;
+	return albumNode;
 }
 
 Playlist::Ptr WndTree::GetFolderPlaylist( const std::string& playlistID )
 {
 	std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
-  for ( const auto& playlist : m_FolderPlaylistMap ) {
-    if ( playlist.second && ( playlist.second->GetID() == playlistID ) )
-      return playlist.second;
-  }
-  return nullptr;
+	for ( const auto& playlist : m_FolderPlaylistMap ) {
+		if ( playlist.second && ( playlist.second->GetID() == playlistID ) )
+			return playlist.second;
+	}
+	return nullptr;
 }

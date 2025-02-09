@@ -28,17 +28,17 @@ private:
 	// 'lParam' - command parameter.
 	void OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM lParam );
 
-  // Updates controls based on the currently selected format type.
+	// Updates controls based on the currently selected format type.
 	// 'hwnd' - dialog window handle.
 	void UpdateControls( const HWND hwnd );
 
-  // Saves the current settings.
+	// Saves the current settings.
 	void SaveSettings( const HWND hwnd );
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
-  
-  // Application settings.
+
+	// Application settings.
 	Settings& m_Settings;
 
 	// MOD settings.
@@ -49,7 +49,7 @@ private:
 
 	// S3M settings.
 	long long m_S3MSettings;
-	
+
 	// XM settings.
 	long long m_XMSettings;
 

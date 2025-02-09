@@ -6,10 +6,10 @@
 
 DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 {
-  CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
+	CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
 	MonitorInfo* monitorInfo = reinterpret_cast<MonitorInfo*>( lpParam );
 	if ( nullptr != monitorInfo ) {
-    const DWORD bufferSize = 32768;
+		const DWORD bufferSize = 32768;
 		std::vector<unsigned char> buffer( bufferSize );
 		const BOOL watchSubtree = TRUE;
 		const DWORD notifyFilter = ( ChangeType::FileChange == monitorInfo->ChangeType ) ? ( FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE ) : FILE_NOTIFY_CHANGE_DIR_NAME;
@@ -31,21 +31,21 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 								const std::wstring filename = monitorInfo->DirectoryPath + std::wstring( notifyInfo->FileName, notifyInfo->FileNameLength / 2 );
 								const long long currentTime = GetCurrentTimestamp();
 
-                switch ( notifyInfo->Action ) {
-									case FILE_ACTION_ADDED : {
+								switch ( notifyInfo->Action ) {
+									case FILE_ACTION_ADDED: {
 										const DWORD attributes = GetFileAttributes( filename.c_str() );
 										if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
 											if ( ChangeType::FileChange == monitorInfo->ChangeType ) {
 												// Delay the callback.
 												std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
-                        monitorInfo->Pending.push_back( std::make_tuple( PendingAction::FileAdded, currentTime, filename, filename ) );
+												monitorInfo->Pending.push_back( std::make_tuple( PendingAction::FileAdded, currentTime, filename, filename ) );
 											} else {
 												monitorInfo->Callback( FolderMonitor::Event::FolderCreated, filename, filename );
 											}
 										}
 										break;
 									}
-									case FILE_ACTION_MODIFIED : {
+									case FILE_ACTION_MODIFIED: {
 										if ( ChangeType::FileChange == monitorInfo->ChangeType ) {
 											const DWORD attributes = GetFileAttributes( filename.c_str() );
 											if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
@@ -56,11 +56,11 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 										}
 										break;
 									}
-									case FILE_ACTION_REMOVED : {
-                    monitorInfo->Callback( ( ChangeType::FileChange == monitorInfo->ChangeType ) ? FolderMonitor::Event::FileDeleted : FolderMonitor::Event::FolderDeleted, filename, filename );
+									case FILE_ACTION_REMOVED: {
+										monitorInfo->Callback( ( ChangeType::FileChange == monitorInfo->ChangeType ) ? FolderMonitor::Event::FileDeleted : FolderMonitor::Event::FolderDeleted, filename, filename );
 										break;
 									}
-									case FILE_ACTION_RENAMED_OLD_NAME : {
+									case FILE_ACTION_RENAMED_OLD_NAME: {
 										if ( 0 != notifyInfo->NextEntryOffset ) {
 											pBuffer += notifyInfo->NextEntryOffset;
 											notifyInfo = reinterpret_cast<FILE_NOTIFY_INFORMATION*>( pBuffer );
@@ -68,19 +68,19 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 												const std::wstring newFilename = monitorInfo->DirectoryPath + std::wstring( notifyInfo->FileName, notifyInfo->FileNameLength / 2 );
 												const DWORD attributes = GetFileAttributes( newFilename.c_str() );
 												if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
-                          if ( ChangeType::FolderChange == monitorInfo->ChangeType ) {
-                            monitorInfo->Callback( FolderMonitor::Event::FolderRenamed, filename, newFilename );
-                          } else {
-                            // Delay the callback.
-													  std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
-												    monitorInfo->Pending.push_back( std::make_tuple( PendingAction::FileRenamed, currentTime, newFilename, filename ) );
-                          }
+													if ( ChangeType::FolderChange == monitorInfo->ChangeType ) {
+														monitorInfo->Callback( FolderMonitor::Event::FolderRenamed, filename, newFilename );
+													} else {
+														// Delay the callback.
+														std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
+														monitorInfo->Pending.push_back( std::make_tuple( PendingAction::FileRenamed, currentTime, newFilename, filename ) );
+													}
 												}
 											}
 										}
 										break;
 									}
-									default : {
+									default: {
 										break;
 									}
 								}
@@ -108,13 +108,13 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 			CloseHandle( overlapped.hEvent );
 		}
 	}
-  CoUninitialize();
+	CoUninitialize();
 	return 0;
 }
 
 DWORD WINAPI FolderMonitor::AddFileThreadProc( LPVOID lpParam )
 {
-  CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
+	CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
 	MonitorInfo* monitorInfo = reinterpret_cast<MonitorInfo*>( lpParam );
 	if ( nullptr != monitorInfo ) {
 
@@ -129,7 +129,7 @@ DWORD WINAPI FolderMonitor::AddFileThreadProc( LPVOID lpParam )
 			auto fileIter = monitorInfo->Pending.begin();
 			while ( monitorInfo->Pending.end() != fileIter ) {
 				bool removePending = true;
-        auto& [ action, filetime, filename, oldFilename ] = *fileIter;
+				auto& [action, filetime, filename, oldFilename] = *fileIter;
 
 				const DWORD attributes = GetFileAttributes( filename.c_str() );
 				if ( INVALID_FILE_ATTRIBUTES != attributes ) {
@@ -158,20 +158,20 @@ DWORD WINAPI FolderMonitor::AddFileThreadProc( LPVOID lpParam )
 						} else {
 							// File has settled down, so fire off the callback.
 							CloseHandle( fileHandle );
-              switch ( action ) {
-                case PendingAction::FileAdded : {
-							    monitorInfo->Callback( FolderMonitor::Event::FileCreated, filename, filename );
-                  break;
-                }
-                case PendingAction::FileModified : {
-							    monitorInfo->Callback( FolderMonitor::Event::FileModified, filename, filename );
-                  break;
-                }
-                case PendingAction::FileRenamed : {
-							    monitorInfo->Callback( FolderMonitor::Event::FileRenamed, oldFilename, filename );
-                  break;
-                }
-              }
+							switch ( action ) {
+								case PendingAction::FileAdded: {
+									monitorInfo->Callback( FolderMonitor::Event::FileCreated, filename, filename );
+									break;
+								}
+								case PendingAction::FileModified: {
+									monitorInfo->Callback( FolderMonitor::Event::FileModified, filename, filename );
+									break;
+								}
+								case PendingAction::FileRenamed: {
+									monitorInfo->Callback( FolderMonitor::Event::FileRenamed, oldFilename, filename );
+									break;
+								}
+							}
 						}
 					}
 				}
@@ -184,7 +184,7 @@ DWORD WINAPI FolderMonitor::AddFileThreadProc( LPVOID lpParam )
 			}
 		}
 	}
-  CoUninitialize();
+	CoUninitialize();
 	return 0;
 }
 

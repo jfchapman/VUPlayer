@@ -29,7 +29,7 @@ private:
 
 	// Cache limiter.
 	size_t m_MaxCachedSectors = 0;
-			
+
 	// Cache mutex.
 	std::mutex m_Mutex;
 };

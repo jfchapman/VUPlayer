@@ -30,4 +30,3 @@ private:
 	// Output object.
 	Output& m_Output;
 };
-

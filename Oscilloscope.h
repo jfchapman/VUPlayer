@@ -7,7 +7,7 @@ class Oscilloscope : public Visual
 public:
 	// 'wndVisual' - Visual container window.
 	Oscilloscope( WndVisual& wndVisual );
-	
+
 	~Oscilloscope() override;
 
 	// Returns the required visual height, based on a given width.
@@ -28,7 +28,7 @@ public:
 	// Called when the system colours have changed.
 	void OnSysColorChange() override;
 
-  // Called when the visual should free any resources.
+	// Called when the visual should free any resources.
 	void FreeResources() override;
 
 private:
@@ -62,4 +62,3 @@ private:
 	// Oscilloscope stroke width.
 	FLOAT m_Weight;
 };
-

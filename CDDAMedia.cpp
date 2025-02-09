@@ -60,10 +60,10 @@ bool CDDAMedia::FromMediaFilepath( const std::wstring& filepath, wchar_t& drive,
 		const std::wstring& driveStr = match.str( 1 );
 		if ( !driveStr.empty() ) {
 			drive = driveStr.front();
-      try {
-			  track = std::stol( match.str( 2 ) );
-      } catch ( const std::logic_error& ) {
-      }
+			try {
+				track = std::stol( match.str( 2 ) );
+			} catch ( const std::logic_error& ) {
+			}
 			success = ( track > 0 );
 		}
 	}
@@ -80,7 +80,7 @@ bool CDDAMedia::ContainsData( const wchar_t drive )
 		DISK_GEOMETRY diskGeometry = {};
 		CDROM_TOC toc = {};
 		if ( ( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_GET_DRIVE_GEOMETRY, NULL /*inputBuffer*/, 0 /*inputSize*/, &diskGeometry, sizeof( DISK_GEOMETRY ), &bytesReturned, NULL /*overlapped*/ ) ) &&
-				( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_READ_TOC, NULL /*inputBuffer*/, 0 /*inputSize*/, &toc, sizeof( CDROM_TOC ), &bytesReturned, NULL /*overlapped*/ ) ) ) {	
+			( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_READ_TOC, NULL /*inputBuffer*/, 0 /*inputSize*/, &toc, sizeof( CDROM_TOC ), &bytesReturned, NULL /*overlapped*/ ) ) ) {
 			unsigned long trackIndex = 0;
 			const unsigned long trackCount = toc.LastTrack - toc.FirstTrack + 1;
 			if ( trackCount < MAXIMUM_NUMBER_TRACKS ) {
@@ -105,7 +105,7 @@ bool CDDAMedia::ContainsCDAudio( const wchar_t drive )
 		DISK_GEOMETRY diskGeometry = {};
 		CDROM_TOC toc = {};
 		if ( ( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_GET_DRIVE_GEOMETRY, NULL /*inputBuffer*/, 0 /*inputSize*/, &diskGeometry, sizeof( DISK_GEOMETRY ), &bytesReturned, NULL /*overlapped*/ ) ) &&
-				( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_READ_TOC, NULL /*inputBuffer*/, 0 /*inputSize*/, &toc, sizeof( CDROM_TOC ), &bytesReturned, NULL /*overlapped*/ ) ) ) {	
+			( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_READ_TOC, NULL /*inputBuffer*/, 0 /*inputSize*/, &toc, sizeof( CDROM_TOC ), &bytesReturned, NULL /*overlapped*/ ) ) ) {
 			unsigned long trackIndex = 0;
 			const unsigned long trackCount = toc.LastTrack - toc.FirstTrack + 1;
 			if ( trackCount < MAXIMUM_NUMBER_TRACKS ) {
@@ -127,7 +127,7 @@ bool CDDAMedia::ReadTOC()
 	if ( INVALID_HANDLE_VALUE != driveHandle ) {
 		DWORD bytesReturned = 0;
 		if ( ( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_GET_DRIVE_GEOMETRY, NULL /*inputBuffer*/, 0 /*inputSize*/, &m_DiskGeometry, sizeof( DISK_GEOMETRY ), &bytesReturned, NULL /*overlapped*/ ) ) &&
-				( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_READ_TOC, NULL /*inputBuffer*/, 0 /*inputSize*/, &m_TOC, sizeof( CDROM_TOC ), &bytesReturned, NULL /*overlapped*/ ) ) ) {	
+			( 0 != DeviceIoControl( driveHandle, IOCTL_CDROM_READ_TOC, NULL /*inputBuffer*/, 0 /*inputSize*/, &m_TOC, sizeof( CDROM_TOC ), &bytesReturned, NULL /*overlapped*/ ) ) ) {
 			containsAudio = CalculateCDDBID();
 		}
 		CloseHandle( driveHandle );
@@ -150,7 +150,7 @@ bool CDDAMedia::CalculateCDDBID()
 			}
 			if ( containsAudio ) {
 				const unsigned long totalSize = ( ( m_TOC.TrackData[ trackCount ].Address[ 1 ] * 60 ) + m_TOC.TrackData[ trackCount ].Address[ 2 ] ) -
-						( ( m_TOC.TrackData[ 0 ].Address[ 1 ] * 60 ) + m_TOC.TrackData[ 0 ].Address[ 2 ] );
+					( ( m_TOC.TrackData[ 0 ].Address[ 1 ] * 60 ) + m_TOC.TrackData[ 0 ].Address[ 2 ] );
 				m_CDDB = ( ( trackSum % 255 ) << 24 ) | ( totalSize << 8 ) | trackCount;
 			}
 		}
@@ -276,10 +276,10 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 		success = ( m_Playlist->GetCount() > 0 );
 
 		if ( success && isNewMedia ) {
-			if ( VUPlayer* vuplayer = VUPlayer::Get(); ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) { 
-  			const auto [ discID, toc ] = GetMusicBrainzDiscID();
-			  m_MusicBrainz.Query( discID, toc, false /*forceDialog*/, m_Playlist->GetID() );	
-      }
+			if ( VUPlayer* vuplayer = VUPlayer::Get(); ( nullptr != vuplayer ) && vuplayer->IsMusicBrainzEnabled() ) {
+				const auto [discID, toc] = GetMusicBrainzDiscID();
+				m_MusicBrainz.Query( discID, toc, false /*forceDialog*/, m_Playlist->GetID() );
+			}
 		}
 	}
 	return success;
@@ -313,7 +313,7 @@ bool CDDAMedia::Read( const HANDLE handle, const long sector, const bool useCach
 		if ( useCache ) {
 			success = m_Cache->GetData( sector, data );
 		}
-		
+
 		if ( !success ) {
 			data.resize( SECTORSIZE / 2 );
 
@@ -388,7 +388,7 @@ bool CDDAMedia::ReadCDText( BlockMap& blocks ) const
 					for ( int descriptorIndex = 0; descriptorIndex < descriptorCount; descriptorIndex++ ) {
 						const CDROM_TOC_CD_TEXT_DATA_BLOCK& dataBlock = cdText->Descriptors[ descriptorIndex ];
 						switch ( dataBlock.PackType ) {
-							case CDROM_CD_TEXT_PACK_ALBUM_NAME : {
+							case CDROM_CD_TEXT_PACK_ALBUM_NAME: {
 								auto blockIter = blocks.insert( BlockMap::value_type( dataBlock.BlockNumber, StringPairMap() ) ).first;
 								if ( blocks.end() != blockIter ) {
 									auto& block = blockIter->second;
@@ -407,7 +407,7 @@ bool CDDAMedia::ReadCDText( BlockMap& blocks ) const
 								}
 								break;
 							}
-							case CDROM_CD_TEXT_PACK_PERFORMER : {
+							case CDROM_CD_TEXT_PACK_PERFORMER: {
 								auto blockIter = blocks.insert( BlockMap::value_type( dataBlock.BlockNumber, StringPairMap() ) ).first;
 								if ( blocks.end() != blockIter ) {
 									auto& block = blockIter->second;
@@ -426,7 +426,7 @@ bool CDDAMedia::ReadCDText( BlockMap& blocks ) const
 								}
 								break;
 							}
-							default : {
+							default: {
 								break;
 							}
 						}
@@ -445,13 +445,13 @@ void CDDAMedia::GetDataBlockText( const CDROM_TOC_CD_TEXT_DATA& data, const int 
 	if ( ( currentBlock.CharacterPosition > 0 ) && ( currentBlock.CharacterPosition <= ( currentBlock.Unicode ? 6 : 12 ) ) && ( descriptorIndex > 0 ) ) {
 		const CDROM_TOC_CD_TEXT_DATA_BLOCK& previousBlock = data.Descriptors[ descriptorIndex - 1 ];
 		if ( ( previousBlock.PackType == currentBlock.PackType ) && ( previousBlock.Unicode == currentBlock.Unicode ) ) {
-			text = currentBlock.Unicode ? std::wstring( previousBlock.WText + 6 - currentBlock.CharacterPosition, currentBlock.CharacterPosition ) : 
+			text = currentBlock.Unicode ? std::wstring( previousBlock.WText + 6 - currentBlock.CharacterPosition, currentBlock.CharacterPosition ) :
 				CodePageToWideString( std::string( reinterpret_cast<const char*>( previousBlock.Text + 12 - currentBlock.CharacterPosition ), currentBlock.CharacterPosition ), 1252 );
 		}
 	}
 	text += currentBlock.Unicode ? std::wstring( currentBlock.WText, 6 ) : CodePageToWideString( std::string( reinterpret_cast<const char*>( currentBlock.Text ), 12 ), 1252 );
 
-	if ( descriptorIndex > 0 ) { 
+	if ( descriptorIndex > 0 ) {
 		const CDROM_TOC_CD_TEXT_DATA_BLOCK& previousBlock = data.Descriptors[ descriptorIndex - 1 ];
 		if ( ( ( currentBlock.TrackNumber - previousBlock.TrackNumber ) > 1 ) && !previousBlock.Unicode ) {
 			// Deal with any null terminated strings that began and ended within the previous block.
@@ -469,7 +469,7 @@ void CDDAMedia::GetDataBlockText( const CDROM_TOC_CD_TEXT_DATA& data, const int 
 
 std::pair<std::string /*discid*/, std::string /*toc*/> CDDAMedia::GetMusicBrainzDiscID() const
 {
-  return GetMusicBrainzID( m_TOC );
+	return GetMusicBrainzID( m_TOC );
 }
 
 std::pair<std::string /*discid*/, std::string /*toc*/> CDDAMedia::GetMusicBrainzID( const CDROM_TOC& toc )
@@ -510,67 +510,67 @@ long CDDAMedia::GetStartSector( const CDROM_TOC& toc, const long track )
 
 std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<long> /*startCues*/, std::wstring /*backingFile*/>> CDDAMedia::GetMusicBrainzPlaylistID( Playlist* const playlist )
 {
-  const auto items = playlist->GetItems();
+	const auto items = playlist->GetItems();
 
-  // Restrict queries to playlist items with cues, where all cues refer to the same source file.
-  std::set<std::pair<long /*startCue*/, long /*endCue*/>> cues;
-  std::set<std::wstring> filenames;
-  long sourceFileLength = -1;
-  for ( const auto& item : items ) {
-    if ( item.Info.GetCueStart() ) {
-      if ( -1 == sourceFileLength ) {
-        sourceFileLength = static_cast<long>( item.Info.GetDuration( false /*applyCues*/ ) * 75 );
-      }
-      filenames.insert( WideStringToLower( item.Info.GetFilename() ) );
-      if ( filenames.size() > 1 )
-        return std::nullopt;
+	// Restrict queries to playlist items with cues, where all cues refer to the same source file.
+	std::set<std::pair<long /*startCue*/, long /*endCue*/>> cues;
+	std::set<std::wstring> filenames;
+	long sourceFileLength = -1;
+	for ( const auto& item : items ) {
+		if ( item.Info.GetCueStart() ) {
+			if ( -1 == sourceFileLength ) {
+				sourceFileLength = static_cast<long>( item.Info.GetDuration( false /*applyCues*/ ) * 75 );
+			}
+			filenames.insert( WideStringToLower( item.Info.GetFilename() ) );
+			if ( filenames.size() > 1 )
+				return std::nullopt;
 
-      cues.insert( std::make_pair( *item.Info.GetCueStart(), item.Info.GetCueEnd().value_or( sourceFileLength ) ) );
-    }
-  }
+			cues.insert( std::make_pair( *item.Info.GetCueStart(), item.Info.GetCueEnd().value_or( sourceFileLength ) ) );
+		}
+	}
 
-  // Restrict queries to playlists where the start point of the first cue is zero, and the end point of the last cue is the source file length.
-  if ( filenames.empty() || cues.empty() || ( cues.size() >= MAXIMUM_NUMBER_TRACKS ) || ( 0 != cues.begin()->first ) || ( sourceFileLength != cues.rbegin()->second ) )
-    return std::nullopt;
+	// Restrict queries to playlists where the start point of the first cue is zero, and the end point of the last cue is the source file length.
+	if ( filenames.empty() || cues.empty() || ( cues.size() >= MAXIMUM_NUMBER_TRACKS ) || ( 0 != cues.begin()->first ) || ( sourceFileLength != cues.rbegin()->second ) )
+		return std::nullopt;
 
-  // All cues should be contiguous.
-  for ( auto cue = cues.begin(); cue != cues.end(); cue++ ) {
-    auto next = cue;
-    ++next;
-    if ( cues.end() != next ) {
-      if ( cue->second != next->first )
-        return std::nullopt;
-    } else {
-      if ( cue->second < cue->first )
-        return std::nullopt;
-    }
-  }
+	// All cues should be contiguous.
+	for ( auto cue = cues.begin(); cue != cues.end(); cue++ ) {
+		auto next = cue;
+		++next;
+		if ( cues.end() != next ) {
+			if ( cue->second != next->first )
+				return std::nullopt;
+		} else {
+			if ( cue->second < cue->first )
+				return std::nullopt;
+		}
+	}
 
-  // Generate a minimal table of contents (not all the fields are required to generate a query ID).
-  CDROM_TOC toc = {};
-  toc.FirstTrack = 1;
-  toc.LastTrack = static_cast<unsigned char>( cues.size() );
-  unsigned char track = 0;
-  for ( const auto& cue : cues ) {
-    const long address = PREGAP + cue.first;
-    toc.TrackData[ track ].TrackNumber = track;
-    toc.TrackData[ track ].Address[ 1 ] = static_cast<unsigned char>( address / 75 / 60 );
-    toc.TrackData[ track ].Address[ 2 ] = static_cast<unsigned char>( address / 75 % 60 );
-    toc.TrackData[ track ].Address[ 3 ] = static_cast<unsigned char>( address % 75 );
-    ++track;
-  }
-  sourceFileLength += PREGAP;
-  toc.TrackData[ track ].Address[ 1 ] = static_cast<unsigned char>( sourceFileLength / 75 / 60 );
-  toc.TrackData[ track ].Address[ 2 ] = static_cast<unsigned char>( sourceFileLength / 75 % 60 );
-  toc.TrackData[ track ].Address[ 3 ] = static_cast<unsigned char>( sourceFileLength % 75 );
+	// Generate a minimal table of contents (not all the fields are required to generate a query ID).
+	CDROM_TOC toc = {};
+	toc.FirstTrack = 1;
+	toc.LastTrack = static_cast<unsigned char>( cues.size() );
+	unsigned char track = 0;
+	for ( const auto& cue : cues ) {
+		const long address = PREGAP + cue.first;
+		toc.TrackData[ track ].TrackNumber = track;
+		toc.TrackData[ track ].Address[ 1 ] = static_cast<unsigned char>( address / 75 / 60 );
+		toc.TrackData[ track ].Address[ 2 ] = static_cast<unsigned char>( address / 75 % 60 );
+		toc.TrackData[ track ].Address[ 3 ] = static_cast<unsigned char>( address % 75 );
+		++track;
+	}
+	sourceFileLength += PREGAP;
+	toc.TrackData[ track ].Address[ 1 ] = static_cast<unsigned char>( sourceFileLength / 75 / 60 );
+	toc.TrackData[ track ].Address[ 2 ] = static_cast<unsigned char>( sourceFileLength / 75 % 60 );
+	toc.TrackData[ track ].Address[ 3 ] = static_cast<unsigned char>( sourceFileLength % 75 );
 
-  std::set<long> startCues;
-  for ( const auto& [ cue, _ ] : cues ) {
-    startCues.insert( cue );
-  }
+	std::set<long> startCues;
+	for ( const auto& [cue, _] : cues ) {
+		startCues.insert( cue );
+	}
 
-  const auto [ mbID, mbTOC ] = GetMusicBrainzID( toc );
-  const auto& backingFile = *filenames.begin();
+	const auto [mbID, mbTOC] = GetMusicBrainzID( toc );
+	const auto& backingFile = *filenames.begin();
 
-  return std::make_tuple( mbID, mbTOC, startCues, backingFile );
+	return std::make_tuple( mbID, mbTOC, startCues, backingFile );
 }

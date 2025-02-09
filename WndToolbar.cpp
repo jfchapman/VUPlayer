@@ -20,12 +20,12 @@ LRESULT CALLBACK WndToolbar::ToolbarProc( HWND hwnd, UINT message, WPARAM wParam
 				}
 				break;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndToolbar->GetDefaultWndProc() ) );
 				SetWindowLongPtr( hwnd, GWLP_USERDATA, 0 );
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}

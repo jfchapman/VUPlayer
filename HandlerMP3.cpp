@@ -69,7 +69,7 @@ bool HandlerMP3::CanConfigureEncoder() const
 INT_PTR CALLBACK HandlerMP3::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( lParam );
 			if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, reinterpret_cast<LPARAM>( config ) );
@@ -77,14 +77,14 @@ INT_PTR CALLBACK HandlerMP3::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDCANCEL : 
-				case IDOK : {
+				case IDCANCEL:
+				case IDOK: {
 					ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
 						config->m_Handler->OnConfigureClose( hwnd, config->m_Settings );
@@ -92,20 +92,20 @@ INT_PTR CALLBACK HandlerMP3::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 					EndDialog( hwnd, IDOK == LOWORD( wParam ) );
 					return TRUE;
 				}
-				case IDC_ENCODER_MP3_DEFAULT : {
+				case IDC_ENCODER_MP3_DEFAULT: {
 					ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
 						config->m_Handler->OnConfigureDefault( hwnd, config->m_Settings );
 					}
 					break;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
 			break;
 		}
-		case WM_NOTIFY : {
+		case WM_NOTIFY: {
 			LPNMHDR nmhdr = reinterpret_cast<LPNMHDR>( lParam );
 			if ( ( nullptr != nmhdr ) && ( nmhdr->code == TTN_GETDISPINFO ) ) {
 				ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
@@ -113,12 +113,12 @@ INT_PTR CALLBACK HandlerMP3::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 					const HWND sliderWnd = reinterpret_cast<HWND>( nmhdr->idFrom );
 					const std::wstring tooltip = config->m_Handler->GetTooltip( config->m_hInst, sliderWnd );
 					LPNMTTDISPINFO info = reinterpret_cast<LPNMTTDISPINFO>( lParam );
-					wcscpy_s( info->szText, tooltip.c_str() );			
+					wcscpy_s( info->szText, tooltip.c_str() );
 				}
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}

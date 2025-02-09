@@ -23,7 +23,7 @@ static const UINT MSG_CONVERTERFINISHED = WM_APP + 90;
 INT_PTR CALLBACK Converter::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			Converter* converter = reinterpret_cast<Converter*>( lParam );
 			if ( nullptr != converter ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -32,33 +32,33 @@ INT_PTR CALLBACK Converter::DialogProc( HWND hwnd, UINT message, WPARAM wParam, 
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDCANCEL : {
+				case IDCANCEL: {
 					Converter* converter = reinterpret_cast<Converter*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != converter ) {
 						converter->Close();
 					}
 					return TRUE;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
 			break;
 		}
-		case WM_TIMER : {
+		case WM_TIMER: {
 			Converter* converter = reinterpret_cast<Converter*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( ( nullptr != converter ) && ( s_TimerID == wParam ) ) {
 				converter->UpdateStatus();
 			}
 			break;
 		}
-		case MSG_CONVERTERFINISHED : {
+		case MSG_CONVERTERFINISHED: {
 			Converter* converter = reinterpret_cast<Converter*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			if ( nullptr != converter ) {
 				const bool success = wParam;
@@ -70,7 +70,7 @@ INT_PTR CALLBACK Converter::DialogProc( HWND hwnd, UINT message, WPARAM wParam, 
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -142,7 +142,7 @@ void Converter::OnInitDialog( const HWND hwnd )
 	}
 
 	UpdateStatus();
-	
+
 	m_EncodeThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, EncodeThreadProc, this /*param*/, 0 /*flags*/, NULL /*threadId*/ );
 
 	SetTimer( m_hWnd, s_TimerID, s_TimerInterval, NULL /*timerProc*/ );
@@ -175,12 +175,12 @@ void Converter::Error()
 
 	const HWND progressTrack = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TRACK );
 	if ( nullptr != progressTrack ) {
-		SendMessage( progressTrack, PBM_SETPOS, m_ProgressRange, 0 );			
+		SendMessage( progressTrack, PBM_SETPOS, m_ProgressRange, 0 );
 	}
 
 	const HWND progressTotal = GetDlgItem( m_hWnd, IDC_EXTRACT_PROGRESS_TOTAL );
 	if ( nullptr != progressTotal ) {
-		SendMessage( progressTotal, PBM_SETPOS, m_ProgressRange, 0 );			
+		SendMessage( progressTotal, PBM_SETPOS, m_ProgressRange, 0 );
 	}
 
 	LoadString( m_hInst, IDS_CLOSE, buffer, bufferSize );
@@ -240,10 +240,10 @@ void Converter::EncodeHandler()
 			while ( conversionOK && !Cancelled() && ( m_Tracks.end() != track ) ) {
 				MediaInfo mediaInfo( track->Info );
 
-        // Ensure track information is up to date.
-        if ( m_Library.GetMediaInfo( mediaInfo ) ) {
-          track->Info = mediaInfo;
-        }
+				// Ensure track information is up to date.
+				if ( m_Library.GetMediaInfo( mediaInfo ) ) {
+					track->Info = mediaInfo;
+				}
 
 				m_ProgressTrack.store( 0 );
 				m_StatusTrack.store( ++currentTrack );
@@ -318,7 +318,7 @@ void Converter::EncodeHandler()
 								if ( extractToLibrary || m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/ ) ) {
 									MediaInfo extractedMediaInfo( filename );
 									m_Library.GetMediaInfo( extractedMediaInfo );
-								}			
+								}
 							}
 						}
 					}
@@ -378,14 +378,14 @@ void Converter::EncodeHandler()
 								MediaInfo info( encodedMedia.GetFilename() );
 								if ( extractToLibrary || m_Library.GetMediaInfo( info, false /*scanMedia*/ ) ) {
 									m_Library.GetMediaInfo( info );
-								}						
+								}
 							}
 						}
 					}
 				}
 			}
 		}
-		
+
 		for ( const auto& iter : r128States ) {
 			ebur128_state* state = iter;
 			ebur128_destroy( &state );
@@ -510,8 +510,8 @@ Decoder::Ptr Converter::OpenDecoder( const Playlist::Item& item ) const
 	if ( !decoder ) {
 		auto duplicate = item.Duplicates.begin();
 		while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
-      MediaInfo duplicateInfo( item.Info );
-      duplicateInfo.SetFilename( *duplicate );
+			MediaInfo duplicateInfo( item.Info );
+			duplicateInfo.SetFilename( *duplicate );
 			decoder = m_Handlers.OpenDecoder( duplicateInfo, Decoder::Context::Input );
 			++duplicate;
 		}

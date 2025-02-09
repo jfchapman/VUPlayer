@@ -6,7 +6,7 @@
 INT_PTR CALLBACK DlgHotkey::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			DlgHotkey* dialog = reinterpret_cast<DlgHotkey*>( lParam );
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -14,24 +14,24 @@ INT_PTR CALLBACK DlgHotkey::DialogProc( HWND hwnd, UINT message, WPARAM wParam, 
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDCANCEL : 
-				case IDOK : {
+				case IDCANCEL:
+				case IDOK: {
 					EndDialog( hwnd, 0 );
 					return TRUE;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -48,8 +48,8 @@ LRESULT CALLBACK DlgHotkey::ButtonProc( HWND hwnd, UINT message, WPARAM wParam, 
 					PostMessage( GetParent( hwnd ), WM_COMMAND, IDOK, 0 );
 				} else {
 					switch ( wParam ) {
-						case VK_ESCAPE :
-						case VK_RETURN : {
+						case VK_ESCAPE:
+						case VK_RETURN: {
 							PostMessage( GetParent( hwnd ), WM_COMMAND, IDCANCEL, 0 );
 							break;
 						}
@@ -57,14 +57,14 @@ LRESULT CALLBACK DlgHotkey::ButtonProc( HWND hwnd, UINT message, WPARAM wParam, 
 				}
 				break;
 			}
-			case WM_GETDLGCODE : {
+			case WM_GETDLGCODE: {
 				return DLGC_WANTALLKEYS;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( dialog->GetDefaultButtonProc() ) );
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}

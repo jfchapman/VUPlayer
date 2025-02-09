@@ -57,4 +57,3 @@ private:
 	// Default button window procedure.
 	WNDPROC m_DefaultButtonProc;
 };
-

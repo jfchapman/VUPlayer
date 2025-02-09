@@ -9,7 +9,7 @@
 INT_PTR CALLBACK DlgModBASS::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			DlgModBASS* dialog = reinterpret_cast<DlgModBASS*>( lParam );
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -18,23 +18,23 @@ INT_PTR CALLBACK DlgModBASS::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDOK : {
+				case IDOK: {
 					DlgModBASS* dialog = reinterpret_cast<DlgModBASS*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->SaveSettings( hwnd );
 					}
 				}
-				case IDCANCEL : {
+				case IDCANCEL: {
 					EndDialog( hwnd, 0 );
 					return TRUE;
 				}
-				default : {
+				default: {
 					DlgModBASS* dialog = reinterpret_cast<DlgModBASS*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnCommand( hwnd, wParam, lParam );
@@ -49,7 +49,7 @@ INT_PTR CALLBACK DlgModBASS::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 }
 
 DlgModBASS::DlgModBASS( const HINSTANCE instance, const HWND parent, Settings& settings ) :
-  m_hInst( instance ),
+	m_hInst( instance ),
 	m_Settings( settings ),
 	m_MODSettings( 0 ),
 	m_MTMSettings( 0 ),
@@ -73,7 +73,7 @@ void DlgModBASS::OnInitDialog( const HWND hwnd )
 	const int bufferSize = MAX_PATH;
 	WCHAR buffer[ bufferSize ];
 
-  // Stereo separation slider
+	// Stereo separation slider
 	SendMessage( GetDlgItem( hwnd, IDC_OPTIONS_MOD_PAN ), TBM_SETRANGEMIN, 0, 0 );
 	SendMessage( GetDlgItem( hwnd, IDC_OPTIONS_MOD_PAN ), TBM_SETRANGEMAX, 0, 100 );
 
@@ -114,7 +114,7 @@ void DlgModBASS::OnInitDialog( const HWND hwnd )
 	ComboBox_AddString( wndLooping, buffer );
 
 	Button_SetCheck( GetDlgItem( hwnd, IDC_OPTIONS_MOD_TYPEMOD ), BST_CHECKED );
-	UpdateControls( hwnd );  
+	UpdateControls( hwnd );
 }
 
 void DlgModBASS::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /*lParam*/ )
@@ -129,87 +129,87 @@ void DlgModBASS::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /
 			*m_CurrentSettings |= panning;
 		}
 		switch ( controlID ) {
-			case IDC_OPTIONS_MOD_TYPEMOD : {
+			case IDC_OPTIONS_MOD_TYPEMOD: {
 				m_CurrentSettings = &m_MODSettings;
 				break;
 			}
-			case IDC_OPTIONS_MOD_TYPEMTM : {
+			case IDC_OPTIONS_MOD_TYPEMTM: {
 				m_CurrentSettings = &m_MTMSettings;
 				break;
 			}
-			case IDC_OPTIONS_MOD_TYPES3M : {
+			case IDC_OPTIONS_MOD_TYPES3M: {
 				m_CurrentSettings = &m_S3MSettings;
 				break;
 			}
-			case IDC_OPTIONS_MOD_TYPEXM : {
+			case IDC_OPTIONS_MOD_TYPEXM: {
 				m_CurrentSettings = &m_XMSettings;
 				break;
 			}
-			case IDC_OPTIONS_MOD_RESET : {
+			case IDC_OPTIONS_MOD_RESET: {
 				m_Settings.GetDefaultMODSettings( m_MODSettings, m_MTMSettings, m_S3MSettings, m_XMSettings, m_ITSettings );
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
 		UpdateControls( hwnd );
 	} else if ( CBN_SELCHANGE == notificationCode ) {
 		switch ( controlID ) {
-			case IDC_OPTIONS_MOD_SURROUND : {
+			case IDC_OPTIONS_MOD_SURROUND: {
 				*m_CurrentSettings &= ~( BASS_MUSIC_SURROUND | BASS_MUSIC_SURROUND2 );
 				const int selected = ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_SURROUND ) );
 				switch ( selected ) {
-					case 1 : {
+					case 1: {
 						*m_CurrentSettings |= BASS_MUSIC_SURROUND;
 						break;
 					}
-					case 2 : {
+					case 2: {
 						*m_CurrentSettings |= BASS_MUSIC_SURROUND2;
 						break;
 					}
 				}
 				break;
 			}
-			case IDC_OPTIONS_MOD_RAMPING : {
+			case IDC_OPTIONS_MOD_RAMPING: {
 				*m_CurrentSettings &= ~( BASS_MUSIC_RAMP | BASS_MUSIC_RAMPS );
 				const int selected = ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_RAMPING ) );
 				switch ( selected ) {
-					case 1 : {
+					case 1: {
 						*m_CurrentSettings |= BASS_MUSIC_RAMP;
 						break;
 					}
-					case 2 : {
+					case 2: {
 						*m_CurrentSettings |= BASS_MUSIC_RAMPS;
 						break;
 					}
 				}
 				break;
 			}
-			case IDC_OPTIONS_MOD_INTERPOLATION : {
+			case IDC_OPTIONS_MOD_INTERPOLATION: {
 				*m_CurrentSettings &= ~( BASS_MUSIC_NONINTER | BASS_MUSIC_SINCINTER );
 				const int selected = ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_INTERPOLATION ) );
 				switch ( selected ) {
-					case 0 : {
+					case 0: {
 						*m_CurrentSettings |= BASS_MUSIC_NONINTER;
 						break;
 					}
-					case 2 : {
+					case 2: {
 						*m_CurrentSettings |= BASS_MUSIC_SINCINTER;
 						break;
 					}
 				}
 				break;
 			}
-			case IDC_OPTIONS_MOD_LOOPING : {
+			case IDC_OPTIONS_MOD_LOOPING: {
 				*m_CurrentSettings &= ~( BASS_MUSIC_STOPBACK | VUPLAYER_MUSIC_FADEOUT );
 				const int selected = ComboBox_GetCurSel( GetDlgItem( hwnd, IDC_OPTIONS_MOD_LOOPING ) );
 				switch ( selected ) {
-					case 0 : {
+					case 0: {
 						*m_CurrentSettings |= BASS_MUSIC_STOPBACK;
 						break;
 					}
-					case 2 : {
+					case 2: {
 						*m_CurrentSettings |= VUPLAYER_MUSIC_FADEOUT;
 						break;
 					}

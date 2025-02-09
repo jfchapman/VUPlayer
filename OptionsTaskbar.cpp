@@ -18,10 +18,10 @@ void OptionsTaskbar::OnInit( const HWND hwnd )
 	// Notification area settings
 	bool systrayEnable = false;
 	bool systrayMinimise = false;
-	std::array clickActions { 
-		Settings::SystrayCommand::None, 
-		Settings::SystrayCommand::None, 
-		Settings::SystrayCommand::None, 
+	std::array clickActions{
+		Settings::SystrayCommand::None,
+		Settings::SystrayCommand::None,
+		Settings::SystrayCommand::None,
 		Settings::SystrayCommand::None
 	};
 	GetSettings().GetSystraySettings( systrayEnable, systrayMinimise, clickActions[ 0 ], clickActions[ 1 ], clickActions[ 2 ], clickActions[ 3 ] );
@@ -32,7 +32,7 @@ void OptionsTaskbar::OnInit( const HWND hwnd )
 		Button_SetCheck( hwndMinimise, ( systrayMinimise ? BST_CHECKED : BST_UNCHECKED ) );
 	}
 
-	std::array clickIDs {
+	std::array clickIDs{
 		std::make_pair( IDC_OPTIONS_SYSTRAY_SINGLECLICK, clickActions[ 0 ] ),
 		std::make_pair( IDC_OPTIONS_SYSTRAY_DOUBLECLICK, clickActions[ 1 ] ),
 		std::make_pair( IDC_OPTIONS_SYSTRAY_TRIPLECLICK, clickActions[ 2 ] ),
@@ -41,7 +41,7 @@ void OptionsTaskbar::OnInit( const HWND hwnd )
 	const int bufferSize = MAX_PATH;
 	WCHAR buffer[ bufferSize ];
 	const HINSTANCE instance = GetInstanceHandle();
-	for ( const auto [ clickID, clickAction ] : clickIDs ) {
+	for ( const auto [clickID, clickAction] : clickIDs ) {
 		if ( const auto hwndClick = GetDlgItem( hwnd, clickID ); nullptr != hwndClick ) {
 			LoadString( instance, IDS_OPTIONS_SYSTRAY_NOACTION, buffer, bufferSize );
 			ComboBox_AddString( hwndClick, buffer );
@@ -56,7 +56,7 @@ void OptionsTaskbar::OnInit( const HWND hwnd )
 			LoadString( instance, IDS_OPTIONS_SYSTRAY_SHOWHIDE, buffer, bufferSize );
 			ComboBox_AddString( hwndClick, buffer );
 			ComboBox_SetCurSel( hwndClick, static_cast<int>( clickAction ) );
-		}	
+		}
 	}
 	EnableSystrayControls( hwnd );
 
@@ -97,11 +97,11 @@ void OptionsTaskbar::OnCommand( const HWND hwnd, const WPARAM wParam, const LPAR
 	if ( BN_CLICKED == notificationCode ) {
 		const WORD controlID = LOWORD( wParam );
 		switch ( controlID ) {
-			case IDC_OPTIONS_SYSTRAY_ENABLE : {
+			case IDC_OPTIONS_SYSTRAY_ENABLE: {
 				EnableSystrayControls( hwnd );
 				break;
 			}
-			case IDC_OPTIONS_TASKBAR_BUTTONCOLOUR : {
+			case IDC_OPTIONS_TASKBAR_BUTTONCOLOUR: {
 				VUPlayer* vuplayer = VUPlayer::Get();
 				COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
 				if ( const auto colour = ChooseColour( hwnd, m_ToolbarButtonColour, customColours ); colour.has_value() ) {

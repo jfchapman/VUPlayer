@@ -22,53 +22,53 @@ std::set<Hotkeys::ID> Hotkeys::s_Hotkeys = {
 	ID::BalanceLeft,
 	ID::BalanceRight,
 	ID::ResetBalance,
-  ID::FollowTrackSelection
+	ID::FollowTrackSelection
 };
 
 // Hotkey commands.
-std::map<Hotkeys::ID,WPARAM> Hotkeys::s_CommandMap = {
-	{ ID::Play,						      ID_CONTROL_PLAY },
-	{ ID::Stop,						      ID_CONTROL_STOP },
-	{ ID::Previous,				      ID_CONTROL_PREVIOUSTRACK },
-	{ ID::Next,						      ID_CONTROL_NEXTTRACK },
-	{ ID::SkipBackwards,	      ID_CONTROL_SKIPBACKWARDS },
-	{ ID::SkipForwards,		      ID_CONTROL_SKIPFORWARDS },
-	{ ID::StopAtTrackEnd,	      ID_CONTROL_STOPTRACKEND },
-	{ ID::FadeOut,				      ID_CONTROL_FADEOUT },
-	{ ID::FadeToNext,			      ID_CONTROL_FADETONEXT },
-	{ ID::MuteVolume,			      ID_CONTROL_MUTE },
-	{ ID::DecreaseVolume,	      ID_CONTROL_VOLUMEDOWN },
-	{ ID::IncreaseVolume,	      ID_CONTROL_VOLUMEUP },
-	{ ID::DecreasePitch,	      ID_CONTROL_PITCHDOWN },
-	{ ID::IncreasePitch,	      ID_CONTROL_PITCHUP },
-	{ ID::ResetPitch,           ID_CONTROL_PITCHRESET },
-	{ ID::BalanceLeft,	        ID_CONTROL_BALANCELEFT },
-	{ ID::BalanceRight,	        ID_CONTROL_BALANCERIGHT },
-	{ ID::ResetBalance,         ID_CONTROL_BALANCERESET },
-  { ID::FollowTrackSelection, ID_CONTROL_FOLLOWSELECTION }
+std::map<Hotkeys::ID, WPARAM> Hotkeys::s_CommandMap = {
+	{ ID::Play,                   ID_CONTROL_PLAY },
+	{ ID::Stop,                   ID_CONTROL_STOP },
+	{ ID::Previous,               ID_CONTROL_PREVIOUSTRACK },
+	{ ID::Next,                   ID_CONTROL_NEXTTRACK },
+	{ ID::SkipBackwards,          ID_CONTROL_SKIPBACKWARDS },
+	{ ID::SkipForwards,           ID_CONTROL_SKIPFORWARDS },
+	{ ID::StopAtTrackEnd,         ID_CONTROL_STOPTRACKEND },
+	{ ID::FadeOut,                ID_CONTROL_FADEOUT },
+	{ ID::FadeToNext,             ID_CONTROL_FADETONEXT },
+	{ ID::MuteVolume,             ID_CONTROL_MUTE },
+	{ ID::DecreaseVolume,         ID_CONTROL_VOLUMEDOWN },
+	{ ID::IncreaseVolume,         ID_CONTROL_VOLUMEUP },
+	{ ID::DecreasePitch,          ID_CONTROL_PITCHDOWN },
+	{ ID::IncreasePitch,          ID_CONTROL_PITCHUP },
+	{ ID::ResetPitch,             ID_CONTROL_PITCHRESET },
+	{ ID::BalanceLeft,            ID_CONTROL_BALANCELEFT },
+	{ ID::BalanceRight,           ID_CONTROL_BALANCERIGHT },
+	{ ID::ResetBalance,           ID_CONTROL_BALANCERESET },
+	{ ID::FollowTrackSelection,   ID_CONTROL_FOLLOWSELECTION }
 };
 
 // Hotkey descriptions.
-std::map<Hotkeys::ID,UINT> Hotkeys::s_DescriptionMap = {
-	{ ID::Play,						      IDS_HOTKEY_PLAY },
-	{ ID::Stop,						      IDS_HOTKEY_STOP },
-	{ ID::Previous,				      IDS_HOTKEY_PREVIOUS },
-	{ ID::Next,						      IDS_HOTKEY_NEXT },
-	{ ID::SkipBackwards,	      IDS_HOTKEY_SKIPBACKWARDS },
-	{ ID::SkipForwards,		      IDS_HOTKEY_SKIPFORWARDS },
-	{ ID::StopAtTrackEnd,	      IDS_HOTKEY_STOPATEND },
-	{ ID::FadeOut,				      IDS_HOTKEY_FADEOUT },
-	{ ID::FadeToNext,			      IDS_HOTKEY_FADETONEXT },
-	{ ID::MuteVolume,			      IDS_HOTKEY_MUTE },
-	{ ID::DecreaseVolume,	      IDS_HOTKEY_VOLUMEDOWN },
-	{ ID::IncreaseVolume,	      IDS_HOTKEY_VOLUMEUP },
-	{ ID::DecreasePitch,	      IDS_HOTKEY_PITCHDOWN },
-	{ ID::IncreasePitch,	      IDS_HOTKEY_PITCHUP },
-	{ ID::ResetPitch,           IDS_HOTKEY_PITCHRESET },
-	{ ID::BalanceLeft,	        IDS_HOTKEY_BALANCELEFT },
-	{ ID::BalanceRight,	        IDS_HOTKEY_BALANCERIGHT },
-	{ ID::ResetBalance,         IDS_HOTKEY_BALANCERESET },
-  { ID::FollowTrackSelection, IDS_HOTKEY_FOLLOWSELECTION }
+std::map<Hotkeys::ID, UINT> Hotkeys::s_DescriptionMap = {
+	{ ID::Play,                   IDS_HOTKEY_PLAY },
+	{ ID::Stop,                   IDS_HOTKEY_STOP },
+	{ ID::Previous,               IDS_HOTKEY_PREVIOUS },
+	{ ID::Next,                   IDS_HOTKEY_NEXT },
+	{ ID::SkipBackwards,          IDS_HOTKEY_SKIPBACKWARDS },
+	{ ID::SkipForwards,           IDS_HOTKEY_SKIPFORWARDS },
+	{ ID::StopAtTrackEnd,         IDS_HOTKEY_STOPATEND },
+	{ ID::FadeOut,                IDS_HOTKEY_FADEOUT },
+	{ ID::FadeToNext,             IDS_HOTKEY_FADETONEXT },
+	{ ID::MuteVolume,             IDS_HOTKEY_MUTE },
+	{ ID::DecreaseVolume,         IDS_HOTKEY_VOLUMEDOWN },
+	{ ID::IncreaseVolume,         IDS_HOTKEY_VOLUMEUP },
+	{ ID::DecreasePitch,          IDS_HOTKEY_PITCHDOWN },
+	{ ID::IncreasePitch,          IDS_HOTKEY_PITCHUP },
+	{ ID::ResetPitch,             IDS_HOTKEY_PITCHRESET },
+	{ ID::BalanceLeft,            IDS_HOTKEY_BALANCELEFT },
+	{ ID::BalanceRight,           IDS_HOTKEY_BALANCERIGHT },
+	{ ID::ResetBalance,           IDS_HOTKEY_BALANCERESET },
+	{ ID::FollowTrackSelection,   IDS_HOTKEY_FOLLOWSELECTION }
 };
 
 Hotkeys::Hotkeys( const HWND wnd, Settings& settings ) :

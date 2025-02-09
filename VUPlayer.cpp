@@ -57,7 +57,7 @@ VUPlayer* VUPlayer::Get()
 }
 
 VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<std::wstring>& startupFilenames,
-		const bool portable, const Database::Mode databaseMode ) :
+	const bool portable, const Database::Mode databaseMode ) :
 	m_hInst( instance ),
 	m_hWnd( hwnd ),
 	m_hAccel( LoadAccelerators( m_hInst, MAKEINTRESOURCE( IDC_VUPLAYER ) ) ),
@@ -91,7 +91,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_ToolbarConvert( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
 	m_ToolbarTrackEnd( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
 	m_ToolbarVolume( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
-  m_ToolbarLoudness( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
+	m_ToolbarLoudness( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
 	m_Counter( m_hInst, m_Rebar.GetWindowHandle(), m_Settings, m_Output ),
 	m_Splitter( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Tree.GetWindowHandle(), m_Visual.GetWindowHandle(), m_List.GetWindowHandle(), m_Settings ),
 	m_Tray( m_hInst, m_hWnd, m_Library, m_Settings, m_Output, m_Tree, m_List ),
@@ -110,7 +110,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_IsFirstTimeStartup( true ),
 	m_IsEditingLabel( false ),
 	m_IsConverting( false ),
-  m_TitleBarFormat( m_Settings.GetTitleBarFormat() )
+	m_TitleBarFormat( m_Settings.GetTitleBarFormat() )
 {
 	s_VUPlayer = this;
 
@@ -123,28 +123,28 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	}
 
 	m_Output.SetPlaylistChangeCallback( [ this ] ( Playlist::Ptr playlist )
-  {
-    const WPARAM playlistID = reinterpret_cast<WPARAM>( playlist.get() );
-    const LPARAM playlistType = static_cast<LPARAM>( playlist ? playlist->GetType() : Playlist::Type::_Undefined );
-    PostMessage( m_Tree.GetWindowHandle(), MSG_OUTPUTPLAYLISTCHANGED, playlistID, playlistType );
-  } );
-  m_Output.SetSelectFollowedTrackCallback( [ this ] ( const long itemID )
-  {
-    PostMessage( m_List.GetWindowHandle(), MSG_SELECTPLAYLISTITEM, itemID, 0 );
-  } );
+		{
+			const WPARAM playlistID = reinterpret_cast<WPARAM>( playlist.get() );
+			const LPARAM playlistType = static_cast<LPARAM>( playlist ? playlist->GetType() : Playlist::Type::_Undefined );
+			PostMessage( m_Tree.GetWindowHandle(), MSG_OUTPUTPLAYLISTCHANGED, playlistID, playlistType );
+		} );
+	m_Output.SetSelectFollowedTrackCallback( [ this ] ( const long itemID )
+		{
+			PostMessage( m_List.GetWindowHandle(), MSG_SELECTPLAYLISTITEM, itemID, 0 );
+		} );
 
 	m_Tree.Initialise();
 
 	if ( OnCommandLineFiles( startupFilenames ) ) {
 		m_List.SetPlaylist( m_Tree.GetSelectedPlaylist() );
 	} else {
-		const auto& [ initialFilename, cueStart, cueEnd ] = m_Settings.GetStartupFile();
-    MediaInfo startupInfo( initialFilename );
-    startupInfo.SetCueStart( cueStart );
-    startupInfo.SetCueEnd( cueEnd );
+		const auto& [initialFilename, cueStart, cueEnd] = m_Settings.GetStartupFile();
+		MediaInfo startupInfo( initialFilename );
+		startupInfo.SetCueStart( cueStart );
+		startupInfo.SetCueEnd( cueEnd );
 		m_List.SetPlaylist( m_Tree.GetSelectedPlaylist(), false, startupInfo );
 	}
-  m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
+	m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
 
 	m_Status.SetPlaylist( m_List.GetPlaylist() );
 
@@ -257,7 +257,7 @@ std::filesystem::path VUPlayer::DocumentsFolder()
 		folder = path;
 		CoTaskMemFree( path );
 		folder /= L"VUPlayer";
-		CreateDirectory( folder.c_str(), NULL /*attributes*/ ); 
+		CreateDirectory( folder.c_str(), NULL /*attributes*/ );
 	}
 	return folder;
 }
@@ -300,37 +300,37 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 	LPNMHDR nmhdr = reinterpret_cast<LPNMHDR>( lParam );
 	if ( nullptr != nmhdr ) {
 		switch ( nmhdr->code ) {
-			case TVN_BEGINLABELEDIT : {
+			case TVN_BEGINLABELEDIT: {
 				result = m_Tree.OnBeginLabelEdit( wParam, lParam );
 				m_IsEditingLabel = !result;
 				m_IsTreeLabelEdit = true;
 				handled = true;
 				break;
 			}
-			case TVN_ENDLABELEDIT : {
+			case TVN_ENDLABELEDIT: {
 				result = m_Tree.OnEndLabelEdit( wParam, lParam );
 				m_IsEditingLabel = false;
 				m_IsTreeLabelEdit = false;
 				break;
 			}
-			case TVN_SELCHANGED : {
+			case TVN_SELCHANGED: {
 				LPNMTREEVIEW nmTreeView = reinterpret_cast<LPNMTREEVIEW>( lParam );
 				if ( ( nullptr != nmTreeView ) && ( nullptr != nmTreeView->itemNew.hItem ) ) {
 					Playlist::Ptr playlist = m_Tree.GetPlaylist( nmTreeView->itemNew.hItem );
 					m_List.SetPlaylist( playlist );
 					m_Status.SetPlaylist( playlist );
-          m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
+					m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
 				}
 				break;
 			}
-			case TVN_ITEMEXPANDING : {
+			case TVN_ITEMEXPANDING: {
 				LPNMTREEVIEW nmTreeView = reinterpret_cast<LPNMTREEVIEW>( lParam );
 				if ( ( nullptr != nmTreeView ) && ( nullptr != nmTreeView->itemNew.hItem ) && ( TVE_EXPAND == nmTreeView->action ) ) {
 					m_Tree.OnItemExpanding( nmTreeView->itemNew.hItem );
 				}
 				break;
 			}
-			case NM_RCLICK : {
+			case NM_RCLICK: {
 				if ( m_Tree.GetWindowHandle() == nmhdr->hwndFrom ) {
 					POINT pt = {};
 					GetCursorPos( &pt );
@@ -338,7 +338,7 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				}
 				break;
 			}
-			case HDN_ITEMCLICK : {
+			case HDN_ITEMCLICK: {
 				LPNMHEADER hdr = reinterpret_cast<LPNMHEADER>( lParam );
 				if ( nullptr != hdr ) {
 					HDITEM headerItem = {};
@@ -350,17 +350,17 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				}
 				break;
 			}
-			case NM_CUSTOMDRAW : {		
+			case NM_CUSTOMDRAW: {
 				if ( LPNMHDR hdr = reinterpret_cast<LPNMHDR>( lParam ); ( nullptr != hdr ) && !m_IsHighContrast ) {
 					if ( hdr->hwndFrom == m_List.GetWindowHandle() ) {
 						LPNMLVCUSTOMDRAW nmlvcd = reinterpret_cast<LPNMLVCUSTOMDRAW>( lParam );
 						handled = true;
 						switch ( nmlvcd->nmcd.dwDrawStage ) {
-							case CDDS_PREPAINT : {
+							case CDDS_PREPAINT: {
 								result = CDRF_NOTIFYITEMDRAW;
 								break;
 							}
-							case CDDS_ITEMPREPAINT : {
+							case CDDS_ITEMPREPAINT: {
 								const COLORREF backColour = ListView_GetBkColor( hdr->hwndFrom );
 								const COLORREF highlightColour = m_List.GetHighlightColour();
 								const bool selected = ( LVIS_SELECTED == ListView_GetItemState( hdr->hwndFrom, nmlvcd->nmcd.dwItemSpec, LVIS_SELECTED ) );
@@ -383,7 +383,7 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 								result = CDRF_DODEFAULT;
 								break;
 							}
-							default : {
+							default: {
 								result = CDRF_DODEFAULT;
 								break;
 							}
@@ -392,11 +392,11 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 						LPNMTVCUSTOMDRAW nmtvcd = reinterpret_cast<LPNMTVCUSTOMDRAW>( lParam );
 						handled = true;
 						switch ( nmtvcd->nmcd.dwDrawStage ) {
-							case CDDS_PREPAINT : {
+							case CDDS_PREPAINT: {
 								result = CDRF_NOTIFYITEMDRAW;
 								break;
 							}
-							case CDDS_ITEMPREPAINT : {
+							case CDDS_ITEMPREPAINT: {
 								const COLORREF backColour = TreeView_GetBkColor( hdr->hwndFrom );
 								const COLORREF highlightColour = m_Tree.GetHighlightColour();
 								const HTREEITEM treeItem = reinterpret_cast<HTREEITEM>( nmtvcd->nmcd.dwItemSpec );
@@ -417,7 +417,7 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 								result = CDRF_DODEFAULT;
 								break;
 							}
-							default : {
+							default: {
 								result = CDRF_DODEFAULT;
 								break;
 							}
@@ -426,7 +426,7 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				}
 				break;
 			}
-			case LVN_BEGINLABELEDIT : {
+			case LVN_BEGINLABELEDIT: {
 				LPNMHDR hdr = reinterpret_cast<LPNMHDR>( lParam );
 				if ( ( nullptr != hdr ) && ( hdr->hwndFrom == m_List.GetWindowHandle() ) ) {
 					NMLVDISPINFO* dispInfo = reinterpret_cast<NMLVDISPINFO*>( lParam );
@@ -436,7 +436,7 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				}
 				break;
 			}
-			case LVN_ENDLABELEDIT : {
+			case LVN_ENDLABELEDIT: {
 				LPNMHDR hdr = reinterpret_cast<LPNMHDR>( lParam );
 				if ( ( nullptr != hdr ) && ( hdr->hwndFrom == m_List.GetWindowHandle() ) ) {
 					NMLVDISPINFO* dispInfo = reinterpret_cast<NMLVDISPINFO*>( lParam );
@@ -447,29 +447,29 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				}
 				break;
 			}
-			case LVN_BEGINDRAG : {
+			case LVN_BEGINDRAG: {
 				LPNMLISTVIEW nmListView = reinterpret_cast<LPNMLISTVIEW>( lParam );
 				if ( nullptr != nmListView ) {
 					m_List.OnBeginDrag( nmListView->iItem );
 				}
 				break;
 			}
-			case LVN_ITEMCHANGED : {
+			case LVN_ITEMCHANGED: {
 				LPNMLISTVIEW nmListView = reinterpret_cast<LPNMLISTVIEW>( lParam );
 				if ( nullptr != nmListView ) {
 					if ( nmListView->uNewState & LVIS_FOCUSED ) {
 						OnListSelectionChanged();
 					} else if ( ( -1 == nmListView->iItem ) && ( 0 == nmListView->uNewState ) ) {
-            m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
-          }
+						m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
+					}
 				}
-				break;				
+				break;
 			}
-      case LVN_ODSTATECHANGED : {
+			case LVN_ODSTATECHANGED: {
 				OnListSelectionChanged();
-        break;
-      }
-			case LVN_DELETEITEM : {
+				break;
+			}
+			case LVN_DELETEITEM: {
 				const int itemCount = m_List.GetCount();
 				if ( 1 == itemCount ) {
 					// Last item is being deleted.
@@ -477,21 +477,21 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				}
 				break;
 			}
-      case LVN_GETDISPINFO : {
+			case LVN_GETDISPINFO: {
 				if ( NMLVDISPINFO* dispInfo = reinterpret_cast<NMLVDISPINFO*>( lParam ); nullptr != dispInfo ) {
-          m_List.OnDisplayInfo( dispInfo->item );
-        }
-        break;
-      }
-      case LVN_ODFINDITEM : {
-        handled = true;
-        result = -1;
-        if ( NMLVFINDITEM* findItem = reinterpret_cast<NMLVFINDITEM*>( lParam ); nullptr != findItem ) {
-          result = m_List.OnFindItem( findItem->lvfi, findItem->iStart );
-        }
-        break;
-      }
-			case HDN_BEGINTRACK : {
+					m_List.OnDisplayInfo( dispInfo->item );
+				}
+				break;
+			}
+			case LVN_ODFINDITEM: {
+				handled = true;
+				result = -1;
+				if ( NMLVFINDITEM* findItem = reinterpret_cast<NMLVFINDITEM*>( lParam ); nullptr != findItem ) {
+					result = m_List.OnFindItem( findItem->lvfi, findItem->iStart );
+				}
+				break;
+			}
+			case HDN_BEGINTRACK: {
 				LPNMHEADER hdr = reinterpret_cast<LPNMHEADER>( lParam );
 				if ( ( nullptr != hdr ) && ( 0 == hdr->iItem ) ) {
 					// Prevent tracking of dummy column.
@@ -500,14 +500,14 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 				}
 				break;
 			}
-			case HDN_ENDDRAG : {
+			case HDN_ENDDRAG: {
 				LPNMHEADER hdr = reinterpret_cast<LPNMHEADER>( lParam );
 				if ( nullptr != hdr ) {
 					m_List.OnEndDragColumn();
 				}
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -533,7 +533,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 
 		const Playlist::Ptr currentPlaylist = m_List.GetPlaylist();
 		const Playlist::Item currentSelectedPlaylistItem = m_List.GetCurrentSelectedItem();
-		
+
 		if ( 0 == currentPlaying.PlaylistItem.ID ) {
 			const Playlist::Item currentSelectedOutputItem = m_Output.GetCurrentSelectedPlaylistItem();
 			if ( currentSelectedPlaylistItem.ID != currentSelectedOutputItem.ID ) {
@@ -552,7 +552,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		m_ToolbarOptions.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarInfo.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarCrossfade.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
-    m_ToolbarLoudness.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
+		m_ToolbarLoudness.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarFlow.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarPlayback.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
 		m_ToolbarTrackEnd.Update( m_Output, currentPlaylist, currentSelectedPlaylistItem );
@@ -646,63 +646,63 @@ void VUPlayer::OnDestroy()
 void VUPlayer::OnCommand( const int commandID )
 {
 	switch ( commandID ) {
-		case ID_VISUAL_VUMETER_STEREO :
-		case ID_VISUAL_VUMETER_MONO :
-		case ID_VISUAL_OSCILLOSCOPE :
-		case ID_VISUAL_SPECTRUMANALYSER :
-		case ID_VISUAL_ARTWORK :
-		case ID_VISUAL_PEAKMETER :
-		case ID_VISUAL_NONE : {
+		case ID_VISUAL_VUMETER_STEREO:
+		case ID_VISUAL_VUMETER_MONO:
+		case ID_VISUAL_OSCILLOSCOPE:
+		case ID_VISUAL_SPECTRUMANALYSER:
+		case ID_VISUAL_ARTWORK:
+		case ID_VISUAL_PEAKMETER:
+		case ID_VISUAL_NONE: {
 			m_Visual.SelectVisual( commandID );
 			m_Splitter.Resize();
 			break;
 		}
-		case ID_OSCILLOSCOPE_COLOUR : {
+		case ID_OSCILLOSCOPE_COLOUR: {
 			m_Visual.OnOscilloscopeColour();
 			break;
 		}
-		case ID_OSCILLOSCOPE_BACKGROUNDCOLOUR : {
+		case ID_OSCILLOSCOPE_BACKGROUNDCOLOUR: {
 			m_Visual.OnOscilloscopeBackground();
 			break;
 		}
-		case ID_OSCILLOSCOPE_WEIGHT_FINE : 
-		case ID_OSCILLOSCOPE_WEIGHT_NORMAL :
-		case ID_OSCILLOSCOPE_WEIGHT_BOLD : {
+		case ID_OSCILLOSCOPE_WEIGHT_FINE:
+		case ID_OSCILLOSCOPE_WEIGHT_NORMAL:
+		case ID_OSCILLOSCOPE_WEIGHT_BOLD: {
 			m_Visual.OnOscilloscopeWeight( commandID );
 			break;
 		}
-		case ID_SPECTRUMANALYSER_BASECOLOUR :
-		case ID_SPECTRUMANALYSER_PEAKCOLOUR : 
-		case ID_SPECTRUMANALYSER_BACKGROUNDCOLOUR : {
+		case ID_SPECTRUMANALYSER_BASECOLOUR:
+		case ID_SPECTRUMANALYSER_PEAKCOLOUR:
+		case ID_SPECTRUMANALYSER_BACKGROUNDCOLOUR: {
 			m_Visual.OnSpectrumAnalyserColour( commandID );
 			break;
 		}
-		case ID_PEAKMETER_BASECOLOUR :
-		case ID_PEAKMETER_PEAKCOLOUR :
-		case ID_PEAKMETER_BACKGROUNDCOLOUR : {
+		case ID_PEAKMETER_BASECOLOUR:
+		case ID_PEAKMETER_PEAKCOLOUR:
+		case ID_PEAKMETER_BACKGROUNDCOLOUR: {
 			m_Visual.OnPeakMeterColour( commandID );
 			break;
 		}
-		case ID_VUMETER_SLOWDECAY :
-		case ID_VUMETER_NORMALDECAY :
-		case ID_VUMETER_FASTDECAY : {
+		case ID_VUMETER_SLOWDECAY:
+		case ID_VUMETER_NORMALDECAY:
+		case ID_VUMETER_FASTDECAY: {
 			m_Visual.OnVUMeterDecay( commandID );
 			break;
 		}
-		case ID_VISUAL_HARDWAREACCELERATION : {
+		case ID_VISUAL_HARDWAREACCELERATION: {
 			m_Visual.ToggleHardwareAccelerationEnabled();
 			break;
 		}
-		case ID_CONTROL_PLAY :
-		case ID_TRAY_PLAY : {
+		case ID_CONTROL_PLAY:
+		case ID_TRAY_PLAY: {
 			const Output::State state = m_Output.GetState();
 			switch ( state ) {
-				case Output::State::Paused :
-				case Output::State::Playing : {
+				case Output::State::Paused:
+				case Output::State::Playing: {
 					m_Output.Pause();
 					break;
 				}
-				default : {
+				default: {
 					const Playlist::Ptr playlist = m_List.GetPlaylist();
 					if ( playlist ) {
 						Playlist::Item item = m_List.GetCurrentSelectedItem();
@@ -723,68 +723,68 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_CONTROL_STOP : {
+		case ID_CONTROL_STOP: {
 			m_Output.Stop();
 			if ( m_Output.GetStopAtTrackEnd() && !m_Settings.GetRetainStopAtTrackEnd() ) {
 				m_Output.ToggleStopAtTrackEnd();
 			}
 			break;
 		}
-		case ID_CONTROL_PREVIOUSTRACK : {
+		case ID_CONTROL_PREVIOUSTRACK: {
 			const Output::State state = m_Output.GetState();
 			switch ( state ) {
-				case Output::State::Paused :
-				case Output::State::Playing : {
+				case Output::State::Paused:
+				case Output::State::Playing: {
 					m_Output.Previous();
 					const Playlist::Item item = m_Output.GetCurrentPlaying().PlaylistItem;
 					m_List.EnsureVisible( item );
 					break;
 				}
-				default : {
+				default: {
 					m_List.SelectPreviousItem();
 					break;
 				}
 			}
 			break;
 		}
-		case ID_CONTROL_NEXTTRACK : {
+		case ID_CONTROL_NEXTTRACK: {
 			const Output::State state = m_Output.GetState();
 			switch ( state ) {
-				case Output::State::Paused :
-				case Output::State::Playing : {
+				case Output::State::Paused:
+				case Output::State::Playing: {
 					m_Output.Next();
 					const Playlist::Item item = m_Output.GetCurrentPlaying().PlaylistItem;
 					m_List.EnsureVisible( item );
 					break;
 				}
-				default : {
+				default: {
 					m_List.SelectNextItem();
 					break;
 				}
 			}
 			break;
 		}
-    case ID_CONTROL_FOLLOWSELECTION : {
-      m_Output.ToggleFollowTrackSelection();
-      break;
-    }
-		case ID_CONTROL_STOPTRACKEND : {
+		case ID_CONTROL_FOLLOWSELECTION: {
+			m_Output.ToggleFollowTrackSelection();
+			break;
+		}
+		case ID_CONTROL_STOPTRACKEND: {
 			m_Output.ToggleStopAtTrackEnd();
 			break;
 		}
-		case ID_CONTROL_FADEOUT : {
+		case ID_CONTROL_FADEOUT: {
 			m_Output.ToggleFadeOut();
 			break;
 		}
-		case ID_CONTROL_FADETONEXT : {
+		case ID_CONTROL_FADETONEXT: {
 			m_Output.ToggleFadeToNext();
 			break;
 		}
-		case ID_CONTROL_MUTE : {
+		case ID_CONTROL_MUTE: {
 			m_Output.ToggleMuted();
 			break;
 		}
-		case ID_CONTROL_VOLUMEDOWN : {
+		case ID_CONTROL_VOLUMEDOWN: {
 			float volume = m_Output.GetVolume() - 0.01f;
 			if ( volume < 0.0f ) {
 				volume = 0.0f;
@@ -793,7 +793,7 @@ void VUPlayer::OnCommand( const int commandID )
 			m_VolumeControl.Update();
 			break;
 		}
-		case ID_CONTROL_VOLUMEUP : {
+		case ID_CONTROL_VOLUMEUP: {
 			float volume = m_Output.GetVolume() + 0.01f;
 			if ( volume > 1.0f ) {
 				volume = 1.0f;
@@ -802,22 +802,22 @@ void VUPlayer::OnCommand( const int commandID )
 			m_VolumeControl.Update();
 			break;
 		}
-		case ID_VOLUME_100 :
-		case ID_VOLUME_90 :
-		case ID_VOLUME_80 :
-		case ID_VOLUME_70 :
-		case ID_VOLUME_60 :
-		case ID_VOLUME_50 :
-		case ID_VOLUME_40 :
-		case ID_VOLUME_30 :
-		case ID_VOLUME_20 :
-		case ID_VOLUME_10 :
-		case ID_VOLUME_0 : {
+		case ID_VOLUME_100:
+		case ID_VOLUME_90:
+		case ID_VOLUME_80:
+		case ID_VOLUME_70:
+		case ID_VOLUME_60:
+		case ID_VOLUME_50:
+		case ID_VOLUME_40:
+		case ID_VOLUME_30:
+		case ID_VOLUME_20:
+		case ID_VOLUME_10:
+		case ID_VOLUME_0: {
 			m_Output.SetVolume( m_Tray.GetMenuVolume( commandID ) );
 			m_VolumeControl.Update();
 			break;
 		}
-		case ID_CONTROL_SKIPBACKWARDS : {
+		case ID_CONTROL_SKIPBACKWARDS: {
 			if ( AllowSkip() ) {
 				const Output::State state = m_Output.GetState();
 				if ( ( Output::State::Playing == state ) || ( Output::State::Paused == state ) ) {
@@ -833,7 +833,7 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_CONTROL_SKIPFORWARDS : {
+		case ID_CONTROL_SKIPFORWARDS: {
 			if ( AllowSkip() ) {
 				const Output::State state = m_Output.GetState();
 				if ( ( Output::State::Playing == state ) || ( Output::State::Paused == state ) ) {
@@ -849,8 +849,8 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_CONTROL_PITCHDOWN : 
-		case ID_CONTROL_PITCHUP : {
+		case ID_CONTROL_PITCHDOWN:
+		case ID_CONTROL_PITCHUP: {
 			const float pitchRange = m_Settings.GetPitchRangeOptions()[ m_Settings.GetPitchRange() ];
 			if ( pitchRange > 0 ) {
 				const float pitchAdjustment = pitchRange * ( ( ID_CONTROL_PITCHDOWN == commandID ) ? -1 : 1 ) / 100;
@@ -859,32 +859,32 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_CONTROL_PITCHRESET : {
+		case ID_CONTROL_PITCHRESET: {
 			m_Output.SetPitch( 1.0f );
 			m_VolumeControl.Update();
 			break;
 		}
-		case ID_CONTROL_BALANCELEFT : 
-		case ID_CONTROL_BALANCERIGHT : {
+		case ID_CONTROL_BALANCELEFT:
+		case ID_CONTROL_BALANCERIGHT: {
 			const float balance = m_Output.GetBalance() + ( ( ID_CONTROL_BALANCELEFT == commandID ) ? -0.01f : 0.01f );
 			m_Output.SetBalance( balance );
 			m_VolumeControl.Update();
 			break;
 		}
-		case ID_CONTROL_BALANCERESET : {
+		case ID_CONTROL_BALANCERESET: {
 			m_Output.SetBalance( 0 );
 			m_VolumeControl.Update();
 			break;
 		}
-		case ID_CONTROL_PITCHRANGE_SMALL : 
-		case ID_CONTROL_PITCHRANGE_MEDIUM : 
-		case ID_CONTROL_PITCHRANGE_LARGE : {
+		case ID_CONTROL_PITCHRANGE_SMALL:
+		case ID_CONTROL_PITCHRANGE_MEDIUM:
+		case ID_CONTROL_PITCHRANGE_LARGE: {
 			const Settings::PitchRange previousPitchRangeSetting = m_Settings.GetPitchRange();
 			const Settings::PitchRange currentPitchRangeSetting = ( ID_CONTROL_PITCHRANGE_SMALL == commandID ) ? Settings::PitchRange::Small :
 				( ( ID_CONTROL_PITCHRANGE_MEDIUM == commandID ) ? Settings::PitchRange::Medium : Settings::PitchRange::Large );
 			if ( currentPitchRangeSetting != previousPitchRangeSetting ) {
 				m_Settings.SetPitchRange( currentPitchRangeSetting );
-				const float previousPitch =	m_Output.GetPitch();
+				const float previousPitch = m_Output.GetPitch();
 				if ( previousPitch != 1.0f ) {
 					const float previousPitchRange = m_Settings.GetPitchRangeOptions()[ previousPitchRangeSetting ];
 					const float currentPitchRange = m_Settings.GetPitchRangeOptions()[ currentPitchRangeSetting ];
@@ -896,83 +896,83 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_CONTROL_CROSSFADE : {
+		case ID_CONTROL_CROSSFADE: {
 			m_Output.SetCrossfade( !m_Output.GetCrossfade() );
 			break;
 		}
-		case ID_CONTROL_LOUDNESS : {
+		case ID_CONTROL_LOUDNESS: {
 			m_Output.SetLoudnessNormalisation( !m_Output.GetLoudnessNormalisation() );
 			break;
 		}
-		case ID_CONTROL_RANDOMPLAY : {
+		case ID_CONTROL_RANDOMPLAY: {
 			m_Output.SetRandomPlay( !m_Output.GetRandomPlay() );
 			break;
 		}
-		case ID_CONTROL_REPEATTRACK : {
+		case ID_CONTROL_REPEATTRACK: {
 			m_Output.SetRepeatTrack( !m_Output.GetRepeatTrack() );
 			break;
 		}
-		case ID_CONTROL_REPEATPLAYLIST : {
+		case ID_CONTROL_REPEATPLAYLIST: {
 			m_Output.SetRepeatPlaylist( !m_Output.GetRepeatPlaylist() );
 			break;
 		}
-		case ID_FILE_CALCULATEGAIN : {
+		case ID_FILE_CALCULATEGAIN: {
 			OnCalculateGain();
 			break;
 		}
-		case ID_VIEW_TRACKINFORMATION : {
+		case ID_VIEW_TRACKINFORMATION: {
 			OnTrackInformation();
 			break;
 		}
-		case ID_FILE_NEWPLAYLIST : {
+		case ID_FILE_NEWPLAYLIST: {
 			m_Tree.NewPlaylist( true /*editTitle*/ );
 			break;
 		}
-		case ID_FILE_DELETEPLAYLIST : {
+		case ID_FILE_DELETEPLAYLIST: {
 			m_Tree.DeleteSelectedPlaylist();
 			SetFocus( m_Tree.GetWindowHandle() );
 			break;
 		}
-		case ID_FILE_RENAMEPLAYLIST : {
+		case ID_FILE_RENAMEPLAYLIST: {
 			m_Tree.RenameSelectedPlaylist();
 			break;
 		}
-		case ID_FILE_IMPORTPLAYLIST : {
+		case ID_FILE_IMPORTPLAYLIST: {
 			m_Tree.ImportPlaylist();
 			SetFocus( m_Tree.GetWindowHandle() );
 			break;
 		}
-		case ID_FILE_EXPORTPLAYLIST : {
+		case ID_FILE_EXPORTPLAYLIST: {
 			m_Tree.ExportSelectedPlaylist();
 			SetFocus( m_Tree.GetWindowHandle() );
 			break;
 		}
-		case ID_FILE_PLAYLISTADDSTREAM : {
+		case ID_FILE_PLAYLISTADDSTREAM: {
 			m_List.OnCommandAddStream();
 			SetFocus( m_List.GetWindowHandle() );
 			break;
 		}
-		case ID_FILE_PLAYLISTADDFOLDER : {
+		case ID_FILE_PLAYLISTADDFOLDER: {
 			m_List.OnCommandAddFolder();
 			SetFocus( m_List.GetWindowHandle() );
 			break;
 		}
-		case ID_FILE_PLAYLISTADDFILES : {
+		case ID_FILE_PLAYLISTADDFILES: {
 			m_List.OnCommandAddFiles();
 			SetFocus( m_List.GetWindowHandle() );
 			break;
 		}
-		case ID_FILE_PLAYLISTREMOVEFILES : {
+		case ID_FILE_PLAYLISTREMOVEFILES: {
 			m_List.DeleteSelectedItems();
 			SetFocus( m_List.GetWindowHandle() );
 			break;
 		}
-		case ID_FILE_ADDTOFAVOURITES : {
+		case ID_FILE_ADDTOFAVOURITES: {
 			OnAddToFavourites();
 			break;
 		}
-		case ID_FILE_CUT : 
-		case ID_FILE_COPY : {
+		case ID_FILE_CUT:
+		case ID_FILE_COPY: {
 			if ( m_IsTreeLabelEdit ) {
 				m_Tree.OnCutCopy( ID_FILE_CUT == commandID );
 			} else {
@@ -980,7 +980,7 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_FILE_PASTE : {
+		case ID_FILE_PASTE: {
 			if ( m_IsTreeLabelEdit ) {
 				m_Tree.OnPaste();
 			} else {
@@ -988,7 +988,7 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_FILE_SELECTALL : {
+		case ID_FILE_SELECTALL: {
 			if ( m_IsTreeLabelEdit ) {
 				m_Tree.OnSelectAll();
 			} else {
@@ -996,64 +996,64 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_FILE_OPTIONS : {
+		case ID_FILE_OPTIONS: {
 			OnOptions();
 			break;
 		}
-		case ID_FILE_REFRESHMEDIALIBRARY : {
-			m_Maintainer.Start( 
-        [ playlistAll = m_Tree.GetPlaylistAll() ] ( const std::filesystem::path& file ) {
-				  if ( playlistAll ) {
-					  playlistAll->AddPending( MediaInfo( file ) );
-				  }
-			  },
-        [ this ] ( const MediaInfo::List& removedFiles ) {
-          if ( !removedFiles.empty() ) {
-            MediaInfo::List* mediaList = new MediaInfo::List( removedFiles.begin(), removedFiles.end() );
-            PostMessage( m_hWnd, MSG_LIBRARYREFRESHED, reinterpret_cast<WPARAM>( mediaList ), 0 );
-          }
-        }
-      );
+		case ID_FILE_REFRESHMEDIALIBRARY: {
+			m_Maintainer.Start(
+				[ playlistAll = m_Tree.GetPlaylistAll() ] ( const std::filesystem::path& file ) {
+					if ( playlistAll ) {
+						playlistAll->AddPending( MediaInfo( file ) );
+					}
+				},
+				[ this ] ( const MediaInfo::List& removedFiles ) {
+					if ( !removedFiles.empty() ) {
+						MediaInfo::List* mediaList = new MediaInfo::List( removedFiles.begin(), removedFiles.end() );
+						PostMessage( m_hWnd, MSG_LIBRARYREFRESHED, reinterpret_cast<WPARAM>( mediaList ), 0 );
+					}
+				}
+			);
 			break;
 		}
-		case ID_FILE_CONVERT : {
+		case ID_FILE_CONVERT: {
 			OnConvert();
 			break;
 		}
-		case ID_FILE_MUSICBRAINZ_QUERY : {
+		case ID_FILE_MUSICBRAINZ_QUERY: {
 			OnMusicBrainzQuery();
 			break;
 		}
-		case ID_VIEW_COUNTER_FONTSTYLE : {
+		case ID_VIEW_COUNTER_FONTSTYLE: {
 			m_Counter.OnSelectFont();
 			break;
 		}
-		case ID_VIEW_COUNTER_FONTCOLOUR : {
+		case ID_VIEW_COUNTER_FONTCOLOUR: {
 			m_Counter.OnSelectColour();
 			break;
 		}
-		case ID_VIEW_COUNTER_TRACKELAPSED : 
-		case ID_VIEW_COUNTER_TRACKREMAINING : {
+		case ID_VIEW_COUNTER_TRACKELAPSED:
+		case ID_VIEW_COUNTER_TRACKREMAINING: {
 			m_Counter.SetTrackRemaining( ID_VIEW_COUNTER_TRACKREMAINING == commandID );
 			break;
 		}
-		case ID_VIEW_TRACKBAR_VOLUME : {
+		case ID_VIEW_TRACKBAR_VOLUME: {
 			m_VolumeControl.SetType( WndTrackbar::Type::Volume );
 			break;
 		}
-		case ID_VIEW_TRACKBAR_PITCH : {
+		case ID_VIEW_TRACKBAR_PITCH: {
 			m_VolumeControl.SetType( WndTrackbar::Type::Pitch );
 			break;
 		}
-		case ID_VIEW_TRACKBAR_BALANCE : {
+		case ID_VIEW_TRACKBAR_BALANCE: {
 			m_VolumeControl.SetType( WndTrackbar::Type::Balance );
 			break;
 		}
-		case ID_VIEW_EQ : {
+		case ID_VIEW_EQ: {
 			m_EQ.ToggleVisibility();
 			break;
 		}
-		case ID_VIEW_ALWAYSONTOP : {
+		case ID_VIEW_ALWAYSONTOP: {
 			const bool alwaysOnTop = !m_Settings.GetAlwaysOnTop();
 			m_Settings.SetAlwaysOnTop( alwaysOnTop );
 			if ( alwaysOnTop ) {
@@ -1063,119 +1063,119 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_SHOWCOLUMNS_TITLE :
-		case ID_SHOWCOLUMNS_ARTIST :
-		case ID_SHOWCOLUMNS_ALBUM :
-		case ID_SHOWCOLUMNS_GENRE :
-    case ID_SHOWCOLUMNS_COMPOSER :
-    case ID_SHOWCOLUMNS_CONDUCTOR :
-    case ID_SHOWCOLUMNS_PUBLISHER :
-		case ID_SHOWCOLUMNS_YEAR :
-		case ID_SHOWCOLUMNS_TRACK :
-		case ID_SHOWCOLUMNS_TYPE :
-		case ID_SHOWCOLUMNS_VERSION :
-		case ID_SHOWCOLUMNS_SAMPLERATE :
-		case ID_SHOWCOLUMNS_CHANNELS :
-		case ID_SHOWCOLUMNS_BITRATE :
-		case ID_SHOWCOLUMNS_BITSPERSAMPLE :
-		case ID_SHOWCOLUMNS_DURATION :
-		case ID_SHOWCOLUMNS_FILESIZE :
-		case ID_SHOWCOLUMNS_FILEPATH :
-		case ID_SHOWCOLUMNS_FILENAME :
-		case ID_SHOWCOLUMNS_FILETIME :
-		case ID_SHOWCOLUMNS_TRACKGAIN :
-		case ID_SHOWCOLUMNS_ALBUMGAIN :
-		case ID_SHOWCOLUMNS_STATUS : {
+		case ID_SHOWCOLUMNS_TITLE:
+		case ID_SHOWCOLUMNS_ARTIST:
+		case ID_SHOWCOLUMNS_ALBUM:
+		case ID_SHOWCOLUMNS_GENRE:
+		case ID_SHOWCOLUMNS_COMPOSER:
+		case ID_SHOWCOLUMNS_CONDUCTOR:
+		case ID_SHOWCOLUMNS_PUBLISHER:
+		case ID_SHOWCOLUMNS_YEAR:
+		case ID_SHOWCOLUMNS_TRACK:
+		case ID_SHOWCOLUMNS_TYPE:
+		case ID_SHOWCOLUMNS_VERSION:
+		case ID_SHOWCOLUMNS_SAMPLERATE:
+		case ID_SHOWCOLUMNS_CHANNELS:
+		case ID_SHOWCOLUMNS_BITRATE:
+		case ID_SHOWCOLUMNS_BITSPERSAMPLE:
+		case ID_SHOWCOLUMNS_DURATION:
+		case ID_SHOWCOLUMNS_FILESIZE:
+		case ID_SHOWCOLUMNS_FILEPATH:
+		case ID_SHOWCOLUMNS_FILENAME:
+		case ID_SHOWCOLUMNS_FILETIME:
+		case ID_SHOWCOLUMNS_TRACKGAIN:
+		case ID_SHOWCOLUMNS_ALBUMGAIN:
+		case ID_SHOWCOLUMNS_STATUS: {
 			m_List.OnShowColumn( commandID );
 			break;
 		}
-		case ID_SORTPLAYLIST_ARTIST :
-		case ID_SORTPLAYLIST_ALBUM :
-		case ID_SORTPLAYLIST_GENRE :
-    case ID_SORTPLAYLIST_COMPOSER :
-    case ID_SORTPLAYLIST_CONDUCTOR :
-    case ID_SORTPLAYLIST_PUBLISHER :
-		case ID_SORTPLAYLIST_YEAR :
-		case ID_SORTPLAYLIST_TRACK :
-		case ID_SORTPLAYLIST_TYPE :
-		case ID_SORTPLAYLIST_VERSION :
-		case ID_SORTPLAYLIST_SAMPLERATE :
-		case ID_SORTPLAYLIST_CHANNELS :
-		case ID_SORTPLAYLIST_BITRATE :
-		case ID_SORTPLAYLIST_BITSPERSAMPLE :
-		case ID_SORTPLAYLIST_DURATION :
-		case ID_SORTPLAYLIST_FILESIZE :
-		case ID_SORTPLAYLIST_FILEPATH :
-		case ID_SORTPLAYLIST_FILENAME :
-		case ID_SORTPLAYLIST_FILETIME :
-		case ID_SORTPLAYLIST_TRACKGAIN :
-		case ID_SORTPLAYLIST_ALBUMGAIN : {
+		case ID_SORTPLAYLIST_ARTIST:
+		case ID_SORTPLAYLIST_ALBUM:
+		case ID_SORTPLAYLIST_GENRE:
+		case ID_SORTPLAYLIST_COMPOSER:
+		case ID_SORTPLAYLIST_CONDUCTOR:
+		case ID_SORTPLAYLIST_PUBLISHER:
+		case ID_SORTPLAYLIST_YEAR:
+		case ID_SORTPLAYLIST_TRACK:
+		case ID_SORTPLAYLIST_TYPE:
+		case ID_SORTPLAYLIST_VERSION:
+		case ID_SORTPLAYLIST_SAMPLERATE:
+		case ID_SORTPLAYLIST_CHANNELS:
+		case ID_SORTPLAYLIST_BITRATE:
+		case ID_SORTPLAYLIST_BITSPERSAMPLE:
+		case ID_SORTPLAYLIST_DURATION:
+		case ID_SORTPLAYLIST_FILESIZE:
+		case ID_SORTPLAYLIST_FILEPATH:
+		case ID_SORTPLAYLIST_FILENAME:
+		case ID_SORTPLAYLIST_FILETIME:
+		case ID_SORTPLAYLIST_TRACKGAIN:
+		case ID_SORTPLAYLIST_ALBUMGAIN: {
 			m_List.OnSortPlaylist( commandID );
 			break;
 		}
-		case ID_LISTMENU_FONTSTYLE : {
+		case ID_LISTMENU_FONTSTYLE: {
 			m_List.OnSelectFont();
 			break;
 		}
-		case ID_LISTMENU_FONTCOLOUR : 
-		case ID_LISTMENU_BACKGROUNDCOLOUR :
-		case ID_LISTMENU_HIGHLIGHTCOLOUR : 
-		case ID_LISTMENU_STATUSICONCOLOUR : {
+		case ID_LISTMENU_FONTCOLOUR:
+		case ID_LISTMENU_BACKGROUNDCOLOUR:
+		case ID_LISTMENU_HIGHLIGHTCOLOUR:
+		case ID_LISTMENU_STATUSICONCOLOUR: {
 			m_List.OnSelectColour( commandID );
 			break;
 		}
-		case ID_TREEMENU_FONTSTYLE : {
+		case ID_TREEMENU_FONTSTYLE: {
 			m_Tree.OnSelectFont();
 			break;
 		}
-		case ID_TREEMENU_FONTCOLOUR : 
-		case ID_TREEMENU_BACKGROUNDCOLOUR :
-		case ID_TREEMENU_HIGHLIGHTCOLOUR :
-		case ID_TREEMENU_ICONCOLOUR : {
+		case ID_TREEMENU_FONTCOLOUR:
+		case ID_TREEMENU_BACKGROUNDCOLOUR:
+		case ID_TREEMENU_HIGHLIGHTCOLOUR:
+		case ID_TREEMENU_ICONCOLOUR: {
 			m_Tree.OnSelectColour( commandID );
 			break;
 		}
-		case ID_TREEMENU_FAVOURITES : {
+		case ID_TREEMENU_FAVOURITES: {
 			m_Tree.OnFavourites();
 			break;
 		}
-		case ID_TREEMENU_STREAMS : {
+		case ID_TREEMENU_STREAMS: {
 			m_Tree.OnStreams();
 			break;
 		}
-		case ID_TREEMENU_ALLTRACKS : {
+		case ID_TREEMENU_ALLTRACKS: {
 			m_Tree.OnAllTracks();
 			break;
 		}
-		case ID_TREEMENU_ARTISTS : {
+		case ID_TREEMENU_ARTISTS: {
 			m_Tree.OnArtists();
 			break;
 		}
-		case ID_TREEMENU_PUBLISHERS : {
+		case ID_TREEMENU_PUBLISHERS: {
 			m_Tree.OnPublishers();
 			break;
 		}
-		case ID_TREEMENU_COMPOSERS : {
+		case ID_TREEMENU_COMPOSERS: {
 			m_Tree.OnComposers();
 			break;
 		}
-		case ID_TREEMENU_CONDUCTORS : {
+		case ID_TREEMENU_CONDUCTORS: {
 			m_Tree.OnConductors();
 			break;
 		}
-		case ID_TREEMENU_ALBUMS : {
+		case ID_TREEMENU_ALBUMS: {
 			m_Tree.OnAlbums();
 			break;
 		}
-		case ID_TREEMENU_GENRES : {
+		case ID_TREEMENU_GENRES: {
 			m_Tree.OnGenres();
 			break;
 		}
-		case ID_TREEMENU_YEARS : {
+		case ID_TREEMENU_YEARS: {
 			m_Tree.OnYears();
 			break;
 		}
-		case ID_TRAYMENU_SHOWVUPLAYER : {
+		case ID_TRAYMENU_SHOWVUPLAYER: {
 			if ( IsIconic( m_hWnd ) ) {
 				if ( !IsWindowVisible( m_hWnd ) ) {
 					ShowWindow( m_hWnd, SW_SHOWMINIMIZED );
@@ -1186,28 +1186,28 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_HELP_ONLINEDOCUMENTATION : {
+		case ID_HELP_ONLINEDOCUMENTATION: {
 			ShellExecute( NULL, L"open", s_OnlineDocs, NULL, NULL, SW_SHOWNORMAL );
 			break;
 		}
-		case ID_TOOLBAR_FILE :
-		case ID_TOOLBAR_PLAYLIST :
-		case ID_TOOLBAR_FAVOURITES :
-		case ID_TOOLBAR_CONVERT :
-		case ID_TOOLBAR_OPTIONS :
-		case ID_TOOLBAR_INFO :
-		case ID_TOOLBAR_EQ :
-		case ID_TOOLBAR_CROSSFADE :
-    case ID_TOOLBAR_LOUDNESS :
-		case ID_TOOLBAR_TRACKEND :
-		case ID_TOOLBAR_FLOW :
-		case ID_TOOLBAR_PLAYBACK : {
+		case ID_TOOLBAR_FILE:
+		case ID_TOOLBAR_PLAYLIST:
+		case ID_TOOLBAR_FAVOURITES:
+		case ID_TOOLBAR_CONVERT:
+		case ID_TOOLBAR_OPTIONS:
+		case ID_TOOLBAR_INFO:
+		case ID_TOOLBAR_EQ:
+		case ID_TOOLBAR_CROSSFADE:
+		case ID_TOOLBAR_LOUDNESS:
+		case ID_TOOLBAR_TRACKEND:
+		case ID_TOOLBAR_FLOW:
+		case ID_TOOLBAR_PLAYBACK: {
 			m_Rebar.ToggleToolbar( commandID );
 			break;
 		}
-		case ID_TOOLBARSIZE_SMALL :
-		case ID_TOOLBARSIZE_MEDIUM :
-		case ID_TOOLBARSIZE_LARGE : {
+		case ID_TOOLBARSIZE_SMALL:
+		case ID_TOOLBARSIZE_MEDIUM:
+		case ID_TOOLBARSIZE_LARGE: {
 			const Settings::ToolbarSize previousSize = m_Settings.GetToolbarSize();
 			const Settings::ToolbarSize size = ( ID_TOOLBARSIZE_SMALL == commandID ) ? Settings::ToolbarSize::Small :
 				( ( ID_TOOLBARSIZE_MEDIUM == commandID ) ? Settings::ToolbarSize::Medium : Settings::ToolbarSize::Large );
@@ -1217,18 +1217,18 @@ void VUPlayer::OnCommand( const int commandID )
 			}
 			break;
 		}
-		case ID_TOOLBAR_COLOUR_BUTTON : 
-		case ID_TOOLBAR_COLOUR_BACKGROUND : {
+		case ID_TOOLBAR_COLOUR_BUTTON:
+		case ID_TOOLBAR_COLOUR_BACKGROUND: {
 			m_Rebar.OnSelectColour( commandID );
 			break;
 		}
-		case IDOK : {
+		case IDOK: {
 			if ( GetFocus() == m_List.GetWindowHandle() ) {
 				m_List.PlaySelected();
 			}
 			break;
 		}
-		default : {
+		default: {
 			if ( ( commandID >= MSG_TRAYMENUSTART ) && ( commandID <= MSG_TRAYMENUEND ) ) {
 				m_Tray.OnContextMenuCommand( commandID );
 			} else if ( ( commandID >= MSG_PLAYLISTMENUSTART ) && ( commandID <= MSG_PLAYLISTMENUEND ) ) {
@@ -1244,7 +1244,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 	if ( nullptr != menu ) {
 		// File menu
 		Playlist::Ptr playlist = m_List.GetPlaylist();
-    const auto playlistType = playlist ? playlist->GetType() : Playlist::Type::_Undefined;
+		const auto playlistType = playlist ? playlist->GetType() : Playlist::Type::_Undefined;
 
 		const bool selectedItems = ( m_List.GetSelectedCount() > 0 );
 		const UINT deletePlaylistEnabled = m_Tree.IsPlaylistDeleteEnabled() ? MF_ENABLED : MF_DISABLED;
@@ -1278,8 +1278,8 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const UINT convertEnabled = ( playlist && playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_FILE_CONVERT, MF_BYCOMMAND | convertEnabled );
 
-	  const UINT removeFilesEnabled = ( selectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) ) ? MF_ENABLED : MF_DISABLED;
-	  EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
+		const UINT removeFilesEnabled = ( selectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) ) ? MF_ENABLED : MF_DISABLED;
+		EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
 
 		// View menu
 		CheckMenuItem( menu, ID_TREEMENU_FAVOURITES, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_FAVOURITES ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1298,7 +1298,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const bool trackRemaining = m_Counter.GetTrackRemaining();
 		CheckMenuItem( menu, ID_VIEW_COUNTER_TRACKREMAINING, trackRemaining ? ( MF_BYCOMMAND | MF_CHECKED ) : ( MF_BYCOMMAND | MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_VIEW_COUNTER_TRACKELAPSED, !trackRemaining ? ( MF_BYCOMMAND | MF_CHECKED ) : ( MF_BYCOMMAND | MF_UNCHECKED ) );
-	
+
 		LoadString( m_hInst, isCDDAPlaylist ? IDS_TOOLBAR_EXTRACT : IDS_TOOLBAR_CONVERT, buffer, bufferSize );
 		ModifyMenu( menu, ID_TOOLBAR_CONVERT, MF_BYCOMMAND | MF_STRING, ID_TOOLBAR_CONVERT, buffer );
 		CheckMenuItem( menu, ID_TOOLBAR_FILE, m_Settings.GetToolbarEnabled( m_ToolbarFile.GetID() ) ? MF_CHECKED : MF_UNCHECKED );
@@ -1348,7 +1348,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 			}
 		}
 		const float oscilloscopeWeight = m_Settings.GetOscilloscopeWeight();
-		const std::map<UINT,float> oscilloscopeWeights = m_Visual.GetOscilloscopeWeights();
+		const std::map<UINT, float> oscilloscopeWeights = m_Visual.GetOscilloscopeWeights();
 		for ( const auto& weight : oscilloscopeWeights ) {
 			if ( oscilloscopeWeight == weight.second ) {
 				CheckMenuItem( menu, weight.first, MF_BYCOMMAND | MF_CHECKED );
@@ -1357,7 +1357,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 			}
 		}
 		const float vumeterDecay = m_Settings.GetVUMeterDecay();
-		const std::map<UINT,float> vumeterDecayRates = m_Visual.GetVUMeterDecayRates();
+		const std::map<UINT, float> vumeterDecayRates = m_Visual.GetVUMeterDecayRates();
 		for ( const auto& decay : vumeterDecayRates ) {
 			if ( vumeterDecay == decay.second ) {
 				CheckMenuItem( menu, decay.first, MF_BYCOMMAND | MF_CHECKED );
@@ -1366,7 +1366,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 			}
 		}
 		const UINT hardwareAccelerationChecked = m_Settings.GetHardwareAccelerationEnabled() ? MF_CHECKED : MF_UNCHECKED;
-		CheckMenuItem( menu, ID_VISUAL_HARDWAREACCELERATION, MF_BYCOMMAND | hardwareAccelerationChecked ); 
+		CheckMenuItem( menu, ID_VISUAL_HARDWAREACCELERATION, MF_BYCOMMAND | hardwareAccelerationChecked );
 
 		const WndTrackbar::Type trackbarType = m_VolumeControl.GetType();
 		CheckMenuItem( menu, ID_VIEW_TRACKBAR_VOLUME, ( ( WndTrackbar::Type::Volume == trackbarType ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1398,37 +1398,37 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_LARGE, ( Settings::PitchRange::Large == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
 
 		const bool isFollowTrackSelection = m_Output.GetFollowTrackSelection();
-    const bool isStopAtTrackEnd = m_Output.GetStopAtTrackEnd();
+		const bool isStopAtTrackEnd = m_Output.GetStopAtTrackEnd();
 		const bool isMuted = m_Output.GetMuted();
 		const bool isFadeOut = m_Output.GetFadeOut();
 		const bool isFadeToNext = m_Output.GetFadeToNext();
 		const bool isCrossfade = m_Output.GetCrossfade();
-		const bool isStream =	IsURL( m_Output.GetCurrentPlaying().PlaylistItem.Info.GetFilename() );
+		const bool isStream = IsURL( m_Output.GetCurrentPlaying().PlaylistItem.Info.GetFilename() );
 
 		const UINT enableStopAtTrackEnd = ( isFadeOut || isFadeToNext ) ? MF_DISABLED : MF_ENABLED;
-    const UINT enableFollowTrackSelection = ( isFadeOut || isFadeToNext || isStopAtTrackEnd ) ? MF_DISABLED : MF_ENABLED;
+		const UINT enableFollowTrackSelection = ( isFadeOut || isFadeToNext || isStopAtTrackEnd ) ? MF_DISABLED : MF_ENABLED;
 		const UINT enableFadeOut = ( !isFadeToNext && ( Output::State::Playing == outputState ) ) ? MF_ENABLED : MF_DISABLED;
 		const UINT enableFadeToNext = ( !isFadeOut && !isStream && ( Output::State::Playing == outputState ) ) ? MF_ENABLED : MF_DISABLED;
-    EnableMenuItem( menu, ID_CONTROL_FOLLOWSELECTION, MF_BYCOMMAND | enableFollowTrackSelection );
+		EnableMenuItem( menu, ID_CONTROL_FOLLOWSELECTION, MF_BYCOMMAND | enableFollowTrackSelection );
 		EnableMenuItem( menu, ID_CONTROL_STOPTRACKEND, MF_BYCOMMAND | enableStopAtTrackEnd );
 		EnableMenuItem( menu, ID_CONTROL_FADEOUT, MF_BYCOMMAND | enableFadeOut );
 		EnableMenuItem( menu, ID_CONTROL_FADETONEXT, MF_BYCOMMAND | enableFadeToNext );
 
 		const UINT checkStopAtTrackEnd = isStopAtTrackEnd ? MF_CHECKED : MF_UNCHECKED;
-    const UINT checkFollowTrackSelection = isFollowTrackSelection ? MF_CHECKED : MF_UNCHECKED;
+		const UINT checkFollowTrackSelection = isFollowTrackSelection ? MF_CHECKED : MF_UNCHECKED;
 		const UINT checkMuted = isMuted ? MF_CHECKED : MF_UNCHECKED;
 		const UINT checkFadeOut = isFadeOut ? MF_CHECKED : MF_UNCHECKED;
 		const UINT checkFadeToNext = isFadeToNext ? MF_CHECKED : MF_UNCHECKED;
 		const UINT checkCrossfade = isCrossfade ? MF_CHECKED : MF_UNCHECKED;
-    const UINT checkLoudness = m_Output.GetLoudnessNormalisation() ? MF_CHECKED : MF_UNCHECKED;
-    
-    CheckMenuItem( menu, ID_CONTROL_FOLLOWSELECTION, MF_BYCOMMAND | checkFollowTrackSelection );
+		const UINT checkLoudness = m_Output.GetLoudnessNormalisation() ? MF_CHECKED : MF_UNCHECKED;
+
+		CheckMenuItem( menu, ID_CONTROL_FOLLOWSELECTION, MF_BYCOMMAND | checkFollowTrackSelection );
 		CheckMenuItem( menu, ID_CONTROL_STOPTRACKEND, MF_BYCOMMAND | checkStopAtTrackEnd );
 		CheckMenuItem( menu, ID_CONTROL_MUTE, MF_BYCOMMAND | checkMuted );
 		CheckMenuItem( menu, ID_CONTROL_FADEOUT, MF_BYCOMMAND | checkFadeOut );
 		CheckMenuItem( menu, ID_CONTROL_FADETONEXT, MF_BYCOMMAND | checkFadeToNext );
 		CheckMenuItem( menu, ID_CONTROL_CROSSFADE, MF_BYCOMMAND | checkCrossfade );
-    CheckMenuItem( menu, ID_CONTROL_LOUDNESS, MF_BYCOMMAND | checkLoudness );
+		CheckMenuItem( menu, ID_CONTROL_LOUDNESS, MF_BYCOMMAND | checkLoudness );
 
 		const UINT enableSkip = ( Output::State::Stopped != outputState ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_CONTROL_SKIPBACKWARDS, MF_BYCOMMAND | enableSkip );
@@ -1490,22 +1490,22 @@ void VUPlayer::OnHandleMediaUpdate( const MediaInfo* previousMediaInfo, const Me
 
 void VUPlayer::OnHandleLibraryRefreshed( const MediaInfo::List* removedFiles )
 {
-  if ( nullptr != removedFiles ) {
-    m_Tree.OnRemovedMedia( *removedFiles, true );
-    if ( const auto playlist = m_List.GetPlaylist(); playlist && Playlist::Type::All == playlist->GetType() ) {
-      m_List.RefreshPlaylist();
-      if ( !m_List.SelectPlaylistItem( m_Output.GetCurrentPlaying().PlaylistItem.ID ) ) {
-        m_List.SelectPlaylistItem( playlist->GetItemID( 0 ) );
-      }
-      m_Status.Refresh();
-    }
-  }
+	if ( nullptr != removedFiles ) {
+		m_Tree.OnRemovedMedia( *removedFiles, true );
+		if ( const auto playlist = m_List.GetPlaylist(); playlist && Playlist::Type::All == playlist->GetType() ) {
+			m_List.RefreshPlaylist();
+			if ( !m_List.SelectPlaylistItem( m_Output.GetCurrentPlaying().PlaylistItem.ID ) ) {
+				m_List.SelectPlaylistItem( playlist->GetItemID( 0 ) );
+			}
+			m_Status.Refresh();
+		}
+	}
 }
 
 void VUPlayer::OnHandleDiscRefreshed()
 {
 	const auto currentSelection = m_List.GetCurrentSelectedItem();
-	
+
 	m_Tree.OnRefreshDiscDrives();
 
 	if ( const auto item = m_Output.GetCurrentPlaying(); MediaInfo::Source::CDDA == item.PlaylistItem.Info.GetSource() ) {
@@ -1513,7 +1513,7 @@ void VUPlayer::OnHandleDiscRefreshed()
 			const auto currentDrive = filename.front();
 			const DiscManager::CDDAMediaMap cddaDrives = m_DiscManager.GetCDDADrives();
 			bool stopPlayback = true;
-			for ( const auto& [ drive, media ] : cddaDrives ) {
+			for ( const auto& [drive, media] : cddaDrives ) {
 				if ( currentDrive == drive ) {
 					stopPlayback = false;
 					break;
@@ -1524,14 +1524,14 @@ void VUPlayer::OnHandleDiscRefreshed()
 			}
 		}
 	}
-	
+
 	if ( MediaInfo::Source::CDDA == currentSelection.Info.GetSource() ) {
 		if ( const auto playlist = m_List.GetPlaylist(); playlist && ( Playlist::Type::CDDA == playlist->GetType() ) ) {
 			const auto items = playlist->GetItems();
 			const auto foundItem = std::find_if( items.begin(), items.end(), [ currentSelection ] ( const Playlist::Item& item )
-			{
-				return currentSelection.Info.GetFilename() == item.Info.GetFilename();
-			} );
+				{
+					return currentSelection.Info.GetFilename() == item.Info.GetFilename();
+				} );
 			if ( items.end() != foundItem ) {
 				m_List.SelectPlaylistItem( foundItem->ID );
 			}
@@ -1558,9 +1558,9 @@ void VUPlayer::OnListSelectionChanged()
 	const Playlist::Item currentSelectedPlaylistItem = m_List.GetCurrentSelectedItem();
 	const Playlist::Item currentSelectedOutputItem = m_Output.GetCurrentSelectedPlaylistItem();
 	m_Output.SetCurrentSelectedPlaylistItem( currentSelectedPlaylistItem );
-  m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
+	m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
 	if ( ( Output::State::Stopped == m_Output.GetState() ) && ( ID_VISUAL_ARTWORK == m_Visual.GetCurrentVisualID() ) &&
-			( currentSelectedPlaylistItem.Info.GetArtworkID( true /*checkFolder*/ ) != currentSelectedOutputItem.Info.GetArtworkID( true /*checkFolder*/ ) ) ) {
+		( currentSelectedPlaylistItem.Info.GetArtworkID( true /*checkFolder*/ ) != currentSelectedOutputItem.Info.GetArtworkID( true /*checkFolder*/ ) ) ) {
 		m_Splitter.Resize();
 		m_Visual.DoRender();
 	}
@@ -1605,7 +1605,7 @@ std::unique_ptr<Gdiplus::Bitmap> VUPlayer::LoadResourcePNG( const WORD resourceI
 							}
 						}
 						stream->Release();
-					}				
+					}
 				}
 			}
 		}
@@ -1672,7 +1672,7 @@ void VUPlayer::OnOptions()
 	}
 	m_Taskbar.EnableProgressBar( m_Settings.GetTaskbarShowProgress() );
 
-  m_TitleBarFormat = m_Settings.GetTitleBarFormat();
+	m_TitleBarFormat = m_Settings.GetTitleBarFormat();
 }
 
 Settings& VUPlayer::GetApplicationSettings()
@@ -1788,7 +1788,7 @@ void VUPlayer::InsertAddToPlaylists( const HMENU menu, const UINT insertAfterIte
 							if ( ++commandID > MSG_PLAYLISTMENUEND ) {
 								break;
 							}
-						}		
+						}
 					}
 				}
 				const int buffersize = 32;
@@ -1892,127 +1892,127 @@ void VUPlayer::ScrobblerAuthorise()
 
 void VUPlayer::OnMusicBrainzQuery( Playlist* const cueList )
 {
-  if ( nullptr != cueList ) {
-    if ( const auto id = CDDAMedia::GetMusicBrainzPlaylistID( cueList ) ) {
-      const auto& [ discID, toc, startCues, backingFile ] = *id;
-      m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, cueList->GetID(), startCues, backingFile );
-    }
-  } else if ( const Playlist::Ptr playlist = m_List.GetPlaylist(); playlist ) {
-    if ( Playlist::Type::CDDA == playlist->GetType() ) {
-		  if ( const Playlist::Items playlistItems = playlist->GetItems(); !playlistItems.empty() ) {
-			  const long cddbID = playlistItems.front().Info.GetCDDB();
-			  const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
-			  for ( const auto& drive : drives ) {
-				  if ( cddbID == drive.second.GetCDDB() ) {
-					  const auto [ discID, toc ] = drive.second.GetMusicBrainzDiscID();
-					  m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, playlist->GetID() );
-					  break;
-				  }
-			  }
-      }
-    } else if ( const auto id = CDDAMedia::GetMusicBrainzPlaylistID( playlist.get() ) ) {
-      const auto& [ discID, toc, startCues, backingFile ] = *id;
-      m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, playlist->GetID(), startCues, backingFile );
-    }
+	if ( nullptr != cueList ) {
+		if ( const auto id = CDDAMedia::GetMusicBrainzPlaylistID( cueList ) ) {
+			const auto& [discID, toc, startCues, backingFile] = *id;
+			m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, cueList->GetID(), startCues, backingFile );
+		}
+	} else if ( const Playlist::Ptr playlist = m_List.GetPlaylist(); playlist ) {
+		if ( Playlist::Type::CDDA == playlist->GetType() ) {
+			if ( const Playlist::Items playlistItems = playlist->GetItems(); !playlistItems.empty() ) {
+				const long cddbID = playlistItems.front().Info.GetCDDB();
+				const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
+				for ( const auto& drive : drives ) {
+					if ( cddbID == drive.second.GetCDDB() ) {
+						const auto [discID, toc] = drive.second.GetMusicBrainzDiscID();
+						m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, playlist->GetID() );
+						break;
+					}
+				}
+			}
+		} else if ( const auto id = CDDAMedia::GetMusicBrainzPlaylistID( playlist.get() ) ) {
+			const auto& [discID, toc, startCues, backingFile] = *id;
+			m_MusicBrainz.Query( discID, toc, true /*forceDialog*/, playlist->GetID(), startCues, backingFile );
+		}
 	}
 }
 
 void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const bool forceDialog )
 {
-  // Note (to self) that although this method can display a modal dialog, 
-  // it is still possible for this method to be called again on the main thread, before the dialog closes,
-  // if another result is received and dispatched from the main message loop.
-  // 
-  // So, just guard this method to allow only one result to be processed at a time,
-  // and queue up any other results received while the dialog box is (potentially) open, to be processed later.
-  if ( m_IsProcessingMusicBrainzResult ) {
-    m_PendingMusicBrainzResults.push( result );
-    return;
-  }
-  m_IsProcessingMusicBrainzResult = true;
+	// Note (to self) that although this method can display a modal dialog, 
+	// it is still possible for this method to be called again on the main thread, before the dialog closes,
+	// if another result is received and dispatched from the main message loop.
+	// 
+	// So, just guard this method to allow only one result to be processed at a time,
+	// and queue up any other results received while the dialog box is (potentially) open, to be processed later.
+	if ( m_IsProcessingMusicBrainzResult ) {
+		m_PendingMusicBrainzResults.push( result );
+		return;
+	}
+	m_IsProcessingMusicBrainzResult = true;
 
 	const int selectedResult = ( ( 1 == result.Albums.size() ) && !forceDialog ) ? 0 : m_MusicBrainz.ShowMatchesDialog( result );
 	if ( ( selectedResult >= 0 ) && ( selectedResult < static_cast<int>( result.Albums.size() ) ) ) {
-    Playlist::Ptr playlist;
-    
-    const auto userPlaylists = m_Tree.GetUserPlaylists();
-    for ( const auto& userPlaylist : userPlaylists ) {
-      if ( userPlaylist && ( userPlaylist->GetID() == result.PlaylistID ) ) {
-        playlist = userPlaylist;
-        break;
-      }
-    }
+		Playlist::Ptr playlist;
 
-    if ( !playlist )
-      playlist = m_Tree.GetFolderPlaylist( result.PlaylistID );
+		const auto userPlaylists = m_Tree.GetUserPlaylists();
+		for ( const auto& userPlaylist : userPlaylists ) {
+			if ( userPlaylist && ( userPlaylist->GetID() == result.PlaylistID ) ) {
+				playlist = userPlaylist;
+				break;
+			}
+		}
 
-    if ( !playlist ) {
-		  const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
-		  for ( const auto& drive : drives ) {
-			  const auto [ discID, toc ] = drive.second.GetMusicBrainzDiscID();
-			  if ( result.DiscID == discID ) {
-			  	const CDDAMedia& cddaMedia = drive.second;
-				  playlist = cddaMedia.GetPlaylist();
-          break;
-        }
-      }
-    }
+		if ( !playlist )
+			playlist = m_Tree.GetFolderPlaylist( result.PlaylistID );
+
+		if ( !playlist ) {
+			const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
+			for ( const auto& drive : drives ) {
+				const auto [discID, toc] = drive.second.GetMusicBrainzDiscID();
+				if ( result.DiscID == discID ) {
+					const CDDAMedia& cddaMedia = drive.second;
+					playlist = cddaMedia.GetPlaylist();
+					break;
+				}
+			}
+		}
 
 		if ( playlist ) {
-  		const MusicBrainz::Album& album = result.Albums[ selectedResult ];
+			const MusicBrainz::Album& album = result.Albums[ selectedResult ];
 			const Playlist::Items items = playlist->GetItems();
-      const auto backingFile = WideStringToLower( result.BackingFile.value_or( std::wstring() ) );
+			const auto backingFile = WideStringToLower( result.BackingFile.value_or( std::wstring() ) );
 			for ( const auto& item : items ) {
-        auto matchingTrack = album.Tracks.end();
-        if ( result.StartCues ) {
-          const auto& itemStartCue = item.Info.GetCueStart();
-          if ( itemStartCue && ( backingFile == WideStringToLower( item.Info.GetFilename() ) ) ) {
-            if ( const auto matchingCue = result.StartCues->find( *itemStartCue ); result.StartCues->end() != matchingCue ) {
-              matchingTrack = album.Tracks.find( 1 + static_cast<long>( std::distance( result.StartCues->begin(), matchingCue ) ) );
-            }
-          }          
-        } else {
-          matchingTrack = album.Tracks.find( item.Info.GetTrack() );
-        }
+				auto matchingTrack = album.Tracks.end();
+				if ( result.StartCues ) {
+					const auto& itemStartCue = item.Info.GetCueStart();
+					if ( itemStartCue && ( backingFile == WideStringToLower( item.Info.GetFilename() ) ) ) {
+						if ( const auto matchingCue = result.StartCues->find( *itemStartCue ); result.StartCues->end() != matchingCue ) {
+							matchingTrack = album.Tracks.find( 1 + static_cast<long>( std::distance( result.StartCues->begin(), matchingCue ) ) );
+						}
+					}
+				} else {
+					matchingTrack = album.Tracks.find( item.Info.GetTrack() );
+				}
 
-			  if ( album.Tracks.end() != matchingTrack ) {
-			    const MediaInfo previousMediaInfo( item.Info );
-			    MediaInfo mediaInfo( item.Info );
-			    mediaInfo.SetAlbum( album.Title );
-			    mediaInfo.SetArtist( album.Artist );
-			    mediaInfo.SetYear( album.Year );
-          mediaInfo.SetPublisher( album.Label );
-          mediaInfo.SetComposer( album.Composer );
-          mediaInfo.SetConductor( album.Conductor );
+				if ( album.Tracks.end() != matchingTrack ) {
+					const MediaInfo previousMediaInfo( item.Info );
+					MediaInfo mediaInfo( item.Info );
+					mediaInfo.SetAlbum( album.Title );
+					mediaInfo.SetArtist( album.Artist );
+					mediaInfo.SetYear( album.Year );
+					mediaInfo.SetPublisher( album.Label );
+					mediaInfo.SetComposer( album.Composer );
+					mediaInfo.SetConductor( album.Conductor );
 
-			    mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
+					mediaInfo.SetArtworkID( m_Library.AddArtwork( album.Artwork ) );
 
-          const auto& [ trackTitle, trackArtist, trackYear ] = matchingTrack->second;
-				  mediaInfo.SetTitle( trackTitle );
-				  if ( !trackArtist.empty() ) {
-					  mediaInfo.SetArtist( trackArtist );
-				  }
-				  if ( trackYear > 0 ) {
-					  mediaInfo.SetYear( trackYear );
-				  }
+					const auto& [trackTitle, trackArtist, trackYear] = matchingTrack->second;
+					mediaInfo.SetTitle( trackTitle );
+					if ( !trackArtist.empty() ) {
+						mediaInfo.SetArtist( trackArtist );
+					}
+					if ( trackYear > 0 ) {
+						mediaInfo.SetYear( trackYear );
+					}
 
-			    m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
-			  }
+					m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
+				}
 			}
 
-      if ( ( Playlist::Type::User == playlist->GetType() ) && ( !album.Title.empty() && ( playlist->GetName() != album.Title ) && ( static_cast<size_t>( playlist->GetCount() ) == album.Tracks.size() ) ) ) {
-        playlist->SetName( album.Title );
-        m_Tree.RefreshUserPlaylistLabel( playlist );
-      }
+			if ( ( Playlist::Type::User == playlist->GetType() ) && ( !album.Title.empty() && ( playlist->GetName() != album.Title ) && ( static_cast<size_t>( playlist->GetCount() ) == album.Tracks.size() ) ) ) {
+				playlist->SetName( album.Title );
+				m_Tree.RefreshUserPlaylistLabel( playlist );
+			}
 		}
 	}
 
-  m_IsProcessingMusicBrainzResult = false;
-  if ( !m_PendingMusicBrainzResults.empty() ) {
-    const auto pendingResult = m_PendingMusicBrainzResults.front();
-    m_PendingMusicBrainzResults.pop();
-    OnMusicBrainzResult( pendingResult, forceDialog );
-  }
+	m_IsProcessingMusicBrainzResult = false;
+	if ( !m_PendingMusicBrainzResults.empty() ) {
+		const auto pendingResult = m_PendingMusicBrainzResults.front();
+		m_PendingMusicBrainzResults.pop();
+		OnMusicBrainzResult( pendingResult, forceDialog );
+	}
 }
 
 bool VUPlayer::IsMusicBrainzEnabled()
@@ -2067,33 +2067,33 @@ bool VUPlayer::OnCommandLineFiles( const std::list<std::wstring>& filenames )
 					if ( !filename.empty() ) {
 						const UINT driveType = GetDriveType( filename.c_str() );
 						if ( DRIVE_CDROM == driveType ) {
-				      // Handle Audio CD autoplay
-              if ( CDDAMedia::ContainsCDAudio( filename.front() ) ) {
-							  const Playlist::Ptr playlist = m_Tree.SelectAudioCD( filename.front() );
-							  if ( playlist ) {
-								  m_Output.Play( playlist );
-							  }
-              }
+							// Handle Audio CD autoplay
+							if ( CDDAMedia::ContainsCDAudio( filename.front() ) ) {
+								const Playlist::Ptr playlist = m_Tree.SelectAudioCD( filename.front() );
+								if ( playlist ) {
+									m_Output.Play( playlist );
+								}
+							}
 						} else {
-              std::error_code ec;
-              if ( std::filesystem::is_directory( filename, ec ) ) {
-                // Create a scratch list for the folder.
-                std::set<std::filesystem::path> filepaths;
-				        for ( const auto& entry : std::filesystem::recursive_directory_iterator( filename, ec ) ) {
-					        if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
-                    filepaths.insert( entry.path() );
-					        }
-				        }
-                for ( const auto& filepath : filepaths ) {
-				          MediaInfo mediaInfo( filepath );
-				          m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ );
-				          mediaList.push_back( mediaInfo );
-                }
-			          const Playlist::Ptr scratchList = m_Tree.SetScratchList( mediaList );
-                m_Output.Play( scratchList );
-                validCommandLine = true;
-              }
-            }
+							std::error_code ec;
+							if ( std::filesystem::is_directory( filename, ec ) ) {
+								// Create a scratch list for the folder.
+								std::set<std::filesystem::path> filepaths;
+								for ( const auto& entry : std::filesystem::recursive_directory_iterator( filename, ec ) ) {
+									if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
+										filepaths.insert( entry.path() );
+									}
+								}
+								for ( const auto& filepath : filepaths ) {
+									MediaInfo mediaInfo( filepath );
+									m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ );
+									mediaList.push_back( mediaInfo );
+								}
+								const Playlist::Ptr scratchList = m_Tree.SetScratchList( mediaList );
+								m_Output.Play( scratchList );
+								validCommandLine = true;
+							}
+						}
 					}
 				}
 			}
@@ -2107,60 +2107,60 @@ void VUPlayer::SetTitlebarText( const Output::Item& item )
 	std::wstring titlebarText = m_IdleText;
 
 	if ( item.PlaylistItem.ID > 0 ) {
-    std::wstring title;
-    std::wstring artist;
-    std::wstring composer;
+		std::wstring title;
+		std::wstring artist;
+		std::wstring composer;
 		if ( !item.StreamTitle.empty() ) {
 			title = item.StreamTitle;
 		} else {
 			title = item.PlaylistItem.Info.GetTitle( true /*filenameAsTitle*/ );
-      artist = item.PlaylistItem.Info.GetArtist();
-      composer = item.PlaylistItem.Info.GetComposer();
+			artist = item.PlaylistItem.Info.GetArtist();
+			composer = item.PlaylistItem.Info.GetComposer();
 		}
 
-    switch ( m_TitleBarFormat ) {
-      case Settings::TitleBarFormat::ArtistTitle : {
-        titlebarText = artist;
-        if ( !titlebarText.empty() ) {
-          titlebarText += L" - ";
-        }
-        titlebarText += title;
-        break;
-      }
-      case Settings::TitleBarFormat::TitleArtist : {
-        titlebarText = title;
-        if ( !artist.empty() ) {
-          titlebarText += L" - " + artist;
-        }
-        break;
-      }
-      case Settings::TitleBarFormat::ComposerTitle : {
-        titlebarText = composer;
-        if ( !titlebarText.empty() ) {
-          titlebarText += L" - ";
-        }
-        titlebarText += title;
-        break;
-      }
-      case Settings::TitleBarFormat::TitleComposer : {
-        titlebarText = title;
-        if ( !composer.empty() ) {
-          titlebarText += L" - " + composer;
-        }
-        break;
-      }
-      case Settings::TitleBarFormat::Title : {
-        titlebarText = title;
-        break;
-      }
-      case Settings::TitleBarFormat::ApplicationName :
-      default : {
-        break;
-      }
-    }
-  }
+		switch ( m_TitleBarFormat ) {
+			case Settings::TitleBarFormat::ArtistTitle: {
+				titlebarText = artist;
+				if ( !titlebarText.empty() ) {
+					titlebarText += L" - ";
+				}
+				titlebarText += title;
+				break;
+			}
+			case Settings::TitleBarFormat::TitleArtist: {
+				titlebarText = title;
+				if ( !artist.empty() ) {
+					titlebarText += L" - " + artist;
+				}
+				break;
+			}
+			case Settings::TitleBarFormat::ComposerTitle: {
+				titlebarText = composer;
+				if ( !titlebarText.empty() ) {
+					titlebarText += L" - ";
+				}
+				titlebarText += title;
+				break;
+			}
+			case Settings::TitleBarFormat::TitleComposer: {
+				titlebarText = title;
+				if ( !composer.empty() ) {
+					titlebarText += L" - " + composer;
+				}
+				break;
+			}
+			case Settings::TitleBarFormat::Title: {
+				titlebarText = title;
+				break;
+			}
+			case Settings::TitleBarFormat::ApplicationName:
+			default: {
+				break;
+			}
+		}
+	}
 
-  if ( m_TitlebarText != titlebarText ) {
+	if ( m_TitlebarText != titlebarText ) {
 		m_TitlebarText = titlebarText;
 		SetWindowText( m_hWnd, m_TitlebarText.c_str() );
 	}
@@ -2193,8 +2193,8 @@ void VUPlayer::SaveSettings()
 	m_Settings.SetVolume( m_Output.GetVolume() );
 	m_Settings.SetPlaybackSettings( m_Output.GetRandomPlay(), m_Output.GetRepeatTrack(), m_Output.GetRepeatPlaylist(), m_Output.GetCrossfade() );
 	m_Settings.SetOutputControlType( static_cast<int>( m_VolumeControl.GetType() ) );
-  m_Settings.SetLoudnessNormalisation( m_Output.GetLoudnessNormalisation() );
-  m_Settings.SetFollowTrackSelection( m_Output.GetFollowTrackSelection() );
+	m_Settings.SetLoudnessNormalisation( m_Output.GetLoudnessNormalisation() );
+	m_Settings.SetFollowTrackSelection( m_Output.GetFollowTrackSelection() );
 	m_Settings.SetStopAtTrackEnd( m_Settings.GetRetainStopAtTrackEnd() ? m_Output.GetStopAtTrackEnd() : false );
 
 	if ( m_Settings.GetRetainPitchBalance() ) {
@@ -2228,7 +2228,7 @@ void VUPlayer::InitialiseRebar()
 	m_Rebar.AddItem( &m_ToolbarInfo );
 	m_Rebar.AddItem( &m_ToolbarEQ );
 	m_Rebar.AddItem( &m_ToolbarCrossfade );
-  m_Rebar.AddItem( &m_ToolbarLoudness );
+	m_Rebar.AddItem( &m_ToolbarLoudness );
 	m_Rebar.AddItem( &m_ToolbarTrackEnd );
 	m_Rebar.AddItem( &m_ToolbarFlow );
 	m_Rebar.AddItem( &m_ToolbarPlayback );
@@ -2286,7 +2286,7 @@ HACCEL VUPlayer::CreateModifiedAcceleratorTable() const
 		if ( const int copied = CopyAcceleratorTable( m_hAccel, accelerators.data(), entries ); copied == entries ) {
 			constexpr std::array<ACCEL, 1> kIgnoredAccelerators = { { FVIRTKEY | FNOINVERT, VK_SPACE, ID_CONTROL_PLAY } };
 			for ( auto accel = accelerators.begin(); accelerators.end() != accel; ) {
-				const auto ignored = std::find_if( kIgnoredAccelerators.begin(), kIgnoredAccelerators.end(), [ accel ] ( const ACCEL& ignoredAccel ) 
+				const auto ignored = std::find_if( kIgnoredAccelerators.begin(), kIgnoredAccelerators.end(), [ accel ] ( const ACCEL& ignoredAccel )
 					{
 						return ( accel->fVirt == ignoredAccel.fVirt ) && ( accel->key == ignoredAccel.key ) && ( accel->cmd == ignoredAccel.cmd );
 					} );
@@ -2304,12 +2304,12 @@ HACCEL VUPlayer::CreateModifiedAcceleratorTable() const
 
 void VUPlayer::OnPowerBroadcast( const WPARAM type )
 {
-  if ( PBT_APMSUSPEND == type ) {
-	  m_Output.Stop();
-  }
+	if ( PBT_APMSUSPEND == type ) {
+		m_Output.Stop();
+	}
 }
 
 void VUPlayer::OnDisplayChange()
 {
-  m_Visual.OnDisplayChange();
+	m_Visual.OnDisplayChange();
 }

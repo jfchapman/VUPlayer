@@ -60,4 +60,3 @@ private:
 	// Indicates whether the MusicBrainz activity state is currently displayed.
 	bool m_MusicBrainzActive;
 };
-

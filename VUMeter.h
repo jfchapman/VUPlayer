@@ -11,7 +11,7 @@ constexpr float VUMeterDecayNormal = 0.01f;
 // Maximum decay factor.
 constexpr float VUMeterDecayMaximum = 0.015f;
 
-class VUMeter :	public Visual
+class VUMeter : public Visual
 {
 public:
 	// 'wndVisual' - Visual container window.
@@ -38,7 +38,7 @@ public:
 	// Called when the system colours have changed.
 	void OnSysColorChange() override;
 
-  // Called when the visual should free any resources.
+	// Called when the visual should free any resources.
 	void FreeResources() override;
 
 private:
@@ -69,20 +69,20 @@ private:
 	// Loads the resources using the 'deviceContext'.
 	void LoadResources( ID2D1DeviceContext* deviceContext );
 
-  // Whether the meter resource has been loaded successfully.
-  static bool s_MeterLoaded;
+	// Whether the meter resource has been loaded successfully.
+	static bool s_MeterLoaded;
 
-  // Base meter image width.
-  static DWORD s_MeterWidth;
+	// Base meter image width.
+	static DWORD s_MeterWidth;
 
-  // Base meter image height.
-  static DWORD s_MeterHeight;
+	// Base meter image height.
+	static DWORD s_MeterHeight;
 
-  // Base meter image bytes.
-  static const BYTE* s_MeterBase;
+	// Base meter image bytes.
+	static const BYTE* s_MeterBase;
 
-  // Meter pin delta arrays (null terminated).
-  static std::vector<const DWORD*> s_MeterPins;
+	// Meter pin delta arrays (null terminated).
+	static std::vector<const DWORD*> s_MeterPins;
 
 	// Rendering thread handle.
 	HANDLE m_RenderThread;
@@ -90,7 +90,7 @@ private:
 	// Rendering thread stop event handle.
 	HANDLE m_RenderStopEvent;
 
-  // Composed meter image.
+	// Composed meter image.
 	std::vector<BYTE> m_MeterImage;
 
 	// Current pin position buffer drawn on the meter image.

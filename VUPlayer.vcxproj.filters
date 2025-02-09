@@ -153,9 +153,6 @@
     <ClInclude Include="WndTray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Lock.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="NullVisual.h">
       <Filter>Visuals</Filter>
     </ClInclude>
@@ -483,9 +480,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WndTray.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Lock.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="NullVisual.cpp">

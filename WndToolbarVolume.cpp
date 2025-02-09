@@ -17,7 +17,7 @@ void WndToolbarVolume::Update( const Output& output, const WndTrackbar::Type tra
 {
 	if ( TBBUTTON button = {}; SendMessage( GetWindowHandle(), TB_GETBUTTON, 0, reinterpret_cast<LPARAM>( &button ) ) ) {
 		switch ( trackbarType ) {
-			case WndTrackbar::Type::Volume : {
+			case WndTrackbar::Type::Volume: {
 				if ( ID_CONTROL_MUTE != button.idCommand ) {
 					SendMessage( GetWindowHandle(), TB_SETCMDID, 0, ID_CONTROL_MUTE );
 				}
@@ -33,7 +33,7 @@ void WndToolbarVolume::Update( const Output& output, const WndTrackbar::Type tra
 				SetButtonEnabled( button.idCommand, true );
 				break;
 			}
-			case WndTrackbar::Type::Pitch : {
+			case WndTrackbar::Type::Pitch: {
 				if ( ID_CONTROL_PITCHRESET != button.idCommand ) {
 					SendMessage( GetWindowHandle(), TB_SETCMDID, 0, ID_CONTROL_PITCHRESET );
 				}
@@ -43,7 +43,7 @@ void WndToolbarVolume::Update( const Output& output, const WndTrackbar::Type tra
 				SetButtonEnabled( button.idCommand, ( output.GetPitch() != 1.0f ) ? true : false );
 				break;
 			}
-			case WndTrackbar::Type::Balance : {
+			case WndTrackbar::Type::Balance: {
 				if ( ID_CONTROL_BALANCERESET != button.idCommand ) {
 					SendMessage( GetWindowHandle(), TB_SETCMDID, 0, ID_CONTROL_BALANCERESET );
 				}
@@ -65,17 +65,17 @@ void WndToolbarVolume::CreateButtons( const WndTrackbar::Type trackbarType )
 	TBBUTTON buttons[ buttonCount ] = {};
 	buttons[ 0 ].fsStyle = TBSTYLE_BUTTON;
 	switch ( trackbarType ) {
-		case WndTrackbar::Type::Pitch : {
+		case WndTrackbar::Type::Pitch: {
 			buttons[ 0 ].iBitmap = 2;
 			buttons[ 0 ].idCommand = ID_CONTROL_PITCHRESET;
 			break;
 		}
-		case WndTrackbar::Type::Balance : {
+		case WndTrackbar::Type::Balance: {
 			buttons[ 0 ].iBitmap = 3;
 			buttons[ 0 ].idCommand = ID_CONTROL_BALANCERESET;
 			break;
 		}
-		default : {
+		default: {
 			buttons[ 0 ].iBitmap = 0;
 			buttons[ 0 ].idCommand = ID_CONTROL_MUTE;
 			break;
@@ -88,15 +88,15 @@ UINT WndToolbarVolume::GetTooltip( const UINT commandID ) const
 {
 	UINT tooltip = 0;
 	switch ( commandID ) {
-		case ID_CONTROL_MUTE : {
+		case ID_CONTROL_MUTE: {
 			tooltip = IDS_MUTE;
 			break;
 		}
-		case ID_CONTROL_PITCHRESET : {
+		case ID_CONTROL_PITCHRESET: {
 			tooltip = IDS_HOTKEY_PITCHRESET;
 			break;
 		}
-		case ID_CONTROL_BALANCERESET : {
+		case ID_CONTROL_BALANCERESET: {
 			tooltip = IDS_HOTKEY_BALANCERESET;
 			break;
 		}

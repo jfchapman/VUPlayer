@@ -33,7 +33,7 @@ const std::wstring& WndTrackbarVolume::GetTooltipText()
 
 	const Type type = GetType();
 	switch ( type ) {
-		case Type::Volume : {
+		case Type::Volume: {
 			const int value = static_cast<int>( GetOutput().GetVolume() * 100 );
 			const int bufSize = 32;
 			WCHAR buf[ bufSize ] = {};
@@ -43,7 +43,7 @@ const std::wstring& WndTrackbarVolume::GetTooltipText()
 			m_Tooltip = ss.str();
 			break;
 		}
-		case Type::Pitch : {
+		case Type::Pitch: {
 			const float value = ( GetOutput().GetPitch() - 1.0f ) * 100;
 			const int bufSize = 32;
 			WCHAR buf[ bufSize ] = {};
@@ -53,7 +53,7 @@ const std::wstring& WndTrackbarVolume::GetTooltipText()
 			m_Tooltip = ss.str();
 			break;
 		}
-		case Type::Balance : {
+		case Type::Balance: {
 			const int value = std::lroundf( GetOutput().GetBalance() * 100 );
 			const int bufSize = 32;
 			WCHAR bufBalance[ bufSize ] = {};
@@ -75,7 +75,7 @@ const std::wstring& WndTrackbarVolume::GetTooltipText()
 			m_Tooltip = ss.str();
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -87,19 +87,19 @@ void WndTrackbarVolume::OnPositionChanged( const int position )
 {
 	const Type type = GetType();
 	switch ( type ) {
-		case Type::Volume : {
+		case Type::Volume: {
 			UpdateVolume( position );
 			break;
 		}
-		case Type::Pitch : {
+		case Type::Pitch: {
 			UpdatePitch( position );
 			break;
 		}
-		case Type::Balance : {
+		case Type::Balance: {
 			UpdateBalance( position );
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -109,19 +109,19 @@ void WndTrackbarVolume::OnDrag( const int position )
 {
 	const Type type = GetType();
 	switch ( type ) {
-		case Type::Volume : {
+		case Type::Volume: {
 			UpdateVolume( position );
 			break;
 		}
-		case Type::Pitch : {
+		case Type::Pitch: {
 			UpdatePitch( position );
 			break;
 		}
-		case Type::Balance : {
+		case Type::Balance: {
 			UpdateBalance( position );
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -133,19 +133,19 @@ void WndTrackbarVolume::Update()
 	int position = previousPosition;
 	const Type type = GetType();
 	switch ( type ) {
-		case Type::Volume : {
+		case Type::Volume: {
 			position = GetPositionFromVolume( GetOutput().GetVolume() );
 			break;
 		}
-		case Type::Pitch : {
+		case Type::Pitch: {
 			position = GetPositionFromPitch( GetOutput().GetPitch() );
 			break;
 		}
-		case Type::Balance : {
+		case Type::Balance: {
 			position = GetPositionFromBalance( GetOutput().GetBalance() );
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -214,7 +214,7 @@ void WndTrackbarVolume::UpdateBalance( const int position )
 float WndTrackbarVolume::GetBalanceFromPosition( const int position ) const
 {
 	float balance = 0;
-	if ( const int midpoint = GetRange() / 2; midpoint > 1 ) {		
+	if ( const int midpoint = GetRange() / 2; midpoint > 1 ) {
 		balance = static_cast<float>( position ) / midpoint - 1;
 	}
 	return balance;
@@ -257,30 +257,30 @@ bool WndTrackbarVolume::ShowContextMenu( const POINT& position )
 			const UINT flags = TPM_RIGHTBUTTON | TPM_NONOTIFY | TPM_RETURNCMD;
 			const UINT command = TrackPopupMenu( trackbarMenu, flags, position.x, position.y, 0 /*reserved*/, GetWindowHandle(), NULL /*rect*/ );
 			switch ( command ) {
-				case ID_VIEW_TRACKBAR_VOLUME : {
+				case ID_VIEW_TRACKBAR_VOLUME: {
 					SetType( Type::Volume );
 					break;
 				}
-				case ID_VIEW_TRACKBAR_PITCH : {
+				case ID_VIEW_TRACKBAR_PITCH: {
 					SetType( Type::Pitch );
 					break;
 				}
-				case ID_VIEW_TRACKBAR_BALANCE : {
+				case ID_VIEW_TRACKBAR_BALANCE: {
 					SetType( Type::Balance );
 					break;
 				}
-				case ID_CONTROL_BALANCERESET :
-				case ID_CONTROL_PITCHRESET :
-				case ID_CONTROL_PITCHRANGE_SMALL :
-				case ID_CONTROL_PITCHRANGE_MEDIUM :
-				case ID_CONTROL_PITCHRANGE_LARGE : {
+				case ID_CONTROL_BALANCERESET:
+				case ID_CONTROL_PITCHRESET:
+				case ID_CONTROL_PITCHRANGE_SMALL:
+				case ID_CONTROL_PITCHRANGE_MEDIUM:
+				case ID_CONTROL_PITCHRANGE_LARGE: {
 					VUPlayer* vuplayer = VUPlayer::Get();
 					if ( nullptr != vuplayer ) {
 						vuplayer->OnCommand( command );
-					}	
+					}
 					break;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}

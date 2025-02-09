@@ -30,7 +30,7 @@ public:
 	// Returns whether the button corresponding to 'commandID' is enabled.
 	bool IsButtonEnabled( const UINT commandID ) const;
 
-		// Returns whether the button corresponding to 'commandID' is checked.
+	// Returns whether the button corresponding to 'commandID' is checked.
 	bool IsButtonChecked( const UINT commandID ) const;
 
 	// Returns the tooltip resource ID corresponding to a 'commandID'.
@@ -120,4 +120,3 @@ private:
 	// Indicates whether the Windows classic theme is active.
 	bool m_IsClassicTheme;
 };
-

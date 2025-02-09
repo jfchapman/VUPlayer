@@ -9,16 +9,16 @@
 #include <sstream>
 
 // MusicBrainz API server.
-static constexpr char s_MusicBrainzServer[]= "musicbrainz.org";
+static constexpr char s_MusicBrainzServer[] = "musicbrainz.org";
 
 // MusicBrainz API for disc ID lookups.
 static constexpr char s_MusicBrainzAPI[] = "/ws/2/discid/";
 
 // Cover Art Archive server.
-static constexpr char s_CoverArtArchiveServer[]= "coverartarchive.org";
+static constexpr char s_CoverArtArchiveServer[] = "coverartarchive.org";
 
 // Cover Art Archive API for MusicBrainz release lookup.
-static constexpr char s_CoverArtArchiveAPI[]= "/release/";
+static constexpr char s_CoverArtArchiveAPI[] = "/release/";
 
 MusicBrainz::MusicBrainz( const HINSTANCE instance, const HWND hwnd ) :
 	m_hInst( instance ),
@@ -76,7 +76,7 @@ DWORD WINAPI MusicBrainz::QueryThreadProc( LPVOID lParam )
 INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			MatchInfo* matchInfo = reinterpret_cast<MatchInfo*>( lParam );
 			MusicBrainz* musicBrainz = ( nullptr != matchInfo ) ? matchInfo->m_MusicBrainz : nullptr;
 			if ( nullptr != musicBrainz ) {
@@ -85,10 +85,10 @@ INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM w
 			}
 			return TRUE;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDOK :
-				case IDCANCEL : {
+				case IDOK:
+				case IDCANCEL: {
 					int selection = -1;
 					if ( IDOK == LOWORD( wParam ) ) {
 						MatchInfo* matchInfo = reinterpret_cast<MatchInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
@@ -106,13 +106,13 @@ INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM w
 					EndDialog( hwnd, selection );
 					return TRUE;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
 			break;
 		}
-		case WM_NOTIFY : {
+		case WM_NOTIFY: {
 			LPNMHDR nmhdr = reinterpret_cast<LPNMHDR>( lParam );
 			if ( nullptr != nmhdr ) {
 				const HWND hwndList = GetDlgItem( hwnd, IDC_MUSICBRAINZ_MATCHES );
@@ -147,7 +147,7 @@ INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM w
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			const HWND hwndList = GetDlgItem( hwnd, IDC_MUSICBRAINZ_MATCHES );
 			if ( nullptr != hwndList ) {
 				HIMAGELIST imageList = ListView_GetImageList( hwndList, LVSIL_NORMAL );
@@ -165,7 +165,7 @@ INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM w
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_DRAWITEM : {
+		case WM_DRAWITEM: {
 			MatchInfo* matchInfo = reinterpret_cast<MatchInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 			MusicBrainz* musicBrainz = ( nullptr != matchInfo ) ? matchInfo->m_MusicBrainz : nullptr;
 			DRAWITEMSTRUCT* drawitem = reinterpret_cast<DRAWITEMSTRUCT*>( lParam );
@@ -174,7 +174,7 @@ INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM w
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -201,9 +201,9 @@ void MusicBrainz::QueryHandler()
 	HANDLE eventHandles[ 2 ] = { m_StopEvent, m_WakeEvent };
 
 	CanContinue canContinue( [ handle = m_StopEvent ] ()
-	{
-		return ( WAIT_OBJECT_0 != WaitForSingleObject( handle, 0 ) );
-	} );
+		{
+			return ( WAIT_OBJECT_0 != WaitForSingleObject( handle, 0 ) );
+		} );
 
 	while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
 		QueryInfo pendingQuery;
@@ -215,14 +215,14 @@ void MusicBrainz::QueryHandler()
 			}
 		}
 
-		const auto& [ discID, toc, playlistID, startCues, backingFile, forceDialog ] = pendingQuery;
+		const auto& [discID, toc, playlistID, startCues, backingFile, forceDialog] = pendingQuery;
 
 		if ( !discID.empty() && !toc.empty() ) {
 			Result* result = new Result();
 			result->DiscID = discID;
-      result->PlaylistID = playlistID;
-      result->StartCues = startCues;
-      result->BackingFile = backingFile;
+			result->PlaylistID = playlistID;
+			result->StartCues = startCues;
+			result->BackingFile = backingFile;
 
 			m_ActiveQuery = true;
 			const auto response = LookupDisc( discID, toc );
@@ -380,7 +380,7 @@ void MusicBrainz::UpdateDialogTrackList( const HWND hwnd, const Result& result )
 			const auto& album = result.Albums[ selectedItem ];
 			for ( const auto& track : album.Tracks ) {
 				const std::wstring tracknumber = std::to_wstring( track.first );
-				const auto& [ title, artist, year ] = track.second;
+				const auto& [title, artist, year] = track.second;
 				LVITEM item = {};
 				item.mask = LVIF_TEXT;
 				item.pszText = const_cast<LPWSTR>( tracknumber.c_str() );
@@ -492,7 +492,7 @@ std::string MusicBrainz::LookupDisc( const std::string& discID, const std::strin
 	std::string response;
 	if ( ( nullptr != m_InternetConnectionMusicBrainz ) && !discID.empty() && !toc.empty() ) {
 		static const bool stubs = false;
-		const char* acceptTypes[] = { "application/json", nullptr };		
+		const char* acceptTypes[] = { "application/json", nullptr };
 		const DWORD flags = INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE;
 		std::stringstream objectName;
 		objectName << s_MusicBrainzAPI;
@@ -533,7 +533,7 @@ std::vector<unsigned char> MusicBrainz::LookupCoverArt( const std::string& relea
 	std::vector<unsigned char> response;
 	if ( ( nullptr != m_InternetConnectionCoverArtArchive ) && !releaseID.empty() ) {
 		static const bool stubs = false;
-		const char* acceptTypes[] = { "image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff", nullptr };		
+		const char* acceptTypes[] = { "image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff", nullptr };
 		const DWORD flags = INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE;
 		std::stringstream objectName;
 		objectName << s_CoverArtArchiveAPI;
@@ -592,49 +592,49 @@ static std::wstring ParseArtistCredit( const nlohmann::json& artistCredit )
 
 static std::wstring ParseLabel( const nlohmann::json& labelInfo )
 {
-  std::wstring result;
-  if ( labelInfo.is_array() ) {
-    for ( const auto& labelObject : labelInfo ) {
-      if ( labelObject.is_object() ) {
-        if ( const auto label = labelObject.find( "label" ); ( labelObject.end() != label ) && label->is_object() ) {
-          if ( const auto labelName = label->find( "name" ); ( label->end() != labelName ) && labelName->is_string() && !labelName->empty() ) {
-            if ( !result.empty() )
-              result += L", ";
-            result += UTF8ToWideString( *labelName );
-          }
-        }
-      }
-    }
-  }
-  return result;
+	std::wstring result;
+	if ( labelInfo.is_array() ) {
+		for ( const auto& labelObject : labelInfo ) {
+			if ( labelObject.is_object() ) {
+				if ( const auto label = labelObject.find( "label" ); ( labelObject.end() != label ) && label->is_object() ) {
+					if ( const auto labelName = label->find( "name" ); ( label->end() != labelName ) && labelName->is_string() && !labelName->empty() ) {
+						if ( !result.empty() )
+							result += L", ";
+						result += UTF8ToWideString( *labelName );
+					}
+				}
+			}
+		}
+	}
+	return result;
 }
 
 static void ParseRelations( const nlohmann::json& relations, std::wstring& composer, std::wstring& conductor )
 {
-  composer.clear();
-  conductor.clear();
-  if ( relations.is_array() ) {
-    for ( const auto& relation : relations ) {
-      if ( relation.is_object() ) {
-        if ( const auto artist = relation.find( "artist" ); ( relation.end() != artist ) && artist->is_object() ) {
-          if ( const auto name = artist->find( "name" ); ( artist->end() != name ) && name->is_string() && !name->empty() ) {
-            if ( const auto type = relation.find( "type" ); ( relation.end() != type ) && type->is_string() ) {
-              const std::string relationType = *type;
-              if ( "composer" == relationType ) {
-                if ( !composer.empty() )
-                  composer += L", ";
-                composer += UTF8ToWideString( *name );
-              } else if ( "conductor" == relationType ) {
-                if ( !conductor.empty() )
-                  conductor += L", ";
-                conductor += UTF8ToWideString( *name );
-              }
-            }
-          }          
-        }
-      }
-    }
-  }
+	composer.clear();
+	conductor.clear();
+	if ( relations.is_array() ) {
+		for ( const auto& relation : relations ) {
+			if ( relation.is_object() ) {
+				if ( const auto artist = relation.find( "artist" ); ( relation.end() != artist ) && artist->is_object() ) {
+					if ( const auto name = artist->find( "name" ); ( artist->end() != name ) && name->is_string() && !name->empty() ) {
+						if ( const auto type = relation.find( "type" ); ( relation.end() != type ) && type->is_string() ) {
+							const std::string relationType = *type;
+							if ( "composer" == relationType ) {
+								if ( !composer.empty() )
+									composer += L", ";
+								composer += UTF8ToWideString( *name );
+							} else if ( "conductor" == relationType ) {
+								if ( !conductor.empty() )
+									conductor += L", ";
+								conductor += UTF8ToWideString( *name );
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result, CanContinue canContinue ) const
@@ -646,11 +646,11 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 			const auto releases = document.find( "releases" );
 			if ( ( document.end() != releases ) && releases->is_array() ) {
 
-				auto albumCompare = []( const Album& a, const Album& b )
-				{
-					return  std::tie( a.Artist, a.Title, a.Label, a.Composer, a.Conductor, a.Year, a.Tracks, a.Artwork ) < 
-                  std::tie( b.Artist, b.Title, b.Label, b.Composer, b.Conductor, b.Year, b.Tracks, b.Artwork );
-				};
+				auto albumCompare = [] ( const Album& a, const Album& b )
+					{
+						return  std::tie( a.Artist, a.Title, a.Label, a.Composer, a.Conductor, a.Year, a.Tracks, a.Artwork ) <
+							std::tie( b.Artist, b.Title, b.Label, b.Composer, b.Conductor, b.Year, b.Tracks, b.Artwork );
+					};
 				std::set<Album, decltype( albumCompare )> albums( albumCompare );
 
 				// Get release information.
@@ -658,32 +658,32 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 					std::vector<Album> releaseAlbums;
 					std::wstring releaseTitle;
 					std::wstring releaseArtist;
-          std::wstring releaseLabel;
-          std::wstring releaseComposer;
-          std::wstring releaseConductor;
+					std::wstring releaseLabel;
+					std::wstring releaseComposer;
+					std::wstring releaseConductor;
 					long releaseYear = 0;
-					
+
 					if ( const auto title = release.find( "title" ); ( release.end() != title ) && title->is_string() ) {
 						releaseTitle = UTF8ToWideString( *title );
 					}
-					
+
 					if ( const auto date = release.find( "date" ); ( release.end() != date ) && date->is_string() ) {
 						releaseYear = ParseYear( *date );
 					}
-					
+
 					if ( const auto artistCredit = release.find( "artist-credit" ); ( release.end() != artistCredit ) && artistCredit->is_array() ) {
 						releaseArtist = ParseArtistCredit( *artistCredit );
 					}
 
 					if ( const auto labelInfo = release.find( "label-info" ); release.end() != labelInfo ) {
-            releaseLabel = ParseLabel( *labelInfo );
+						releaseLabel = ParseLabel( *labelInfo );
 					}
 
-          if ( const auto relations = release.find( "relations" ); release.end() != relations ) {
-            ParseRelations( *relations, releaseComposer, releaseConductor );
-          }
+					if ( const auto relations = release.find( "relations" ); release.end() != relations ) {
+						ParseRelations( *relations, releaseComposer, releaseConductor );
+					}
 
-          if ( const auto media = release.find( "media" ); ( release.end() != media ) && media->is_array() ) {
+					if ( const auto media = release.find( "media" ); ( release.end() != media ) && media->is_array() ) {
 						for ( const auto& medium : *media ) {
 							// If this is an exact match, we want to ignore all other media in this release.
 							bool exactMatch = false;
@@ -702,9 +702,9 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 								Album album = {};
 								album.Title = releaseTitle;
 								album.Artist = releaseArtist;
-                album.Label = releaseLabel;
-                album.Composer = releaseComposer;
-                album.Conductor = releaseConductor;
+								album.Label = releaseLabel;
+								album.Composer = releaseComposer;
+								album.Conductor = releaseConductor;
 								album.Year = releaseYear;
 								for ( const auto& track : *tracks ) {
 									if ( const auto trackposition = track.find( "position" ); ( track.end() != trackposition ) && trackposition->is_number() ) {

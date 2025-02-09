@@ -39,38 +39,38 @@ public:
 
 private:
 	// Init function type.
-	typedef int32_t (*scrobbler_init)();
+	typedef int32_t ( *scrobbler_init )( );
 
 	// Close function type.
-	typedef void (*scrobbler_close)();
+	typedef void ( *scrobbler_close )( );
 
 	// Authorize function type.
-	typedef void (*scrobbler_authorize)( const char* token );
+	typedef void ( *scrobbler_authorize )( const char* token );
 
 	// Get Token function type.
-	typedef int32_t (*scrobbler_get_token)( char* token, const int32_t tokenSize );
+	typedef int32_t ( *scrobbler_get_token )( char* token, const int32_t tokenSize );
 
 	// Get Session Key function type.
-	typedef int32_t (*scrobbler_get_session)( const char* token, char* sk, const int32_t skSize );
+	typedef int32_t ( *scrobbler_get_session )( const char* token, char* sk, const int32_t skSize );
 
 	// Now Playing function type.
-	typedef int32_t (*scrobbler_now_playing)( const char* sk, const scrobbler_track* track );
+	typedef int32_t ( *scrobbler_now_playing )( const char* sk, const scrobbler_track* track );
 
 	// Scrobble function type.
-	typedef int32_t (*scrobbler_scrobble)( const char* sk, const scrobbler_track** tracks, const int32_t trackCount );
+	typedef int32_t ( *scrobbler_scrobble )( const char* sk, const scrobbler_track** tracks, const int32_t trackCount );
 
 	// Track information.
 	struct TrackInfo
 	{
-		std::string	Artist;				// Track artist, UTF-8 encoded (REQUIRED)
-		std::string	Title;				// Track title, UTF-8 encoded (REQUIRED)
-		std::string	Album;				// Album, UTF-8 encoded (optional)
-		int32_t			Tracknumber;	// Track number (optional)
-		int32_t			Duration;			// Track length in seconds (optional)
+		std::string	Artist;   // Track artist, UTF-8 encoded (REQUIRED)
+		std::string	Title;    // Track title, UTF-8 encoded (REQUIRED)
+		std::string	Album;    // Album, UTF-8 encoded (optional)
+		int32_t Tracknumber;  // Track number (optional)
+		int32_t Duration;     // Track length in seconds (optional)
 	};
 
 	// Maps a timestamp to track information.
-	typedef std::map<time_t,TrackInfo> PendingScrobbles;
+	typedef std::map<time_t, TrackInfo> PendingScrobbles;
 
 	// A set of timestamps.
 	typedef std::set<time_t> Timestamps;

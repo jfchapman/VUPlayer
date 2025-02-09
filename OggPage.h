@@ -101,7 +101,7 @@ private:
 
 	// Page header.
 	std::vector<uint8_t> m_Header;
-	
+
 	// Page contents.
 	std::vector<uint8_t> m_Content;
 };

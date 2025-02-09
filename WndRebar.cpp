@@ -17,7 +17,7 @@ LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LP
 	WndRebar* wndRebar = reinterpret_cast<WndRebar*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndRebar ) {
 		switch ( message ) {
-			case WM_CONTEXTMENU : {
+			case WM_CONTEXTMENU: {
 				POINT pt = {};
 				if ( -1 == lParam ) {
 					if ( const HWND rebarItemWnd = GetFocus(); nullptr != rebarItemWnd ) {
@@ -32,19 +32,19 @@ LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LP
 				wndRebar->OnContextMenu( reinterpret_cast<HWND>( wParam ), pt );
 				break;
 			}
-			case WM_SIZE : {
+			case WM_SIZE: {
 				wndRebar->RearrangeItems();
 				break;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, GWLP_USERDATA, 0 );
 				break;
 			}
-			case WM_COMMAND : {
+			case WM_COMMAND: {
 				SendMessage( GetParent( hwnd ), message, wParam, lParam );
 				return TRUE;
 			}
-			case WM_NOTIFY : {
+			case WM_NOTIFY: {
 				if ( LPNMHDR hdr = reinterpret_cast<LPNMHDR>( lParam ); nullptr != hdr ) {
 					if ( NM_CUSTOMDRAW == hdr->code ) {
 						LPNMCUSTOMDRAW nmcd = reinterpret_cast<LPNMCUSTOMDRAW>( lParam );
@@ -57,10 +57,10 @@ LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LP
 				}
 				break;
 			}
-			case WM_PAINT : {
+			case WM_PAINT: {
 				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
-				FillRect(	ps.hdc, &ps.rcPaint, HBRUSH( COLOR_3DFACE + 1 ) );
+				FillRect( ps.hdc, &ps.rcPaint, HBRUSH( COLOR_3DFACE + 1 ) );
 				EndPaint( hwnd, &ps );
 				break;
 			}
@@ -242,7 +242,7 @@ void WndRebar::OnContextMenu( const HWND hwnd, const POINT& position )
 			}
 			DestroyMenu( menu );
 		}
-	} 
+	}
 }
 
 void WndRebar::OnChangeSettings()

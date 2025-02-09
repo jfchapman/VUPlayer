@@ -174,7 +174,7 @@ public:
 	void OnSelectAll();
 
 	// Selects, if present, the 'itemID', and deselects all other items.
-  // Returns whether the item was selected.
+	// Returns whether the item was selected.
 	bool SelectPlaylistItem( const long itemID );
 
 	// Updates the status icon.
@@ -184,34 +184,34 @@ public:
 	// 'isHighContrast' - indicates whether high contrast mode is active.
 	void OnSysColorChange( const bool isHighContrast );
 
-  // Called when display information for 'lvItem' needs updating in the virtual list control.
-  void OnDisplayInfo( LVITEM& lvItem );
+	// Called when display information for 'lvItem' needs updating in the virtual list control.
+	void OnDisplayInfo( LVITEM& lvItem );
 
-  // Called when an item needs to be found in the virtual list control.
-  // 'findInfo' - the information to find.
-  // 'startIndex' - the index at which to start the search.
-  // Returns the list control index of the found item, or -1 if there is no match.
-  int OnFindItem( const LVFINDINFO& findInfo, const int startIndex );
+	// Called when an item needs to be found in the virtual list control.
+	// 'findInfo' - the information to find.
+	// 'startIndex' - the index at which to start the search.
+	// Returns the list control index of the found item, or -1 if there is no match.
+	int OnFindItem( const LVFINDINFO& findInfo, const int startIndex );
 
-  // Refreshes the list control.
-  void RefreshPlaylist();
+	// Refreshes the list control.
+	void RefreshPlaylist();
 
 private:
 	// Column format information.
 	struct ColumnFormat {
-		UINT ShowID;					// Show command ID.
-		UINT SortID;					// Sort command ID.
-		UINT HeaderID;				// Column header string resource ID.
-		UINT Alignment;				// Column alignment.
-		int Width;						// Default column width.
-		bool CanEdit;					// Whether column entries can be edited.
+		UINT ShowID;     // Show command ID.
+		UINT SortID;     // Sort command ID.
+		UINT HeaderID;   // Column header string resource ID.
+		UINT Alignment;  // Column alignment.
+		int Width;       // Default column width.
+		bool CanEdit;    // Whether column entries can be edited.
 	};
 
 	// Added item information.
 	struct AddedItem {
 		Playlist* Playlist;   // Playlist pointer.
-		Playlist::Item Item;	// Playlist item.
-		int Position;					// Added item position (0-based).
+		Playlist::Item Item;  // Playlist item.
+		int Position;         // Added item position (0-based).
 	};
 
 	// Window procedure
@@ -221,7 +221,7 @@ private:
 	static LRESULT CALLBACK EditControlProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
 	// Maps a column type to the column format.
-	using ColumnFormats = std::map<Playlist::Column,ColumnFormat>;
+	using ColumnFormats = std::map<Playlist::Column, ColumnFormat>;
 
 	// Maps a filename (with optional cues) to an item ID collection.
 	using FilenameToIDs = std::map<std::tuple<std::wstring /*filename*/, std::optional<long> /*cueStart*/, std::optional<long> /*cueEnd*/>, std::set<long>>;
@@ -302,11 +302,11 @@ private:
 	// Returns the background colour (which is applied when not in high contrast mode).
 	COLORREF GetBackgroundColour() const;
 
-  // Deselects all list control items.
-  void DeselectAllItems();
+	// Deselects all list control items.
+	void DeselectAllItems();
 
-  // Refreshes the list control item at the 'itemIndex'.
-  void RefreshItem( const int itemIndex );
+	// Refreshes the list control item at the 'itemIndex'.
+	void RefreshItem( const int itemIndex );
 
 	// Column format information.
 	static ColumnFormats s_ColumnFormats;
@@ -371,8 +371,8 @@ private:
 	// The file to select when setting the playlist.
 	std::optional<MediaInfo> m_FileToSelect;
 
-  // Whether to select the first list control item when a playlist item is added to the playlist.
-  bool m_SelectFirstItem = false;
+	// Whether to select the first list control item when a playlist item is added to the playlist.
+	bool m_SelectFirstItem = false;
 
 	// Maps an output state to an icon index.
 	IconMap m_IconMap;

@@ -140,4 +140,3 @@ private:
 	// Indicates whether the Windows classic theme is active.
 	bool m_IsClassicTheme;
 };
-

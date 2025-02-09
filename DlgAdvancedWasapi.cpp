@@ -6,7 +6,7 @@
 INT_PTR CALLBACK DlgAdvancedWasapi::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			DlgAdvancedWasapi* dialog = reinterpret_cast<DlgAdvancedWasapi*>( lParam );
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -15,23 +15,23 @@ INT_PTR CALLBACK DlgAdvancedWasapi::DialogProc( HWND hwnd, UINT message, WPARAM 
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDOK : {
+				case IDOK: {
 					DlgAdvancedWasapi* dialog = reinterpret_cast<DlgAdvancedWasapi*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->SaveSettings( hwnd );
 					}
 				}
-				case IDCANCEL : {
+				case IDCANCEL: {
 					EndDialog( hwnd, 0 );
 					return TRUE;
 				}
-				case IDC_WASAPI_RESET : {
+				case IDC_WASAPI_RESET: {
 					DlgAdvancedWasapi* dialog = reinterpret_cast<DlgAdvancedWasapi*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->ResetToDefaults( hwnd );

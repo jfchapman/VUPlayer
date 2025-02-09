@@ -15,28 +15,28 @@
 
 // Column information.
 WndList::ColumnFormats WndList::s_ColumnFormats = {
-	{ Playlist::Column::Filepath, ColumnFormat( {				ID_SHOWCOLUMNS_FILEPATH,			ID_SORTPLAYLIST_FILEPATH,				IDS_COLUMN_FILEPATH,			LVCFMT_LEFT,		static_cast<int>( 200 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::Filetime, ColumnFormat( {				ID_SHOWCOLUMNS_FILETIME,			ID_SORTPLAYLIST_FILETIME,				IDS_COLUMN_FILETIME,			LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::Filesize, ColumnFormat( {				ID_SHOWCOLUMNS_FILESIZE,			ID_SORTPLAYLIST_FILESIZE,				IDS_COLUMN_FILESIZE,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::Duration, ColumnFormat( {				ID_SHOWCOLUMNS_DURATION,			ID_SORTPLAYLIST_DURATION,				IDS_COLUMN_DURATION,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::SampleRate, ColumnFormat( {			ID_SHOWCOLUMNS_SAMPLERATE,		ID_SORTPLAYLIST_SAMPLERATE,			IDS_COLUMN_SAMPLERATE,		LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::BitsPerSample, ColumnFormat( {	ID_SHOWCOLUMNS_BITSPERSAMPLE,	ID_SORTPLAYLIST_BITSPERSAMPLE,	IDS_COLUMN_BITSPERSAMPLE,	LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
-	{ Playlist::Column::Channels, ColumnFormat( {				ID_SHOWCOLUMNS_CHANNELS,			ID_SORTPLAYLIST_CHANNELS,				IDS_COLUMN_CHANNELS,			LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
-	{ Playlist::Column::Artist, ColumnFormat( {					ID_SHOWCOLUMNS_ARTIST,				ID_SORTPLAYLIST_ARTIST,					IDS_COLUMN_ARTIST,				LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Title, ColumnFormat( {					ID_SHOWCOLUMNS_TITLE,					ID_SORTPLAYLIST_TITLE,					IDS_COLUMN_TITLE,					LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Album, ColumnFormat( {					ID_SHOWCOLUMNS_ALBUM,					ID_SORTPLAYLIST_ALBUM,					IDS_COLUMN_ALBUM,					LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Composer, ColumnFormat( {				ID_SHOWCOLUMNS_COMPOSER,			ID_SORTPLAYLIST_COMPOSER,				IDS_COLUMN_COMPOSER,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Conductor, ColumnFormat( {			ID_SHOWCOLUMNS_CONDUCTOR,			ID_SORTPLAYLIST_CONDUCTOR,			IDS_COLUMN_CONDUCTOR,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Publisher, ColumnFormat( {			ID_SHOWCOLUMNS_PUBLISHER,			ID_SORTPLAYLIST_PUBLISHER,			IDS_COLUMN_PUBLISHER,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
-  { Playlist::Column::Genre, ColumnFormat( {					ID_SHOWCOLUMNS_GENRE,					ID_SORTPLAYLIST_GENRE,					IDS_COLUMN_GENRE,					LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	true /*canEdit*/ } ) },
-	{ Playlist::Column::Year, ColumnFormat( {						ID_SHOWCOLUMNS_YEAR,					ID_SORTPLAYLIST_YEAR,						IDS_COLUMN_YEAR,					LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		true /*canEdit*/ } ) },
-	{ Playlist::Column::Track, ColumnFormat( {					ID_SHOWCOLUMNS_TRACK,					ID_SORTPLAYLIST_TRACK,					IDS_COLUMN_TRACK,					LVCFMT_CENTER,	static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		true /*canEdit*/ } ) },
-	{ Playlist::Column::Type, ColumnFormat( {						ID_SHOWCOLUMNS_TYPE,					ID_SORTPLAYLIST_TYPE,						IDS_COLUMN_TYPE,					LVCFMT_LEFT,		static_cast<int>( 50 * GetDPIScaling() ) /*width*/,		false /*canEdit*/ } ) },
-	{ Playlist::Column::Version, ColumnFormat( {				ID_SHOWCOLUMNS_VERSION,				ID_SORTPLAYLIST_VERSION,				IDS_COLUMN_VERSION,				LVCFMT_LEFT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::GainTrack, ColumnFormat( {			ID_SHOWCOLUMNS_TRACKGAIN,			ID_SORTPLAYLIST_TRACKGAIN,			IDS_COLUMN_GAINTRACK,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::GainAlbum, ColumnFormat( {			ID_SHOWCOLUMNS_ALBUMGAIN,			ID_SORTPLAYLIST_ALBUMGAIN,			IDS_COLUMN_GAINALBUM,			LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::Bitrate, ColumnFormat( {				ID_SHOWCOLUMNS_BITRATE,				ID_SORTPLAYLIST_BITRATE,				IDS_COLUMN_BITRATE,				LVCFMT_RIGHT,		static_cast<int>( 100 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) },
-	{ Playlist::Column::Filename, ColumnFormat( {				ID_SHOWCOLUMNS_FILENAME,			ID_SORTPLAYLIST_FILENAME,				IDS_COLUMN_FILENAME,			LVCFMT_LEFT,		static_cast<int>( 150 * GetDPIScaling() ) /*width*/,	false /*canEdit*/ } ) }
+	{ Playlist::Column::Filepath, ColumnFormat( {       ID_SHOWCOLUMNS_FILEPATH,        ID_SORTPLAYLIST_FILEPATH,       IDS_COLUMN_FILEPATH,       LVCFMT_LEFT,    static_cast<int>( 200 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::Filetime, ColumnFormat( {       ID_SHOWCOLUMNS_FILETIME,        ID_SORTPLAYLIST_FILETIME,       IDS_COLUMN_FILETIME,       LVCFMT_LEFT,    static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::Filesize, ColumnFormat( {       ID_SHOWCOLUMNS_FILESIZE,        ID_SORTPLAYLIST_FILESIZE,       IDS_COLUMN_FILESIZE,       LVCFMT_RIGHT,   static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::Duration, ColumnFormat( {       ID_SHOWCOLUMNS_DURATION,        ID_SORTPLAYLIST_DURATION,       IDS_COLUMN_DURATION,       LVCFMT_RIGHT,   static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::SampleRate, ColumnFormat( {     ID_SHOWCOLUMNS_SAMPLERATE,      ID_SORTPLAYLIST_SAMPLERATE,     IDS_COLUMN_SAMPLERATE,     LVCFMT_RIGHT,   static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::BitsPerSample, ColumnFormat( {  ID_SHOWCOLUMNS_BITSPERSAMPLE,   ID_SORTPLAYLIST_BITSPERSAMPLE,  IDS_COLUMN_BITSPERSAMPLE,  LVCFMT_CENTER,  static_cast<int>( 50 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::Channels, ColumnFormat( {       ID_SHOWCOLUMNS_CHANNELS,        ID_SORTPLAYLIST_CHANNELS,       IDS_COLUMN_CHANNELS,       LVCFMT_CENTER,  static_cast<int>( 50 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::Artist, ColumnFormat( {         ID_SHOWCOLUMNS_ARTIST,          ID_SORTPLAYLIST_ARTIST,         IDS_COLUMN_ARTIST,         LVCFMT_LEFT,    static_cast<int>( 150 * GetDPIScaling() ) /*width*/, true /*canEdit*/ } ) },
+	{ Playlist::Column::Title, ColumnFormat( {          ID_SHOWCOLUMNS_TITLE,           ID_SORTPLAYLIST_TITLE,          IDS_COLUMN_TITLE,          LVCFMT_LEFT,    static_cast<int>( 150 * GetDPIScaling() ) /*width*/, true /*canEdit*/ } ) },
+	{ Playlist::Column::Album, ColumnFormat( {          ID_SHOWCOLUMNS_ALBUM,           ID_SORTPLAYLIST_ALBUM,          IDS_COLUMN_ALBUM,          LVCFMT_LEFT,    static_cast<int>( 150 * GetDPIScaling() ) /*width*/, true /*canEdit*/ } ) },
+	{ Playlist::Column::Composer, ColumnFormat( {       ID_SHOWCOLUMNS_COMPOSER,        ID_SORTPLAYLIST_COMPOSER,       IDS_COLUMN_COMPOSER,       LVCFMT_LEFT,    static_cast<int>( 150 * GetDPIScaling() ) /*width*/, true /*canEdit*/ } ) },
+	{ Playlist::Column::Conductor, ColumnFormat( {      ID_SHOWCOLUMNS_CONDUCTOR,       ID_SORTPLAYLIST_CONDUCTOR,      IDS_COLUMN_CONDUCTOR,      LVCFMT_LEFT,    static_cast<int>( 150 * GetDPIScaling() ) /*width*/, true /*canEdit*/ } ) },
+	{ Playlist::Column::Publisher, ColumnFormat( {      ID_SHOWCOLUMNS_PUBLISHER,       ID_SORTPLAYLIST_PUBLISHER,      IDS_COLUMN_PUBLISHER,      LVCFMT_LEFT,    static_cast<int>( 150 * GetDPIScaling() ) /*width*/, true /*canEdit*/ } ) },
+	{ Playlist::Column::Genre, ColumnFormat( {          ID_SHOWCOLUMNS_GENRE,           ID_SORTPLAYLIST_GENRE,          IDS_COLUMN_GENRE,          LVCFMT_LEFT,    static_cast<int>( 100 * GetDPIScaling() ) /*width*/, true /*canEdit*/ } ) },
+	{ Playlist::Column::Year, ColumnFormat( {           ID_SHOWCOLUMNS_YEAR,            ID_SORTPLAYLIST_YEAR,           IDS_COLUMN_YEAR,           LVCFMT_CENTER,  static_cast<int>( 50 * GetDPIScaling() ) /*width*/, true /*canEdit*/ } ) },
+	{ Playlist::Column::Track, ColumnFormat( {          ID_SHOWCOLUMNS_TRACK,           ID_SORTPLAYLIST_TRACK,          IDS_COLUMN_TRACK,          LVCFMT_CENTER,  static_cast<int>( 50 * GetDPIScaling() ) /*width*/, true /*canEdit*/ } ) },
+	{ Playlist::Column::Type, ColumnFormat( {           ID_SHOWCOLUMNS_TYPE,            ID_SORTPLAYLIST_TYPE,           IDS_COLUMN_TYPE,           LVCFMT_LEFT,    static_cast<int>( 50 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::Version, ColumnFormat( {        ID_SHOWCOLUMNS_VERSION,         ID_SORTPLAYLIST_VERSION,        IDS_COLUMN_VERSION,        LVCFMT_LEFT,    static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::GainTrack, ColumnFormat( {      ID_SHOWCOLUMNS_TRACKGAIN,       ID_SORTPLAYLIST_TRACKGAIN,      IDS_COLUMN_GAINTRACK,      LVCFMT_RIGHT,   static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::GainAlbum, ColumnFormat( {      ID_SHOWCOLUMNS_ALBUMGAIN,       ID_SORTPLAYLIST_ALBUMGAIN,      IDS_COLUMN_GAINALBUM,      LVCFMT_RIGHT,   static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::Bitrate, ColumnFormat( {        ID_SHOWCOLUMNS_BITRATE,         ID_SORTPLAYLIST_BITRATE,        IDS_COLUMN_BITRATE,        LVCFMT_RIGHT,   static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::Filename, ColumnFormat( {       ID_SHOWCOLUMNS_FILENAME,        ID_SORTPLAYLIST_FILENAME,       IDS_COLUMN_FILENAME,       LVCFMT_LEFT,    static_cast<int>( 150 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) }
 };
 
 // List control ID
@@ -64,42 +64,42 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 {
 	WndList* wndList = reinterpret_cast<WndList*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndList ) {
-		switch( message )	{
-			case WM_COMMAND : {
+		switch ( message ) {
+			case WM_COMMAND: {
 				const UINT commandID = LOWORD( wParam );
 				wndList->OnCommand( commandID );
 				break;
 			}
-			case WM_DROPFILES : {
+			case WM_DROPFILES: {
 				wndList->OnDropFiles( reinterpret_cast<HDROP>( wParam ) );
 				break;
 			}
-			case MSG_FILEADDED : {
+			case MSG_FILEADDED: {
 				AddedItem* addedItem = reinterpret_cast<AddedItem*>( wParam );
 				wndList->AddFileHandler( addedItem );
 				delete addedItem;
 				break;
 			}
-			case MSG_FILEREMOVED : {
+			case MSG_FILEREMOVED: {
 				const long removedItemID = static_cast<long>( wParam );
 				wndList->RemoveFileHandler( removedItemID );
 				break;
 			}
-			case MSG_ITEMUPDATED : {
+			case MSG_ITEMUPDATED: {
 				Playlist::Item* item = reinterpret_cast<Playlist::Item*>( wParam );
 				wndList->ItemUpdatedHandler( item );
 				delete item;
 				break;
 			}
-			case MSG_REORDERDUMMY : {
+			case MSG_REORDERDUMMY: {
 				wndList->ReorderDummyColumn();
 				break;
 			}
-      case MSG_SELECTPLAYLISTITEM : {
-        wndList->SelectPlaylistItem( static_cast<long>( wParam ) );
-        break;
-      }
-			case WM_LBUTTONDBLCLK : {
+			case MSG_SELECTPLAYLISTITEM: {
+				wndList->SelectPlaylistItem( static_cast<long>( wParam ) );
+				break;
+			}
+			case WM_LBUTTONDBLCLK: {
 				LVHITTESTINFO info = {};
 				info.pt.x = LOWORD( lParam );
 				info.pt.y = HIWORD( lParam );
@@ -109,7 +109,7 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				}
 				break;
 			}
-			case WM_CONTEXTMENU : {
+			case WM_CONTEXTMENU: {
 				POINT pt = {};
 				if ( -1 == lParam ) {
 					const int itemIndex = wndList->GetCurrentSelectedIndex();
@@ -134,45 +134,45 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				wndList->OnContextMenu( pt );
 				break;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				wndList->SaveSettings();
 				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndList->GetDefaultWndProc() ) );
 				break;
 			}
-			case WM_KEYDOWN : {
+			case WM_KEYDOWN: {
 				switch ( wParam ) {
-					case VK_DELETE : {
+					case VK_DELETE: {
 						wndList->DeleteSelectedItems();
 						return 0;
 					}
 				}
 				break;
 			}
-			case WM_LBUTTONUP : {
+			case WM_LBUTTONUP: {
 				if ( GetCapture() == hwnd ) {
 					ReleaseCapture();
 				}
 				break;
 			}
-			case WM_CAPTURECHANGED : {
+			case WM_CAPTURECHANGED: {
 				wndList->OnEndDrag();
 				break;
 			}
-			case WM_MOUSEMOVE : {
+			case WM_MOUSEMOVE: {
 				if ( GetCapture() == hwnd ) {
 					const POINT pt = { GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ) };
 					wndList->OnDrag( pt );
 				}
 				break;
 			}
-			case WM_TIMER : {
+			case WM_TIMER: {
 				if ( ( GetCapture() == hwnd ) && ( s_DragTimerID == wParam ) ) {
 					wndList->OnDragTimer();
 					return 0;
 				}
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -184,19 +184,19 @@ LRESULT CALLBACK WndList::EditControlProc( HWND hwnd, UINT message, WPARAM wPara
 {
 	WndList* wndList = reinterpret_cast<WndList*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndList ) {
-		switch( message ) {
-			case WM_WINDOWPOSCHANGING : {
+		switch ( message ) {
+			case WM_WINDOWPOSCHANGING: {
 				wndList->RepositionEditControl( reinterpret_cast<WINDOWPOS*>( lParam ) );
 				break;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndList->GetEditControlWndProc() ) );
 				break;
 			}
-			case WM_GETDLGCODE : {
+			case WM_GETDLGCODE: {
 				return DLGC_WANTALLKEYS;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -342,7 +342,7 @@ void WndList::ShowColumn( const Playlist::Column column, const int width, const 
 				GetColumnVisibility( shownColumns, hiddenColumns );
 				if ( const auto filepathColumnIter = shownColumns.find( filepathColumnID ); shownColumns.end() == filepathColumnIter ) {
 					ShowColumn( Playlist::Column::Filepath, filepathColumnWidth, true );
-				} else {	
+				} else {
 					// The file path column is already the only visible column, so do nothing.
 					validVisibilityChange = false;
 				}
@@ -402,11 +402,11 @@ void WndList::OnDropFiles( const HDROP hDrop )
 		const int bufSize = 512;
 		WCHAR filename[ bufSize ];
 		const UINT fileCount = DragQueryFile( hDrop, 0xffffffff, nullptr /*filename*/, 0 /*bufSize*/ );
-		for( UINT fileIndex = 0; fileIndex < fileCount; fileIndex++ ) {
+		for ( UINT fileIndex = 0; fileIndex < fileCount; fileIndex++ ) {
 			if ( 0 != DragQueryFile( hDrop, fileIndex, filename, bufSize ) ) {
 				const DWORD attributes = GetFileAttributes( filename );
 				if ( INVALID_FILE_ATTRIBUTES != attributes ) {
-					if( attributes & FILE_ATTRIBUTE_DIRECTORY ) {
+					if ( attributes & FILE_ATTRIBUTE_DIRECTORY ) {
 						AddFolderToPlaylist( filename );
 					} else {
 						AddFileToPlaylist( filename );
@@ -421,18 +421,18 @@ void WndList::AddFileToPlaylist( const std::wstring& filename )
 {
 	if ( m_Playlist ) {
 		if ( Playlist::IsSupportedPlaylist( filename ) ) {
-      // Note that cue list files get added to a playlist directly (rather than as pending items), so ensure the filename to ID mapping is up to date.
-      const auto previousItems = m_Playlist->GetItems();
+			// Note that cue list files get added to a playlist directly (rather than as pending items), so ensure the filename to ID mapping is up to date.
+			const auto previousItems = m_Playlist->GetItems();
 			m_Playlist->AddPlaylist( filename );
-      const auto currentItems = m_Playlist->GetItems();
-      if ( currentItems.size() != previousItems.size() ) {
-        for ( const auto& item : currentItems ) {
-          if ( auto it = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != it ) {
-		        it->second.insert( item.ID );
-          }
-        }
-        RefreshPlaylist();
-      }
+			const auto currentItems = m_Playlist->GetItems();
+			if ( currentItems.size() != previousItems.size() ) {
+				for ( const auto& item : currentItems ) {
+					if ( auto it = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != it ) {
+						it->second.insert( item.ID );
+					}
+				}
+				RefreshPlaylist();
+			}
 		} else {
 			m_Playlist->AddPending( MediaInfo::ExtractCues( filename ) );
 		}
@@ -441,240 +441,240 @@ void WndList::AddFileToPlaylist( const std::wstring& filename )
 
 void WndList::AddFolderToPlaylist( const std::wstring& folder )
 {
-  std::set<std::filesystem::path> filepaths;
-  std::error_code ec;
-  for ( const auto& entry : std::filesystem::recursive_directory_iterator( folder, ec ) ) {
-	  if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
-		  filepaths.insert( entry.path() );
+	std::set<std::filesystem::path> filepaths;
+	std::error_code ec;
+	for ( const auto& entry : std::filesystem::recursive_directory_iterator( folder, ec ) ) {
+		if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
+			filepaths.insert( entry.path() );
 		}
-  }
+	}
 
-  // Strip out any files that are referenced by CUE files (to prevent duplicate entries).
-  if ( const auto cueFiles = Playlist::ExtractCueFiles( filepaths ) ) {
-    for ( const auto& cueFile : *cueFiles )
-      filepaths.insert( cueFile );
-  }
+	// Strip out any files that are referenced by CUE files (to prevent duplicate entries).
+	if ( const auto cueFiles = Playlist::ExtractCueFiles( filepaths ) ) {
+		for ( const auto& cueFile : *cueFiles )
+			filepaths.insert( cueFile );
+	}
 
-  for ( const auto& filepath : filepaths ) {
-    AddFileToPlaylist( filepath );
-  }
+	for ( const auto& filepath : filepaths ) {
+		AddFileToPlaylist( filepath );
+	}
 }
 
 void WndList::InsertListViewItem( const Playlist::Item& playlistItem, const int position )
 {
-  if ( ( position >= 0 ) && ( position < ListView_GetItemCount( m_hWnd ) ) ) {
-    // When inserting an item before the end of the virtual list control, update selection state.
-    LVITEM item = {};
-    item.iItem = position;
-	  ListView_InsertItem( m_hWnd, &item );
-  }
-  RefreshPlaylist();
-  if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( playlistItem.Info.GetFilename(), playlistItem.Info.GetCueStart(), playlistItem.Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != filename ) {
+	if ( ( position >= 0 ) && ( position < ListView_GetItemCount( m_hWnd ) ) ) {
+		// When inserting an item before the end of the virtual list control, update selection state.
+		LVITEM item = {};
+		item.iItem = position;
+		ListView_InsertItem( m_hWnd, &item );
+	}
+	RefreshPlaylist();
+	if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( playlistItem.Info.GetFilename(), playlistItem.Info.GetCueStart(), playlistItem.Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != filename ) {
 		filename->second.insert( playlistItem.ID );
-  }
+	}
 }
 
 void WndList::OnDisplayInfo( LVITEM& lvItem )
 {
-  if ( m_Playlist ) {
-    if ( lvItem.mask & LVIF_IMAGE ) {
-	    const auto& [ iconItemID, iconItemState ] = m_IconStatus;
-      const int iconIndex = FindItemIndex( iconItemID );
-      if ( iconIndex == lvItem.iItem ) {
-		    const auto iconIter = m_IconMap.find( iconItemState );
-		    lvItem.iImage = ( m_IconMap.end() != iconIter ) ? iconIter->second : -1;
-      } else {
-        lvItem.iImage = -1;
-      }
-    }
-    if ( ( lvItem.mask & LVIF_TEXT ) && ( nullptr != lvItem.pszText ) && ( lvItem.cchTextMax > 0 ) ) {
-      const auto playlistItem = m_Playlist->GetItem( lvItem.iItem );
-      LVCOLUMN column = {};
-	    column.mask = LVCF_SUBITEM;
-	    if ( ListView_GetColumn( m_hWnd, lvItem.iSubItem, &column ) ) {
-		    const Playlist::Column columnID = static_cast<Playlist::Column>( column.iSubItem );
-	      const MediaInfo& mediaInfo = playlistItem.Info;
-        std::wstring text;
-		    switch( columnID ) {
-			    case Playlist::Column::Album : {
-				    text = mediaInfo.GetAlbum();
-				    break;
-			    }
-			    case Playlist::Column::Artist : {
-				    text = mediaInfo.GetArtist();
-				    break;
-			    }
-			    case Playlist::Column::Bitrate : {
-				    std::wstringstream ss;
-				    const auto bitrate = mediaInfo.GetBitrate( true /*calculate*/ );
-				    if ( bitrate.has_value() ) {
-					    const int bufSize = 16;
-					    WCHAR buf[ bufSize ] = {};
-					    if ( 0 != LoadString( m_hInst, IDS_UNITS_BITRATE, buf, bufSize ) ) {
-						    ss << std::to_wstring( std::lroundf( bitrate.value() ) ) << L" " << buf;
-					    }
-				    }
-				    text = ss.str();
-				    break;
-			    }
-			    case Playlist::Column::BitsPerSample : {
-				    const long bitsPerSample = mediaInfo.GetBitsPerSample().value_or( 0 );
-				    text = ( bitsPerSample > 0 ) ? std::to_wstring( bitsPerSample ) : std::wstring();
-				    break;
-			    }
-			    case Playlist::Column::Channels : {
-				    const long channels = mediaInfo.GetChannels();
-				    text = ( channels > 0 ) ? std::to_wstring( channels ) : std::wstring();
-				    break;
-			    }
-			    case Playlist::Column::Duration : {
-				    const float duration = mediaInfo.GetDuration();
-				    text = ( duration > 0 ) ? DurationToString( m_hInst, mediaInfo.GetDuration(), true /*colonDelimited*/ ) : std::wstring();
-				    break;
-			    }
-			    case Playlist::Column::Filepath : {
-            if ( playlistItem.Duplicates.empty() ) {
-				      text = mediaInfo.GetFilenameWithCues( true /*fullPath*/ );
-            } else {
-					    const int bufSize = 32;
-					    WCHAR buffer[ bufSize ] = {};
-					    LoadString( m_hInst, IDS_MULTIPLE_SOURCES, buffer, bufSize );
-					    text = L"(" + std::wstring( buffer ) + L")";
-				    }
-				    break;
-			    }
-			    case Playlist::Column::Filename : {
-            if ( playlistItem.Duplicates.empty() ) {
-				      text = mediaInfo.GetFilenameWithCues( false /*fullPath*/ );
-            } else {
-					    const int bufSize = 32;
-					    WCHAR buffer[ bufSize ] = {};
-					    LoadString( m_hInst, IDS_MULTIPLE_SOURCES, buffer, bufSize );
-					    text = L"(" + std::wstring( buffer ) + L")";
-				    }
-				    break;
-			    }
-			    case Playlist::Column::Filesize : {
-				    text = FilesizeToString( m_hInst, mediaInfo.GetFilesize( true /*applyCues*/ ) );
-				    break;
-			    }
-			    case Playlist::Column::Filetime : {
-				    std::wstringstream ss;
-				    const long long filetime = mediaInfo.GetFiletime();
-				    if ( filetime > 0 ) {
-					    FILETIME ft;
-					    ft.dwHighDateTime = static_cast<DWORD>( filetime >> 32 );
-					    ft.dwLowDateTime = static_cast<DWORD>( filetime & 0xffffffff );
-					    SYSTEMTIME st;
-					    if ( 0 !=	FileTimeToSystemTime( &ft, &st ) ) {
-						    SYSTEMTIME lt;
-						    if ( 0 != SystemTimeToTzSpecificLocalTime( NULL /*timeZone*/, &st, &lt ) ) {
-							    const int bufSize = 128;
-							    WCHAR dateBuf[ bufSize ] = {};
-							    WCHAR timeBuf[ bufSize ] = {};
-							    if ( ( 0 != GetDateFormat( LOCALE_USER_DEFAULT, DATE_SHORTDATE, &lt, NULL /*format*/, dateBuf, bufSize ) ) &&
-									    ( 0 != GetTimeFormat( LOCALE_USER_DEFAULT, TIME_NOSECONDS, &lt, NULL /*format*/, timeBuf, bufSize ) ) ) {
-								    ss << dateBuf << L" " << timeBuf;
-							    }
-						    }
-					    }
-				    }
-				    text = ss.str();
-				    break;
-			    }
-			    case Playlist::Column::GainAlbum :
-			    case Playlist::Column::GainTrack : {
-				    std::wstringstream ss;
-				    const auto gain = ( Playlist::Column::GainAlbum == columnID ) ? mediaInfo.GetGainAlbum() : mediaInfo.GetGainTrack();
-				    if ( gain.has_value() ) {
-					    const int bufSize = 16;
-					    WCHAR buf[ bufSize ] = {};
-					    if ( 0 != LoadString( m_hInst, IDS_UNITS_DB, buf, bufSize ) ) {
-						    ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain.value() << L" " << buf;
-					    }
-				    }
-				    text = ss.str();
-				    break;
-			    }
-			    case Playlist::Column::Genre : {
-				    text = mediaInfo.GetGenre();
-				    break;
-			    }
-			    case Playlist::Column::SampleRate : {
-				    std::wstringstream ss;
-				    const long rate = mediaInfo.GetSampleRate();
-				    if ( rate > 0 ) {
-					    const int bufSize = 16;
-					    WCHAR buf[ bufSize ] = {};
-					    if ( 0 != LoadString( m_hInst, IDS_UNITS_HZ, buf, bufSize ) ) {
-						    ss << std::to_wstring( rate ) << L" " << buf;
-					    }
-				    }
-				    text = ss.str();
-				    break;				
-			    }
-			    case Playlist::Column::Title : {
-				    text = mediaInfo.GetTitle( true /*filenameAsTitle*/ );
-				    break;
-			    }
-			    case Playlist::Column::Track : {
-				    const long track = mediaInfo.GetTrack();
-				    text = ( track > 0 ) ? std::to_wstring( track ) : std::wstring();
-				    break;
-			    }
-			    case Playlist::Column::Type : {
-				    text = mediaInfo.GetType();
-				    if ( text.empty() && IsURL( mediaInfo.GetFilename() ) ) {
-					    const int bufSize = 16;
-					    WCHAR buf[ bufSize ] = {};
-					    if ( 0 != LoadString( m_hInst, IDS_TYPE_STREAM, buf, bufSize ) ) {
-						    text = buf;
-					    }
-				    }
-				    break;
-			    }
-			    case Playlist::Column::Version : {
-				    text = mediaInfo.GetVersion();
-				    break;
-			    }
-			    case Playlist::Column::Year : {
-				    const long year = mediaInfo.GetYear();
-				    text = ( year > 0 ) ? std::to_wstring( year ) : std::wstring();
-				    break;
-			    }
-			    case Playlist::Column::Composer : {
-				    text = mediaInfo.GetComposer();
-				    break;
-			    }
-			    case Playlist::Column::Conductor : {
-				    text = mediaInfo.GetConductor();
-				    break;
-			    }
-			    case Playlist::Column::Publisher : {
-				    text = mediaInfo.GetPublisher();
-				    break;
-			    }
-			    default : {
-				    break;
-			    }
-		    }
-        wcsncpy_s( lvItem.pszText, lvItem.cchTextMax, text.c_str(), _TRUNCATE );
-      }
-	  }
-  }
+	if ( m_Playlist ) {
+		if ( lvItem.mask & LVIF_IMAGE ) {
+			const auto& [iconItemID, iconItemState] = m_IconStatus;
+			const int iconIndex = FindItemIndex( iconItemID );
+			if ( iconIndex == lvItem.iItem ) {
+				const auto iconIter = m_IconMap.find( iconItemState );
+				lvItem.iImage = ( m_IconMap.end() != iconIter ) ? iconIter->second : -1;
+			} else {
+				lvItem.iImage = -1;
+			}
+		}
+		if ( ( lvItem.mask & LVIF_TEXT ) && ( nullptr != lvItem.pszText ) && ( lvItem.cchTextMax > 0 ) ) {
+			const auto playlistItem = m_Playlist->GetItem( lvItem.iItem );
+			LVCOLUMN column = {};
+			column.mask = LVCF_SUBITEM;
+			if ( ListView_GetColumn( m_hWnd, lvItem.iSubItem, &column ) ) {
+				const Playlist::Column columnID = static_cast<Playlist::Column>( column.iSubItem );
+				const MediaInfo& mediaInfo = playlistItem.Info;
+				std::wstring text;
+				switch ( columnID ) {
+					case Playlist::Column::Album: {
+						text = mediaInfo.GetAlbum();
+						break;
+					}
+					case Playlist::Column::Artist: {
+						text = mediaInfo.GetArtist();
+						break;
+					}
+					case Playlist::Column::Bitrate: {
+						std::wstringstream ss;
+						const auto bitrate = mediaInfo.GetBitrate( true /*calculate*/ );
+						if ( bitrate.has_value() ) {
+							const int bufSize = 16;
+							WCHAR buf[ bufSize ] = {};
+							if ( 0 != LoadString( m_hInst, IDS_UNITS_BITRATE, buf, bufSize ) ) {
+								ss << std::to_wstring( std::lroundf( bitrate.value() ) ) << L" " << buf;
+							}
+						}
+						text = ss.str();
+						break;
+					}
+					case Playlist::Column::BitsPerSample: {
+						const long bitsPerSample = mediaInfo.GetBitsPerSample().value_or( 0 );
+						text = ( bitsPerSample > 0 ) ? std::to_wstring( bitsPerSample ) : std::wstring();
+						break;
+					}
+					case Playlist::Column::Channels: {
+						const long channels = mediaInfo.GetChannels();
+						text = ( channels > 0 ) ? std::to_wstring( channels ) : std::wstring();
+						break;
+					}
+					case Playlist::Column::Duration: {
+						const float duration = mediaInfo.GetDuration();
+						text = ( duration > 0 ) ? DurationToString( m_hInst, mediaInfo.GetDuration(), true /*colonDelimited*/ ) : std::wstring();
+						break;
+					}
+					case Playlist::Column::Filepath: {
+						if ( playlistItem.Duplicates.empty() ) {
+							text = mediaInfo.GetFilenameWithCues( true /*fullPath*/ );
+						} else {
+							const int bufSize = 32;
+							WCHAR buffer[ bufSize ] = {};
+							LoadString( m_hInst, IDS_MULTIPLE_SOURCES, buffer, bufSize );
+							text = L"(" + std::wstring( buffer ) + L")";
+						}
+						break;
+					}
+					case Playlist::Column::Filename: {
+						if ( playlistItem.Duplicates.empty() ) {
+							text = mediaInfo.GetFilenameWithCues( false /*fullPath*/ );
+						} else {
+							const int bufSize = 32;
+							WCHAR buffer[ bufSize ] = {};
+							LoadString( m_hInst, IDS_MULTIPLE_SOURCES, buffer, bufSize );
+							text = L"(" + std::wstring( buffer ) + L")";
+						}
+						break;
+					}
+					case Playlist::Column::Filesize: {
+						text = FilesizeToString( m_hInst, mediaInfo.GetFilesize( true /*applyCues*/ ) );
+						break;
+					}
+					case Playlist::Column::Filetime: {
+						std::wstringstream ss;
+						const long long filetime = mediaInfo.GetFiletime();
+						if ( filetime > 0 ) {
+							FILETIME ft;
+							ft.dwHighDateTime = static_cast<DWORD>( filetime >> 32 );
+							ft.dwLowDateTime = static_cast<DWORD>( filetime & 0xffffffff );
+							SYSTEMTIME st;
+							if ( 0 != FileTimeToSystemTime( &ft, &st ) ) {
+								SYSTEMTIME lt;
+								if ( 0 != SystemTimeToTzSpecificLocalTime( NULL /*timeZone*/, &st, &lt ) ) {
+									const int bufSize = 128;
+									WCHAR dateBuf[ bufSize ] = {};
+									WCHAR timeBuf[ bufSize ] = {};
+									if ( ( 0 != GetDateFormat( LOCALE_USER_DEFAULT, DATE_SHORTDATE, &lt, NULL /*format*/, dateBuf, bufSize ) ) &&
+										( 0 != GetTimeFormat( LOCALE_USER_DEFAULT, TIME_NOSECONDS, &lt, NULL /*format*/, timeBuf, bufSize ) ) ) {
+										ss << dateBuf << L" " << timeBuf;
+									}
+								}
+							}
+						}
+						text = ss.str();
+						break;
+					}
+					case Playlist::Column::GainAlbum:
+					case Playlist::Column::GainTrack: {
+						std::wstringstream ss;
+						const auto gain = ( Playlist::Column::GainAlbum == columnID ) ? mediaInfo.GetGainAlbum() : mediaInfo.GetGainTrack();
+						if ( gain.has_value() ) {
+							const int bufSize = 16;
+							WCHAR buf[ bufSize ] = {};
+							if ( 0 != LoadString( m_hInst, IDS_UNITS_DB, buf, bufSize ) ) {
+								ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain.value() << L" " << buf;
+							}
+						}
+						text = ss.str();
+						break;
+					}
+					case Playlist::Column::Genre: {
+						text = mediaInfo.GetGenre();
+						break;
+					}
+					case Playlist::Column::SampleRate: {
+						std::wstringstream ss;
+						const long rate = mediaInfo.GetSampleRate();
+						if ( rate > 0 ) {
+							const int bufSize = 16;
+							WCHAR buf[ bufSize ] = {};
+							if ( 0 != LoadString( m_hInst, IDS_UNITS_HZ, buf, bufSize ) ) {
+								ss << std::to_wstring( rate ) << L" " << buf;
+							}
+						}
+						text = ss.str();
+						break;
+					}
+					case Playlist::Column::Title: {
+						text = mediaInfo.GetTitle( true /*filenameAsTitle*/ );
+						break;
+					}
+					case Playlist::Column::Track: {
+						const long track = mediaInfo.GetTrack();
+						text = ( track > 0 ) ? std::to_wstring( track ) : std::wstring();
+						break;
+					}
+					case Playlist::Column::Type: {
+						text = mediaInfo.GetType();
+						if ( text.empty() && IsURL( mediaInfo.GetFilename() ) ) {
+							const int bufSize = 16;
+							WCHAR buf[ bufSize ] = {};
+							if ( 0 != LoadString( m_hInst, IDS_TYPE_STREAM, buf, bufSize ) ) {
+								text = buf;
+							}
+						}
+						break;
+					}
+					case Playlist::Column::Version: {
+						text = mediaInfo.GetVersion();
+						break;
+					}
+					case Playlist::Column::Year: {
+						const long year = mediaInfo.GetYear();
+						text = ( year > 0 ) ? std::to_wstring( year ) : std::wstring();
+						break;
+					}
+					case Playlist::Column::Composer: {
+						text = mediaInfo.GetComposer();
+						break;
+					}
+					case Playlist::Column::Conductor: {
+						text = mediaInfo.GetConductor();
+						break;
+					}
+					case Playlist::Column::Publisher: {
+						text = mediaInfo.GetPublisher();
+						break;
+					}
+					default: {
+						break;
+					}
+				}
+				wcsncpy_s( lvItem.pszText, lvItem.cchTextMax, text.c_str(), _TRUNCATE );
+			}
+		}
+	}
 }
 
 int WndList::OnFindItem( const LVFINDINFO& findInfo, const int startIndex )
 {
-  int foundIndex = -1;
-  if ( ( findInfo.flags & LVFI_STRING ) && ( nullptr != findInfo.psz ) ) {
-    const bool wrap = ( findInfo.flags & LVFI_WRAP );
-    const bool partial = ( findInfo.flags & LVFI_SUBSTRING ) || ( findInfo.flags & LVFI_PARTIAL );
-    if ( m_Playlist ) {
-      foundIndex = m_Playlist->FindItem( startIndex, findInfo.psz, partial, wrap );
-    }
-  }
-  return foundIndex;
+	int foundIndex = -1;
+	if ( ( findInfo.flags & LVFI_STRING ) && ( nullptr != findInfo.psz ) ) {
+		const bool wrap = ( findInfo.flags & LVFI_WRAP );
+		const bool partial = ( findInfo.flags & LVFI_SUBSTRING ) || ( findInfo.flags & LVFI_PARTIAL );
+		if ( m_Playlist ) {
+			foundIndex = m_Playlist->FindItem( startIndex, findInfo.psz, partial, wrap );
+		}
+	}
+	return foundIndex;
 }
 
 void WndList::OnPlay( const long itemID )
@@ -715,15 +715,15 @@ void WndList::OnContextMenu( const POINT& position )
 				EnableMenuItem( listmenu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_ENABLED );
 			}
 
-      const auto playlistType = m_Playlist ? m_Playlist->GetType() : Playlist::Type::_Undefined;
+			const auto playlistType = m_Playlist ? m_Playlist->GetType() : Playlist::Type::_Undefined;
 			const bool hasItems = ( ListView_GetItemCount( m_hWnd ) > 0 );
 			const bool hasSelectedItems = ( ListView_GetSelectedCount( m_hWnd ) > 0 );
 			const bool allowPaste = ( Playlist::Type::User == playlistType ) || ( Playlist::Type::All == playlistType ) || ( Playlist::Type::Favourites == playlistType );
 			const bool allowCut = hasSelectedItems && ( ( Playlist::Type::User == playlistType ) || ( Playlist::Type::Favourites == playlistType ) );
 			const bool allowCopy = hasSelectedItems && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
 			const bool allowAddStream = ( Playlist::Type::Streams == playlistType ) || ( Playlist::Type::User == playlistType ) || ( Playlist::Type::All == playlistType ) || ( Playlist::Type::Favourites == playlistType );
-      const bool allowAddToFavourites = hasSelectedItems && ( Playlist::Type::Favourites != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
-      const bool allowRemoveFiles = hasSelectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
+			const bool allowAddToFavourites = hasSelectedItems && ( Playlist::Type::Favourites != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
+			const bool allowRemoveFiles = hasSelectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
 
 			const UINT enablePaste = ( allowPaste && ( IsClipboardFormatAvailable( CF_TEXT ) || IsClipboardFormatAvailable( CF_UNICODETEXT ) || IsClipboardFormatAvailable( CF_HDROP ) ) ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PASTE, MF_BYCOMMAND | enablePaste );
@@ -748,13 +748,13 @@ void WndList::OnContextMenu( const POINT& position )
 			const UINT enableAddToFavourites = allowAddToFavourites ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | enableAddToFavourites );
 
-			if ( Playlist::Type::CDDA == playlistType ) {		
+			if ( Playlist::Type::CDDA == playlistType ) {
 				const int bufferSize = 256;
 				WCHAR buffer[ bufferSize ] = {};
 				LoadString( m_hInst, IDS_EXTRACT_TRACKS, buffer, bufferSize );
 				ModifyMenu( menu, ID_FILE_CONVERT, MF_BYCOMMAND | MF_STRING, ID_FILE_CONVERT, buffer );
 			}
-      const UINT enableExtract = ( m_Playlist && m_Playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableExtract = ( m_Playlist && m_Playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
 			const UINT enableRemoveFiles = allowRemoveFiles ? MF_ENABLED : MF_DISABLED;
@@ -787,99 +787,99 @@ void WndList::OnContextMenu( const POINT& position )
 void WndList::OnCommand( const UINT command )
 {
 	switch ( command ) {
-		case ID_SHOWCOLUMNS_ARTIST :
-		case ID_SHOWCOLUMNS_ALBUM :
-		case ID_SHOWCOLUMNS_GENRE :
-    case ID_SHOWCOLUMNS_COMPOSER :
-    case ID_SHOWCOLUMNS_CONDUCTOR :
-    case ID_SHOWCOLUMNS_PUBLISHER :
-		case ID_SHOWCOLUMNS_YEAR :
-		case ID_SHOWCOLUMNS_TRACK :
-		case ID_SHOWCOLUMNS_TYPE :
-		case ID_SHOWCOLUMNS_VERSION :
-		case ID_SHOWCOLUMNS_SAMPLERATE :
-		case ID_SHOWCOLUMNS_CHANNELS :
-		case ID_SHOWCOLUMNS_BITRATE :
-		case ID_SHOWCOLUMNS_BITSPERSAMPLE :
-		case ID_SHOWCOLUMNS_DURATION :
-		case ID_SHOWCOLUMNS_FILESIZE :
-		case ID_SHOWCOLUMNS_FILEPATH :
-		case ID_SHOWCOLUMNS_FILENAME :
-		case ID_SHOWCOLUMNS_FILETIME :
-		case ID_SHOWCOLUMNS_TRACKGAIN :
-		case ID_SHOWCOLUMNS_ALBUMGAIN : 
-		case ID_SHOWCOLUMNS_STATUS : {
+		case ID_SHOWCOLUMNS_ARTIST:
+		case ID_SHOWCOLUMNS_ALBUM:
+		case ID_SHOWCOLUMNS_GENRE:
+		case ID_SHOWCOLUMNS_COMPOSER:
+		case ID_SHOWCOLUMNS_CONDUCTOR:
+		case ID_SHOWCOLUMNS_PUBLISHER:
+		case ID_SHOWCOLUMNS_YEAR:
+		case ID_SHOWCOLUMNS_TRACK:
+		case ID_SHOWCOLUMNS_TYPE:
+		case ID_SHOWCOLUMNS_VERSION:
+		case ID_SHOWCOLUMNS_SAMPLERATE:
+		case ID_SHOWCOLUMNS_CHANNELS:
+		case ID_SHOWCOLUMNS_BITRATE:
+		case ID_SHOWCOLUMNS_BITSPERSAMPLE:
+		case ID_SHOWCOLUMNS_DURATION:
+		case ID_SHOWCOLUMNS_FILESIZE:
+		case ID_SHOWCOLUMNS_FILEPATH:
+		case ID_SHOWCOLUMNS_FILENAME:
+		case ID_SHOWCOLUMNS_FILETIME:
+		case ID_SHOWCOLUMNS_TRACKGAIN:
+		case ID_SHOWCOLUMNS_ALBUMGAIN:
+		case ID_SHOWCOLUMNS_STATUS: {
 			OnShowColumn( command );
 			break;
 		}
-		case ID_SORTPLAYLIST_ARTIST :
-		case ID_SORTPLAYLIST_ALBUM :
-		case ID_SORTPLAYLIST_GENRE :
-    case ID_SORTPLAYLIST_COMPOSER :
-    case ID_SORTPLAYLIST_CONDUCTOR :
-    case ID_SORTPLAYLIST_PUBLISHER :
-		case ID_SORTPLAYLIST_YEAR :
-		case ID_SORTPLAYLIST_TRACK :
-		case ID_SORTPLAYLIST_TYPE :
-		case ID_SORTPLAYLIST_VERSION :
-		case ID_SORTPLAYLIST_SAMPLERATE :
-		case ID_SORTPLAYLIST_CHANNELS :
-		case ID_SORTPLAYLIST_BITRATE :
-		case ID_SORTPLAYLIST_BITSPERSAMPLE :
-		case ID_SORTPLAYLIST_DURATION :
-		case ID_SORTPLAYLIST_FILESIZE :
-		case ID_SORTPLAYLIST_FILEPATH :
-		case ID_SORTPLAYLIST_FILENAME :
-		case ID_SORTPLAYLIST_FILETIME :
-		case ID_SORTPLAYLIST_TRACKGAIN :
-		case ID_SORTPLAYLIST_ALBUMGAIN : {
+		case ID_SORTPLAYLIST_ARTIST:
+		case ID_SORTPLAYLIST_ALBUM:
+		case ID_SORTPLAYLIST_GENRE:
+		case ID_SORTPLAYLIST_COMPOSER:
+		case ID_SORTPLAYLIST_CONDUCTOR:
+		case ID_SORTPLAYLIST_PUBLISHER:
+		case ID_SORTPLAYLIST_YEAR:
+		case ID_SORTPLAYLIST_TRACK:
+		case ID_SORTPLAYLIST_TYPE:
+		case ID_SORTPLAYLIST_VERSION:
+		case ID_SORTPLAYLIST_SAMPLERATE:
+		case ID_SORTPLAYLIST_CHANNELS:
+		case ID_SORTPLAYLIST_BITRATE:
+		case ID_SORTPLAYLIST_BITSPERSAMPLE:
+		case ID_SORTPLAYLIST_DURATION:
+		case ID_SORTPLAYLIST_FILESIZE:
+		case ID_SORTPLAYLIST_FILEPATH:
+		case ID_SORTPLAYLIST_FILENAME:
+		case ID_SORTPLAYLIST_FILETIME:
+		case ID_SORTPLAYLIST_TRACKGAIN:
+		case ID_SORTPLAYLIST_ALBUMGAIN: {
 			OnSortPlaylist( command );
 			break;
 		}
-		case ID_LISTMENU_FONTSTYLE : {
+		case ID_LISTMENU_FONTSTYLE: {
 			OnSelectFont();
 			break;
 		}
-		case ID_LISTMENU_FONTCOLOUR : 
-		case ID_LISTMENU_BACKGROUNDCOLOUR :
-		case ID_LISTMENU_HIGHLIGHTCOLOUR : 
-		case ID_LISTMENU_STATUSICONCOLOUR : {
+		case ID_LISTMENU_FONTCOLOUR:
+		case ID_LISTMENU_BACKGROUNDCOLOUR:
+		case ID_LISTMENU_HIGHLIGHTCOLOUR:
+		case ID_LISTMENU_STATUSICONCOLOUR: {
 			OnSelectColour( command );
 			break;
 		}
-		case ID_FILE_SELECTALL : {
+		case ID_FILE_SELECTALL: {
 			OnSelectAll();
 			break;
 		}
-		case ID_FILE_PLAYLISTADDSTREAM : {
+		case ID_FILE_PLAYLISTADDSTREAM: {
 			OnCommandAddStream();
 			break;
 		}
-		case ID_FILE_PLAYLISTADDFOLDER : {
+		case ID_FILE_PLAYLISTADDFOLDER: {
 			OnCommandAddFolder();
 			break;
 		}
-		case ID_FILE_PLAYLISTADDFILES : {
+		case ID_FILE_PLAYLISTADDFILES: {
 			OnCommandAddFiles();
 			break;
 		}
-		case ID_FILE_PLAYLISTREMOVEFILES : {
+		case ID_FILE_PLAYLISTREMOVEFILES: {
 			DeleteSelectedItems();
 			break;
 		}
-		case ID_FILE_CUT : {
+		case ID_FILE_CUT: {
 			OnCutCopy( true /*cut*/ );
 			break;
 		}
-		case ID_FILE_COPY : {
+		case ID_FILE_COPY: {
 			OnCutCopy( false /*cut*/ );
 			break;
 		}
-		case ID_FILE_PASTE : {
+		case ID_FILE_PASTE: {
 			OnPaste();
 			break;
 		}
-		default : {
+		default: {
 			VUPlayer* vuplayer = VUPlayer::Get();
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnCommand( command );
@@ -908,15 +908,15 @@ bool WndList::IsColumnShown( const Playlist::Column& column ) const
 
 void WndList::DeleteSelectedItems()
 {
-  const auto playlistType = m_Playlist ? m_Playlist->GetType() : Playlist::Type::_Undefined;
-  const bool allowDelete = ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
+	const auto playlistType = m_Playlist ? m_Playlist->GetType() : Playlist::Type::_Undefined;
+	const bool allowDelete = ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
 	if ( allowDelete ) {
 		MediaInfo::List deletedMedia;
 
 		SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
 		int itemIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
 		const int selectItem = itemIndex;
-    Playlist::Items itemsToDelete;
+		Playlist::Items itemsToDelete;
 		while ( itemIndex != -1 ) {
 			Playlist::Item playlistItem = {};
 			playlistItem.ID = GetPlaylistItemID( itemIndex );
@@ -927,64 +927,64 @@ void WndList::DeleteSelectedItems()
 					mediaInfo.SetFilename( duplicate );
 					deletedMedia.push_back( mediaInfo );
 				}
-        itemsToDelete.push_back( playlistItem );
-        if ( auto filename = m_FilenameToIDs.find( std::tie( playlistItem.Info.GetFilename(), playlistItem.Info.GetCueStart(), playlistItem.Info.GetCueEnd() ) ); m_FilenameToIDs.end() != filename ) {
+				itemsToDelete.push_back( playlistItem );
+				if ( auto filename = m_FilenameToIDs.find( std::tie( playlistItem.Info.GetFilename(), playlistItem.Info.GetCueStart(), playlistItem.Info.GetCueEnd() ) ); m_FilenameToIDs.end() != filename ) {
 					filename->second.erase( playlistItem.ID );
 					if ( filename->second.empty() ) {
 						m_FilenameToIDs.erase( filename );
 					}
 				}
 			}
-      if ( Playlist::Type::Folder != m_Playlist->GetType() ) {
-        ListView_SetItemState( m_hWnd, itemIndex, 0, LVIS_SELECTED | LVIS_FOCUSED );
-      }
+			if ( Playlist::Type::Folder != m_Playlist->GetType() ) {
+				ListView_SetItemState( m_hWnd, itemIndex, 0, LVIS_SELECTED | LVIS_FOCUSED );
+			}
 			itemIndex = ListView_GetNextItem( m_hWnd, itemIndex, LVNI_SELECTED );
 		}
 
-    bool filesDeleted = false;
-    if ( Playlist::Type::Folder == playlistType ) {
-      // Delete files.
-      std::set<std::filesystem::path> filesToDelete;
-      for ( const auto& item : itemsToDelete ) {
-        filesToDelete.insert( item.Info.GetFilename() );
-      }
-      filesDeleted = DeleteFiles( filesToDelete, m_hWnd );
-    } else {
-      // Remove files from playlist.
-      for ( const auto& item : itemsToDelete ) {
-			  m_Playlist->RemoveItem( item );
-      }
-      RefreshPlaylist();
-      const int itemCount = ListView_GetItemCount( m_hWnd );
-		  ListView_SetItemState( m_hWnd, ( ( selectItem < itemCount ) ? selectItem : ( itemCount - 1 ) ), LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
-    }
+		bool filesDeleted = false;
+		if ( Playlist::Type::Folder == playlistType ) {
+			// Delete files.
+			std::set<std::filesystem::path> filesToDelete;
+			for ( const auto& item : itemsToDelete ) {
+				filesToDelete.insert( item.Info.GetFilename() );
+			}
+			filesDeleted = DeleteFiles( filesToDelete, m_hWnd );
+		} else {
+			// Remove files from playlist.
+			for ( const auto& item : itemsToDelete ) {
+				m_Playlist->RemoveItem( item );
+			}
+			RefreshPlaylist();
+			const int itemCount = ListView_GetItemCount( m_hWnd );
+			ListView_SetItemState( m_hWnd, ( ( selectItem < itemCount ) ? selectItem : ( itemCount - 1 ) ), LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+		}
 
 		SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {
-		  switch ( playlistType ) {
-			  case Playlist::Type::All :
-			  case Playlist::Type::Artist :
-        case Playlist::Type::Publisher :
-        case Playlist::Type::Composer :
-        case Playlist::Type::Conductor :
-			  case Playlist::Type::Album :
-			  case Playlist::Type::Genre :
-			  case Playlist::Type::Year : {
-				  vuplayer->OnRemoveFromLibrary( deletedMedia );
-				  break;
-			  }
-        case Playlist::Type::Folder : {
-          if ( filesDeleted ) {
-				    vuplayer->OnRemoveFromLibrary( deletedMedia );
-          }
-				  break;
-        }
-			  default : {
-				  break;
-			  }
-      }
+			switch ( playlistType ) {
+				case Playlist::Type::All:
+				case Playlist::Type::Artist:
+				case Playlist::Type::Publisher:
+				case Playlist::Type::Composer:
+				case Playlist::Type::Conductor:
+				case Playlist::Type::Album:
+				case Playlist::Type::Genre:
+				case Playlist::Type::Year: {
+					vuplayer->OnRemoveFromLibrary( deletedMedia );
+					break;
+				}
+				case Playlist::Type::Folder: {
+					if ( filesDeleted ) {
+						vuplayer->OnRemoveFromLibrary( deletedMedia );
+					}
+					break;
+				}
+				default: {
+					break;
+				}
+			}
 		}
 	}
 }
@@ -997,32 +997,32 @@ void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelectio
 	if ( m_Playlist != playlist ) {
 		m_Playlist = playlist;
 	}
-  DeselectAllItems();
-  RefreshPlaylist();
+	DeselectAllItems();
+	RefreshPlaylist();
 	if ( m_Playlist ) {
 		int selectedIndex = -1;
 		const Playlist::Items playlistItems = m_Playlist->GetItems();
 		for ( auto item = playlistItems.begin(); playlistItems.end() != item; item++ ) {
-      if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != filename ) {
-	  		filename->second.insert( item->ID );
-	  	}
-      if ( ( -1 == selectedIndex ) && m_FileToSelect && ( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ) == std::tie( m_FileToSelect->GetFilename(), m_FileToSelect->GetCueStart(), m_FileToSelect->GetCueEnd() ) ) ) {
-        if ( item->Info.GetCueStart() && ( Playlist::Type::Folder == m_Playlist->GetType() ) ) {
-          // When selecting a cue list item as part of a folder playlist at startup, ignore any intervening items which are not cue list items, as these are added later to the list control as pending items.
-          selectedIndex = 0;
-          for ( auto checkItem = playlistItems.begin(); checkItem != item; checkItem++ ) {
-            if ( checkItem->Info.GetCueStart() ) {
-              ++selectedIndex;
-            }
-          }
-        } else {
-				  selectedIndex = static_cast<int>( std::distance( playlistItems.begin(), item ) );
-        }
+			if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != filename ) {
+				filename->second.insert( item->ID );
+			}
+			if ( ( -1 == selectedIndex ) && m_FileToSelect && ( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ) == std::tie( m_FileToSelect->GetFilename(), m_FileToSelect->GetCueStart(), m_FileToSelect->GetCueEnd() ) ) ) {
+				if ( item->Info.GetCueStart() && ( Playlist::Type::Folder == m_Playlist->GetType() ) ) {
+					// When selecting a cue list item as part of a folder playlist at startup, ignore any intervening items which are not cue list items, as these are added later to the list control as pending items.
+					selectedIndex = 0;
+					for ( auto checkItem = playlistItems.begin(); checkItem != item; checkItem++ ) {
+						if ( checkItem->Info.GetCueStart() ) {
+							++selectedIndex;
+						}
+					}
+				} else {
+					selectedIndex = static_cast<int>( std::distance( playlistItems.begin(), item ) );
+				}
 			}
 		}
 		if ( -1 != selectedIndex ) {
 			ListView_SetItemState( m_hWnd, selectedIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
-			ListView_EnsureVisible( m_hWnd, selectedIndex, FALSE /*partialOK*/ );	
+			ListView_EnsureVisible( m_hWnd, selectedIndex, FALSE /*partialOK*/ );
 			m_FileToSelect.reset();
 		}
 	}
@@ -1041,8 +1041,8 @@ void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelectio
 			ListView_SetItemState( m_hWnd, selectedIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 			ListView_EnsureVisible( m_hWnd, selectedIndex, FALSE /*partialOK*/ );
 		} else {
-      m_SelectFirstItem = true;
-    }
+			m_SelectFirstItem = true;
+		}
 	}
 
 	RedrawWindow( m_hWnd, NULL /*rect*/, NULL /*rgn*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN );
@@ -1100,10 +1100,10 @@ void WndList::AddFileHandler( const AddedItem* addedItem )
 				if ( ( -1 == selectedIndex ) && ( ( 1 == ListView_GetItemCount( m_hWnd ) ) || m_SelectFirstItem ) ) {
 					ListView_SetItemState( m_hWnd, 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 				}
-        m_SelectFirstItem = false;
+				m_SelectFirstItem = false;
 			} else {
 				if ( -1 == selectedIndex ) {
-          const auto& info = addedItem->Item.Info;
+					const auto& info = addedItem->Item.Info;
 					if ( std::tie( info.GetFilename(), info.GetCueStart(), info.GetCueEnd() ) == std::tie( m_FileToSelect->GetFilename(), m_FileToSelect->GetCueStart(), m_FileToSelect->GetCueEnd() ) ) {
 						ListView_SetItemState( m_hWnd, addedItem->Position, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 						ListView_EnsureVisible( m_hWnd, addedItem->Position, FALSE /*partialOK*/ );
@@ -1141,7 +1141,7 @@ void WndList::ItemUpdatedHandler( const Playlist::Item* item )
 {
 	if ( nullptr != item ) {
 		if ( const int itemIndex = FindItemIndex( item->ID ); itemIndex >= 0 ) {
-      RefreshItem( itemIndex );
+			RefreshItem( itemIndex );
 		}
 	}
 }
@@ -1199,23 +1199,23 @@ void WndList::OnSelectColour( const UINT commandID )
 {
 	COLORREF initialColour = 0;
 	switch ( commandID ) {
-		case ID_LISTMENU_FONTCOLOUR : {
+		case ID_LISTMENU_FONTCOLOUR: {
 			initialColour = GetFontColour();
 			break;
 		}
-		case ID_LISTMENU_BACKGROUNDCOLOUR : {
+		case ID_LISTMENU_BACKGROUNDCOLOUR: {
 			initialColour = GetBackgroundColour();
 			break;
 		}
-		case ID_LISTMENU_HIGHLIGHTCOLOUR : {
+		case ID_LISTMENU_HIGHLIGHTCOLOUR: {
 			initialColour = GetHighlightColour();
 			break;
 		}
-		case ID_LISTMENU_STATUSICONCOLOUR : {
+		case ID_LISTMENU_STATUSICONCOLOUR: {
 			initialColour = GetStatusIconColour();
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -1224,26 +1224,26 @@ void WndList::OnSelectColour( const UINT commandID )
 	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
 	if ( const auto colour = ChooseColour( m_hWnd, initialColour, customColours ); colour.has_value() ) {
 		switch ( commandID ) {
-			case ID_LISTMENU_FONTCOLOUR : {
+			case ID_LISTMENU_FONTCOLOUR: {
 				m_ColourFont = colour.value();
 				SetColours();
 				break;
 			}
-			case ID_LISTMENU_BACKGROUNDCOLOUR : {
+			case ID_LISTMENU_BACKGROUNDCOLOUR: {
 				m_ColourBackground = colour.value();
 				SetColours();
 				break;
 			}
-			case ID_LISTMENU_HIGHLIGHTCOLOUR : {
+			case ID_LISTMENU_HIGHLIGHTCOLOUR: {
 				m_ColourHighlight = colour.value();
 				break;
 			}
-			case ID_LISTMENU_STATUSICONCOLOUR : {
+			case ID_LISTMENU_STATUSICONCOLOUR: {
 				m_ColourStatusIcon = colour.value();
 				CreateImageList();
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -1310,17 +1310,17 @@ BOOL WndList::OnBeginLabelEdit( const LVITEM& item )
 					denyEdit = FALSE;
 				}
 			}
-		}		
+		}
 	}
 	return denyEdit;
 }
 
 void WndList::OnEndLabelEdit( const LVITEM& item )
 {
-	if ( nullptr != ListView_GetEditControl( m_hWnd ) )	{
+	if ( nullptr != ListView_GetEditControl( m_hWnd ) ) {
 		if ( nullptr != item.pszText ) {
 			if ( m_Playlist ) {
-				Playlist::Item playlistItem = {	m_Playlist->GetItem( item.iItem ).ID, MediaInfo() };
+				Playlist::Item playlistItem = { m_Playlist->GetItem( item.iItem ).ID, MediaInfo() };
 				if ( m_Playlist->GetItem( playlistItem ) ) {
 					m_Playlist->GetLibrary().GetMediaInfo( playlistItem.Info, true /*scanMedia*/, false /*sendNotification*/ );
 					MediaInfo previousMediaInfo( playlistItem.Info );
@@ -1330,27 +1330,27 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 						Library::Column libraryColumnID = Library::Column::_Undefined;
 						const Playlist::Column playlistColumnID = static_cast<Playlist::Column>( lvc.iSubItem );
 						switch ( playlistColumnID ) {
-							case Playlist::Column::Album : {
+							case Playlist::Column::Album: {
 								libraryColumnID = Library::Column::Album;
 								playlistItem.Info.SetAlbum( item.pszText );
 								break;
 							}
-							case Playlist::Column::Artist : {
+							case Playlist::Column::Artist: {
 								libraryColumnID = Library::Column::Artist;
 								playlistItem.Info.SetArtist( item.pszText );
 								break;
 							}
-							case Playlist::Column::Genre : {
+							case Playlist::Column::Genre: {
 								libraryColumnID = Library::Column::Genre;
 								playlistItem.Info.SetGenre( item.pszText );
 								break;
 							}
-							case Playlist::Column::Title : {
+							case Playlist::Column::Title: {
 								libraryColumnID = Library::Column::Title;
 								playlistItem.Info.SetTitle( item.pszText );
 								break;
 							}
-							case Playlist::Column::Track : {
+							case Playlist::Column::Track: {
 								long tracknumber = 0;
 								try {
 									tracknumber = std::stol( item.pszText );
@@ -1360,7 +1360,7 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 								playlistItem.Info.SetTrack( tracknumber );
 								break;
 							}
-							case Playlist::Column::Year : {
+							case Playlist::Column::Year: {
 								long year = 0;
 								try {
 									year = std::stol( item.pszText );
@@ -1370,22 +1370,22 @@ void WndList::OnEndLabelEdit( const LVITEM& item )
 								playlistItem.Info.SetYear( year );
 								break;
 							}
-							case Playlist::Column::Composer : {
+							case Playlist::Column::Composer: {
 								libraryColumnID = Library::Column::Composer;
 								playlistItem.Info.SetComposer( item.pszText );
 								break;
 							}
-							case Playlist::Column::Conductor : {
+							case Playlist::Column::Conductor: {
 								libraryColumnID = Library::Column::Conductor;
 								playlistItem.Info.SetConductor( item.pszText );
 								break;
 							}
-							case Playlist::Column::Publisher : {
+							case Playlist::Column::Publisher: {
 								libraryColumnID = Library::Column::Publisher;
 								playlistItem.Info.SetPublisher( item.pszText );
 								break;
 							}
-							default : {
+							default: {
 								break;
 							}
 						}
@@ -1443,7 +1443,7 @@ void WndList::RepositionEditControl( WINDOWPOS* position )
 		position->cy = rect.bottom - rect.top;
 		position->cx = rect.right - rect.left;
 		GetClientRect( m_hWnd, &rect );
-		if( ( position->x + position->cx ) > rect.right ) {
+		if ( ( position->x + position->cx ) > rect.right ) {
 			position->cx = rect.right - position->x;
 		}
 	}
@@ -1452,13 +1452,13 @@ void WndList::RepositionEditControl( WINDOWPOS* position )
 void WndList::OnUpdatedMedia( const MediaInfo& mediaInfo )
 {
 	if ( m_Playlist ) {
-    if ( const auto itemFilename = m_FilenameToIDs.find( std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() ) ); m_FilenameToIDs.end() != itemFilename ) {
+		if ( const auto itemFilename = m_FilenameToIDs.find( std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() ) ); m_FilenameToIDs.end() != itemFilename ) {
 			const auto& itemIDs = itemFilename->second;
 			for ( const auto itemID : itemIDs ) {
-        if ( Playlist::Item item = { itemID }; m_Playlist->GetItem( item ) && ( std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) == itemFilename->first ) ) {
- 					if ( const int itemIndex = FindItemIndex( itemID ); itemIndex >= 0 ) {
-            RefreshItem( itemIndex );
-          }
+				if ( Playlist::Item item = { itemID }; m_Playlist->GetItem( item ) && ( std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) == itemFilename->first ) ) {
+					if ( const int itemIndex = FindItemIndex( itemID ); itemIndex >= 0 ) {
+						RefreshItem( itemIndex );
+					}
 				}
 			}
 		}
@@ -1467,7 +1467,7 @@ void WndList::OnUpdatedMedia( const MediaInfo& mediaInfo )
 
 long WndList::GetPlaylistItemID( const int itemIndex )
 {
-  return m_Playlist ? m_Playlist->GetItemID( itemIndex ) : 0;
+	return m_Playlist ? m_Playlist->GetItemID( itemIndex ) : 0;
 }
 
 Playlist::Ptr WndList::GetPlaylist()
@@ -1481,7 +1481,7 @@ Playlist::Item WndList::GetCurrentSelectedItem()
 	const int itemIndex = GetCurrentSelectedIndex();
 	if ( itemIndex >= 0 ) {
 		item = { GetPlaylistItemID( itemIndex ), MediaInfo() };
-		if ( m_Playlist ) { 
+		if ( m_Playlist ) {
 			m_Playlist->GetItem( item );
 		}
 	}
@@ -1577,7 +1577,7 @@ void WndList::OnDragTimer()
 		lvim.cbSize = sizeof( LVINSERTMARK );
 		lvim.iItem = -1;
 		ListView_SetInsertMark( m_hWnd, &lvim );
-		ListView_Scroll( m_hWnd, 0 /*dx*/, dy );	
+		ListView_Scroll( m_hWnd, 0 /*dx*/, dy );
 	}
 }
 
@@ -1624,7 +1624,7 @@ void WndList::SelectPreviousItem()
 		const Playlist::Item currentItem = GetCurrentSelectedItem();
 		Playlist::Item previousItem = {};
 		if ( m_Playlist->GetPreviousItem( currentItem, previousItem ) ) {
-      DeselectAllItems();
+			DeselectAllItems();
 			// Select previous item.
 			if ( const int itemIndex = FindItemIndex( previousItem.ID ); itemIndex >= 0 ) {
 				ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
@@ -1869,7 +1869,7 @@ void WndList::OnCutCopy( const bool cut )
 		if ( OpenClipboard( m_hWnd ) ) {
 			if ( const HGLOBAL mem = GlobalAlloc( GMEM_MOVEABLE, ( clipboardText.size() + 1 ) * sizeof( WCHAR ) ); nullptr != mem ) {
 				if ( LPWSTR destString = static_cast<LPWSTR>( GlobalLock( mem ) ); nullptr != destString ) {
-					wcscpy_s( destString, clipboardText.size() + 1, clipboardText.c_str() );			
+					wcscpy_s( destString, clipboardText.size() + 1, clipboardText.c_str() );
 					GlobalUnlock( mem );
 					EmptyClipboard();
 					SetClipboardData( CF_UNICODETEXT, mem );
@@ -1887,26 +1887,26 @@ void WndList::OnPaste()
 	if ( OpenClipboard( m_hWnd ) ) {
 		bool clipboardHasText = false;
 		std::wstring clipboardText;
-    HANDLE handle = nullptr;
-    if ( handle = GetClipboardData( CF_UNICODETEXT ); nullptr != handle ) {
+		HANDLE handle = nullptr;
+		if ( handle = GetClipboardData( CF_UNICODETEXT ); nullptr != handle ) {
 			LPCWSTR str = static_cast<LPCWSTR>( GlobalLock( handle ) );
 			if ( nullptr != str ) {
 				clipboardText = str;
 				GlobalUnlock( handle );
 				clipboardHasText = true;
-			}	
-    } else if ( handle = GetClipboardData( CF_TEXT ); nullptr != handle ) {
+			}
+		} else if ( handle = GetClipboardData( CF_TEXT ); nullptr != handle ) {
 			LPCSTR str = static_cast<LPCSTR>( GlobalLock( handle ) );
 			if ( nullptr != str ) {
 				clipboardText = AnsiCodePageToWideString( str );
 				GlobalUnlock( handle );
 				clipboardHasText = true;
-			}	
-    } else if ( handle = GetClipboardData( CF_HDROP ); nullptr != handle ) {
-		  if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr == editControl ) {
-			  OnDropFiles( static_cast<HDROP>( handle ) );
 			}
-    }
+		} else if ( handle = GetClipboardData( CF_HDROP ); nullptr != handle ) {
+			if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr == editControl ) {
+				OnDropFiles( static_cast<HDROP>( handle ) );
+			}
+		}
 		CloseClipboard();
 
 		if ( clipboardHasText ) {
@@ -1922,7 +1922,7 @@ void WndList::OnPaste()
 							if ( filename.back() == '\r' ) {
 								filename.pop_back();
 							}
-							AddFileToPlaylist( filename );				
+							AddFileToPlaylist( filename );
 						}
 					} while ( !stream.eof() );
 				} catch ( ... ) {
@@ -1981,7 +1981,7 @@ void WndList::GetColumnVisibility( std::set<UINT>& shown, std::set<UINT>& hidden
 					const UINT cmdShowID = columnFormatIter->second.ShowID;
 					hidden.erase( cmdShowID );
 					shown.insert( cmdShowID );
-				}		
+				}
 			}
 		}
 	}
@@ -1999,9 +1999,9 @@ bool WndList::SelectPlaylistItem( const long itemID )
 				ListView_SetItemState( m_hWnd, itemIndex, 0, LVIS_SELECTED | LVIS_FOCUSED );
 			}
 		}
-    return true;
+		return true;
 	}
-  return false;
+	return false;
 }
 
 void WndList::CreateImageList()
@@ -2027,27 +2027,27 @@ void WndList::CreateImageList()
 
 void WndList::UpdateStatusIcon()
 {
-	const auto [ outputItemID, outputItemState ] = std::make_pair( m_Output.GetCurrentPlaying().PlaylistItem.ID, m_Output.GetState() );
-	auto& [ iconItemID, iconItemState ] = m_IconStatus;
+	const auto [outputItemID, outputItemState] = std::make_pair( m_Output.GetCurrentPlaying().PlaylistItem.ID, m_Output.GetState() );
+	auto& [iconItemID, iconItemState] = m_IconStatus;
 	if ( ( iconItemState != outputItemState ) || ( iconItemID != outputItemID ) ) {
-    std::set<int> itemsToUpdate;
+		std::set<int> itemsToUpdate;
 
 		if ( iconItemID != outputItemID ) {
 			if ( const int itemIndex = FindItemIndex( iconItemID ); itemIndex >= 0 ) {
-        itemsToUpdate.insert( itemIndex );
+				itemsToUpdate.insert( itemIndex );
 			}
 		}
 
 		if ( const int itemIndex = FindItemIndex( outputItemID ); itemIndex >= 0 ) {
-      itemsToUpdate.insert( itemIndex );
+			itemsToUpdate.insert( itemIndex );
 		}
 
 		iconItemID = outputItemID;
 		iconItemState = outputItemState;
 
-    for ( const auto itemIndex : itemsToUpdate ) {
-      RefreshItem( itemIndex );
-    }
+		for ( const auto itemIndex : itemsToUpdate ) {
+			RefreshItem( itemIndex );
+		}
 	}
 }
 
@@ -2080,7 +2080,7 @@ int WndList::GetStatusIconSize() const
 
 int WndList::FindItemIndex( const long itemID )
 {
-  return m_Playlist ? m_Playlist->GetItemPosition( itemID ) : -1;
+	return m_Playlist ? m_Playlist->GetItemPosition( itemID ) : -1;
 }
 
 void WndList::SetColours()
@@ -2088,7 +2088,7 @@ void WndList::SetColours()
 	if ( m_IsHighContrast ) {
 		ListView_SetTextColor( m_hWnd, GetSysColor( COLOR_WINDOWTEXT ) );
 		ListView_SetTextBkColor( m_hWnd, GetSysColor( COLOR_WINDOW ) );
-		ListView_SetBkColor( m_hWnd, GetSysColor( COLOR_WINDOW ) );	
+		ListView_SetBkColor( m_hWnd, GetSysColor( COLOR_WINDOW ) );
 	} else {
 		ListView_SetTextColor( m_hWnd, m_ColourFont );
 		ListView_SetTextBkColor( m_hWnd, m_ColourBackground );
@@ -2105,18 +2105,18 @@ void WndList::OnSysColorChange( const bool isHighContrast )
 
 void WndList::RefreshItem( const int itemIndex )
 {
-  ListView_Update( m_hWnd, itemIndex );
+	ListView_Update( m_hWnd, itemIndex );
 }
 
 void WndList::RefreshPlaylist()
 {
-  const auto playlistItemCount = m_Playlist ? static_cast<int>( m_Playlist->GetCount() ) : 0;
-  const auto listControlItemCount = ListView_GetItemCount( m_hWnd );
-  if ( playlistItemCount != listControlItemCount ) {
-    SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
-    ListView_SetItemCountEx( m_hWnd, playlistItemCount, LVSICF_NOSCROLL );
-    SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
-  }
+	const auto playlistItemCount = m_Playlist ? static_cast<int>( m_Playlist->GetCount() ) : 0;
+	const auto listControlItemCount = ListView_GetItemCount( m_hWnd );
+	if ( playlistItemCount != listControlItemCount ) {
+		SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
+		ListView_SetItemCountEx( m_hWnd, playlistItemCount, LVSICF_NOSCROLL );
+		SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
+	}
 }
 
 void WndList::DeselectAllItems()

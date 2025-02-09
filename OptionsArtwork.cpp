@@ -47,12 +47,12 @@ void OptionsArtwork::OnCommand( const HWND hwnd, const WPARAM wParam, const LPAR
 	const WORD controlID = LOWORD( wParam );
 	if ( BN_CLICKED == notificationCode ) {
 		switch ( controlID ) {
-			case IDC_OPTIONS_ARTWORK_BROWSE : {
+			case IDC_OPTIONS_ARTWORK_BROWSE: {
 				OnChooseArtwork( hwnd );
 				break;
 			}
-			case IDC_OPTIONS_ARTWORK_DEFAULT : 
-			case IDC_OPTIONS_ARTWORK_CUSTOM : {
+			case IDC_OPTIONS_ARTWORK_DEFAULT:
+			case IDC_OPTIONS_ARTWORK_CUSTOM: {
 				LoadArtwork( hwnd );
 				break;
 			}
@@ -99,7 +99,7 @@ void OptionsArtwork::LoadArtwork( const HWND hwnd )
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {
 			m_Artwork = vuplayer->GetPlaceholderImage( false /*useSetting*/ );
-		}	
+		}
 	}
 
 	InvalidateRect( GetDlgItem( hwnd, IDC_OPTIONS_ARTWORK_IMAGE ), nullptr /*rect*/, FALSE /*erase*/ );

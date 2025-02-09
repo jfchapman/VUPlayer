@@ -85,4 +85,3 @@ private:
 	// Decoders mutex (used when swapping decoder order).
 	mutable std::mutex m_MutexDecoders;
 };
-

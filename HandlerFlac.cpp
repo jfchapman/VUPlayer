@@ -33,7 +33,7 @@ bool HandlerFlac::GetTags( const std::wstring& filename, Tags& tags ) const
 	bool success = false;
 	tags.clear();
 	FLAC::Metadata::SimpleIterator iterator;
-	if ( iterator.is_valid() &&	iterator.init( WideStringToUTF8( filename ).c_str(), true /*readOnly*/, true /*preserveFileStats*/ ) ) {
+	if ( iterator.is_valid() && iterator.init( WideStringToUTF8( filename ).c_str(), true /*readOnly*/, true /*preserveFileStats*/ ) ) {
 		success = true;
 		do {
 			const FLAC__MetadataType blockType = iterator.get_block_type();
@@ -61,30 +61,30 @@ bool HandlerFlac::GetTags( const std::wstring& filename, Tags& tags ) const
 									tags.insert( Tags::value_type( Tag::Genre, entry.get_field_value() ) );
 								} else if ( 0 == _stricmp( field, "YEAR" ) ) {
 									tags.insert( Tags::value_type( Tag::Year, entry.get_field_value() ) );
-                } else if ( 0 == _stricmp( field, "DATE" ) ) {
-                  // Prefer 'date' over 'year' (both map to the same tag type).
+								} else if ( 0 == _stricmp( field, "DATE" ) ) {
+									// Prefer 'date' over 'year' (both map to the same tag type).
 									tags[ Tag::Year ] = entry.get_field_value();
 								} else if ( 0 == _stricmp( field, "COMMENT" ) ) {
 									tags.insert( Tags::value_type( Tag::Comment, entry.get_field_value() ) );
 								} else if ( 0 == _stricmp( field, "TRACK" ) ) {
 									tags.insert( Tags::value_type( Tag::Track, entry.get_field_value() ) );
-                } else if ( 0 == _stricmp( field, "TRACKNUMBER" ) ) {
-                  // Prefer 'tracknumber' over 'track' (both map to the same tag type).
+								} else if ( 0 == _stricmp( field, "TRACKNUMBER" ) ) {
+									// Prefer 'tracknumber' over 'track' (both map to the same tag type).
 									tags[ Tag::Track ] = entry.get_field_value();
 								} else if ( 0 == _stricmp( field, "REPLAYGAIN_TRACK_GAIN" ) ) {
 									tags.insert( Tags::value_type( Tag::GainTrack, entry.get_field_value() ) );
 								} else if ( 0 == _stricmp( field, "REPLAYGAIN_ALBUM_GAIN" ) ) {
 									tags.insert( Tags::value_type( Tag::GainAlbum, entry.get_field_value() ) );
-					      } else if ( 0 == _stricmp( field, "COMPOSER" ) ) {
-						      tags.insert( Tags::value_type( Tag::Composer, entry.get_field_value() ) );
-					      } else if ( 0 == _stricmp( field, "CONDUCTOR" ) ) {
-						      tags.insert( Tags::value_type( Tag::Conductor, entry.get_field_value() ) );
-					      } else if ( 0 == _stricmp( field, "LABEL" ) ) {
-						      tags.insert( Tags::value_type( Tag::Publisher, entry.get_field_value() ) );
-					      } else if ( 0 == _stricmp( field, "PUBLISHER" ) ) {
-                  // Prefer 'publisher' over 'label' (both map to the same tag type).
-						      tags[ Tag::Publisher ] = entry.get_field_value();
-					      }
+								} else if ( 0 == _stricmp( field, "COMPOSER" ) ) {
+									tags.insert( Tags::value_type( Tag::Composer, entry.get_field_value() ) );
+								} else if ( 0 == _stricmp( field, "CONDUCTOR" ) ) {
+									tags.insert( Tags::value_type( Tag::Conductor, entry.get_field_value() ) );
+								} else if ( 0 == _stricmp( field, "LABEL" ) ) {
+									tags.insert( Tags::value_type( Tag::Publisher, entry.get_field_value() ) );
+								} else if ( 0 == _stricmp( field, "PUBLISHER" ) ) {
+									// Prefer 'publisher' over 'label' (both map to the same tag type).
+									tags[ Tag::Publisher ] = entry.get_field_value();
+								}
 							}
 						}
 					}
@@ -131,27 +131,27 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) cons
 			for ( const auto& tagIter : tags ) {
 				const Tag tag = tagIter.first;
 				switch ( tag ) {
-					case Tag::Album :
-					case Tag::Artist :
-					case Tag::Comment :
-					case Tag::Genre :
-					case Tag::Title :
-					case Tag::Track :
-					case Tag::Year :
-					case Tag::GainAlbum :
-					case Tag::GainTrack :
-          case Tag::Composer :
-          case Tag::Conductor :
-          case Tag::Publisher : {
+					case Tag::Album:
+					case Tag::Artist:
+					case Tag::Comment:
+					case Tag::Genre:
+					case Tag::Title:
+					case Tag::Track:
+					case Tag::Year:
+					case Tag::GainAlbum:
+					case Tag::GainTrack:
+					case Tag::Composer:
+					case Tag::Conductor:
+					case Tag::Publisher: {
 						updateVorbisComment = true;
 						break;
 					}
-					case Tag::Artwork : {
+					case Tag::Artwork: {
 						updatePicture = true;
 						clearPicture = tagIter.second.empty();
 						break;
 					}
-					default : {
+					default: {
 						break;
 					}
 				}
@@ -187,55 +187,55 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) cons
 										const std::string& value = tagIter.second;
 										std::string field;
 										switch ( tag ) {
-											case Tag::Album : {
+											case Tag::Album: {
 												field = "ALBUM";
 												break;
 											}
-											case Tag::Artist : {
+											case Tag::Artist: {
 												field = "ARTIST";
 												break;
 											}
-											case Tag::Comment : {
+											case Tag::Comment: {
 												field = "COMMENT";
-												break;								
+												break;
 											}
-											case Tag::Genre : {
+											case Tag::Genre: {
 												field = "GENRE";
 												break;
 											}
-											case Tag::Title : {
+											case Tag::Title: {
 												field = "TITLE";
 												break;
 											}
-											case Tag::Track : {
+											case Tag::Track: {
 												field = "TRACKNUMBER";
 												break;
 											}
-											case Tag::Year : {
+											case Tag::Year: {
 												field = "DATE";
 												break;
 											}
-											case Tag::GainAlbum : {
+											case Tag::GainAlbum: {
 												field = "REPLAYGAIN_ALBUM_GAIN";
 												break;
 											}
-											case Tag::GainTrack : {
+											case Tag::GainTrack: {
 												field = "REPLAYGAIN_TRACK_GAIN";
 												break;
 											}
-								      case Tag::Composer : {
-									      field = "COMPOSER";
-									      break;
-								      }
-								      case Tag::Conductor : {
-									      field = "CONDUCTOR";
-									      break;
-								      }
-								      case Tag::Publisher : {
-									      field = "PUBLISHER";
-									      break;
-								      }
-											default : {
+											case Tag::Composer: {
+												field = "COMPOSER";
+												break;
+											}
+											case Tag::Conductor: {
+												field = "CONDUCTOR";
+												break;
+											}
+											case Tag::Publisher: {
+												field = "PUBLISHER";
+												break;
+											}
+											default: {
 												break;
 											}
 										}
@@ -316,7 +316,7 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) cons
 						if ( FLAC__METADATA_TYPE_PADDING == iterator.get_block_type() ) {
 							FLAC::Metadata::Prototype* block = iterator.get_block();
 							if ( nullptr != block ) {
-								FLAC::Metadata::Padding* padding = dynamic_cast<FLAC::Metadata::Padding*>( block );			
+								FLAC::Metadata::Padding* padding = dynamic_cast<FLAC::Metadata::Padding*>( block );
 								paddingExists = ( ( nullptr != padding ) && ( padding->get_length() > 0 ) );
 								delete block;
 								block = nullptr;
@@ -324,7 +324,7 @@ bool HandlerFlac::SetTags( const std::wstring& filename, const Tags& tags ) cons
 						}
 					} while ( !paddingExists && iterator.next() );
 					if ( !paddingExists ) {
-						FLAC::Metadata::Padding* padding = new FLAC::Metadata::Padding( kPaddingSize );	
+						FLAC::Metadata::Padding* padding = new FLAC::Metadata::Padding( kPaddingSize );
 						iterator.insert_block_after( padding );
 						chain.sort_padding();
 					}

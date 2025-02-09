@@ -46,5 +46,5 @@ bool Visual::IsHardwareAccelerationEnabled() const
 
 float Visual::GetDPIScalingFactor() const
 {
-  return m_WndVisual.GetDPIScalingFactor();
+	return m_WndVisual.GetDPIScalingFactor();
 }

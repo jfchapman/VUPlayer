@@ -38,4 +38,3 @@ private:
 	// Soundfont filename.
 	std::wstring m_SoundFont;
 };
-

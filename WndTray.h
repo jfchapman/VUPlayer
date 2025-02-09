@@ -81,7 +81,7 @@ public:
 
 private:
 	// Maps a context menu command ID to a playlist item ID.
-	typedef std::map<UINT,long> PlaylistMenuItemMap;
+	typedef std::map<UINT, long> PlaylistMenuItemMap;
 
 	// Shows the context menu.
 	void ShowContextMenu();
@@ -96,7 +96,7 @@ private:
 	Playlist::Ptr GetActivePlaylist() const;
 
 	// Maps a volume menu ID to a volume level.
-	static std::map<UINT,float> s_VolumeMenuMap;
+	static std::map<UINT, float> s_VolumeMenuMap;
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
@@ -121,7 +121,7 @@ private:
 
 	// Tree control.
 	WndTree& m_Tree;
-	
+
 	// List control.
 	WndList& m_List;
 
@@ -132,7 +132,7 @@ private:
 	UINT m_NextPlaylistMenuItemID;
 
 	// Commands for single/double/triple/quadruple click.
-	std::array<Settings::SystrayCommand,4> m_ClickCommands;
+	std::array<Settings::SystrayCommand, 4> m_ClickCommands;
 
 	// The click count when the timer elapses.
 	int m_ClickCount;

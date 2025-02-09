@@ -5,7 +5,7 @@
 #include <vector>
 
 // Opus handler
-class HandlerOpus :	public Handler
+class HandlerOpus : public Handler
 {
 public:
 	HandlerOpus();

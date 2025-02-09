@@ -33,7 +33,7 @@ public:
 
 private:
 	// Maps a slider control handle to a value.
-	typedef std::map<HWND,int> SliderValueMap;
+	typedef std::map<HWND, int> SliderValueMap;
 
 	// Dialog box procedure.
 	static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );

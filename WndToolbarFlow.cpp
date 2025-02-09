@@ -44,19 +44,19 @@ UINT WndToolbarFlow::GetTooltip( const UINT commandID ) const
 {
 	UINT tooltip = 0;
 	switch ( commandID ) {
-		case ID_CONTROL_RANDOMPLAY : {
+		case ID_CONTROL_RANDOMPLAY: {
 			tooltip = IDS_RANDOM;
 			break;
 		}
-		case ID_CONTROL_REPEATTRACK : {
+		case ID_CONTROL_REPEATTRACK: {
 			tooltip = IDS_REPEAT_TRACK;
 			break;
 		}
-		case ID_CONTROL_REPEATPLAYLIST : {
+		case ID_CONTROL_REPEATPLAYLIST: {
 			tooltip = IDS_REPEAT_PLAYLIST;
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}

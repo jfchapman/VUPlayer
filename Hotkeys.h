@@ -27,7 +27,7 @@ public:
 		BalanceLeft,
 		BalanceRight,
 		ResetBalance,
-    FollowTrackSelection
+		FollowTrackSelection
 	};
 
 	// Constructor.
@@ -69,9 +69,8 @@ private:
 	static std::set<ID> s_Hotkeys;
 
 	// Maps a hotkey ID to a command ID.
-	static std::map<ID,WPARAM> s_CommandMap;
+	static std::map<ID, WPARAM> s_CommandMap;
 
 	// Maps a hotkey ID to a string resource ID.
-	static std::map<ID,UINT> s_DescriptionMap;
+	static std::map<ID, UINT> s_DescriptionMap;
 };
-

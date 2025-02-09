@@ -6,7 +6,7 @@
 INT_PTR CALLBACK DlgConvertFilename::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			DlgConvertFilename* dialog = reinterpret_cast<DlgConvertFilename*>( lParam );
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -15,14 +15,14 @@ INT_PTR CALLBACK DlgConvertFilename::DialogProc( HWND hwnd, UINT message, WPARAM
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDCANCEL : 
-				case IDOK : {
+				case IDCANCEL:
+				case IDOK: {
 					DlgConvertFilename* dialog = reinterpret_cast<DlgConvertFilename*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnClose( ( IDOK == LOWORD( wParam ) ) );
@@ -30,20 +30,20 @@ INT_PTR CALLBACK DlgConvertFilename::DialogProc( HWND hwnd, UINT message, WPARAM
 					EndDialog( hwnd, 0 );
 					return TRUE;
 				}
-				case IDC_CONVERT_FILENAME_DEFAULT : {
+				case IDC_CONVERT_FILENAME_DEFAULT: {
 					DlgConvertFilename* dialog = reinterpret_cast<DlgConvertFilename*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnDefault();
 					}
 					break;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}

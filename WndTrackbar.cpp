@@ -19,14 +19,14 @@ LRESULT CALLBACK WndTrackbar::TrackbarHostProc( HWND hwnd, UINT message, WPARAM 
 	WndTrackbar* wndTrackbar = reinterpret_cast<WndTrackbar*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndTrackbar ) {
 		switch ( message ) {
-			case WM_PAINT : {
+			case WM_PAINT: {
 				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
 				wndTrackbar->OnPaint( ps );
 				EndPaint( hwnd, &ps );
 				break;
 			}
-			case WM_NOTIFY : {
+			case WM_NOTIFY: {
 				if ( LPNMHDR nmhdr = reinterpret_cast<LPNMHDR>( lParam ); nullptr != nmhdr ) {
 					if ( NM_CUSTOMDRAW == nmhdr->code ) {
 						LPNMCUSTOMDRAW nmcd = reinterpret_cast<LPNMCUSTOMDRAW>( lParam );
@@ -37,22 +37,22 @@ LRESULT CALLBACK WndTrackbar::TrackbarHostProc( HWND hwnd, UINT message, WPARAM 
 				}
 				break;
 			}
-			case WM_HSCROLL : {
+			case WM_HSCROLL: {
 				SendMessage( reinterpret_cast<HWND>( lParam ) /*trackbarWnd*/, message, wParam, lParam );
 				break;
 			}
-			case WM_PRINTCLIENT : {
+			case WM_PRINTCLIENT: {
 				wndTrackbar->OnEraseTrackbarBackground( HDC( wParam ) );
 				return TRUE;
 			}
-			case WM_SIZE : {
+			case WM_SIZE: {
 				wndTrackbar->OnSize();
 				break;
 			}
-			case WM_ERASEBKGND : {
+			case WM_ERASEBKGND: {
 				return TRUE;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 				break;
 			}
@@ -66,7 +66,7 @@ LRESULT CALLBACK WndTrackbar::TrackbarProc( HWND hwnd, UINT message, WPARAM wPar
 	WndTrackbar* wndTrackbar = reinterpret_cast<WndTrackbar*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndTrackbar ) {
 		switch ( message ) {
-			case WM_NOTIFY : {
+			case WM_NOTIFY: {
 				if ( LPNMHDR nmhdr = reinterpret_cast<LPNMHDR>( lParam ); nullptr != nmhdr ) {
 					if ( nmhdr->code == TTN_GETDISPINFO ) {
 						LPNMTTDISPINFO info = reinterpret_cast<LPNMTTDISPINFO>( lParam );
@@ -76,9 +76,9 @@ LRESULT CALLBACK WndTrackbar::TrackbarProc( HWND hwnd, UINT message, WPARAM wPar
 				}
 				break;
 			}
-			case WM_HSCROLL : {
+			case WM_HSCROLL: {
 				const LPARAM change = LOWORD( wParam );
-				const int position = static_cast<int>( SendMessage( hwnd, TBM_GETPOS, 0, 0 ) );		
+				const int position = static_cast<int>( SendMessage( hwnd, TBM_GETPOS, 0, 0 ) );
 				if ( TB_THUMBTRACK == change ) {
 					wndTrackbar->OnDrag( position );
 				} else if ( TB_ENDTRACK != change ) {
@@ -90,7 +90,7 @@ LRESULT CALLBACK WndTrackbar::TrackbarProc( HWND hwnd, UINT message, WPARAM wPar
 				}
 				break;
 			}
-			case WM_SIZE : {
+			case WM_SIZE: {
 				const HWND hwndToolTip = reinterpret_cast<HWND>( SendMessage( hwnd, TBM_GETTOOLTIPS, 0, 0 ) );
 				if ( nullptr != hwndToolTip ) {
 					const int width = static_cast<int>( LOWORD( lParam ) );
@@ -109,15 +109,15 @@ LRESULT CALLBACK WndTrackbar::TrackbarProc( HWND hwnd, UINT message, WPARAM wPar
 				}
 				break;
 			}
-			case WM_ERASEBKGND : {
+			case WM_ERASEBKGND: {
 				return TRUE;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndTrackbar->GetDefaultWndProc() ) );
 				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -156,7 +156,7 @@ WndTrackbar::WndTrackbar( HINSTANCE instance, HWND parent, Output& output, Setti
 	m_hTrackbarWnd = CreateWindowEx( 0, TRACKBAR_CLASS, 0, style, 0 /*x*/, 0 /*y*/, 0 /*width*/, 0 /*height*/, m_hHostWnd, reinterpret_cast<HMENU>( s_WndTrackbarID++ ), instance, nullptr );
 	SetWindowLongPtr( m_hTrackbarWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hTrackbarWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( TrackbarProc ) ) );
-	
+
 	SendMessage( m_hTrackbarWnd, TBM_SETRANGEMIN, 0 /*redraw*/, static_cast<LPARAM>( minValue ) );
 	SendMessage( m_hTrackbarWnd, TBM_SETRANGEMAX, 0 /*redraw*/, static_cast<LPARAM>( maxValue ) );
 	SendMessage( m_hTrackbarWnd, TBM_SETPAGESIZE, 0 /*redraw*/, static_cast<LPARAM>( ( maxValue - minValue ) / 10 ) );

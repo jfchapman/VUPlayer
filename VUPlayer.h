@@ -129,14 +129,14 @@ public:
 	// 'updatedMediaInfo' - the updated media information.
 	void OnMediaUpdated( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo );
 
-  // Handles the update of 'previousMediaInfo' to 'updatedMediaInfo', from the main thread.
+	// Handles the update of 'previousMediaInfo' to 'updatedMediaInfo', from the main thread.
 	void OnHandleMediaUpdate( const MediaInfo* previousMediaInfo, const MediaInfo* updatedMediaInfo );
 
-  // Handles the updating of playlists when media library maintenance has finished, from the main thread.
-  // 'removedFiles' - files that have been removed from the media library.
+	// Handles the updating of playlists when media library maintenance has finished, from the main thread.
+	// 'removedFiles' - files that have been removed from the media library.
 	void OnHandleLibraryRefreshed( const MediaInfo::List* removedFiles );
 
-  // Handles the refreshing of available optical discs.
+	// Handles the refreshing of available optical discs.
 	void OnHandleDiscRefreshed();
 
 	// Restarts playback from a playlist 'itemID'.
@@ -220,18 +220,18 @@ public:
 	// Called when the application taskbar button has been created.
 	void OnTaskbarButtonCreated();
 
-  // Called when a power management event 'type' has occurred.
-  void OnPowerBroadcast( const WPARAM type );
+	// Called when a power management event 'type' has occurred.
+	void OnPowerBroadcast( const WPARAM type );
 
-  // Called when the display resolution has changed.
-  void OnDisplayChange();
+	// Called when the display resolution has changed.
+	void OnDisplayChange();
 
 private:
 	// Main application instance.
 	static VUPlayer* s_VUPlayer;
 
 	// Maps a menu command ID to a playlist.
-	using PlaylistMenuMap = std::map<UINT,Playlist::Ptr>;
+	using PlaylistMenuMap = std::map<UINT, Playlist::Ptr>;
 
 	// Reads and applies windows position from settings.
 	void ReadWindowSettings();
@@ -396,8 +396,8 @@ private:
 	// Toolbar (volume/pitch).
 	WndToolbarVolume m_ToolbarVolume;
 
-  // Toolbar (loudness normalisation)
-  WndToolbarLoudness m_ToolbarLoudness;
+	// Toolbar (loudness normalisation)
+	WndToolbarLoudness m_ToolbarLoudness;
 
 	// Counter control.
 	WndCounter m_Counter;
@@ -453,12 +453,12 @@ private:
 	// Whether the application is currently converting files.
 	bool m_IsConverting;
 
-  // Title bar text format during playback.
-  Settings::TitleBarFormat m_TitleBarFormat;
+	// Title bar text format during playback.
+	Settings::TitleBarFormat m_TitleBarFormat;
 
-  // Indicates whether a MusicBrainz result is being processed.
-  bool m_IsProcessingMusicBrainzResult = false;
+	// Indicates whether a MusicBrainz result is being processed.
+	bool m_IsProcessingMusicBrainzResult = false;
 
-  // Pending MusicBrainz results to be processed.
-  std::queue<MusicBrainz::Result> m_PendingMusicBrainzResults;
+	// Pending MusicBrainz results to be processed.
+	std::queue<MusicBrainz::Result> m_PendingMusicBrainzResults;
 };

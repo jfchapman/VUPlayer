@@ -31,4 +31,3 @@ private:
 	// Application settings.
 	Settings& m_Settings;
 };
-

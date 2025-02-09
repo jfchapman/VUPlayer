@@ -24,4 +24,3 @@ private:
 	// The current tooltip resource ID.
 	WORD m_TooltipID;
 };
-

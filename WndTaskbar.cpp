@@ -74,7 +74,7 @@ void WndTaskbar::UpdateToolbarButtons( WndToolbarPlayback& toolbarPlayback )
 			m_ThumbButtons[ 0 ].dwMask = THB_FLAGS;
 			buttonsToUpdate.emplace_back( m_ThumbButtons[ 0 ] );
 		}
-		
+
 		const THUMBBUTTONFLAGS playFlags = toolbarPlayback.IsButtonEnabled( ID_CONTROL_PLAY ) ? THBF_ENABLED : THBF_DISABLED;
 		const bool isPauseShown = toolbarPlayback.IsPauseShown();
 		const UINT playBitmap = isPauseShown ? 1 : 0;

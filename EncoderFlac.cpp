@@ -6,7 +6,7 @@
 
 EncoderFlac::EncoderFlac() :
 	Encoder(),
-  FLAC::Encoder::File()
+	FLAC::Encoder::File()
 {
 }
 
@@ -28,13 +28,13 @@ bool EncoderFlac::Open( std::wstring& filename, const long sampleRate, const lon
 
 		const long bps = bitsPerSample.value_or( 0 );
 		switch ( bps ) {
-			case 8 :
-			case 16 :
-			case 24 : {
+			case 8:
+			case 16:
+			case 24: {
 				set_bits_per_sample( bps );
 				break;
 			}
-			default : {
+			default: {
 				if ( bitsPerSample > 24 ) {
 					set_bits_per_sample( 24 );
 				} else {
@@ -86,7 +86,7 @@ bool EncoderFlac::Write( float* samples, const long sampleCount )
 	const long bufferSize = sampleCount * get_channels();
 	std::vector<FLAC__int32> buffer( bufferSize );
 	for ( long sampleIndex = 0; sampleIndex < bufferSize; sampleIndex++ ) {
-		buffer[ sampleIndex ] = static_cast<FLAC__int32>( 
+		buffer[ sampleIndex ] = static_cast<FLAC__int32>(
 			( 16 == bps ) ? FloatTo16( samples[ sampleIndex ] ) : ( ( 24 == bps ) ? FloatTo24( samples[ sampleIndex ] ) : FloatToSigned8( samples[ sampleIndex ] ) ) );
 	}
 	const bool success = process_interleaved( buffer.data(), sampleCount );
@@ -101,59 +101,59 @@ void EncoderFlac::Close()
 std::unique_ptr<FLAC::Metadata::VorbisComment> EncoderFlac::CreateVorbisComment( const Tags& tags )
 {
 	std::unique_ptr<FLAC::Metadata::VorbisComment> vorbisComment = std::make_unique<FLAC::Metadata::VorbisComment>();
-	for ( const auto& [ tag, value ] : tags ) {
+	for ( const auto& [tag, value] : tags ) {
 		if ( !value.empty() ) {
 			std::string field;
 			switch ( tag ) {
-				case Tag::Album : {
+				case Tag::Album: {
 					field = "ALBUM";
 					break;
 				}
-				case Tag::Artist : {
+				case Tag::Artist: {
 					field = "ARTIST";
 					break;
 				}
-				case Tag::Comment : {
+				case Tag::Comment: {
 					field = "COMMENT";
-					break;								
+					break;
 				}
-				case Tag::Genre : {
+				case Tag::Genre: {
 					field = "GENRE";
 					break;
 				}
-				case Tag::Title : {
+				case Tag::Title: {
 					field = "TITLE";
 					break;
 				}
-				case Tag::Track : {
+				case Tag::Track: {
 					field = "TRACKNUMBER";
 					break;
 				}
-				case Tag::Year : {
+				case Tag::Year: {
 					field = "DATE";
 					break;
 				}
-				case Tag::GainAlbum : {
+				case Tag::GainAlbum: {
 					field = "REPLAYGAIN_ALBUM_GAIN";
 					break;
 				}
-				case Tag::GainTrack : {
+				case Tag::GainTrack: {
 					field = "REPLAYGAIN_TRACK_GAIN";
 					break;
 				}
-        case Tag::Composer : {
-          field = "COMPOSER";
-          break;
-        }
-        case Tag::Conductor : {
-          field = "CONDUCTOR";
-          break;
-        }
-        case Tag::Publisher : {
-          field = "PUBLISHER";
-          break;
-        }
-				default : {
+				case Tag::Composer: {
+					field = "COMPOSER";
+					break;
+				}
+				case Tag::Conductor: {
+					field = "CONDUCTOR";
+					break;
+				}
+				case Tag::Publisher: {
+					field = "PUBLISHER";
+					break;
+				}
+				default: {
 					break;
 				}
 			}

@@ -57,4 +57,3 @@ private:
 	// Optical disc manager.
 	DiscManager& m_DiscManager;
 };
-

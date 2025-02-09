@@ -28,7 +28,7 @@ public:
 	// Called when the system colours have changed.
 	void OnSysColorChange() override;
 
-  // Called when the visual should free any resources.
+	// Called when the visual should free any resources.
 	void FreeResources() override;
 
 private:
@@ -62,4 +62,3 @@ private:
 	// Spectrum values.
 	std::vector<float> m_Values;
 };
-

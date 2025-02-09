@@ -6,7 +6,7 @@
 INT_PTR CALLBACK DlgAddStream::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			DlgAddStream* dialog = reinterpret_cast<DlgAddStream*>( lParam );
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -15,14 +15,14 @@ INT_PTR CALLBACK DlgAddStream::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDCANCEL : 
-				case IDOK : {
+				case IDCANCEL:
+				case IDOK: {
 					DlgAddStream* dialog = reinterpret_cast<DlgAddStream*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->OnClose( ( IDOK == LOWORD( wParam ) ) );
@@ -30,13 +30,13 @@ INT_PTR CALLBACK DlgAddStream::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 					EndDialog( hwnd, 0 );
 					return TRUE;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}

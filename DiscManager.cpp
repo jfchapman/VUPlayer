@@ -108,9 +108,9 @@ void DiscManager::UpdateThreadHandler()
 
 		if ( change ) {
 			bool updated = true;
-			const auto& [ drive, changeType ] = *change;
+			const auto& [drive, changeType] = *change;
 			switch ( changeType ) {
-				case ChangeType::Added : {
+				case ChangeType::Added: {
 					{
 						std::lock_guard<std::mutex> lock( m_MediaMutex );
 						m_CDDAMedia.erase( drive );
@@ -126,13 +126,13 @@ void DiscManager::UpdateThreadHandler()
 					}
 					break;
 				}
-				case ChangeType::Removed : {
+				case ChangeType::Removed: {
 					std::lock_guard<std::mutex> lock( m_MediaMutex );
 					m_CDDAMedia.erase( drive );
 					m_DataMedia.erase( drive );
 					break;
 				}
-				default : {
+				default: {
 					updated = false;
 					break;
 				}

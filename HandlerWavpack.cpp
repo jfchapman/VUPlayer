@@ -67,7 +67,7 @@ std::set<std::wstring> HandlerWavpack::GetSupportedFileExtensions() const
 bool HandlerWavpack::GetTags( const std::wstring& filename, Tags& tags ) const
 {
 	bool success = false;
-	
+
 	bool foundHeader = false;
 	if ( std::ifstream testStream( filename, std::ios::binary | std::ios::in ); testStream.is_open() ) {
 		std::array<char, 4> header = {};
@@ -81,52 +81,52 @@ bool HandlerWavpack::GetTags( const std::wstring& filename, Tags& tags ) const
 		const int offset = 0;
 		WavpackContext* context = WavpackOpenFileInput( WideStringToUTF8( filename ).c_str(), error, flags, offset );
 		if ( nullptr != context ) {
-      const int tagCount = WavpackGetNumTagItems( context );
-      for ( int i = 0; i < tagCount; i++ ) {
-        if ( const int tagKeyLength = WavpackGetTagItemIndexed( context, i, nullptr /*item*/, 0 /*itemSize*/ ); tagKeyLength > 0 ) {
-          std::vector<char> tagKey( 1 + tagKeyLength, 0 );
-          if ( tagKeyLength == WavpackGetTagItemIndexed( context, i, tagKey.data(), 1 + tagKeyLength ) ) {
-            if ( const int tagValueLength = WavpackGetTagItem( context, tagKey.data(), nullptr /*value*/, 0 /*valueSize*/ ); tagValueLength > 0 ) {
-              std::vector<char> tagValue( 1 + tagValueLength, 0 );
-              if ( tagValueLength == WavpackGetTagItem( context, tagKey.data(), tagValue.data(), 1 + tagValueLength ) ) {
-                if ( const auto tagType = kSupportedTagsByName.find( StringToUpper( tagKey.data() ) ); kSupportedTagsByName.end() != tagType ) {
-                  if ( const auto preferredTagType = kSupportedTagsByType.find( tagType->second ); kSupportedTagsByType.end() != preferredTagType ) {
-                    tags[ tagType->second ] = tagValue.data();
-                  } else {
-                    tags.insert( { tagType->second, tagValue.data() } );
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+			const int tagCount = WavpackGetNumTagItems( context );
+			for ( int i = 0; i < tagCount; i++ ) {
+				if ( const int tagKeyLength = WavpackGetTagItemIndexed( context, i, nullptr /*item*/, 0 /*itemSize*/ ); tagKeyLength > 0 ) {
+					std::vector<char> tagKey( 1 + tagKeyLength, 0 );
+					if ( tagKeyLength == WavpackGetTagItemIndexed( context, i, tagKey.data(), 1 + tagKeyLength ) ) {
+						if ( const int tagValueLength = WavpackGetTagItem( context, tagKey.data(), nullptr /*value*/, 0 /*valueSize*/ ); tagValueLength > 0 ) {
+							std::vector<char> tagValue( 1 + tagValueLength, 0 );
+							if ( tagValueLength == WavpackGetTagItem( context, tagKey.data(), tagValue.data(), 1 + tagValueLength ) ) {
+								if ( const auto tagType = kSupportedTagsByName.find( StringToUpper( tagKey.data() ) ); kSupportedTagsByName.end() != tagType ) {
+									if ( const auto preferredTagType = kSupportedTagsByType.find( tagType->second ); kSupportedTagsByType.end() != preferredTagType ) {
+										tags[ tagType->second ] = tagValue.data();
+									} else {
+										tags.insert( { tagType->second, tagValue.data() } );
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 
 			const unsigned char format = WavpackGetFileFormat( context );
 			UINT stringID = 0;
 			switch ( format ) {
-				case WP_FORMAT_WAV : {
+				case WP_FORMAT_WAV: {
 					const int mode = WavpackGetMode( context );
 					stringID = ( mode & MODE_LOSSLESS ) ? ( ( mode & MODE_HYBRID ) ? IDS_WAVPACK_HYBRID : IDS_WAVPACK_LOSSLESS ) : IDS_WAVPACK_LOSSY;
 					break;
 				}
-				case WP_FORMAT_W64 : {
+				case WP_FORMAT_W64: {
 					stringID = IDS_WAVPACK_W64;
 					break;
 				}
-				case WP_FORMAT_CAF : {
+				case WP_FORMAT_CAF: {
 					stringID = IDS_WAVPACK_CAF;
 					break;
 				}
-				case WP_FORMAT_DFF : {
+				case WP_FORMAT_DFF: {
 					stringID = IDS_WAVPACK_DFF;
 					break;
 				}
-				case WP_FORMAT_DSF : {
+				case WP_FORMAT_DSF: {
 					stringID = IDS_WAVPACK_DSD;
 					break;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}

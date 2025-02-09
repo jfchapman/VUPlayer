@@ -16,19 +16,19 @@
 static constexpr float LOUDNESS_R128 = -23.0f;
 
 // Supported tags and their Opus field names.
-static const std::map<Tag,std::string> s_SupportedTags = {
-	{ Tag::Album,				"ALBUM" },
-	{ Tag::Artist,			"ARTIST" },
-	{ Tag::Comment,			"COMMENT" },
-	{ Tag::GainAlbum,		"R128_ALBUM_GAIN" },
-	{ Tag::GainTrack,		"R128_TRACK_GAIN" },
-	{ Tag::Genre,				"GENRE" },
-	{ Tag::Title,				"TITLE" },
-	{ Tag::Track,				"TRACKNUMBER" },
-	{ Tag::Year,				"DATE" },
-	{ Tag::Composer,		"COMPOSER" },
-	{ Tag::Conductor,		"CONDUCTOR" },
-	{ Tag::Publisher,		"PUBLISHER" }
+static const std::map<Tag, std::string> s_SupportedTags = {
+	{ Tag::Album,      "ALBUM" },
+	{ Tag::Artist,     "ARTIST" },
+	{ Tag::Comment,    "COMMENT" },
+	{ Tag::GainAlbum,  "R128_ALBUM_GAIN" },
+	{ Tag::GainTrack,  "R128_TRACK_GAIN" },
+	{ Tag::Genre,      "GENRE" },
+	{ Tag::Title,      "TITLE" },
+	{ Tag::Track,      "TRACKNUMBER" },
+	{ Tag::Year,       "DATE" },
+	{ Tag::Composer,   "COMPOSER" },
+	{ Tag::Conductor,  "CONDUCTOR" },
+	{ Tag::Publisher,  "PUBLISHER" }
 };
 
 HandlerOpus::HandlerOpus() :
@@ -75,15 +75,15 @@ bool HandlerOpus::GetTags( const std::wstring& filename, Tags& tags ) const
 					tags.insert( Tags::value_type( Tag::Genre, value ) );
 				} else if ( 0 == _stricmp( field.c_str(), "YEAR" ) ) {
 					tags.insert( Tags::value_type( Tag::Year, value ) );
-        } else if ( 0 == _stricmp( field.c_str(), "DATE" ) ) {
-          // Prefer 'date' over 'year' (both map to the same tag type).
+				} else if ( 0 == _stricmp( field.c_str(), "DATE" ) ) {
+					// Prefer 'date' over 'year' (both map to the same tag type).
 					tags[ Tag::Year ] = value;
 				} else if ( 0 == _stricmp( field.c_str(), "COMMENT" ) ) {
 					tags.insert( Tags::value_type( Tag::Comment, value ) );
 				} else if ( 0 == _stricmp( field.c_str(), "TRACK" ) ) {
 					tags.insert( Tags::value_type( Tag::Track, value ) );
-        } else if ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) {
-          // Prefer 'tracknumber' over 'track' (both map to the same tag type).
+				} else if ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) {
+					// Prefer 'tracknumber' over 'track' (both map to the same tag type).
 					tags[ Tag::Track ] = value;
 				} else if ( 0 == _stricmp( field.c_str(), "COMPOSER" ) ) {
 					tags.insert( Tags::value_type( Tag::Composer, value ) );
@@ -92,7 +92,7 @@ bool HandlerOpus::GetTags( const std::wstring& filename, Tags& tags ) const
 				} else if ( 0 == _stricmp( field.c_str(), "LABEL" ) ) {
 					tags.insert( Tags::value_type( Tag::Publisher, value ) );
 				} else if ( 0 == _stricmp( field.c_str(), "PUBLISHER" ) ) {
-          // Prefer 'publisher' over 'label' (both map to the same tag type).
+					// Prefer 'publisher' over 'label' (both map to the same tag type).
 					tags[ Tag::Publisher ] = value;
 				} else if ( 0 == _stricmp( field.c_str(), "R128_ALBUM_GAIN" ) ) {
 					const std::string gain = R128ToGain( value );
@@ -207,7 +207,7 @@ void HandlerOpus::SettingsChanged( Settings& /*settings*/ )
 INT_PTR CALLBACK HandlerOpus::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( lParam );
 			if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, reinterpret_cast<LPARAM>( config ) );
@@ -215,14 +215,14 @@ INT_PTR CALLBACK HandlerOpus::DialogProc( HWND hwnd, UINT message, WPARAM wParam
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDCANCEL : 
-				case IDOK : {
+				case IDCANCEL:
+				case IDOK: {
 					ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
 						config->m_Handler->OnConfigureClose( hwnd, config->m_Settings );
@@ -230,20 +230,20 @@ INT_PTR CALLBACK HandlerOpus::DialogProc( HWND hwnd, UINT message, WPARAM wParam
 					EndDialog( hwnd, IDOK == LOWORD( wParam ) );
 					return TRUE;
 				}
-				case IDC_ENCODER_OPUS_DEFAULT : {
+				case IDC_ENCODER_OPUS_DEFAULT: {
 					ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
 						config->m_Handler->OnConfigureDefault( hwnd, config->m_Settings );
 					}
 					break;
 				}
-				default : {
+				default: {
 					break;
 				}
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}

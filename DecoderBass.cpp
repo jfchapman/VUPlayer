@@ -167,7 +167,7 @@ void DecoderBass::OnMetadata( const DWORD channel )
 {
 	if ( const char* tags = BASS_ChannelGetTags( channel, BASS_TAG_META ); nullptr != tags ) {
 		std::lock_guard<std::mutex> lock( m_StreamTitleMutex );
-		auto& [ position, title ] = m_StreamTitle;
+		auto& [position, title] = m_StreamTitle;
 		position = static_cast<float>( BASS_ChannelBytes2Seconds( channel, BASS_ChannelGetPosition( channel, BASS_POS_BYTE ) ) );
 		title.clear();
 

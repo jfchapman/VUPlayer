@@ -35,10 +35,10 @@ public:
 
 	// Output item information.
 	struct Item {
-		Playlist::Item PlaylistItem;	// Playlist item.
-		double Position;				// Position in seconds.
-		double InitialSeek;				// Initial seek time for the item.
-		std::wstring StreamTitle;		// Current stream title.
+		Playlist::Item PlaylistItem;  // Playlist item.
+		double Position = 0;          // Position in seconds.
+		double InitialSeek = 0;       // Initial seek time for the item.
+		std::wstring StreamTitle;     // Current stream title.
 	};
 
 	// Maps a device ID to its description.
@@ -231,9 +231,9 @@ private:
 
 	// Preloaded decoder information.
 	struct PreloadedDecoder {
-		Playlist::Item		itemToPreload = {};			// Item to preload.
-		Playlist::Item		item = {};							// Preloaded item.
-		OutputDecoderPtr	decoder = {};						// Preloaded decoder.
+		Playlist::Item itemToPreload = {};  // Item to preload.
+		Playlist::Item item = {};           // Preloaded item.
+		OutputDecoderPtr decoder = {};      // Preloaded decoder.
 	};
 
 	// BASS stream callback.

@@ -108,11 +108,11 @@ bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
 					success = true;
 				}
 			} else if ( BASS_CTYPE_STREAM_WAV & info.ctype ) {
-        if ( const char* riffTags = BASS_ChannelGetTags( stream, BASS_TAG_RIFF_INFO ); nullptr != riffTags ) {
-          ReadRIFFTags( riffTags, tags );
-          success = true;
-        }
-      }
+				if ( const char* riffTags = BASS_ChannelGetTags( stream, BASS_TAG_RIFF_INFO ); nullptr != riffTags ) {
+					ReadRIFFTags( riffTags, tags );
+					success = true;
+				}
+			}
 			BASS_StreamFree( stream );
 		}
 	}
@@ -193,15 +193,15 @@ void HandlerBass::ReadOggTags( const char* oggTags, Tags& tags ) const
 						tags.insert( Tags::value_type( Tag::Genre, value ) );
 					} else if ( 0 == _stricmp( field.c_str(), "YEAR" ) ) {
 						tags.insert( Tags::value_type( Tag::Year, value ) );
-          } else if ( 0 == _stricmp( field.c_str(), "DATE" ) ) {
-            // Prefer 'date' over 'year' (both map to the same tag type).
+					} else if ( 0 == _stricmp( field.c_str(), "DATE" ) ) {
+						// Prefer 'date' over 'year' (both map to the same tag type).
 						tags[ Tag::Year ] = value;
 					} else if ( 0 == _stricmp( field.c_str(), "COMMENT" ) ) {
 						tags.insert( Tags::value_type( Tag::Comment, value ) );
 					} else if ( 0 == _stricmp( field.c_str(), "TRACK" ) ) {
 						tags.insert( Tags::value_type( Tag::Track, value ) );
-          } else if ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) {
-            // Prefer 'tracknumber' over 'track' (both map to the same tag type).
+					} else if ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) {
+						// Prefer 'tracknumber' over 'track' (both map to the same tag type).
 						tags[ Tag::Track ] = value;
 					} else if ( 0 == _stricmp( field.c_str(), "REPLAYGAIN_TRACK_GAIN" ) ) {
 						tags.insert( Tags::value_type( Tag::GainTrack, value ) );
@@ -214,10 +214,10 @@ void HandlerBass::ReadOggTags( const char* oggTags, Tags& tags ) const
 					} else if ( 0 == _stricmp( field.c_str(), "LABEL" ) ) {
 						tags.insert( Tags::value_type( Tag::Publisher, value ) );
 					} else if ( 0 == _stricmp( field.c_str(), "PUBLISHER" ) ) {
-            // Prefer 'publisher' over 'label' (both map to the same tag type).
+						// Prefer 'publisher' over 'label' (both map to the same tag type).
 						tags[ Tag::Publisher ] = value;
 					}
-        }
+				}
 			}
 			currentTag += 1 + tagLength;
 		}
@@ -232,22 +232,22 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 	for ( auto iter = tags.begin(); handled && ( iter != tags.end() ); iter++ ) {
 		const Tag tag = iter->first;
 		switch ( tag ) {
-			case Tag::Album :
-			case Tag::Artist :
-			case Tag::Comment :
-			case Tag::GainAlbum : 
-			case Tag::GainTrack :
-			case Tag::Genre :
-			case Tag::Title :
-			case Tag::Track :
-			case Tag::Year :
-			case Tag::Composer :
-			case Tag::Conductor :
-			case Tag::Publisher : {
+			case Tag::Album:
+			case Tag::Artist:
+			case Tag::Comment:
+			case Tag::GainAlbum:
+			case Tag::GainTrack:
+			case Tag::Genre:
+			case Tag::Title:
+			case Tag::Track:
+			case Tag::Year:
+			case Tag::Composer:
+			case Tag::Conductor:
+			case Tag::Publisher: {
 				handled = false;
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -274,55 +274,55 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 							const std::string& tagValue = tagIter.second;
 							std::string tagField;
 							switch ( tag ) {
-								case Tag::Album : {
+								case Tag::Album: {
 									tagField = "ALBUM";
 									break;
 								}
-								case Tag::Artist : {
+								case Tag::Artist: {
 									tagField = "ARTIST";
 									break;
 								}
-								case Tag::Comment : {
+								case Tag::Comment: {
 									tagField = "COMMENT";
-									break;								
+									break;
 								}
-								case Tag::Genre : {
+								case Tag::Genre: {
 									tagField = "GENRE";
 									break;
 								}
-								case Tag::Title : {
+								case Tag::Title: {
 									tagField = "TITLE";
 									break;
 								}
-								case Tag::Track : {
+								case Tag::Track: {
 									tagField = "TRACKNUMBER";
 									break;
 								}
-								case Tag::Year : {
+								case Tag::Year: {
 									tagField = "DATE";
 									break;
 								}
-								case Tag::GainAlbum : {
+								case Tag::GainAlbum: {
 									tagField = "REPLAYGAIN_ALBUM_GAIN";
 									break;
 								}
-								case Tag::GainTrack : {
+								case Tag::GainTrack: {
 									tagField = "REPLAYGAIN_TRACK_GAIN";
 									break;
 								}
-								case Tag::Composer : {
+								case Tag::Composer: {
 									tagField = "COMPOSER";
 									break;
 								}
-								case Tag::Conductor : {
+								case Tag::Conductor: {
 									tagField = "CONDUCTOR";
 									break;
 								}
-								case Tag::Publisher : {
+								case Tag::Publisher: {
 									tagField = "PUBLISHER";
 									break;
 								}
-								default : {
+								default: {
 									break;
 								}
 							}
@@ -333,18 +333,18 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 									if ( ( std::string::npos != delimiter ) && ( delimiter > 0 ) ) {
 										const std::string field = StringToUpper( comment.substr( 0 /*offset*/, delimiter /*count*/ ) );
 										if ( tagField == field ) {
-											originalCommentsToDrop.insert( index );						
+											originalCommentsToDrop.insert( index );
 										}
 									}
 								}
 								const std::string comment = tagField + '=' + tagValue;
-								vorbis_comment_add( &modifiedComments, comment.c_str() );							
-							}			
+								vorbis_comment_add( &modifiedComments, comment.c_str() );
+							}
 						}
 
 						for ( int index = 0; index < originalComments->comments; ++index ) {
 							if ( originalCommentsToDrop.end() == originalCommentsToDrop.find( index ) ) {
-								vorbis_comment_add( &modifiedComments, originalComments->user_comments[ index ] );							
+								vorbis_comment_add( &modifiedComments, originalComments->user_comments[ index ] );
 							}
 						}
 
@@ -364,7 +364,7 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 						vorbis_comment_clear( &modifiedComments );
 					}
 				}
-				vcedit_clear(state);
+				vcedit_clear( state );
 				fclose( outputStream );
 			}
 			fclose( inputStream );
@@ -382,36 +382,36 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 
 void HandlerBass::ReadRIFFTags( const char* riffTags, Tags& tags ) const
 {
-  if ( nullptr == riffTags )
-    return;
+	if ( nullptr == riffTags )
+		return;
 
-  const std::regex kRegexTag( R"(^(.{4})=(.+))" );
+	const std::regex kRegexTag( R"(^(.{4})=(.+))" );
 
 	const char* currentTag = riffTags;
 	while ( 0 != *currentTag ) {
 		const size_t tagLength = strlen( currentTag );
 		const std::string tag = CodePageToUTF8( currentTag, 1252 );
 
-    std::smatch match;
-    if ( std::regex_match( tag, match, kRegexTag ) && ( 3 == match.size() ) ) {
-      const std::string field = match[ 1 ];
-      const std::string value = match[ 2 ];
-      if ( field == "IART" ) {
-        tags.insert( { Tag::Artist, value } );
-      } else if ( field == "INAM" ) {
-        tags.insert( { Tag::Title, value } );
-      } else if ( field == "IGNR" ) {
-        tags.insert( { Tag::Genre, value } );
-      } else if ( field == "ICMT" ) {
-        tags.insert( { Tag::Comment, value } );
-      } else if ( field == "IPRD" ) {
-        tags.insert( { Tag::Album, value } );
-      } else if ( field == "ICRD" ) {
-        tags.insert( { Tag::Year, value } );
-      } else if ( field == "ITRK" ) {
-        tags.insert( { Tag::Track, value } );
-      }
-    }
+		std::smatch match;
+		if ( std::regex_match( tag, match, kRegexTag ) && ( 3 == match.size() ) ) {
+			const std::string field = match[ 1 ];
+			const std::string value = match[ 2 ];
+			if ( field == "IART" ) {
+				tags.insert( { Tag::Artist, value } );
+			} else if ( field == "INAM" ) {
+				tags.insert( { Tag::Title, value } );
+			} else if ( field == "IGNR" ) {
+				tags.insert( { Tag::Genre, value } );
+			} else if ( field == "ICMT" ) {
+				tags.insert( { Tag::Comment, value } );
+			} else if ( field == "IPRD" ) {
+				tags.insert( { Tag::Album, value } );
+			} else if ( field == "ICRD" ) {
+				tags.insert( { Tag::Year, value } );
+			} else if ( field == "ITRK" ) {
+				tags.insert( { Tag::Track, value } );
+			}
+		}
 
 		currentTag += 1 + tagLength;
 	}

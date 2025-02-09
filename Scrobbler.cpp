@@ -40,7 +40,7 @@ Scrobbler::Scrobbler( Database& database, Settings& settings ) :
 		m_Scrobble = reinterpret_cast<scrobbler_scrobble>( GetProcAddress( m_Handle, "scrobble" ) );
 
 		if ( ( nullptr == m_Init ) || ( nullptr == m_Close ) || ( nullptr == m_Authorize ) ||
-				( nullptr == m_GetToken ) || ( nullptr == m_GetSession ) || ( nullptr == m_NowPlaying ) || ( nullptr == m_Scrobble ) ) {
+			( nullptr == m_GetToken ) || ( nullptr == m_GetSession ) || ( nullptr == m_NowPlaying ) || ( nullptr == m_Scrobble ) ) {
 			FreeLibrary( m_Handle );
 			m_Handle = nullptr;
 		} else {
@@ -95,7 +95,7 @@ void Scrobbler::Authorise()
 	if ( IsAvailable() ) {
 		const int32_t tokenSize = 256;
 		char token[ tokenSize ] = {};
-		if ( scrobbler_success ==	m_GetToken( token, tokenSize ) ) {
+		if ( scrobbler_success == m_GetToken( token, tokenSize ) ) {
 			SetToken( token );
 			m_Authorize( token );
 		}
@@ -125,7 +125,7 @@ void Scrobbler::Scrobble( const MediaInfo& mediaInfo, const time_t startTime )
 			const time_t playedSeconds = now - startTime;
 			if ( ( playedSeconds >= 240 ) || ( ( playedSeconds * 2 ) >= trackSeconds ) ) {
 				std::lock_guard<std::mutex> lock( m_Mutex );
-				const TrackInfo trackInfo = { 
+				const TrackInfo trackInfo = {
 					WideStringToUTF8( mediaInfo.GetArtist() ),
 					WideStringToUTF8( mediaInfo.GetTitle() ),
 					WideStringToUTF8( mediaInfo.GetAlbum() ),
@@ -170,7 +170,7 @@ void Scrobbler::SetSessionKey( const std::string& key, const bool updateSettings
 
 void Scrobbler::WakeUp()
 {
-	if ( IsAvailable() ) {	
+	if ( IsAvailable() ) {
 		SetEvent( m_WakeEvent );
 	}
 }
@@ -189,11 +189,11 @@ void Scrobbler::ScrobblerHandler()
 				char skBuffer[ skBufferSize ] = {};
 				const int32_t result = m_GetSession( token.c_str(), skBuffer, skBufferSize );
 				switch ( result ) {
-					case scrobbler_success : {
+					case scrobbler_success: {
 						SetSessionKey( skBuffer );
 						break;
 					}
-					case scrobbler_error_expiredtoken : {
+					case scrobbler_error_expiredtoken: {
 						SetToken( std::string() );
 						break;
 					}
@@ -215,8 +215,8 @@ void Scrobbler::ScrobblerHandler()
 					nowPlaying.Album.c_str(), nullptr /*albumArtist*/, nowPlaying.Tracknumber, nowPlaying.Duration );
 				const int32_t result = m_NowPlaying( sk.c_str(), &track );
 				switch ( result ) {
-					case scrobbler_error_invalidsessionkey :
-					case scrobbler_error_authenticationfailed : {
+					case scrobbler_error_invalidsessionkey:
+					case scrobbler_error_authenticationfailed: {
 						SetSessionKey( std::string() );
 						break;
 					}
@@ -248,8 +248,8 @@ void Scrobbler::ScrobblerHandler()
 					tracks.push_back( &track );
 				}
 				const int32_t result = m_Scrobble( sk.c_str(), &tracks[ 0 ], static_cast<int32_t>( tracks.size() ) );
-				switch( result ) {
-					case scrobbler_success : {
+				switch ( result ) {
+					case scrobbler_success: {
 						Timestamps scrobbledTimestamps;
 						for ( const auto& track : scrobbler_tracks ) {
 							scrobbledTimestamps.insert( track.Timestamp );
@@ -258,13 +258,13 @@ void Scrobbler::ScrobblerHandler()
 						RemovePendingScrobbles( scrobbledTimestamps );
 						break;
 					}
-					case scrobbler_error_invalidsessionkey :
-					case scrobbler_error_authenticationfailed : {
+					case scrobbler_error_invalidsessionkey:
+					case scrobbler_error_authenticationfailed: {
 						scrobbles.clear();
 						SetSessionKey( std::string() );
 						break;
 					}
-					default : {
+					default: {
 						scrobbles.clear();
 						break;
 					}
@@ -338,10 +338,10 @@ void Scrobbler::SaveCachedScrobbles()
 					for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 						const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 						if ( columnName == "name" ) {
-						  if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
-							  const std::string name = reinterpret_cast<const char*>( text );
-							  columns.insert( name );
-              }
+							if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
+								const std::string name = reinterpret_cast<const char*>( text );
+								columns.insert( name );
+							}
 							break;
 						}
 					}
@@ -350,7 +350,7 @@ void Scrobbler::SaveCachedScrobbles()
 				stmt = nullptr;
 
 				if ( ( columns.find( "Timestamp" ) == columns.end() ) || ( columns.find( "Artist" ) == columns.end() ) || ( columns.find( "Title" ) == columns.end() ) ||
-						( columns.find( "Album" ) == columns.end() ) || ( columns.find( "Track" ) == columns.end() ) || ( columns.find( "Duration" ) == columns.end() ) ) {
+					( columns.find( "Album" ) == columns.end() ) || ( columns.find( "Track" ) == columns.end() ) || ( columns.find( "Duration" ) == columns.end() ) ) {
 					// Drop the table and recreate.
 					const std::string dropTableQuery = "DROP TABLE Scrobbles;";
 					sqlite3_exec( database, dropTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
@@ -390,7 +390,7 @@ void Scrobbler::SaveCachedScrobbles()
 						sqlite3_bind_int64( stmt, 1, timestamp );
 						sqlite3_bind_text( stmt, 2, info.Artist.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 						sqlite3_bind_text( stmt, 3, info.Title.c_str(), -1 /*strLen*/, SQLITE_STATIC );
-						sqlite3_bind_text( stmt, 4, info.Album.c_str(), -1 /*strLen*/, SQLITE_STATIC );		
+						sqlite3_bind_text( stmt, 4, info.Album.c_str(), -1 /*strLen*/, SQLITE_STATIC );
 						sqlite3_bind_int( stmt, 5, static_cast<int>( info.Tracknumber ) );
 						sqlite3_bind_int( stmt, 6, static_cast<int>( info.Duration ) );
 						sqlite3_step( stmt );

@@ -8,25 +8,25 @@
 
 // Maps an index to a pre-amp dB value.
 static const std::map<int, int> sPreampValues = {
-	{ 0,	+12 },
-	{ 1,	+11 },
-	{ 2,	+10 },
-	{ 3,	+9 },
-	{ 4,	+8 },
-	{ 5,	+7 },
-	{ 6,	+6 },
-	{ 7,	+5 },
-	{ 8,	+4 },
-	{ 9,	+3 },
-	{ 10,	+2 },
-	{ 11,	+1 },
-	{ 12,	+0 },
-	{ 13,	-1 },
-	{ 14,	-2 },
-	{ 15,	-3 },
-	{ 16,	-4 },
-	{ 17,	-5 },
-	{ 18,	-6 }
+	{ 0,  +12 },
+	{ 1,  +11 },
+	{ 2,  +10 },
+	{ 3,  +9 },
+	{ 4,  +8 },
+	{ 5,  +7 },
+	{ 6,  +6 },
+	{ 7,  +5 },
+	{ 8,  +4 },
+	{ 9,  +3 },
+	{ 10, +2 },
+	{ 11, +1 },
+	{ 12, +0 },
+	{ 13, -1 },
+	{ 14, -2 },
+	{ 15, -3 },
+	{ 16, -4 },
+	{ 17, -5 },
+	{ 18, -6 }
 };
 
 // Packs samplerate & channels into an LPARAM value.
@@ -65,7 +65,7 @@ void OptionsMixing::OnInit( const HWND hwnd )
 	const auto preferredDecoder = GetSettings().GetMODDecoder();
 
 	if ( const HWND hwndDecoder = GetDlgItem( hwnd, IDC_OPTIONS_MOD_DECODER ); nullptr != hwndDecoder ) {
-		for ( const auto& [ decoder, name ] : modDecoders ) {
+		for ( const auto& [decoder, name] : modDecoders ) {
 			ComboBox_AddString( hwndDecoder, name.c_str() );
 			ComboBox_SetItemData( hwndDecoder, ComboBox_GetCount( hwndDecoder ) - 1, static_cast<LPARAM>( decoder ) );
 			if ( decoder == preferredDecoder ) {
@@ -156,7 +156,7 @@ void OptionsMixing::OnInit( const HWND hwnd )
 		LoadString( instance, IDS_MONO, mono, bufferSize );
 		LoadString( instance, IDS_STEREO, stereo, bufferSize );
 		std::array<std::pair<uint32_t, std::wstring>, 2> channels = { std::make_pair( 2u, stereo ), std::make_pair( 1u, mono ) };
-		for ( const auto& [ channelCount, channelText ] : channels ) {
+		for ( const auto& [channelCount, channelText] : channels ) {
 			for ( const auto samplerate : samplerates ) {
 				const std::wstring str = channelText + L", " + std::to_wstring( samplerate ) + L" " + hz;
 				ComboBox_AddString( hwndResampleFormat, str.c_str() );
@@ -216,7 +216,7 @@ void OptionsMixing::OnSave( const HWND hwnd )
 	if ( const HWND hwndResampleFormat = GetDlgItem( hwnd, IDC_OPTIONS_RESAMPLE_FORMAT ); nullptr != hwndResampleFormat ) {
 		const int selectedResampleFormat = ComboBox_GetCurSel( hwndResampleFormat );
 		if ( selectedResampleFormat >= 0 ) {
-			const auto [ samplerate, channels ] = UnpackResampleFormat( ComboBox_GetItemData( hwndResampleFormat, selectedResampleFormat ) );
+			const auto [samplerate, channels] = UnpackResampleFormat( ComboBox_GetItemData( hwndResampleFormat, selectedResampleFormat ) );
 			const bool enabled = ( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_RESAMPLE_ENABLE ) ) );
 			GetSettings().SetResamplerSettings( enabled, samplerate, channels );
 		}

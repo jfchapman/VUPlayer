@@ -68,7 +68,7 @@ void PeakMeter::RenderThreadHandler()
 {
 	DWORD result = 0;
 	do {
-		DoRender();	
+		DoRender();
 		result = WaitForSingleObject( m_RenderStopEvent, s_RenderThreadInterval );
 	} while ( WAIT_OBJECT_0 != result );
 }
@@ -107,7 +107,7 @@ void PeakMeter::OnPaint()
 					m_Colour->SetOpacity( opacity );
 					const D2D1_RECT_F rect = D2D1::RectF( left, top, right, bottom );
 					const D2D1_ROUNDED_RECT roundedRect = { rect, elementCornerRadius, elementCornerRadius };
-					deviceContext->FillRoundedRectangle( roundedRect, m_Colour.Get() );			
+					deviceContext->FillRoundedRectangle( roundedRect, m_Colour.Get() );
 				}
 
 				top = ( targetSize.height + ( borderSize / 2 ) ) / 2;
@@ -119,7 +119,7 @@ void PeakMeter::OnPaint()
 					m_Colour->SetOpacity( opacity );
 					const D2D1_RECT_F rect = D2D1::RectF( left, top, right, bottom );
 					const D2D1_ROUNDED_RECT roundedRect = { rect, elementCornerRadius, elementCornerRadius };
-					deviceContext->FillRoundedRectangle( roundedRect, m_Colour.Get() );			
+					deviceContext->FillRoundedRectangle( roundedRect, m_Colour.Get() );
 				}
 			}
 		}
@@ -146,38 +146,38 @@ void PeakMeter::LoadResources( ID2D1DeviceContext* deviceContext )
 
 		D2D1_GRADIENT_STOP gradientStop[ 2 ];
 		gradientStop[ 0 ].color = D2D1::ColorF( D2D1::ColorF(
-				static_cast<FLOAT>( GetRValue( base ) ) / 0xff,
-				static_cast<FLOAT>( GetGValue( base ) ) / 0xff,
-				static_cast<FLOAT>( GetBValue( base ) ) / 0xff,
-				0xff ) );
+			static_cast<FLOAT>( GetRValue( base ) ) / 0xff,
+			static_cast<FLOAT>( GetGValue( base ) ) / 0xff,
+			static_cast<FLOAT>( GetBValue( base ) ) / 0xff,
+			0xff ) );
 		gradientStop[ 0 ].position = 0.0f;
 		gradientStop[ 1 ].color = D2D1::ColorF( D2D1::ColorF(
-				static_cast<FLOAT>( GetRValue( peak ) ) / 0xff,
-				static_cast<FLOAT>( GetGValue( peak ) ) / 0xff,
-				static_cast<FLOAT>( GetBValue( peak ) ) / 0xff,
-				0xff ) );
+			static_cast<FLOAT>( GetRValue( peak ) ) / 0xff,
+			static_cast<FLOAT>( GetGValue( peak ) ) / 0xff,
+			static_cast<FLOAT>( GetBValue( peak ) ) / 0xff,
+			0xff ) );
 		gradientStop[ 1 ].position = 1.0f;
 
 		ID2D1GradientStopCollection* gradientStops = nullptr;
 		HRESULT hr = deviceContext->CreateGradientStopCollection( gradientStop, 2, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP, &gradientStops );
 		if ( SUCCEEDED( hr ) ) {
-			hr = deviceContext->CreateLinearGradientBrush( 
-					D2D1::LinearGradientBrushProperties( D2D1::Point2F() /*start*/, D2D1::Point2F() /*end*/ ), gradientStops, &m_Colour );
+			hr = deviceContext->CreateLinearGradientBrush(
+				D2D1::LinearGradientBrushProperties( D2D1::Point2F() /*start*/, D2D1::Point2F() /*end*/ ), gradientStops, &m_Colour );
 			gradientStops->Release();
 		}
 
 		deviceContext->CreateSolidColorBrush( D2D1::ColorF(
-				static_cast<FLOAT>( GetRValue( background ) ) / 0xff,
-				static_cast<FLOAT>( GetGValue( background ) ) / 0xff,
-				static_cast<FLOAT>( GetBValue( background ) ) / 0xff,
-				0xff ), &m_BackgroundColour );
+			static_cast<FLOAT>( GetRValue( background ) ) / 0xff,
+			static_cast<FLOAT>( GetGValue( background ) ) / 0xff,
+			static_cast<FLOAT>( GetBValue( background ) ) / 0xff,
+			0xff ), &m_BackgroundColour );
 	}
 }
 
 void PeakMeter::FreeResources()
 {
-  m_Colour.Reset();
-  m_BackgroundColour.Reset();
+	m_Colour.Reset();
+	m_BackgroundColour.Reset();
 }
 
 void PeakMeter::GetLevels()

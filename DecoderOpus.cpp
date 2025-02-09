@@ -45,7 +45,7 @@ long DecoderOpus::Read( float* buffer, const long sampleCount )
 			if ( result > 0 ) {
 				// For multi-channel streams, change from Opus to BASS channel ordering.
 				switch ( channels ) {
-					case 3 : {
+					case 3: {
 						// (left, center, right) ->
 						// (left, right, center)
 						int offset = samplesRead * channels;
@@ -54,7 +54,7 @@ long DecoderOpus::Read( float* buffer, const long sampleCount )
 						}
 						break;
 					}
-					case 5 : {
+					case 5: {
 						// (front left, front center, front right, rear left, rear right) ->
 						// (front left, front right, front center, rear left, rear right)
 						int offset = samplesRead * channels;
@@ -63,7 +63,7 @@ long DecoderOpus::Read( float* buffer, const long sampleCount )
 						}
 						break;
 					}
-					case 6 : {
+					case 6: {
 						// (front left, front center, front right, rear left, rear right, LFE) ->
 						// (front left, front right, front center, LFE, rear left, rear right)
 						int offset = samplesRead * channels;
@@ -78,7 +78,7 @@ long DecoderOpus::Read( float* buffer, const long sampleCount )
 						}
 						break;
 					}
-					case 7 : {
+					case 7: {
 						// (front left, front center, front right, side left, side right, rear center, LFE) ->
 						// (front left, front right, front center, LFE, rear center, side left, side right)
 						int offset = samplesRead * channels;
@@ -95,7 +95,7 @@ long DecoderOpus::Read( float* buffer, const long sampleCount )
 						}
 						break;
 					}
-					case 8 : {
+					case 8: {
 						// (front left, front center, front right, side left, side right, rear left, rear right, LFE) ->
 						// (front left, front right, front center, LFE, rear left, rear right, side left, side right)
 						int offset = samplesRead * channels;

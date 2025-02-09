@@ -22,15 +22,15 @@ private:
 	// 'hwnd' - dialog window handle.
 	void OnInitDialog( const HWND hwnd );
 
-  // Saves the current settings.
+	// Saves the current settings.
 	void SaveSettings( const HWND hwnd );
 
-  // Resets to default settings.
-  void ResetToDefaults( const HWND hwnd );
+	// Resets to default settings.
+	void ResetToDefaults( const HWND hwnd );
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
-  
-  // Application settings.
+
+	// Application settings.
 	Settings& m_Settings;
 };

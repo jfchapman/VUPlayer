@@ -88,10 +88,10 @@ public:
 	void OnVUMeterDecay( const UINT commandID );
 
 	// Returns the command ID mappings for oscilloscope weights.
-	std::map<UINT,float> GetOscilloscopeWeights() const;
+	std::map<UINT, float> GetOscilloscopeWeights() const;
 
 	// Returns the command ID mappings for VUMeter decay rates.
-	std::map<UINT,float> GetVUMeterDecayRates() const;
+	std::map<UINT, float> GetVUMeterDecayRates() const;
 
 	// Called when the placeholder artwork has changed.
 	void OnPlaceholderArtworkChanged();
@@ -105,11 +105,11 @@ public:
 	// Called on a system colour change event.
 	void OnSysColorChange();
 
-  // Called when the display resolution has changed.
-  void OnDisplayChange();
+	// Called when the display resolution has changed.
+	void OnDisplayChange();
 
-  // Returns the current DPI scaling factor.
-  float GetDPIScalingFactor() const;
+	// Returns the current DPI scaling factor.
+	float GetDPIScalingFactor() const;
 
 private:
 	// Window procedure
@@ -147,7 +147,7 @@ private:
 
 	// Rebar window handle.
 	HWND m_hWndRebar;
-	
+
 	// Status window handle.
 	HWND m_hWndStatus;
 
@@ -178,7 +178,6 @@ private:
 	// Whether hardware acceleration is enabled in the application settings.
 	bool m_HardwareAccelerationEnabled;
 
-  // Current DPI scaling factor.
-  float m_DPIScaling = 1.0f;
+	// Current DPI scaling factor.
+	float m_DPIScaling = 1.0f;
 };
-

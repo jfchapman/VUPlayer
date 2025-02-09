@@ -25,7 +25,7 @@ public:
 
 private:
 	// Maps an encoder description to its handle.
-	typedef std::map<std::wstring,Handler::Ptr> EncoderMap;
+	typedef std::map<std::wstring, Handler::Ptr> EncoderMap;
 
 	// Dialog box procedure.
 	static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );

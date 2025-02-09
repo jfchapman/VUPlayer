@@ -8,13 +8,13 @@
 #include <sstream>
 
 const OptionsHotkeys::HotkeyNameMap OptionsHotkeys::s_KeyNames = {
-	{ VK_VOLUME_MUTE,				IDS_KEYNAME_VOLUMEMUTE },
-	{ VK_VOLUME_DOWN,				IDS_KEYNAME_VOLUMEDOWN },
-	{ VK_VOLUME_UP,					IDS_KEYNAME_VOLUMEUP },
-	{ VK_MEDIA_NEXT_TRACK,	IDS_KEYNAME_NEXTTRACK },
-	{ VK_MEDIA_PREV_TRACK,	IDS_KEYNAME_PREVIOUSTRACK },
-	{ VK_MEDIA_STOP,				IDS_KEYNAME_STOP },
-	{ VK_MEDIA_PLAY_PAUSE,	IDS_KEYNAME_PLAYPAUSE }
+	{ VK_VOLUME_MUTE,       IDS_KEYNAME_VOLUMEMUTE },
+	{ VK_VOLUME_DOWN,       IDS_KEYNAME_VOLUMEDOWN },
+	{ VK_VOLUME_UP,         IDS_KEYNAME_VOLUMEUP },
+	{ VK_MEDIA_NEXT_TRACK,  IDS_KEYNAME_NEXTTRACK },
+	{ VK_MEDIA_PREV_TRACK,  IDS_KEYNAME_PREVIOUSTRACK },
+	{ VK_MEDIA_STOP,        IDS_KEYNAME_STOP },
+	{ VK_MEDIA_PLAY_PAUSE,  IDS_KEYNAME_PLAYPAUSE }
 };
 
 OptionsHotkeys::OptionsHotkeys( HINSTANCE instance, Settings& settings, Output& output ) :
@@ -62,7 +62,7 @@ void OptionsHotkeys::OnInit( const HWND hwnd )
 		item.iSubItem = 0;
 		item.lParam = static_cast<LPARAM>( hotkey );
 		item.iItem = ListView_InsertItem( listWnd, &item );
-		if( item.iItem >= 0 ) {
+		if ( item.iItem >= 0 ) {
 			const std::wstring description = Hotkeys::GetDescription( GetInstanceHandle(), hotkey );
 			ListView_SetItemText( listWnd, item.iItem, 0, const_cast<LPWSTR>( description.c_str() ) );
 			const auto iter = m_HotkeyMap.find( hotkey );
@@ -90,15 +90,15 @@ void OptionsHotkeys::OnCommand( const HWND hwnd, const WPARAM wParam, const LPAR
 	if ( BN_CLICKED == notificationCode ) {
 		const WORD controlID = LOWORD( wParam );
 		switch ( controlID ) {
-			case IDC_OPTIONS_HOTKEYS_CLEAR : {
+			case IDC_OPTIONS_HOTKEYS_CLEAR: {
 				ClearHotkey( hwnd );
 				break;
 			}
-			case IDC_OPTIONS_HOTKEYS_ASSIGN : {
+			case IDC_OPTIONS_HOTKEYS_ASSIGN: {
 				AssignHotkey( hwnd );
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}

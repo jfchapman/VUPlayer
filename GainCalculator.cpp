@@ -10,7 +10,7 @@ DWORD WINAPI GainCalculator::CalcThreadProc( LPVOID lpParam )
 	if ( nullptr != gainCalculator ) {
 		CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
 		gainCalculator->Handler();
-    CoUninitialize();
+		CoUninitialize();
 	}
 	return 0;
 }
@@ -102,108 +102,46 @@ void GainCalculator::Handler()
 		}
 
 		if ( !pendingItems.empty() ) {
-      std::reverse( pendingItems.begin(), pendingItems.end() );
+			std::reverse( pendingItems.begin(), pendingItems.end() );
 
 			const std::wstring& album = std::get< 2 >( albumKey );
-      const bool calculateAlbumGain = !album.empty();
+			const bool calculateAlbumGain = !album.empty();
 
-      std::mutex itemMutex;
+			std::mutex itemMutex;
 			std::mutex r128StatesMutex;
 
 			std::vector<ebur128_state*> r128States;
-      if ( calculateAlbumGain ) {
-			  r128States.reserve( pendingItems.size() );
-      }
+			if ( calculateAlbumGain ) {
+				r128States.reserve( pendingItems.size() );
+			}
 
 			Decoder::CanContinue canContinue( [ stopEvent = m_StopEvent ] ()
-			{
-				return ( WAIT_OBJECT_0 != WaitForSingleObject( stopEvent, 0 ) );
-			} );
+				{
+					return ( WAIT_OBJECT_0 != WaitForSingleObject( stopEvent, 0 ) );
+				} );
 
-      // Ensure item information is up to date before modifying.
-      for ( auto& item : pendingItems ) {
-        if ( !canContinue() ) {
-          break;
-        } else if ( MediaInfo mediaInfo( item.Info ); m_Library.GetMediaInfo( mediaInfo ) ) {
-          item.Info = mediaInfo;
-        }
-      }
+			// Ensure item information is up to date before modifying.
+			for ( auto& item : pendingItems ) {
+				if ( !canContinue() ) {
+					break;
+				} else if ( MediaInfo mediaInfo( item.Info ); m_Library.GetMediaInfo( mediaInfo ) ) {
+					item.Info = mediaInfo;
+				}
+			}
 
-      // Yes, this is the way!
-      if ( !canContinue() )
-        continue;
+			// Yes, this is the way!
+			if ( !canContinue() )
+				continue;
 
 			// Update track gain for all items.
 			Playlist::Items processedItems;
 			const size_t threadCount = std::min<size_t>( pendingItems.size(), std::max<size_t>( 1, std::thread::hardware_concurrency() ) );
 			std::list<std::thread> threads;
 			for ( size_t threadIndex = 0; threadIndex < threadCount; threadIndex++ ) {
-				threads.push_back( std::thread( [ &pendingItems, &processedItems, &itemMutex, &r128States, &r128StatesMutex, canContinue, calculateAlbumGain, this ]() 
-				{
-					Playlist::Item item = {};
+				threads.push_back( std::thread( [ &pendingItems, &processedItems, &itemMutex, &r128States, &r128StatesMutex, canContinue, calculateAlbumGain, this ] ()
 					{
-						std::lock_guard<std::mutex> lock( itemMutex );
-						if ( !pendingItems.empty() ) {
-							item = pendingItems.back();
-							pendingItems.pop_back();
-						}
-					}
-
-					while ( 0 != item.ID ) {					
-						Decoder::Ptr decoder = OpenDecoder( item );
-						if ( decoder ) {
-							const unsigned int channels = static_cast<unsigned int>( decoder->GetChannels() );
-							const unsigned long samplerate = static_cast<unsigned long>( decoder->GetSampleRate() );
-							ebur128_state* r128State = ebur128_init( channels, samplerate, EBUR128_MODE_I );
-							if ( nullptr != r128State ) {
-                bool destroyState = true;
-
-								const long sampleSize = 4096;
-								std::vector<float> buffer( sampleSize * channels );
-
-								int errorState = EBUR128_SUCCESS;
-								long samplesRead = decoder->ReadSamples( buffer.data(), sampleSize );
-								while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) && canContinue() ) {
-									errorState = ebur128_add_frames_float( r128State, buffer.data(), static_cast<size_t>( samplesRead ) );
-									samplesRead = decoder->ReadSamples( buffer.data(), sampleSize );
-								}
-								decoder.reset();
-
-								if ( ( EBUR128_SUCCESS == errorState ) && canContinue() ) {
-									double loudness = 0;
-									errorState = ebur128_loudness_global( r128State, &loudness );
-									if ( EBUR128_SUCCESS == errorState ) {
-										const float trackGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
-										if ( trackGain != item.Info.GetGainTrack() ) {
-											MediaInfo previousMediaInfo( item.Info );
-											item.Info.SetGainTrack( trackGain );
-											m_Library.UpdateMediaTags( previousMediaInfo, item.Info );
-
-											for ( const auto& duplicate : item.Duplicates ) {
-												previousMediaInfo.SetFilename( duplicate );
-												MediaInfo updatedMediaInfo( item.Info );
-												updatedMediaInfo.SetFilename( duplicate );
-												m_Library.UpdateMediaTags( previousMediaInfo, updatedMediaInfo );
-											}
-										}
-										std::lock_guard<std::mutex> itemLock( itemMutex );
-										processedItems.push_back( item );
-
-                    if ( calculateAlbumGain ) {
-										  std::lock_guard<std::mutex> lock( r128StatesMutex );
-										  r128States.push_back( r128State );
-                      destroyState = false;
-                    }
-									}
-								}
-                if ( destroyState ) {
-				          ebur128_destroy( &r128State );
-                }
-							}
-						}
-
-						item = {};
-						if ( canContinue() ) {
+						Playlist::Item item = {};
+						{
 							std::lock_guard<std::mutex> lock( itemMutex );
 							if ( !pendingItems.empty() ) {
 								item = pendingItems.back();
@@ -211,9 +149,71 @@ void GainCalculator::Handler()
 							}
 						}
 
-						--m_PendingCount;
-					}
-				}	) );
+						while ( 0 != item.ID ) {
+							Decoder::Ptr decoder = OpenDecoder( item );
+							if ( decoder ) {
+								const unsigned int channels = static_cast<unsigned int>( decoder->GetChannels() );
+								const unsigned long samplerate = static_cast<unsigned long>( decoder->GetSampleRate() );
+								ebur128_state* r128State = ebur128_init( channels, samplerate, EBUR128_MODE_I );
+								if ( nullptr != r128State ) {
+									bool destroyState = true;
+
+									const long sampleSize = 4096;
+									std::vector<float> buffer( sampleSize * channels );
+
+									int errorState = EBUR128_SUCCESS;
+									long samplesRead = decoder->ReadSamples( buffer.data(), sampleSize );
+									while ( ( EBUR128_SUCCESS == errorState ) && ( samplesRead > 0 ) && canContinue() ) {
+										errorState = ebur128_add_frames_float( r128State, buffer.data(), static_cast<size_t>( samplesRead ) );
+										samplesRead = decoder->ReadSamples( buffer.data(), sampleSize );
+									}
+									decoder.reset();
+
+									if ( ( EBUR128_SUCCESS == errorState ) && canContinue() ) {
+										double loudness = 0;
+										errorState = ebur128_loudness_global( r128State, &loudness );
+										if ( EBUR128_SUCCESS == errorState ) {
+											const float trackGain = LOUDNESS_REFERENCE - static_cast<float>( loudness );
+											if ( trackGain != item.Info.GetGainTrack() ) {
+												MediaInfo previousMediaInfo( item.Info );
+												item.Info.SetGainTrack( trackGain );
+												m_Library.UpdateMediaTags( previousMediaInfo, item.Info );
+
+												for ( const auto& duplicate : item.Duplicates ) {
+													previousMediaInfo.SetFilename( duplicate );
+													MediaInfo updatedMediaInfo( item.Info );
+													updatedMediaInfo.SetFilename( duplicate );
+													m_Library.UpdateMediaTags( previousMediaInfo, updatedMediaInfo );
+												}
+											}
+											std::lock_guard<std::mutex> itemLock( itemMutex );
+											processedItems.push_back( item );
+
+											if ( calculateAlbumGain ) {
+												std::lock_guard<std::mutex> lock( r128StatesMutex );
+												r128States.push_back( r128State );
+												destroyState = false;
+											}
+										}
+									}
+									if ( destroyState ) {
+										ebur128_destroy( &r128State );
+									}
+								}
+							}
+
+							item = {};
+							if ( canContinue() ) {
+								std::lock_guard<std::mutex> lock( itemMutex );
+								if ( !pendingItems.empty() ) {
+									item = pendingItems.back();
+									pendingItems.pop_back();
+								}
+							}
+
+							--m_PendingCount;
+						}
+					} ) );
 			}
 			for ( auto& thread : threads ) {
 				thread.join();
@@ -263,8 +263,8 @@ Decoder::Ptr GainCalculator::OpenDecoder( const Playlist::Item& item ) const
 		if ( !decoder ) {
 			auto duplicate = item.Duplicates.begin();
 			while ( !decoder && ( item.Duplicates.end() != duplicate ) ) {
-        MediaInfo duplicateInfo( item.Info );
-        duplicateInfo.SetFilename( *duplicate );
+				MediaInfo duplicateInfo( item.Info );
+				duplicateInfo.SetFilename( *duplicate );
 				decoder = m_Handlers.OpenDecoder( duplicateInfo, Decoder::Context::Temporary );
 				++duplicate;
 			}

@@ -172,4 +172,3 @@ private:
 	// Indicates whether the OS is Windows 10 (or later).
 	const bool m_IsWindows10;
 };
-

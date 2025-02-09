@@ -4,7 +4,7 @@
 #include "FLAC++\all.h"
 
 // FLAC handler
-class HandlerFlac :	public Handler
+class HandlerFlac : public Handler
 {
 public:
 	HandlerFlac();

@@ -67,7 +67,7 @@ void SpectrumAnalyser::RenderThreadHandler()
 {
 	DWORD result = 0;
 	do {
-		DoRender();	
+		DoRender();
 		result = WaitForSingleObject( m_RenderStopEvent, s_RenderThreadInterval );
 	} while ( WAIT_OBJECT_0 != result );
 }
@@ -99,7 +99,7 @@ void SpectrumAnalyser::OnPaint()
 
 					const float decay = targetSize.height / s_DecayFactor;
 
-          const long barWidth = static_cast<long>( 3 * GetDPIScalingFactor() );
+					const long barWidth = static_cast<long>( 3 * GetDPIScalingFactor() );
 					for ( long pos = 1; ( pos < width ); pos += barWidth ) {
 						const size_t bin = std::lround( pow( static_cast<float>( fftSize - 1 ), pow( ( static_cast<float>( pos ) / width ), 0.38 ) ) );
 						const float value = fft.at( bin );
@@ -147,36 +147,36 @@ void SpectrumAnalyser::LoadResources( ID2D1DeviceContext* deviceContext )
 
 		D2D1_GRADIENT_STOP gradientStop[ 2 ];
 		gradientStop[ 0 ].color = D2D1::ColorF( D2D1::ColorF(
-				static_cast<FLOAT>( GetRValue( peak ) ) / 0xff,
-				static_cast<FLOAT>( GetGValue( peak ) ) / 0xff,
-				static_cast<FLOAT>( GetBValue( peak ) ) / 0xff,
-				0xff ) );
+			static_cast<FLOAT>( GetRValue( peak ) ) / 0xff,
+			static_cast<FLOAT>( GetGValue( peak ) ) / 0xff,
+			static_cast<FLOAT>( GetBValue( peak ) ) / 0xff,
+			0xff ) );
 		gradientStop[ 0 ].position = 0.5f;
 		gradientStop[ 1 ].color = D2D1::ColorF( D2D1::ColorF(
-				static_cast<FLOAT>( GetRValue( base ) ) / 0xff,
-				static_cast<FLOAT>( GetGValue( base ) ) / 0xff,
-				static_cast<FLOAT>( GetBValue( base ) ) / 0xff,
-				0xff ) );
+			static_cast<FLOAT>( GetRValue( base ) ) / 0xff,
+			static_cast<FLOAT>( GetGValue( base ) ) / 0xff,
+			static_cast<FLOAT>( GetBValue( base ) ) / 0xff,
+			0xff ) );
 		gradientStop[ 1 ].position = 1.0f;
 
 		ID2D1GradientStopCollection* gradientStops = nullptr;
 		HRESULT hr = deviceContext->CreateGradientStopCollection( gradientStop, 2, D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP, &gradientStops );
 		if ( SUCCEEDED( hr ) ) {
-			hr = deviceContext->CreateLinearGradientBrush( 
-					D2D1::LinearGradientBrushProperties( D2D1::Point2F() /*start*/, D2D1::Point2F() /*end*/ ), gradientStops, &m_Colour );
+			hr = deviceContext->CreateLinearGradientBrush(
+				D2D1::LinearGradientBrushProperties( D2D1::Point2F() /*start*/, D2D1::Point2F() /*end*/ ), gradientStops, &m_Colour );
 			gradientStops->Release();
 		}
 
 		deviceContext->CreateSolidColorBrush( D2D1::ColorF(
-				static_cast<FLOAT>( GetRValue( background ) ) / 0xff,
-				static_cast<FLOAT>( GetGValue( background ) ) / 0xff,
-				static_cast<FLOAT>( GetBValue( background ) ) / 0xff,
-				0xff ), &m_BackgroundColour );
+			static_cast<FLOAT>( GetRValue( background ) ) / 0xff,
+			static_cast<FLOAT>( GetGValue( background ) ) / 0xff,
+			static_cast<FLOAT>( GetBValue( background ) ) / 0xff,
+			0xff ), &m_BackgroundColour );
 	}
 }
 
 void SpectrumAnalyser::FreeResources()
 {
-  m_Colour.Reset();
-  m_BackgroundColour.Reset();
+	m_Colour.Reset();
+	m_BackgroundColour.Reset();
 }

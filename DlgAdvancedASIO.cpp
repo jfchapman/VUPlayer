@@ -6,7 +6,7 @@
 INT_PTR CALLBACK DlgAdvancedASIO::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	switch ( message ) {
-		case WM_INITDIALOG : {
+		case WM_INITDIALOG: {
 			DlgAdvancedASIO* dialog = reinterpret_cast<DlgAdvancedASIO*>( lParam );
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
@@ -15,23 +15,23 @@ INT_PTR CALLBACK DlgAdvancedASIO::DialogProc( HWND hwnd, UINT message, WPARAM wP
 			}
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 			break;
 		}
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			switch ( LOWORD( wParam ) ) {
-				case IDOK : {
+				case IDOK: {
 					DlgAdvancedASIO* dialog = reinterpret_cast<DlgAdvancedASIO*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->SaveSettings( hwnd );
 					}
 				}
-				case IDCANCEL : {
+				case IDCANCEL: {
 					EndDialog( hwnd, 0 );
 					return TRUE;
 				}
-				case IDC_ASIO_RESET : {
+				case IDC_ASIO_RESET: {
 					DlgAdvancedASIO* dialog = reinterpret_cast<DlgAdvancedASIO*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
 					if ( nullptr != dialog ) {
 						dialog->ResetToDefaults( hwnd );

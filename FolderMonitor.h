@@ -20,13 +20,13 @@ public:
 
 	// Monitor event type.
 	enum class Event {
-		FolderRenamed,					// A folder has been renamed.
-		FolderCreated,					// A folder has been created.
-		FolderDeleted,					// A folder has been deleted.
-		FileRenamed,						// A file has been renamed.
-		FileCreated,						// A file has been created.
-		FileDeleted,						// A file has been deleted.
-		FileModified						// A file has been modified.
+		FolderRenamed,  // A folder has been renamed.
+		FolderCreated,  // A folder has been created.
+		FolderDeleted,  // A folder has been deleted.
+		FileRenamed,    // A file has been renamed.
+		FileCreated,    // A file has been created.
+		FileDeleted,    // A file has been deleted.
+		FileModified    // A file has been modified.
 	};
 
 	// Event callback.
@@ -53,15 +53,15 @@ public:
 private:
 	// Change type.
 	enum class ChangeType {
-		FolderChange,					// Folder changes.
-		FileChange						// File changes.
+		FolderChange,  // Folder changes.
+		FileChange     // File changes.
 	};
 
 	// Pending action.
 	enum class PendingAction {
-		FileAdded,						// File has been added.	
-		FileModified,					// File has been modified.
-    FileRenamed           // File has been renamed.
+		FileAdded,     // File has been added.	
+		FileModified,  // File has been modified.
+		FileRenamed    // File has been renamed.
 	};
 
 	// Associates a pending action with a file time, file name & old file name (valid for a FileRenamed action).
@@ -72,23 +72,23 @@ private:
 
 	// Monitor information.
 	struct MonitorInfo {
-		std::wstring DirectoryPath;	// Directory path.
-		HANDLE DirectoryHandle;			// Directory handle.
-		HANDLE MonitorThreadHandle;	// Monitor thread handle.
-		HANDLE AddFileThreadHandle;	// Add file thread handle.
-		HANDLE CancelHandle;				// Cancel event handle.
-		HDEVNOTIFY DevNotifyHandle;	// Device notification handle.
-		EventCallback Callback;			// Event callback.
-		ChangeType ChangeType;			// Change type.
-		PendingVector Pending;		  // Pending file actions.
-		std::mutex PendingMutex;		// Pending mutex.
+		std::wstring DirectoryPath;  // Directory path.
+		HANDLE DirectoryHandle;      // Directory handle.
+		HANDLE MonitorThreadHandle;  // Monitor thread handle.
+		HANDLE AddFileThreadHandle;  // Add file thread handle.
+		HANDLE CancelHandle;         // Cancel event handle.
+		HDEVNOTIFY DevNotifyHandle;  // Device notification handle.
+		EventCallback Callback;      // Event callback.
+		ChangeType ChangeType;       // Change type.
+		PendingVector Pending;       // Pending file actions.
+		std::mutex PendingMutex;     // Pending mutex.
 	};
 
 	// A list of monitors.
 	typedef std::list<MonitorInfo*> Monitors;
 
 	// Maps a folder to monitor information.
-	typedef std::map<std::wstring,Monitors> FolderMap;
+	typedef std::map<std::wstring, Monitors> FolderMap;
 
 	// Monitor thread procedure.
 	static DWORD WINAPI MonitorThreadProc( LPVOID lpParam );

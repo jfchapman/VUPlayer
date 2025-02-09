@@ -4,7 +4,7 @@
 #include <string>
 
 // PCM encoder handler
-class HandlerPCM :	public Handler
+class HandlerPCM : public Handler
 {
 public:
 	HandlerPCM();

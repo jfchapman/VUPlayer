@@ -35,7 +35,7 @@ public:
 
 private:
 	// Gain album key.
-	using AlbumKey = std::tuple<long,long,std::wstring>;
+	using AlbumKey = std::tuple<long, long, std::wstring>;
 
 	// Associates an album key with a list of items.
 	using AlbumMap = std::map<AlbumKey, Playlist::Items>;

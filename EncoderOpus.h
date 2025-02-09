@@ -4,7 +4,7 @@
 
 #include "opusenc.h"
 
-// FLAC encoder
+// Opus encoder
 class EncoderOpus : public Encoder
 {
 public:

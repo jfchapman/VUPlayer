@@ -21,7 +21,7 @@ static const int sMaxPlaylistColumns = 4;
 static const size_t sMaxPlaylistItemLength = 64;
 
 // Maps a volume menu ID to a volume level.
-std::map<UINT,float> WndTray::s_VolumeMenuMap = {
+std::map<UINT, float> WndTray::s_VolumeMenuMap = {
 	{ ID_VOLUME_100, 1.0f },
 	{ ID_VOLUME_90, 0.9f },
 	{ ID_VOLUME_80, 0.8f },
@@ -54,7 +54,7 @@ WndTray::WndTray( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_NotifyIconData.hWnd = parent;
 	m_NotifyIconData.uCallbackMessage = MSG_TRAYNOTIFY;
 	m_NotifyIconData.uVersion = NOTIFYICON_VERSION_4;
-  CLSIDFromString( L"{CCEEB8B4-0D76-4865-9743-2CD58B903747}", &m_NotifyIconData.guidItem );
+	CLSIDFromString( L"{CCEEB8B4-0D76-4865-9743-2CD58B903747}", &m_NotifyIconData.guidItem );
 	LoadIconMetric( instance, MAKEINTRESOURCE( IDI_VUPLAYER ), LIM_SMALL, &m_NotifyIconData.hIcon );
 
 	LoadString( instance, IDS_APP_TITLE, m_NotifyIconData.szTip, sMaxTooltip );
@@ -159,8 +159,8 @@ void WndTray::OnNotify( WPARAM /*wParam*/, LPARAM lParam )
 {
 	const WORD message = LOWORD( lParam );
 	switch ( message ) {
-		case WM_LBUTTONDOWN : {
-			const auto [ singleClick, doubleClick, tripleClick, quadClick ] = m_ClickCommands;
+		case WM_LBUTTONDOWN: {
+			const auto [singleClick, doubleClick, tripleClick, quadClick] = m_ClickCommands;
 			if ( ( Settings::SystrayCommand::None == doubleClick ) && ( Settings::SystrayCommand::None == tripleClick ) && ( Settings::SystrayCommand::None == quadClick ) ) {
 				OnSingleClick();
 			} else {
@@ -177,19 +177,19 @@ void WndTray::OnNotify( WPARAM /*wParam*/, LPARAM lParam )
 			}
 			break;
 		}
-		case WM_LBUTTONDBLCLK : {
+		case WM_LBUTTONDBLCLK: {
 			++m_ClickCount;
-			const auto [ singleClick, doubleClick, tripleClick, quadClick ] = m_ClickCommands;
+			const auto [singleClick, doubleClick, tripleClick, quadClick] = m_ClickCommands;
 			if ( ( 4 == m_ClickCount ) || ( ( Settings::SystrayCommand::None == tripleClick ) && ( Settings::SystrayCommand::None == quadClick ) ) ) {
-				OnTimerElapsed();				
-			}				
+				OnTimerElapsed();
+			}
 			break;
 		}
-		case WM_CONTEXTMENU : {
+		case WM_CONTEXTMENU: {
 			ShowContextMenu();
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -453,27 +453,27 @@ void WndTray::OnQuadrupleClick()
 void WndTray::DoCommand( const Settings::SystrayCommand command )
 {
 	switch ( command ) {
-		case Settings::SystrayCommand::Play : {
+		case Settings::SystrayCommand::Play: {
 			SendMessage( m_NotifyIconData.hWnd, WM_COMMAND, ID_CONTROL_PLAY /*wParam*/, 0 /*lParam*/ );
 			break;
 		}
-		case Settings::SystrayCommand::Stop : {
+		case Settings::SystrayCommand::Stop: {
 			SendMessage( m_NotifyIconData.hWnd, WM_COMMAND, ID_CONTROL_STOP /*wParam*/, 0 /*lParam*/ );
 			break;
 		}
-		case Settings::SystrayCommand::Previous : {
+		case Settings::SystrayCommand::Previous: {
 			SendMessage( m_NotifyIconData.hWnd, WM_COMMAND, ID_CONTROL_PREVIOUSTRACK /*wParam*/, 0 /*lParam*/ );
 			break;
 		}
-		case Settings::SystrayCommand::Next : {
+		case Settings::SystrayCommand::Next: {
 			SendMessage( m_NotifyIconData.hWnd, WM_COMMAND, ID_CONTROL_NEXTTRACK /*wParam*/, 0 /*lParam*/ );
 			break;
 		}
-		case Settings::SystrayCommand::ShowHide : {
+		case Settings::SystrayCommand::ShowHide: {
 			SendMessage( m_NotifyIconData.hWnd, WM_COMMAND, ID_TRAYMENU_SHOWVUPLAYER /*wParam*/, 0 /*lParam*/ );
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -496,16 +496,16 @@ void WndTray::OnTimerElapsed()
 {
 	KillTimer( m_NotifyIconData.hWnd, TIMER_SYSTRAY );
 	switch ( m_ClickCount ) {
-		case 1 :
+		case 1:
 			OnSingleClick();
 			break;
-		case 2 :
+		case 2:
 			OnDoubleClick();
 			break;
-		case 3 :
+		case 3:
 			OnTripleClick();
 			break;
-		case 4 :
+		case 4:
 			OnQuadrupleClick();
 			break;
 	}

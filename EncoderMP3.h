@@ -60,9 +60,9 @@ private:
 	// Decoder stream, used when downsampling to stereo.
 	HSTREAM m_decoderStream = 0;
 
-  // Whether to convert incoming data from 6.1 channels to 7.1 channels.
-  bool m_convert61to71 = false;
+	// Whether to convert incoming data from 6.1 channels to 7.1 channels.
+	bool m_convert61to71 = false;
 
-  // Input sample buffer, when converted from 6.1 to 7.1.
-  std::vector<float> m_convertedBuffer;
+	// Input sample buffer, when converted from 6.1 to 7.1.
+	std::vector<float> m_convertedBuffer;
 };

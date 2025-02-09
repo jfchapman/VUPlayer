@@ -22,7 +22,7 @@
 static const int sMaxConvertImageBytes = 0x1000000;
 
 // Random number engine.
-static std::default_random_engine sRandomEngine { std::random_device {} () };
+static std::default_random_engine sRandomEngine{ std::random_device {} ( ) };
 
 std::wstring UTF8ToWideString( const std::string& text )
 {
@@ -101,7 +101,7 @@ std::wstring CodePageToWideString( const std::string& text, const UINT codePage 
 
 std::string CodePageToUTF8( const std::string& text, const UINT codePage )
 {
-  return WideStringToUTF8( CodePageToWideString( text, codePage ) );
+	return WideStringToUTF8( CodePageToWideString( text, codePage ) );
 }
 
 std::wstring WideStringToLower( const std::wstring& text )
@@ -181,7 +181,7 @@ std::wstring DurationToString( const HINSTANCE instance, const double _duration,
 	if ( days > 0 ) {
 		ss << days;
 		if ( colonDelimited ) {
-				ss << L":";
+			ss << L":";
 		} else {
 			const int bufSize = 16;
 			WCHAR buf[ bufSize ] = {};
@@ -221,7 +221,7 @@ std::wstring DurationToString( const HINSTANCE instance, const double _duration,
 	}
 
 	const long seconds = duration % 60;
-	ss << std::setfill(  static_cast<wchar_t>( '0' ) ) << std::setw( 2 ) << seconds;
+	ss << std::setfill( static_cast<wchar_t>( '0' ) ) << std::setw( 2 ) << seconds;
 	if ( !colonDelimited ) {
 		const int bufSize = 16;
 		WCHAR buf[ bufSize ] = {};
@@ -287,42 +287,42 @@ void GetImageInformation( const std::string& image, std::string& mimeType, int& 
 
 					const Gdiplus::PixelFormat pixelFormat = bitmap.GetPixelFormat();
 					switch ( pixelFormat ) {
-						case PixelFormat4bppIndexed : { 
+						case PixelFormat4bppIndexed: {
 							depth = 4;
 							break;
 						}
-						case PixelFormat8bppIndexed : {
+						case PixelFormat8bppIndexed: {
 							depth = 8;
 							break;
 						}
-						case PixelFormat16bppGrayScale :
-						case PixelFormat16bppRGB555 :
-						case PixelFormat16bppRGB565 :
-						case PixelFormat16bppARGB1555 : {
+						case PixelFormat16bppGrayScale:
+						case PixelFormat16bppRGB555:
+						case PixelFormat16bppRGB565:
+						case PixelFormat16bppARGB1555: {
 							depth = 16;
 							break;
 						}
-						case PixelFormat24bppRGB : {
+						case PixelFormat24bppRGB: {
 							depth = 24;
 							break;
 						}
-						case PixelFormat32bppRGB :
-						case PixelFormat32bppARGB :
-						case PixelFormat32bppPARGB :
-						case PixelFormat32bppCMYK : {
+						case PixelFormat32bppRGB:
+						case PixelFormat32bppARGB:
+						case PixelFormat32bppPARGB:
+						case PixelFormat32bppCMYK: {
 							depth = 32;
 							break;
 						}
-						case PixelFormat48bppRGB : {
+						case PixelFormat48bppRGB: {
 							depth = 48;
 							break;
 						}
-						case PixelFormat64bppARGB :
-						case PixelFormat64bppPARGB : {
+						case PixelFormat64bppARGB:
+						case PixelFormat64bppPARGB: {
 							depth = 64;
 							break;
 						}
-						default : {
+						default: {
 							break;
 						}
 					}
@@ -358,7 +358,7 @@ void GetImageInformation( const std::string& image, std::string& mimeType, int& 
 				}
 			}
 			stream->Release();
-		}					
+		}
 	}
 }
 
@@ -395,7 +395,7 @@ std::string ConvertImage( const std::vector<BYTE>& imageBytes )
 					if ( Gdiplus::Ok == bitmap.GetRawFormat( &format ) ) {
 						if ( ( Gdiplus::ImageFormatPNG == format ) || ( Gdiplus::ImageFormatJPEG == format ) || ( Gdiplus::ImageFormatGIF == format ) ) {
 							encodedImage = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageSize ) );
-						} else {		
+						} else {
 							CLSID encoderClsid = {};
 							UINT numEncoders = 0;
 							UINT bufferSize = 0;
@@ -427,14 +427,14 @@ std::string ConvertImage( const std::vector<BYTE>& imageBytes )
 									}
 								}
 								encoderStream->Release();
-							}							
+							}
 						}
-					}					
+					}
 				} catch ( ... ) {
 				}
 			}
 			stream->Release();
-		}					
+		}
 	}
 	return encodedImage;
 }
@@ -562,7 +562,7 @@ std::wstring GetFileExtension( const std::wstring& filename )
 bool IsURL( const std::wstring filename )
 {
 	bool isURL = false;
-	constexpr std::array schemes { L"ftp", L"http", L"https" };
+	constexpr std::array schemes{ L"ftp", L"http", L"https" };
 	const size_t pos = filename.find( ':' );
 	if ( std::wstring::npos != pos ) {
 		isURL = ( schemes.end() != std::find( schemes.begin(), schemes.end(), WideStringToLower( filename.substr( 0, pos ) ) ) );
@@ -694,7 +694,7 @@ HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const i
 					bitmapInfo.bmiHeader.biPlanes = 1;
 					bitmapInfo.bmiHeader.biBitCount = 32;
 					bitmapInfo.bmiHeader.biCompression = BI_RGB;
-					std::vector<unsigned char> bits( bm.bmHeight * bm.bmWidth * 4 );				
+					std::vector<unsigned char> bits( bm.bmHeight * bm.bmWidth * 4 );
 					if ( GetDIBits( dc, iconInfo.hbmColor, 0, bm.bmHeight, bits.data(), &bitmapInfo, DIB_RGB_COLORS ) ) {
 						const unsigned char r = GetRValue( colour );
 						const unsigned char g = GetGValue( colour );
@@ -767,21 +767,21 @@ void SetLastModifiedTime( const std::filesystem::path& filepath, const FILETIME 
 
 bool DeleteFiles( const std::set<std::filesystem::path> files, const HWND hwnd )
 {
-  std::error_code ec;
-  std::vector<wchar_t> filenameBuffer;
-  for ( const auto& file : files ) {
-    if ( file.is_absolute() && std::filesystem::exists( file, ec ) ) {
-      filenameBuffer.insert( filenameBuffer.end(), file.native().begin(), file.native().end() );
-      filenameBuffer.push_back( '\0' );
-    }
-  }
-  if ( !filenameBuffer.empty() ) {
-    filenameBuffer.push_back( '\0' );
-    SHFILEOPSTRUCT fileOp = {};
-    fileOp.hwnd = hwnd;
-    fileOp.wFunc = FO_DELETE;
-    fileOp.pFrom = filenameBuffer.data();
-    return ( 0 == SHFileOperation( &fileOp ) );
-  }
-  return false;
+	std::error_code ec;
+	std::vector<wchar_t> filenameBuffer;
+	for ( const auto& file : files ) {
+		if ( file.is_absolute() && std::filesystem::exists( file, ec ) ) {
+			filenameBuffer.insert( filenameBuffer.end(), file.native().begin(), file.native().end() );
+			filenameBuffer.push_back( '\0' );
+		}
+	}
+	if ( !filenameBuffer.empty() ) {
+		filenameBuffer.push_back( '\0' );
+		SHFILEOPSTRUCT fileOp = {};
+		fileOp.hwnd = hwnd;
+		fileOp.wFunc = FO_DELETE;
+		fileOp.pFrom = filenameBuffer.data();
+		return ( 0 == SHFileOperation( &fileOp ) );
+	}
+	return false;
 }

@@ -11,7 +11,7 @@ WndToolbarPlaylist::WndToolbarPlaylist( HINSTANCE instance, HWND parent, Setting
 void WndToolbarPlaylist::Update( Output& /*output*/, const Playlist::Ptr playlist, const Playlist::Item& selectedItem )
 {
 	const bool addFiles = true;
-  const auto playlistType = playlist ? playlist->GetType() : Playlist::Type::_Undefined;
+	const auto playlistType = playlist ? playlist->GetType() : Playlist::Type::_Undefined;
 	const bool removeFiles = ( selectedItem.ID > 0 ) && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
 	SetButtonEnabled( ID_FILE_PLAYLISTADDSTREAM, addFiles );
 	SetButtonEnabled( ID_FILE_PLAYLISTADDFOLDER, addFiles );
@@ -44,23 +44,23 @@ UINT WndToolbarPlaylist::GetTooltip( const UINT commandID ) const
 {
 	UINT tooltip = 0;
 	switch ( commandID ) {
-		case ID_FILE_PLAYLISTADDSTREAM : {
+		case ID_FILE_PLAYLISTADDSTREAM: {
 			tooltip = IDS_ADD_STREAM;
 			break;
 		}
-		case ID_FILE_PLAYLISTADDFOLDER : {
+		case ID_FILE_PLAYLISTADDFOLDER: {
 			tooltip = IDS_ADDFOLDERTOPLAYLIST_TITLE;
 			break;
 		}
-		case ID_FILE_PLAYLISTADDFILES : {
+		case ID_FILE_PLAYLISTADDFILES: {
 			tooltip = IDS_ADD_FILES;
 			break;
 		}
-		case ID_FILE_PLAYLISTREMOVEFILES : {
+		case ID_FILE_PLAYLISTREMOVEFILES: {
 			tooltip = IDS_REMOVE_FILES;
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}

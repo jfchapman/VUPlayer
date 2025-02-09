@@ -37,7 +37,7 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "Composer", Column::Composer ),
 		Columns::value_type( "Conductor", Column::Conductor ),
 		Columns::value_type( "Publisher", Column::Publisher )
-	} ),
+		} ),
 	m_CDDAColumns( {
 		Columns::value_type( "CDDB", Column::CDDB ),
 		Columns::value_type( "Track", Column::Track ),
@@ -55,22 +55,22 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "Composer", Column::Composer ),
 		Columns::value_type( "Conductor", Column::Conductor ),
 		Columns::value_type( "Publisher", Column::Publisher )
-	} )
+		} )
 {
-  m_CueColumns = m_MediaColumns;
-  m_CueColumns.insert( { "CueStart", Column::CueStart } );
-  m_CueColumns.insert( { "CueEnd", Column::CueEnd } );
+	m_CueColumns = m_MediaColumns;
+	m_CueColumns.insert( { "CueStart", Column::CueStart } );
+	m_CueColumns.insert( { "CueEnd", Column::CueEnd } );
 
-  // Generate the matching fields for union queries (note that cue columns is a superset of media columns).
-  for ( const auto& [ columnName, columnType ] : m_CueColumns ) {
-    m_CueFields += columnName + ',';
-    if ( const auto column = m_MediaColumns.find( columnName ); m_MediaColumns.end() == column ) {
-      m_MediaFields += "NULL AS ";
-    }
-    m_MediaFields += columnName + ',';
-  }
-  m_CueFields.pop_back();
-  m_MediaFields.pop_back();
+	// Generate the matching fields for union queries (note that cue columns is a superset of media columns).
+	for ( const auto& [columnName, columnType] : m_CueColumns ) {
+		m_CueFields += columnName + ',';
+		if ( const auto column = m_MediaColumns.find( columnName ); m_MediaColumns.end() == column ) {
+			m_MediaFields += "NULL AS ";
+		}
+		m_MediaFields += columnName + ',';
+	}
+	m_CueFields.pop_back();
+	m_MediaFields.pop_back();
 
 	UpdateDatabase();
 }
@@ -78,45 +78,45 @@ Library::Library( Database& database, const Handlers& handlers ) :
 Library::~Library()
 {
 	for ( const auto& filename : m_PendingTags ) {
-    if ( MediaInfo mediaInfo( filename ); GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ ) ) {
-		  if ( m_Handlers.SetTags( mediaInfo, *this ) ) {
-			  if ( GetDecoderInfo( mediaInfo, false /*getTags*/ ) ) {
-	        UpdateMediaLibrary( mediaInfo );
-        }
-		  }
-    }
+		if ( MediaInfo mediaInfo( filename ); GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ ) ) {
+			if ( m_Handlers.SetTags( mediaInfo, *this ) ) {
+				if ( GetDecoderInfo( mediaInfo, false /*getTags*/ ) ) {
+					UpdateMediaLibrary( mediaInfo );
+				}
+			}
+		}
 	}
 }
 
 void Library::UpdateDatabase()
 {
 	UpdateMediaTable( false /*cuesTable*/ );
-  UpdateMediaTable( true /*cuesTable*/ );
+	UpdateMediaTable( true /*cuesTable*/ );
 	UpdateCDDATable();
 	UpdateArtworkTable();
 	CreateIndices();
 }
 
-void Library::UpdateMediaTable(const bool cuesTable)
+void Library::UpdateMediaTable( const bool cuesTable )
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-    // Create the appropriate table, if necessary.
-    const std::string tableName = cuesTable ? "Cues" : "Media";
-	  std::string createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + "(";
-    if ( cuesTable ) {
-		  for ( const auto& iter : m_CueColumns ) {
-			  const std::string& columnName = iter.first;
-			  createTableQuery += columnName + ",";
-		  }
-		  createTableQuery += "PRIMARY KEY(Filename,CueStart,CueEnd));";
-    } else {
-		  for ( const auto& iter : m_MediaColumns ) {
-			  const std::string& columnName = iter.first;
-			  createTableQuery += columnName + ",";
-		  }
-		  createTableQuery += "PRIMARY KEY(Filename));";
-    }
+		// Create the appropriate table, if necessary.
+		const std::string tableName = cuesTable ? "Cues" : "Media";
+		std::string createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + "(";
+		if ( cuesTable ) {
+			for ( const auto& iter : m_CueColumns ) {
+				const std::string& columnName = iter.first;
+				createTableQuery += columnName + ",";
+			}
+			createTableQuery += "PRIMARY KEY(Filename,CueStart,CueEnd));";
+		} else {
+			for ( const auto& iter : m_MediaColumns ) {
+				const std::string& columnName = iter.first;
+				createTableQuery += columnName + ",";
+			}
+			createTableQuery += "PRIMARY KEY(Filename));";
+		}
 		sqlite3_exec( database, createTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 
 		// Check the columns in the media table.
@@ -130,9 +130,9 @@ void Library::UpdateMediaTable(const bool cuesTable)
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
 						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
-						  const std::string name = reinterpret_cast<const char*>( text );
-						  missingColumns.erase( name );
-            }
+							const std::string name = reinterpret_cast<const char*>( text );
+							missingColumns.erase( name );
+						}
 						break;
 					}
 				}
@@ -181,9 +181,9 @@ void Library::UpdateCDDATable()
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
 						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
-						  const std::string name = reinterpret_cast<const char*>( text );
-						  missingColumns.erase( name );
-            }
+							const std::string name = reinterpret_cast<const char*>( text );
+							missingColumns.erase( name );
+						}
 						break;
 					}
 				}
@@ -227,9 +227,9 @@ void Library::UpdateArtworkTable()
 					const std::string columnName = sqlite3_column_name( stmt, columnIndex );
 					if ( columnName == "name" ) {
 						if ( const unsigned char* text = sqlite3_column_text( stmt, columnIndex ); nullptr != text ) {
-						  const std::string name = reinterpret_cast<const char*>( text );
-						  columns.insert( name );
-            }
+							const std::string name = reinterpret_cast<const char*>( text );
+							columns.insert( name );
+						}
 						break;
 					}
 				}
@@ -267,7 +267,7 @@ void Library::CreateIndices()
 		sqlite3_exec( database, conductorCues.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 		const std::string publisherCues = "CREATE INDEX IF NOT EXISTS CuesIndex_Publisher ON Cues(Publisher);";
 		sqlite3_exec( database, publisherCues.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-  }
+	}
 }
 
 bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool scanMedia, const bool sendNotification, const bool removeMissing )
@@ -277,54 +277,54 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool scanMedia, const bo
 	if ( nullptr != database ) {
 		MediaInfo info( mediaInfo );
 		std::string query;
-    if ( MediaInfo::Source::CDDA == info.GetSource() ) {
-      query = "SELECT * FROM CDDA WHERE CDDB=?1 AND Track=?2;";
-    } else {
-      if ( mediaInfo.GetCueStart() ) {
-        query = "SELECT * FROM Cues WHERE Filename=?1 AND CueStart=?2 AND CueEnd=?3;";
-      } else {
-        query = "SELECT * FROM Media WHERE Filename=?1;";
-      }
-    }
+		if ( MediaInfo::Source::CDDA == info.GetSource() ) {
+			query = "SELECT * FROM CDDA WHERE CDDB=?1 AND Track=?2;";
+		} else {
+			if ( mediaInfo.GetCueStart() ) {
+				query = "SELECT * FROM Cues WHERE Filename=?1 AND CueStart=?2 AND CueEnd=?3;";
+			} else {
+				query = "SELECT * FROM Media WHERE Filename=?1;";
+			}
+		}
 		sqlite3_stmt* stmt = nullptr;
 		success = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) );
 		if ( success ) {
-      if ( MediaInfo::Source::CDDA == info.GetSource() ) {
-        success = ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( info.GetCDDB() ) ) ) && ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( info.GetTrack() ) ) );
-      } else {
-        if ( mediaInfo.GetCueStart() ) {
-          success = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( info.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) && 
-            ( SQLITE_OK == sqlite3_bind_int64( stmt, 2 /*param*/, *info.GetCueStart() ) ) && ( SQLITE_OK == sqlite3_bind_int64( stmt, 3 /*param*/, info.GetCueEnd().value_or( -1 ) ) );
-        } else {
-          success = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( info.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
-        }
-      }
+			if ( MediaInfo::Source::CDDA == info.GetSource() ) {
+				success = ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( info.GetCDDB() ) ) ) && ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( info.GetTrack() ) ) );
+			} else {
+				if ( mediaInfo.GetCueStart() ) {
+					success = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( info.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+						( SQLITE_OK == sqlite3_bind_int64( stmt, 2 /*param*/, *info.GetCueStart() ) ) && ( SQLITE_OK == sqlite3_bind_int64( stmt, 3 /*param*/, info.GetCueEnd().value_or( -1 ) ) );
+				} else {
+					success = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( info.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+				}
+			}
 			if ( success ) {
 				// Should be a maximum of one entry.
 				const int result = sqlite3_step( stmt );
 				success = ( SQLITE_ROW == result );
 				if ( success ) {
-          const bool missingData = !ExtractMediaInfo( stmt, info );
-          if ( scanMedia && ( MediaInfo::Source::File == info.GetSource() ) ) {
-            if ( missingData ) {
-              if ( GetDecoderInfo( info, true /*getTags*/ ) ) {
-                UpdateMediaLibrary( info );
-                if ( sendNotification ) {
-							    if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
-								    vuplayer->OnMediaUpdated( mediaInfo /*previousInfo*/, info /*updatedInfo*/ );
-							    }
-                }
-              }
-            } else {
-						  long long filetime = 0;
-						  long long filesize = 0;
-						  GetFileInfo( info.GetFilename(), filetime, filesize );
-						  success = ( info.GetFiletime() == filetime ) && ( info.GetFilesize() == filesize );
-						  if ( !success ) {
-							  info = mediaInfo;
-						  }
-            }
-          }
+					const bool missingData = !ExtractMediaInfo( stmt, info );
+					if ( scanMedia && ( MediaInfo::Source::File == info.GetSource() ) ) {
+						if ( missingData ) {
+							if ( GetDecoderInfo( info, true /*getTags*/ ) ) {
+								UpdateMediaLibrary( info );
+								if ( sendNotification ) {
+									if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
+										vuplayer->OnMediaUpdated( mediaInfo /*previousInfo*/, info /*updatedInfo*/ );
+									}
+								}
+							}
+						} else {
+							long long filetime = 0;
+							long long filesize = 0;
+							GetFileInfo( info.GetFilename(), filetime, filesize );
+							success = ( info.GetFiletime() == filetime ) && ( info.GetFilesize() == filesize );
+							if ( !success ) {
+								info = mediaInfo;
+							}
+						}
+					}
 				}
 
 				if ( !success && scanMedia && ( MediaInfo::Source::File == info.GetSource() ) ) {
@@ -446,176 +446,176 @@ bool Library::GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags )
 
 bool Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 {
-  bool missingData = false;
+	bool missingData = false;
 	if ( nullptr != stmt ) {
 		const int columnCount = sqlite3_column_count( stmt );
-    // Use cue columns (as a superset of media columns).
+		// Use cue columns (as a superset of media columns).
 		const Columns& columns = m_CueColumns;
 		for ( int columnIndex = 0; columnIndex < columnCount; columnIndex++ ) {
 			const auto columnIter = columns.find( sqlite3_column_name( stmt, columnIndex ) );
 			if ( columnIter != columns.end() ) {
-        const bool isNull = ( SQLITE_NULL == sqlite3_column_type( stmt, columnIndex ) );
-        const auto column = columnIter->second;
+				const bool isNull = ( SQLITE_NULL == sqlite3_column_type( stmt, columnIndex ) );
+				const auto column = columnIter->second;
 				switch ( column ) {
-					case Column::Filename : {						
+					case Column::Filename: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetFilename( UTF8ToWideString( text ) );
 						}
 						break;
 					}
-					case Column::Filetime : {						
+					case Column::Filetime: {
 						mediaInfo.SetFiletime( static_cast<long long>( sqlite3_column_int64( stmt, columnIndex ) ) );
 						break;
 					}
-					case Column::Filesize : {						
+					case Column::Filesize: {
 						mediaInfo.SetFilesize( static_cast<long long>( sqlite3_column_int64( stmt, columnIndex ) ) );
 						break;
 					}
-					case Column::Duration : {						
+					case Column::Duration: {
 						mediaInfo.SetDuration( static_cast<float>( sqlite3_column_double( stmt, columnIndex ) ) );
 						break;
 					}
-					case Column::SampleRate : {						
+					case Column::SampleRate: {
 						mediaInfo.SetSampleRate( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
 						break;
 					}
-					case Column::BitsPerSample : {						
+					case Column::BitsPerSample: {
 						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
 							mediaInfo.SetBitsPerSample( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
 						}
 						break;
 					}
-					case Column::Channels : {						
+					case Column::Channels: {
 						mediaInfo.SetChannels( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
 						break;
 					}
-					case Column::Artist : {						
+					case Column::Artist: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetArtist( UTF8ToWideString( text ) );
 						} else if ( isNull ) {
-              missingData = true;
-            }     
+							missingData = true;
+						}
 						break;
 					}
-					case Column::Title : {						
+					case Column::Title: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetTitle( UTF8ToWideString( text ) );
 						} else if ( isNull ) {
-              missingData = true;
-            }     
+							missingData = true;
+						}
 						break;
 					}
-					case Column::Album : {						
+					case Column::Album: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetAlbum( UTF8ToWideString( text ) );
 						} else if ( isNull ) {
-              missingData = true;
-            }     
+							missingData = true;
+						}
 						break;
 					}
-					case Column::Genre : {						
+					case Column::Genre: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetGenre( UTF8ToWideString( text ) );
 						} else if ( isNull ) {
-              missingData = true;
-            }     
+							missingData = true;
+						}
 						break;
 					}
-					case Column::Year : {		
-            if ( isNull ) {
-              missingData = true;
-            } else {
-						  mediaInfo.SetYear( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
-            }
+					case Column::Year: {
+						if ( isNull ) {
+							missingData = true;
+						} else {
+							mediaInfo.SetYear( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
+						}
 						break;
 					}
-					case Column::Comment : {						
+					case Column::Comment: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetComment( UTF8ToWideString( text ) );
 						} else if ( isNull ) {
-              missingData = true;
-            }     
+							missingData = true;
+						}
 						break;
 					}
-					case Column::Track : {
-            if ( isNull ) {
-              missingData = true;
-            } else {
-						  mediaInfo.SetTrack( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
-            }
+					case Column::Track: {
+						if ( isNull ) {
+							missingData = true;
+						} else {
+							mediaInfo.SetTrack( static_cast<long>( sqlite3_column_int( stmt, columnIndex ) ) );
+						}
 						break;
 					}
-					case Column::Version : {						
+					case Column::Version: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetVersion( UTF8ToWideString( text ) );
 						}
 						break;
 					}
-					case Column::GainTrack : {	
+					case Column::GainTrack: {
 						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
-							mediaInfo.SetGainTrack( static_cast<float>( sqlite3_column_double( stmt, columnIndex ) ) );							
-						}					
+							mediaInfo.SetGainTrack( static_cast<float>( sqlite3_column_double( stmt, columnIndex ) ) );
+						}
 						break;
 					}
-					case Column::GainAlbum : {						
+					case Column::GainAlbum: {
 						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
 							mediaInfo.SetGainAlbum( static_cast<float>( sqlite3_column_double( stmt, columnIndex ) ) );
 						}
 						break;
 					}
-					case Column::Artwork : {
+					case Column::Artwork: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetArtworkID( UTF8ToWideString( text ) );
 						}
 						break;
 					}
-					case Column::Bitrate : {
+					case Column::Bitrate: {
 						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
 							mediaInfo.SetBitrate( static_cast<float>( sqlite3_column_double( stmt, columnIndex ) ) );
 						}
 						break;
 					}
-          case Column::CueStart : {
+					case Column::CueStart: {
 						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
-              mediaInfo.SetCueStart( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
-            }
-            break;
-          }
-          case Column::CueEnd : {
+							mediaInfo.SetCueStart( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
+						}
+						break;
+					}
+					case Column::CueEnd: {
 						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
-              mediaInfo.SetCueEnd( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
-            }
-            break;
-          }
-					case Column::Composer : {						
+							mediaInfo.SetCueEnd( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
+						}
+						break;
+					}
+					case Column::Composer: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetComposer( UTF8ToWideString( text ) );
 						} else if ( isNull ) {
-              missingData = true;
-            }     
+							missingData = true;
+						}
 						break;
 					}
-					case Column::Conductor : {						
+					case Column::Conductor: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetConductor( UTF8ToWideString( text ) );
 						} else if ( isNull ) {
-              missingData = true;
-            }     
+							missingData = true;
+						}
 						break;
 					}
-					case Column::Publisher : {						
+					case Column::Publisher: {
 						if ( const char* text = reinterpret_cast<const char*>( sqlite3_column_text( stmt, columnIndex ) ); nullptr != text ) {
 							mediaInfo.SetPublisher( UTF8ToWideString( text ) );
 						} else if ( isNull ) {
-              missingData = true;
-            }     
+							missingData = true;
+						}
 						break;
 					}
 				}
 			}
 		}
 	}
-  return !missingData;
+	return !missingData;
 }
 
 bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
@@ -643,15 +643,15 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 			param = 0;
 			for ( const auto& iter : columnMap ) {
 				switch ( iter.second ) {
-					case Column::Album : {
+					case Column::Album: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetAlbum() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					case Column::Artist : {
+					case Column::Artist: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetArtist() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					case Column::BitsPerSample : {
+					case Column::BitsPerSample: {
 						const auto bps = mediaInfo.GetBitsPerSample();
 						if ( bps.has_value() ) {
 							sqlite3_bind_int( stmt, ++param, static_cast<int>( bps.value() ) );
@@ -660,31 +660,31 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						}
 						break;
 					}
-					case Column::Channels : {
+					case Column::Channels: {
 						sqlite3_bind_int( stmt, ++param, static_cast<int>( mediaInfo.GetChannels() ) );
 						break;
 					}
-					case Column::Comment : {
+					case Column::Comment: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetComment() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					case Column::Duration : {
+					case Column::Duration: {
 						sqlite3_bind_double( stmt, ++param, mediaInfo.GetDuration( false /*applyCues*/ ) );
 						break;
 					}
-					case Column::Filename : {
+					case Column::Filename: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					case Column::Filesize : {
+					case Column::Filesize: {
 						sqlite3_bind_int64( stmt, ++param, static_cast<sqlite3_int64>( mediaInfo.GetFilesize() ) );
 						break;
 					}
-					case Column::Filetime : {
+					case Column::Filetime: {
 						sqlite3_bind_int64( stmt, ++param, static_cast<sqlite3_int64>( mediaInfo.GetFiletime() ) );
 						break;
 					}
-					case Column::GainAlbum : {
+					case Column::GainAlbum: {
 						const auto gain = mediaInfo.GetGainAlbum();
 						if ( gain.has_value() ) {
 							sqlite3_bind_double( stmt, ++param, gain.value() );
@@ -693,7 +693,7 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						}
 						break;
 					}
-					case Column::GainTrack : {
+					case Column::GainTrack: {
 						const auto gain = mediaInfo.GetGainTrack();
 						if ( gain.has_value() ) {
 							sqlite3_bind_double( stmt, ++param, gain.value() );
@@ -702,39 +702,39 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						}
 						break;
 					}
-					case Column::Genre : {
+					case Column::Genre: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetGenre() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					case Column::SampleRate : {
+					case Column::SampleRate: {
 						sqlite3_bind_int( stmt, ++param, static_cast<int>( mediaInfo.GetSampleRate() ) );
 						break;
 					}
-					case Column::Title : {
+					case Column::Title: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetTitle() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					case Column::Track : {
+					case Column::Track: {
 						sqlite3_bind_int( stmt, ++param, static_cast<int>( mediaInfo.GetTrack() ) );
 						break;
 					}
-					case Column::Version : {
+					case Column::Version: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetVersion() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					case Column::Year : {
+					case Column::Year: {
 						sqlite3_bind_int( stmt, ++param, static_cast<int>( mediaInfo.GetYear() ) );
 						break;
 					}
-					case Column::Artwork : {
+					case Column::Artwork: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetArtworkID() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					case Column::CDDB : {
+					case Column::CDDB: {
 						sqlite3_bind_int( stmt, ++param, static_cast<int>( mediaInfo.GetCDDB() ) );
 						break;
 					}
-					case Column::Bitrate : {
+					case Column::Bitrate: {
 						const auto bitrate = mediaInfo.GetBitrate();
 						if ( bitrate.has_value() ) {
 							sqlite3_bind_double( stmt, ++param, bitrate.value() );
@@ -743,30 +743,30 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 						}
 						break;
 					}
-          case Column::CueStart : {
+					case Column::CueStart: {
 						const auto cue = mediaInfo.GetCueStart();
 						sqlite3_bind_int64( stmt, ++param, cue.value_or( -1 ) );
 						break;
-          }
-          case Column::CueEnd : {
-            // Cues are part of the primary key in the Cues table, so use a negative value to indicate no cue, rather than null.
+					}
+					case Column::CueEnd: {
+						// Cues are part of the primary key in the Cues table, so use a negative value to indicate no cue, rather than null.
 						const auto cue = mediaInfo.GetCueEnd();
 						sqlite3_bind_int64( stmt, ++param, cue.value_or( -1 ) );
 						break;
-          }
-					case Column::Composer : {
+					}
+					case Column::Composer: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetComposer() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					case Column::Conductor : {
+					case Column::Conductor: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetConductor() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					case Column::Publisher : {
+					case Column::Publisher: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetPublisher() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
 						break;
 					}
-					default : {
+					default: {
 						break;
 					}
 				}
@@ -781,25 +781,25 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 
 void Library::UpdateMediaTags( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo )
 {
-  const bool updateTags =
-    ( previousMediaInfo.GetAlbum() != updatedMediaInfo.GetAlbum() ) ||
-    ( previousMediaInfo.GetArtist() != updatedMediaInfo.GetArtist() ) ||
-    ( previousMediaInfo.GetComment() != updatedMediaInfo.GetComment() ) ||
-    ( previousMediaInfo.GetGenre() != updatedMediaInfo.GetGenre() ) ||
-    ( previousMediaInfo.GetTitle() != updatedMediaInfo.GetTitle() ) ||
-    ( previousMediaInfo.GetTrack() != updatedMediaInfo.GetTrack() ) ||
-    ( previousMediaInfo.GetYear() != updatedMediaInfo.GetYear() ) ||
-    ( previousMediaInfo.GetGainAlbum() != updatedMediaInfo.GetGainAlbum() ) ||
-    ( previousMediaInfo.GetGainTrack() != updatedMediaInfo.GetGainTrack() ) ||
-    ( previousMediaInfo.GetArtworkID() != updatedMediaInfo.GetArtworkID() ) ||
-    ( previousMediaInfo.GetComposer() != updatedMediaInfo.GetComposer() ) ||
-    ( previousMediaInfo.GetConductor() != updatedMediaInfo.GetConductor() ) ||
-    ( previousMediaInfo.GetPublisher() != updatedMediaInfo.GetPublisher() );
+	const bool updateTags =
+		( previousMediaInfo.GetAlbum() != updatedMediaInfo.GetAlbum() ) ||
+		( previousMediaInfo.GetArtist() != updatedMediaInfo.GetArtist() ) ||
+		( previousMediaInfo.GetComment() != updatedMediaInfo.GetComment() ) ||
+		( previousMediaInfo.GetGenre() != updatedMediaInfo.GetGenre() ) ||
+		( previousMediaInfo.GetTitle() != updatedMediaInfo.GetTitle() ) ||
+		( previousMediaInfo.GetTrack() != updatedMediaInfo.GetTrack() ) ||
+		( previousMediaInfo.GetYear() != updatedMediaInfo.GetYear() ) ||
+		( previousMediaInfo.GetGainAlbum() != updatedMediaInfo.GetGainAlbum() ) ||
+		( previousMediaInfo.GetGainTrack() != updatedMediaInfo.GetGainTrack() ) ||
+		( previousMediaInfo.GetArtworkID() != updatedMediaInfo.GetArtworkID() ) ||
+		( previousMediaInfo.GetComposer() != updatedMediaInfo.GetComposer() ) ||
+		( previousMediaInfo.GetConductor() != updatedMediaInfo.GetConductor() ) ||
+		( previousMediaInfo.GetPublisher() != updatedMediaInfo.GetPublisher() );
 
 	if ( updateTags ) {
 		MediaInfo mediaInfo( updatedMediaInfo );
 		WriteFileTags( mediaInfo );
-	  UpdateMediaLibrary( mediaInfo );
+		UpdateMediaLibrary( mediaInfo );
 
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {
@@ -817,7 +817,7 @@ void Library::WriteFileTags( MediaInfo& mediaInfo )
 			m_PendingTags.erase( filename );
 			GetDecoderInfo( mediaInfo, false /*getTags*/ );
 		} else {
-      m_PendingTags.insert( filename );
+			m_PendingTags.insert( filename );
 		}
 	}
 }
@@ -913,7 +913,7 @@ std::wstring Library::AddArtwork( const std::vector<BYTE>& image )
 			artworkID = FindArtwork( convertedImage );
 			if ( artworkID.empty() ) {
 				artworkID = UTF8ToWideString( GenerateGUIDString() );
-				if ( !AddArtwork( artworkID, convertedImage ) ) {			
+				if ( !AddArtwork( artworkID, convertedImage ) ) {
 					artworkID.clear();
 				}
 			}
@@ -924,22 +924,22 @@ std::wstring Library::AddArtwork( const std::vector<BYTE>& image )
 
 std::set<std::wstring> Library::GetArtists()
 {
-  return GetEntities( "Artist" );
+	return GetEntities( "Artist" );
 }
 
 std::set<std::wstring> Library::GetAlbums()
 {
-  return GetEntities( "Album" );
+	return GetEntities( "Album" );
 }
 
 std::set<std::wstring> Library::GetArtistAlbums( const std::wstring& artist )
 {
-  return GetAlbums( artist, "Artist" );
+	return GetAlbums( artist, "Artist" );
 }
 
 std::set<std::wstring> Library::GetGenres()
 {
-  return GetEntities( "Genre" );
+	return GetEntities( "Genre" );
 }
 
 std::set<long> Library::GetYears()
@@ -952,7 +952,7 @@ std::set<long> Library::GetYears()
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
 				const long year = static_cast<long>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-				if ( ( year >= MINYEAR ) && ( year <= MAXYEAR ) ) { 
+				if ( ( year >= MINYEAR ) && ( year <= MAXYEAR ) ) {
 					years.insert( year );
 				}
 			}
@@ -965,52 +965,52 @@ std::set<long> Library::GetYears()
 
 std::set<std::wstring> Library::GetPublishers()
 {
-  return GetEntities( "Publisher" );
+	return GetEntities( "Publisher" );
 }
 
 std::set<std::wstring> Library::GetPublisherAlbums( const std::wstring& publisher )
 {
-  return GetAlbums( publisher, "Publisher" );
+	return GetAlbums( publisher, "Publisher" );
 }
 
 std::set<std::wstring> Library::GetComposers()
 {
-  return GetEntities( "Composer" );
+	return GetEntities( "Composer" );
 }
 
 std::set<std::wstring> Library::GetComposerAlbums( const std::wstring& composer )
 {
-  return GetAlbums( composer, "Composer" );
+	return GetAlbums( composer, "Composer" );
 }
 
 std::set<std::wstring> Library::GetConductors()
 {
-  return GetEntities( "Conductor" );
+	return GetEntities( "Conductor" );
 }
 
 std::set<std::wstring> Library::GetConductorAlbums( const std::wstring& conductor )
 {
-  return GetAlbums( conductor, "Conductor" );
+	return GetAlbums( conductor, "Conductor" );
 }
 
 MediaInfo::List Library::GetMediaByArtist( const std::wstring& artist )
 {
-  return GetMediaByEntity( artist, "Artist" );
+	return GetMediaByEntity( artist, "Artist" );
 }
 
 MediaInfo::List Library::GetMediaByAlbum( const std::wstring& album )
 {
-  return GetMediaByEntity( album, "Album" );
+	return GetMediaByEntity( album, "Album" );
 }
 
 MediaInfo::List Library::GetMediaByArtistAndAlbum( const std::wstring& artist, const std::wstring& album )
 {
-  return GetMediaByEntityAndAlbum( artist, album, "Artist" );
+	return GetMediaByEntityAndAlbum( artist, album, "Artist" );
 }
 
 MediaInfo::List Library::GetMediaByGenre( const std::wstring& genre )
 {
-  return GetMediaByEntity( genre, "Genre" );
+	return GetMediaByEntity( genre, "Genre" );
 }
 
 MediaInfo::List Library::GetMediaByYear( const long year )
@@ -1019,7 +1019,7 @@ MediaInfo::List Library::GetMediaByYear( const long year )
 	if ( ( year >= MINYEAR ) && ( year <= MAXYEAR ) ) {
 		sqlite3* database = m_Database.GetDatabase();
 		if ( nullptr != database ) {
-		  const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Year=?1 UNION SELECT " + m_CueFields + " FROM Cues WHERE Year=?1 ORDER BY Filename,CueStart COLLATE NOCASE;";
+			const std::string query = "SELECT " + m_MediaFields + " FROM Media WHERE Year=?1 UNION SELECT " + m_CueFields + " FROM Cues WHERE Year=?1 ORDER BY Filename,CueStart COLLATE NOCASE;";
 			sqlite3_stmt* stmt = nullptr;
 			if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 				if ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( year ) ) ) {
@@ -1039,32 +1039,32 @@ MediaInfo::List Library::GetMediaByYear( const long year )
 
 MediaInfo::List Library::GetMediaByPublisher( const std::wstring& publisher )
 {
-  return GetMediaByEntity( publisher, "Publisher" );
+	return GetMediaByEntity( publisher, "Publisher" );
 }
 
 MediaInfo::List Library::GetMediaByPublisherAndAlbum( const std::wstring& publisher, const std::wstring& album )
 {
-  return GetMediaByEntityAndAlbum( publisher, album, "Publisher" );
+	return GetMediaByEntityAndAlbum( publisher, album, "Publisher" );
 }
- 
+
 MediaInfo::List Library::GetMediaByComposer( const std::wstring& composer )
 {
-  return GetMediaByEntity( composer, "Composer" );
+	return GetMediaByEntity( composer, "Composer" );
 }
 
 MediaInfo::List Library::GetMediaByComposerAndAlbum( const std::wstring& composer, const std::wstring& album )
 {
-  return GetMediaByEntityAndAlbum( composer, album, "Composer" );
+	return GetMediaByEntityAndAlbum( composer, album, "Composer" );
 }
 
 MediaInfo::List Library::GetMediaByConductor( const std::wstring& conductor )
 {
-  return GetMediaByEntity( conductor, "Conductor" );
+	return GetMediaByEntity( conductor, "Conductor" );
 }
 
 MediaInfo::List Library::GetMediaByConductorAndAlbum( const std::wstring& conductor, const std::wstring& album )
 {
-  return GetMediaByEntityAndAlbum( conductor, album, "Conductor" );
+	return GetMediaByEntityAndAlbum( conductor, album, "Conductor" );
 }
 
 MediaInfo::List Library::GetAllMedia()
@@ -1109,22 +1109,22 @@ MediaInfo::List Library::GetStreams()
 
 bool Library::GetArtistExists( const std::wstring& artist )
 {
-  return GetEntityExists( artist, "Artist" );
+	return GetEntityExists( artist, "Artist" );
 }
 
 bool Library::GetAlbumExists( const std::wstring& album )
 {
-  return GetEntityExists( album, "Album" );
+	return GetEntityExists( album, "Album" );
 }
 
 bool Library::GetArtistAndAlbumExists( const std::wstring& artist, const std::wstring& album )
 {
-  return GetEntityAndAlbumExists( artist, album, "Artist" );
+	return GetEntityAndAlbumExists( artist, album, "Artist" );
 }
 
 bool Library::GetGenreExists( const std::wstring& genre )
 {
-  return GetEntityExists( genre, "Genre" );
+	return GetEntityExists( genre, "Genre" );
 }
 
 bool Library::GetYearExists( const long year )
@@ -1136,8 +1136,8 @@ bool Library::GetYearExists( const long year )
 			const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE Year=?1) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE Year=?1);";
 			sqlite3_stmt* stmt = nullptr;
 			exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-					( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( year ) ) ) &&
-					( SQLITE_ROW == sqlite3_step( stmt ) );
+				( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, static_cast<int>( year ) ) ) &&
+				( SQLITE_ROW == sqlite3_step( stmt ) );
 			sqlite3_finalize( stmt );
 		}
 	}
@@ -1146,32 +1146,32 @@ bool Library::GetYearExists( const long year )
 
 bool Library::GetPublisherExists( const std::wstring& publisher )
 {
-  return GetEntityExists( publisher, "Publisher" );
+	return GetEntityExists( publisher, "Publisher" );
 }
 
 bool Library::GetPublisherAndAlbumExists( const std::wstring& publisher, const std::wstring& album )
 {
-  return GetEntityAndAlbumExists( publisher, album, "Publisher" );
+	return GetEntityAndAlbumExists( publisher, album, "Publisher" );
 }
 
 bool Library::GetComposerExists( const std::wstring& composer )
 {
-  return GetEntityExists( composer, "Composer" );
+	return GetEntityExists( composer, "Composer" );
 }
 
 bool Library::GetComposerAndAlbumExists( const std::wstring& composer, const std::wstring& album )
 {
-  return GetEntityAndAlbumExists( composer, album, "Composer" );
+	return GetEntityAndAlbumExists( composer, album, "Composer" );
 }
 
 bool Library::GetConductorExists( const std::wstring& conductor )
 {
-  return GetEntityExists( conductor, "Conductor" );
+	return GetEntityExists( conductor, "Conductor" );
 }
 
 bool Library::GetConductorAndAlbumExists( const std::wstring& conductor, const std::wstring& album )
 {
-  return GetEntityAndAlbumExists( conductor, album, "Conductor" );
+	return GetEntityAndAlbumExists( conductor, album, "Conductor" );
 }
 
 bool Library::RemoveFromLibrary( const MediaInfo& mediaInfo )
@@ -1183,13 +1183,13 @@ bool Library::RemoveFromLibrary( const MediaInfo& mediaInfo )
 		const std::string query = mediaInfo.GetCueStart() ? "DELETE FROM Cues WHERE Filename=?1 AND CueStart=?2 AND CueEnd=?3;" : "DELETE FROM Media WHERE Filename=?1;";
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-      bool ok = false;
-      if ( mediaInfo.GetCueStart() ) {
-        ok = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-          ( SQLITE_OK == sqlite3_bind_int64( stmt, 2 /*param*/, *mediaInfo.GetCueStart() ) ) && ( SQLITE_OK == sqlite3_bind_int64( stmt, 3 /*param*/, mediaInfo.GetCueEnd().value_or( -1 ) ) );
-      } else {
-        ok = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
-      }
+			bool ok = false;
+			if ( mediaInfo.GetCueStart() ) {
+				ok = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+					( SQLITE_OK == sqlite3_bind_int64( stmt, 2 /*param*/, *mediaInfo.GetCueStart() ) ) && ( SQLITE_OK == sqlite3_bind_int64( stmt, 3 /*param*/, mediaInfo.GetCueEnd().value_or( -1 ) ) );
+			} else {
+				ok = ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( filename ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+			}
 			if ( ok ) {
 				// Should be a maximum of one entry.
 				removed = ( SQLITE_DONE == sqlite3_step( stmt ) );
@@ -1209,74 +1209,74 @@ const Library::Columns& Library::GetColumns( const MediaInfo& mediaInfo ) const
 void Library::UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Tags& tags )
 {
 	for ( const auto& iter : tags ) {
-    const auto tagType = iter.first;
-    const std::wstring value = UTF8ToWideString( iter.second );
+		const auto tagType = iter.first;
+		const std::wstring value = UTF8ToWideString( iter.second );
 		switch ( tagType ) {
-			case Tag::Album : {
+			case Tag::Album: {
 				mediaInfo.SetAlbum( value );
 				break;
 			}
-			case Tag::Artist : {
+			case Tag::Artist: {
 				mediaInfo.SetArtist( value );
 				break;
 			}
-			case Tag::Comment : {
+			case Tag::Comment: {
 				mediaInfo.SetComment( value );
 				break;
 			}
-			case Tag::Version : {
+			case Tag::Version: {
 				mediaInfo.SetVersion( value );
 				break;
 			}
-			case Tag::Genre : {
+			case Tag::Genre: {
 				mediaInfo.SetGenre( value );
 				break;
 			}
-			case Tag::Title : {
+			case Tag::Title: {
 				mediaInfo.SetTitle( value );
 				break;
 			}
-      case Tag::Composer : {
-        mediaInfo.SetComposer( value );
-        break;
-      }
-      case Tag::Conductor : {
-        mediaInfo.SetConductor( value );
-        break;
-      }
-      case Tag::Publisher : {
-        mediaInfo.SetPublisher( value );
-        break;
-      }
-			case Tag::GainAlbum : {
+			case Tag::Composer: {
+				mediaInfo.SetComposer( value );
+				break;
+			}
+			case Tag::Conductor: {
+				mediaInfo.SetConductor( value );
+				break;
+			}
+			case Tag::Publisher: {
+				mediaInfo.SetPublisher( value );
+				break;
+			}
+			case Tag::GainAlbum: {
 				try {
 					mediaInfo.SetGainAlbum( std::stof( iter.second ) );
 				} catch ( const std::logic_error& ) {
 				}
 				break;
 			}
-			case Tag::GainTrack : {
+			case Tag::GainTrack: {
 				try {
 					mediaInfo.SetGainTrack( std::stof( iter.second ) );
 				} catch ( const std::logic_error& ) {
 				}
 				break;
 			}
-			case Tag::Track : {
+			case Tag::Track: {
 				try {
 					mediaInfo.SetTrack( std::stol( value ) );
 				} catch ( const std::logic_error& ) {
 				}
 				break;
 			}
-			case Tag::Year : {
+			case Tag::Year: {
 				try {
 					mediaInfo.SetYear( std::stol( value ) );
 				} catch ( const std::logic_error& ) {
 				}
 				break;
 			}
-			case Tag::Artwork : {
+			case Tag::Artwork: {
 				const std::vector<BYTE> image = Base64Decode( iter.second );
 				if ( !image.empty() ) {
 					std::wstring artworkID = FindArtwork( image );
@@ -1284,14 +1284,14 @@ void Library::UpdateMediaInfoFromTags( MediaInfo& mediaInfo, const Tags& tags )
 						mediaInfo.SetArtworkID( artworkID );
 					} else {
 						artworkID = UTF8ToWideString( GenerateGUIDString() );
-						if ( AddArtwork( artworkID, image ) ) {			
+						if ( AddArtwork( artworkID, image ) ) {
 							mediaInfo.SetArtworkID( artworkID );
 						}
 					}
 				}
 				break;
 			}
-			default : {
+			default: {
 				break;
 			}
 		}
@@ -1307,10 +1307,10 @@ std::set<std::wstring> Library::GetAllSupportedFileExtensions() const
 Tags Library::GetTags( const MediaInfo& mediaInfo )
 {
 	Tags tags = mediaInfo;
-  if ( const std::vector<BYTE> imageBytes = GetMediaArtwork( mediaInfo ); !imageBytes.empty() ) {
+	if ( const std::vector<BYTE> imageBytes = GetMediaArtwork( mediaInfo ); !imageBytes.empty() ) {
 		if ( const std::string encodedArtwork = Base64Encode( imageBytes.data(), static_cast<int>( imageBytes.size() ) ); !encodedArtwork.empty() ) {
-		  tags.insert( Tags::value_type( Tag::Artwork, encodedArtwork ) );
-    }
+			tags.insert( Tags::value_type( Tag::Artwork, encodedArtwork ) );
+		}
 	}
 	return tags;
 }
@@ -1322,15 +1322,15 @@ bool Library::UpdateTrackGain( const MediaInfo& previousInfo, const MediaInfo& u
 		sqlite3* database = m_Database.GetDatabase();
 		if ( nullptr != database ) {
 			std::string query;
-      if ( MediaInfo::Source::CDDA == updatedInfo.GetSource() ) {
-        query = "UPDATE CDDA SET GainTrack=?1 WHERE CDDB=?2 AND Track=?3;";
-      } else {
-        if ( updatedInfo.GetCueStart() ) {
-				  query = "UPDATE Cues SET GainTrack=?1 WHERE Filename=?2 AND CueStart=?3 AND CueEnd=?4;";
-        } else {
-				  query = "UPDATE Media SET GainTrack=?1 WHERE Filename=?2;";
-        }
-      }
+			if ( MediaInfo::Source::CDDA == updatedInfo.GetSource() ) {
+				query = "UPDATE CDDA SET GainTrack=?1 WHERE CDDB=?2 AND Track=?3;";
+			} else {
+				if ( updatedInfo.GetCueStart() ) {
+					query = "UPDATE Cues SET GainTrack=?1 WHERE Filename=?2 AND CueStart=?3 AND CueEnd=?4;";
+				} else {
+					query = "UPDATE Media SET GainTrack=?1 WHERE Filename=?2;";
+				}
+			}
 			sqlite3_stmt* stmt = nullptr;
 			updated = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) );
 			if ( updated ) {
@@ -1341,12 +1341,12 @@ bool Library::UpdateTrackGain( const MediaInfo& previousInfo, const MediaInfo& u
 						updated = ( ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( updatedInfo.GetCDDB() ) ) ) &&
 							( SQLITE_OK == sqlite3_bind_int( stmt, 3 /*param*/, static_cast<int>( updatedInfo.GetTrack() ) ) ) );
 					} else {
-            if ( updatedInfo.GetCueStart() ) {
-						  updated = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( updatedInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-                ( SQLITE_OK == sqlite3_bind_int64( stmt, 3 /*param*/, *updatedInfo.GetCueStart() ) ) && ( SQLITE_OK == sqlite3_bind_int64( stmt, 4 /*param*/, updatedInfo.GetCueEnd().value_or( -1 ) ) );
-            } else {
-						  updated = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( updatedInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
-            }
+						if ( updatedInfo.GetCueStart() ) {
+							updated = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( updatedInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+								( SQLITE_OK == sqlite3_bind_int64( stmt, 3 /*param*/, *updatedInfo.GetCueStart() ) ) && ( SQLITE_OK == sqlite3_bind_int64( stmt, 4 /*param*/, updatedInfo.GetCueEnd().value_or( -1 ) ) );
+						} else {
+							updated = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( updatedInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+						}
 					}
 					if ( updated ) {
 						updated = ( SQLITE_DONE == sqlite3_step( stmt ) );
@@ -1375,11 +1375,11 @@ void Library::UpdateMediaInfoFromDecoder( MediaInfo& mediaInfo, const Decoder& d
 	mediaInfo.SetSampleRate( decoder.GetSampleRate() );
 	mediaInfo.SetBitrate( decoder.GetBitrate() );
 
-	bool updated = 
-		( mediaInfo.GetChannels() != originalInfo.GetChannels() ) || 
+	bool updated =
+		( mediaInfo.GetChannels() != originalInfo.GetChannels() ) ||
 		( mediaInfo.GetBitsPerSample().value_or( 0 ) != originalInfo.GetBitsPerSample().value_or( 0 ) ) ||
 		( mediaInfo.GetDuration() != originalInfo.GetDuration() ) ||
-		( mediaInfo.GetSampleRate() != originalInfo.GetSampleRate() ) ||	
+		( mediaInfo.GetSampleRate() != originalInfo.GetSampleRate() ) ||
 		!AreRoughlyEqual( mediaInfo.GetBitrate().value_or( 0 ), originalInfo.GetBitrate().value_or( 0 ), 0.5f );
 
 	if ( updated ) {
@@ -1499,7 +1499,7 @@ MediaInfo::List Library::GetMediaByEntityAndAlbum( const std::wstring& entity, c
 		sqlite3_stmt* stmt = nullptr;
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( entity ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-					( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
+				( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) ) {
 				while ( SQLITE_ROW == sqlite3_step( stmt ) ) {
 					MediaInfo mediaInfo;
 					ExtractMediaInfo( stmt, mediaInfo );
@@ -1521,8 +1521,8 @@ bool Library::GetEntityExists( const std::wstring& entity, const std::string& en
 		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE " + entityColumn + "=?1) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE " + entityColumn + "=?1);";
 		sqlite3_stmt* stmt = nullptr;
 		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( entity ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-				( SQLITE_ROW == sqlite3_step( stmt ) );
+			( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( entity ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+			( SQLITE_ROW == sqlite3_step( stmt ) );
 		sqlite3_finalize( stmt );
 	}
 	return exists;
@@ -1536,9 +1536,9 @@ bool Library::GetEntityAndAlbumExists( const std::wstring& entity, const std::ws
 		const std::string query = "SELECT 1 FROM Media WHERE EXISTS(SELECT 1 FROM Media WHERE " + entityColumn + "=?1 AND Album=?2) UNION SELECT 1 FROM Cues WHERE EXISTS(SELECT 1 FROM Cues WHERE " + entityColumn + "=?1 AND Album=?2);";
 		sqlite3_stmt* stmt = nullptr;
 		exists = ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( entity ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-				( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
-				( SQLITE_ROW == sqlite3_step( stmt ) );
+			( SQLITE_OK == sqlite3_bind_text( stmt, 1 /*param*/, WideStringToUTF8( entity ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+			( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( album ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+			( SQLITE_ROW == sqlite3_step( stmt ) );
 		sqlite3_finalize( stmt );
 	}
 	return exists;

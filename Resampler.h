@@ -41,7 +41,7 @@ private:
 
 	// FFmpeg resampler context.
 	SwrContext* m_Context = nullptr;
-	
+
 	// Decoded sample data to feed the FFmpeg resampler.
 	std::vector<float> m_InputBuffer;
 

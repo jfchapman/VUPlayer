@@ -98,7 +98,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 					} else if ( FILE_ATTRIBUTE_DIRECTORY & attributes ) {
 						cmdLineFiles.push_back( args[ argc ] );
 						break;
-          }
+					}
 				}
 			}
 		}
@@ -140,7 +140,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 
 	// Perform application initialization
 	MyRegisterClass( hInstance );
-	if ( !InitInstance( hInstance, nCmdShow ) )	{
+	if ( !InitInstance( hInstance, nCmdShow ) ) {
 		return FALSE;
 	}
 
@@ -156,7 +156,7 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 
 	SetErrorMode( SEM_FAILCRITICALERRORS );
 
-  VUPlayer* vuplayer = new VUPlayer( g_hInst, g_hWnd, cmdLineFiles, portable, mode );
+	VUPlayer* vuplayer = new VUPlayer( g_hInst, g_hWnd, cmdLineFiles, portable, mode );
 
 	SetWindowLongPtr( g_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( vuplayer ) );
 	MSG msg;
@@ -183,30 +183,30 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 //Registers the window class
 ATOM MyRegisterClass( HINSTANCE hInstance )
 {
-    WNDCLASSEXW wcex = {};
+	WNDCLASSEXW wcex = {};
 
-    wcex.cbSize = sizeof( WNDCLASSEX );
+	wcex.cbSize = sizeof( WNDCLASSEX );
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon( hInstance, MAKEINTRESOURCE( IDI_VUPLAYER ) );
-    wcex.hCursor        = LoadCursor( nullptr, IDC_ARROW );
-    wcex.lpszMenuName   = MAKEINTRESOURCEW( IDC_VUPLAYER );
-    wcex.lpszClassName  = g_szWindowClass;
+	wcex.style = CS_HREDRAW | CS_VREDRAW;
+	wcex.lpfnWndProc = WndProc;
+	wcex.cbClsExtra = 0;
+	wcex.cbWndExtra = 0;
+	wcex.hInstance = hInstance;
+	wcex.hIcon = LoadIcon( hInstance, MAKEINTRESOURCE( IDI_VUPLAYER ) );
+	wcex.hCursor = LoadCursor( nullptr, IDC_ARROW );
+	wcex.lpszMenuName = MAKEINTRESOURCEW( IDC_VUPLAYER );
+	wcex.lpszClassName = g_szWindowClass;
 
-		LoadIconMetric( hInstance, MAKEINTRESOURCE( IDI_VUPLAYER ), LIM_SMALL, &wcex.hIconSm );
+	LoadIconMetric( hInstance, MAKEINTRESOURCE( IDI_VUPLAYER ), LIM_SMALL, &wcex.hIconSm );
 
-    return RegisterClassExW( &wcex );
+	return RegisterClassExW( &wcex );
 }
 
 // Saves instance handle and creates main window
 BOOL InitInstance( HINSTANCE hInstance, int /*nCmdShow*/ )
 {
 	g_hInst = hInstance;
-	
+
 	if ( IsWindows10() ) {
 		// Register the appropriate Windows message, so that we can use taskbar extension shell methods.
 		g_MsgTaskbarButtonCreated = RegisterWindowMessage( L"TaskbarButtonCreated" );
@@ -229,17 +229,17 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 	VUPlayer* vuplayer = reinterpret_cast<VUPlayer*>( GetWindowLongPtr( hWnd, GWLP_USERDATA ) );
 	switch ( message )
 	{
-		case WM_COMMAND : {
+		case WM_COMMAND: {
 			const int wmId = LOWORD( wParam );
 			// Parse the menu selections:
 			switch ( wmId ) {
-				case IDM_ABOUT : {
+				case IDM_ABOUT: {
 					const HWND previousFocus = GetFocus();
-					DialogBoxParam( g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About, reinterpret_cast<LPARAM>( vuplayer ) );
+					DialogBoxParam( g_hInst, MAKEINTRESOURCE( IDD_ABOUTBOX ), hWnd, About, reinterpret_cast<LPARAM>( vuplayer ) );
 					SetFocus( previousFocus );
 					break;
 				}
-				case IDM_EXIT : {
+				case IDM_EXIT: {
 					DestroyWindow( hWnd );
 					break;
 				}
@@ -252,10 +252,10 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
-		case WM_ERASEBKGND : {
+		case WM_ERASEBKGND: {
 			return TRUE;
 		}
-		case WM_PAINT : {
+		case WM_PAINT: {
 			PAINTSTRUCT ps = {};
 			BeginPaint( hWnd, &ps );
 			if ( nullptr != vuplayer ) {
@@ -266,7 +266,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			EndPaint( hWnd, &ps );
 			break;
 		}
-		case WM_DESTROY : {
+		case WM_DESTROY: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnDestroy();
 			}
@@ -274,13 +274,13 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			PostQuitMessage( 0 );
 			break;
 		}
-		case WM_SIZE : {
+		case WM_SIZE: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnSize( wParam, lParam );
 			}
 			break;
 		}
-		case WM_NOTIFY : {
+		case WM_NOTIFY: {
 			if ( nullptr != vuplayer ) {
 				LRESULT result = 0;
 				if ( vuplayer->OnNotify( wParam, lParam, result ) ) {
@@ -289,57 +289,57 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
-		case WM_TIMER : {
+		case WM_TIMER: {
 			if ( ( nullptr != vuplayer ) && vuplayer->OnTimer( wParam ) ) {
 				return 0;
 			}
 			break;
 		}
-		case WM_GETMINMAXINFO : {
+		case WM_GETMINMAXINFO: {
 			if ( nullptr != vuplayer ) {
 				LPMINMAXINFO minMaxInfo = reinterpret_cast<LPMINMAXINFO>( lParam );
 				vuplayer->OnMinMaxInfo( minMaxInfo );
 			}
 			break;
 		}
-		case WM_INITMENU : {
+		case WM_INITMENU: {
 			if ( nullptr != vuplayer ) {
 				const HMENU menu = reinterpret_cast<HMENU>( wParam );
 				vuplayer->OnInitMenu( menu );
 			}
 			break;
 		}
-		case WM_HOTKEY : {
+		case WM_HOTKEY: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnHotkey( wParam );
 			}
 			break;
 		}
-		case WM_DEVICECHANGE : {
+		case WM_DEVICECHANGE: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnDeviceChange( wParam, lParam );
 			}
 			break;
 		}
-		case WM_SYSCOLORCHANGE : {
+		case WM_SYSCOLORCHANGE: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnSysColorChange();
 			}
 			break;
 		}
-    case WM_POWERBROADCAST : {
+		case WM_POWERBROADCAST: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnPowerBroadcast( wParam );
 			}
-      return TRUE;
-    }
-    case WM_DISPLAYCHANGE : {
+			return TRUE;
+		}
+		case WM_DISPLAYCHANGE: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnDisplayChange();
 			}
-      break;
-    }
-		case WM_COPYDATA : {
+			break;
+		}
+		case WM_COPYDATA: {
 			if ( nullptr != vuplayer ) {
 				COPYDATASTRUCT* copyData = reinterpret_cast<COPYDATASTRUCT*>( lParam );
 				if ( ( nullptr != copyData ) && ( VUPLAYER_COPYDATA == copyData->dwData ) && ( 0 != copyData->cbData ) && ( nullptr != copyData->lpData ) ) {
@@ -359,10 +359,10 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 							if ( !autoplay.empty() ) {
 								filenames.push_back( autoplay );
 								break;
-					    } else if ( FILE_ATTRIBUTE_DIRECTORY & attributes ) {
-						    filenames.push_back( filename );
-						    break;
-              }
+							} else if ( FILE_ATTRIBUTE_DIRECTORY & attributes ) {
+								filenames.push_back( filename );
+								break;
+							}
 						}
 						filename += ( 1 + wcslen( filename ) );
 					}
@@ -371,14 +371,14 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
-		case MSG_RESTARTPLAYBACK : {
+		case MSG_RESTARTPLAYBACK: {
 			if ( nullptr != vuplayer ) {
 				const long itemID = static_cast<long>( wParam );
 				vuplayer->OnRestartPlayback( itemID );
 			}
 			break;
 		}
-		case MSG_MEDIAUPDATED : {
+		case MSG_MEDIAUPDATED: {
 			if ( nullptr != vuplayer ) {
 				const MediaInfo* previousMediaInfo = reinterpret_cast<const MediaInfo*>( wParam );
 				const MediaInfo* updatedMediaInfo = reinterpret_cast<const MediaInfo*>( lParam );
@@ -390,22 +390,22 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
-    case MSG_LIBRARYREFRESHED : {
+		case MSG_LIBRARYREFRESHED: {
 			if ( nullptr != vuplayer ) {
-        const MediaInfo::List* removedFiles = reinterpret_cast<const MediaInfo::List*>( wParam );
-        vuplayer->OnHandleLibraryRefreshed( removedFiles );
-        delete removedFiles;
-        removedFiles = nullptr;
-      }
-      break;
-    }
-		case MSG_DISCREFRESHED : {
+				const MediaInfo::List* removedFiles = reinterpret_cast<const MediaInfo::List*>( wParam );
+				vuplayer->OnHandleLibraryRefreshed( removedFiles );
+				delete removedFiles;
+				removedFiles = nullptr;
+			}
+			break;
+		}
+		case MSG_DISCREFRESHED: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnHandleDiscRefreshed();
 			}
 			break;
 		}
-		case MSG_MUSICBRAINZQUERYRESULT : {
+		case MSG_MUSICBRAINZQUERYRESULT: {
 			if ( nullptr != vuplayer ) {
 				const MusicBrainz::Result* result = reinterpret_cast<const MusicBrainz::Result*>( wParam );
 				if ( nullptr != result ) {
@@ -416,13 +416,13 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
-		case MSG_TRAYNOTIFY : {
+		case MSG_TRAYNOTIFY: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnTrayNotify( wParam, lParam );
 			}
 			break;
 		}
-		default : {
+		default: {
 			if ( ( g_MsgTaskbarButtonCreated == message ) && ( 0 != g_MsgTaskbarButtonCreated ) && ( nullptr != vuplayer ) ) {
 				vuplayer->OnTaskbarButtonCreated();
 			}
@@ -446,24 +446,24 @@ INT_PTR CALLBACK About( HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam )
 			}
 			return (INT_PTR)TRUE;
 		}
-		case WM_NOTIFY : {
+		case WM_NOTIFY: {
 			PNMLINK nmlink = reinterpret_cast<PNMLINK>( lParam );
 			if ( nullptr != nmlink ) {
 				if ( NM_CLICK == nmlink->hdr.code ) {
 					switch ( nmlink->hdr.idFrom ) {
-						case IDC_SYSLINK_VUPLAYER : {
+						case IDC_SYSLINK_VUPLAYER: {
 							ShellExecute( NULL, L"open", L"http://www.vuplayer.com", NULL, NULL, SW_SHOWNORMAL );
 							break;
 						}
-						case IDC_SYSLINK_BASS : {
+						case IDC_SYSLINK_BASS: {
 							ShellExecute( NULL, L"open", L"http://www.un4seen.com", NULL, NULL, SW_SHOWNORMAL );
 							break;
 						}
-						case IDC_SYSLINK_MUSICBRAINZ : {
+						case IDC_SYSLINK_MUSICBRAINZ: {
 							ShellExecute( NULL, L"open", L"https://musicbrainz.org/", NULL, NULL, SW_SHOWNORMAL );
 							break;
 						}
-						default : {
+						default: {
 							break;
 						}
 					}

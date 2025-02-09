@@ -39,7 +39,7 @@ public:
 
 private:
 	// Maps a audio subtype GUID string to an audio format description.
-	typedef std::map<std::wstring,std::wstring> AudioFormatMap;
+	typedef std::map<std::wstring, std::wstring> AudioFormatMap;
 
 	// Audio format descriptions
 	static AudioFormatMap s_AudioFormatDescriptions;
@@ -47,4 +47,3 @@ private:
 	// Audio format descriptions mutex
 	static std::mutex s_AudioFormatMutex;
 };
-

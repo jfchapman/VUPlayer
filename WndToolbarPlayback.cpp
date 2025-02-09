@@ -17,7 +17,7 @@ void WndToolbarPlayback::Update( Output& output, const Playlist::Ptr playlist, c
 	bool showPause = false;
 	const Output::State state = output.GetState();
 	switch ( state ) {
-		case Output::State::Playing : {
+		case Output::State::Playing: {
 			Playlist::Ptr outputPlaylist = output.GetPlaylist();
 			if ( outputPlaylist ) {
 				playEnabled = true;
@@ -27,7 +27,7 @@ void WndToolbarPlayback::Update( Output& output, const Playlist::Ptr playlist, c
 			}
 			break;
 		}
-		case Output::State::Paused : {
+		case Output::State::Paused: {
 			Playlist::Ptr outputPlaylist = output.GetPlaylist();
 			if ( outputPlaylist ) {
 				playEnabled = true;
@@ -36,14 +36,14 @@ void WndToolbarPlayback::Update( Output& output, const Playlist::Ptr playlist, c
 			}
 			break;
 		}
-		case Output::State::Stopped : {
+		case Output::State::Stopped: {
 			if ( playlist ) {
 				playEnabled = ( playlist->GetCount() > 0 );
 				previousEnabled = nextEnabled = ( 0 != selectedItem.ID );
 			}
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}
@@ -97,23 +97,23 @@ UINT WndToolbarPlayback::GetTooltip( const UINT commandID ) const
 {
 	UINT tooltip = 0;
 	switch ( commandID ) {
-		case ID_CONTROL_PLAY : {
+		case ID_CONTROL_PLAY: {
 			tooltip = IsPauseShown() ? IDS_CONTROL_PAUSE : IDS_CONTROL_PLAY;
 			break;
 		}
-		case ID_CONTROL_STOP : {
+		case ID_CONTROL_STOP: {
 			tooltip = IDS_CONTROL_STOP;
 			break;
 		}
-		case ID_CONTROL_PREVIOUSTRACK : {
+		case ID_CONTROL_PREVIOUSTRACK: {
 			tooltip = IDS_CONTROL_PREVIOUS;
 			break;
 		}
-		case ID_CONTROL_NEXTTRACK : {
+		case ID_CONTROL_NEXTTRACK: {
 			tooltip = IDS_CONTROL_NEXT;
 			break;
 		}
-		default : {
+		default: {
 			break;
 		}
 	}

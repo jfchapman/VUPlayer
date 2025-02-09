@@ -23,4 +23,3 @@ private:
 	// Creates the buttons.
 	void CreateButtons();
 };
-

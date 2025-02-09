@@ -2,7 +2,7 @@
 
 #include "Visual.h"
 
-class Artwork :	public Visual
+class Artwork : public Visual
 {
 public:
 	// 'wndVisual' - Visual container window.
@@ -28,7 +28,7 @@ public:
 	// Called when the system colours have changed.
 	void OnSysColorChange() override;
 
-  // Called when the visual should free any resources.
+	// Called when the visual should free any resources.
 	void FreeResources() override;
 
 private:
@@ -39,7 +39,7 @@ private:
 	std::unique_ptr<Gdiplus::Bitmap> GetArtworkBitmap( const MediaInfo& mediaInfo );
 
 	// Currently displayed bitmap.
-  Microsoft::WRL::ComPtr<ID2D1Bitmap>	m_Bitmap;
+	Microsoft::WRL::ComPtr<ID2D1Bitmap>	m_Bitmap;
 
 	// Currently displayed artwork ID.
 	std::wstring m_ArtworkID;
@@ -47,4 +47,3 @@ private:
 	// The previous drawan size.
 	D2D1_SIZE_F m_PreviousSize;
 };
-

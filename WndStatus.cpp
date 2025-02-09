@@ -24,18 +24,18 @@ LRESULT CALLBACK WndStatus::StatusProc( HWND hwnd, UINT message, WPARAM wParam, 
 	WndStatus* wndStatus = reinterpret_cast<WndStatus*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndStatus ) {
 		switch ( message ) {
-			case WM_SIZE : {
+			case WM_SIZE: {
 				if ( SIZE_MINIMIZED != wParam ) {
 					wndStatus->Resize( static_cast<int>( LOWORD( lParam ) ) );
 				}
 				break;
 			}
-			case WM_DESTROY : {
+			case WM_DESTROY: {
 				SetWindowLongPtr( hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( wndStatus->GetDefaultWndProc() ) );
 				SetWindowLongPtr( hwnd, DWLP_USER, 0 );
 				break;
 			}
-			case MSG_UPDATESTATUS : {
+			case MSG_UPDATESTATUS: {
 				wndStatus->Refresh();
 				break;
 			}
@@ -59,7 +59,7 @@ WndStatus::WndStatus( HINSTANCE instance, HWND parent ) :
 	const int width = 0;
 	const int height = 0;
 	LPVOID param = NULL;
-	m_hWnd=CreateWindowEx( 0, STATUSCLASSNAME, 0, style ,x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndStatusID ), instance, param );
+	m_hWnd = CreateWindowEx( 0, STATUSCLASSNAME, 0, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndStatusID ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( StatusProc ) ) );
 
