@@ -4,6 +4,7 @@
 #include "EncoderFlac.h"
 
 #include "Utility.h"
+#include "resource.h"
 
 // Amount of padding to add when writing out FLAC files that don't contain any padding.
 constexpr uint32_t kPaddingSize = 1024;
@@ -367,12 +368,122 @@ bool HandlerFlac::IsEncoder() const
 
 bool HandlerFlac::CanConfigureEncoder() const
 {
-	return false;
+	return true;
 }
 
-bool HandlerFlac::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*parent*/, std::string& /*settings*/ ) const
+INT_PTR CALLBACK HandlerFlac::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
-	return false;
+	switch ( message ) {
+		case WM_INITDIALOG: {
+			ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( lParam );
+			if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
+				SetWindowLongPtr( hwnd, DWLP_USER, reinterpret_cast<LPARAM>( config ) );
+				config->m_Handler->OnConfigureInit( hwnd, config->m_Settings );
+			}
+			break;
+		}
+		case WM_DESTROY: {
+			SetWindowLongPtr( hwnd, DWLP_USER, 0 );
+			break;
+		}
+		case WM_COMMAND: {
+			switch ( LOWORD( wParam ) ) {
+				case IDCANCEL:
+				case IDOK: {
+					ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
+					if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
+						config->m_Handler->OnConfigureClose( hwnd, config->m_Settings );
+					}
+					EndDialog( hwnd, IDOK == LOWORD( wParam ) );
+					return TRUE;
+				}
+				case IDC_ENCODER_FLAC_DEFAULT: {
+					ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
+					if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
+						config->m_Handler->OnConfigureDefault( hwnd, config->m_Settings );
+					}
+					break;
+				}
+				default: {
+					break;
+				}
+			}
+			break;
+		}
+		case WM_NOTIFY: {
+			LPNMHDR nmhdr = reinterpret_cast<LPNMHDR>( lParam );
+			if ( ( nullptr != nmhdr ) && ( nmhdr->code == TTN_GETDISPINFO ) ) {
+				ConfigurationInfo* config = reinterpret_cast<ConfigurationInfo*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
+				if ( nullptr != config ) {
+					const HWND sliderWnd = reinterpret_cast<HWND>( nmhdr->idFrom );
+					const std::wstring tooltip = config->m_Handler->GetTooltip( config->m_hInst, sliderWnd );
+					LPNMTTDISPINFO info = reinterpret_cast<LPNMTTDISPINFO>( lParam );
+					wcscpy_s( info->szText, tooltip.c_str() );
+				}
+			}
+			break;
+		}
+		default: {
+			break;
+		}
+	}
+	return FALSE;
+}
+
+bool HandlerFlac::ConfigureEncoder( const HINSTANCE instance, const HWND parent, std::string& settings ) const
+{
+	ConfigurationInfo* config = new ConfigurationInfo( { settings, this, instance } );
+	const bool configured = static_cast<bool>( DialogBoxParam( instance, MAKEINTRESOURCE( IDD_ENCODER_FLAC ), parent, DialogProc, reinterpret_cast<LPARAM>( config ) ) );
+	delete config;
+	return configured;
+}
+
+void HandlerFlac::OnConfigureInit( const HWND hwnd, const std::string& settings ) const
+{
+	CentreDialog( hwnd );
+	const HWND sliderWnd = GetDlgItem( hwnd, IDC_ENCODER_FLAC_COMPRESSION );
+	if ( nullptr != sliderWnd ) {
+		SendMessage( sliderWnd, TBM_SETRANGEMIN, TRUE /*redraw*/, EncoderFlac::GetMinimumCompressionLevel() );
+		SendMessage( sliderWnd, TBM_SETRANGEMAX, TRUE /*redraw*/, EncoderFlac::GetMaximumCompressionLevel() );
+		SendMessage( sliderWnd, TBM_SETTICFREQ, 1, 0 );
+		SetCompressionLevel( sliderWnd, EncoderFlac::GetCompressionLevel( settings ) );
+	}
+}
+
+void HandlerFlac::OnConfigureDefault( const HWND hwnd, std::string& /*settings*/ ) const
+{
+	const HWND sliderWnd = GetDlgItem( hwnd, IDC_ENCODER_FLAC_COMPRESSION );
+	if ( nullptr != sliderWnd ) {
+		SetCompressionLevel( sliderWnd, EncoderFlac::GetDefaultCompressionLevel() );
+	}
+}
+
+void HandlerFlac::OnConfigureClose( const HWND hwnd, std::string& settings ) const
+{
+	const HWND sliderWnd = GetDlgItem( hwnd, IDC_ENCODER_FLAC_COMPRESSION );
+	if ( nullptr != sliderWnd ) {
+		settings = std::to_string( GetCompressionLevel( sliderWnd ) );
+	}
+}
+
+int HandlerFlac::GetCompressionLevel( const HWND slider ) const
+{
+	return static_cast<int>( SendMessage( slider, TBM_GETPOS, 0, 0 ) );
+}
+
+void HandlerFlac::SetCompressionLevel( const HWND slider, const int compression ) const
+{
+	SendMessage( slider, TBM_SETPOS, TRUE /*redraw*/, compression );
+}
+
+std::wstring HandlerFlac::GetTooltip( const HINSTANCE instance, const HWND slider ) const
+{
+	const int compression = GetCompressionLevel( slider );
+	const int bufSize = 32;
+	WCHAR buffer[ bufSize ] = {};
+	LoadString( instance, IDS_FLAC_COMPRESSION, buffer, bufSize );
+	const std::wstring tooltip = std::wstring( buffer ) + L": " + std::to_wstring( compression );
+	return tooltip;
 }
 
 void HandlerFlac::SettingsChanged( Settings& /*settings*/ )

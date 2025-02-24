@@ -36,7 +36,8 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "Bitrate", Column::Bitrate ),
 		Columns::value_type( "Composer", Column::Composer ),
 		Columns::value_type( "Conductor", Column::Conductor ),
-		Columns::value_type( "Publisher", Column::Publisher )
+		Columns::value_type( "Publisher", Column::Publisher ),
+		Columns::value_type( "PlayCount", Column::PlayCount )
 		} ),
 	m_CDDAColumns( {
 		Columns::value_type( "CDDB", Column::CDDB ),
@@ -54,7 +55,8 @@ Library::Library( Database& database, const Handlers& handlers ) :
 		Columns::value_type( "Artwork", Column::Artwork ),
 		Columns::value_type( "Composer", Column::Composer ),
 		Columns::value_type( "Conductor", Column::Conductor ),
-		Columns::value_type( "Publisher", Column::Publisher )
+		Columns::value_type( "Publisher", Column::Publisher ),
+		Columns::value_type( "PlayCount", Column::PlayCount )
 		} )
 {
 	m_CueColumns = m_MediaColumns;
@@ -611,6 +613,12 @@ bool Library::ExtractMediaInfo( sqlite3_stmt* stmt, MediaInfo& mediaInfo )
 						}
 						break;
 					}
+					case Column::PlayCount: {
+						if ( SQLITE_NULL != sqlite3_column_type( stmt, columnIndex ) ) {
+							mediaInfo.SetPlayCount( static_cast<long>( sqlite3_column_int64( stmt, columnIndex ) ) );
+						}
+						break;
+					}
 				}
 			}
 		}
@@ -764,6 +772,10 @@ bool Library::UpdateMediaLibrary( const MediaInfo& mediaInfo )
 					}
 					case Column::Publisher: {
 						sqlite3_bind_text( stmt, ++param, WideStringToUTF8( mediaInfo.GetPublisher() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT );
+						break;
+					}
+					case Column::PlayCount: {
+						sqlite3_bind_int( stmt, ++param, static_cast<int>( mediaInfo.GetPlayCount() ) );
 						break;
 					}
 					default: {
@@ -1363,6 +1375,52 @@ bool Library::UpdateTrackGain( const MediaInfo& previousInfo, const MediaInfo& u
 		}
 	}
 	return updated;
+}
+
+void Library::UpdatePlayCount( const MediaInfo& previousInfo )
+{
+	if ( sqlite3* database = m_Database.GetDatabase(); nullptr != database ) {
+		MediaInfo updatedInfo( previousInfo );
+		updatedInfo.IncrementPlayCount();
+		std::string query;
+		if ( MediaInfo::Source::CDDA == updatedInfo.GetSource() ) {
+			query = "UPDATE CDDA SET PlayCount=?1 WHERE CDDB=?2 AND Track=?3;";
+		} else {
+			if ( updatedInfo.GetCueStart() ) {
+				query = "UPDATE Cues SET PlayCount=?1 WHERE Filename=?2 AND CueStart=?3 AND CueEnd=?4;";
+			} else {
+				query = "UPDATE Media SET PlayCount=?1 WHERE Filename=?2;";
+			}
+		}
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			const auto playCount = static_cast<int>( updatedInfo.GetPlayCount() );
+			bool ok = ( SQLITE_OK == sqlite3_bind_int( stmt, 1 /*param*/, playCount ) );
+			if ( ok ) {
+				if ( MediaInfo::Source::CDDA == updatedInfo.GetSource() ) {
+					ok = ( ( SQLITE_OK == sqlite3_bind_int( stmt, 2 /*param*/, static_cast<int>( updatedInfo.GetCDDB() ) ) ) &&
+						( SQLITE_OK == sqlite3_bind_int( stmt, 3 /*param*/, static_cast<int>( updatedInfo.GetTrack() ) ) ) );
+				} else {
+					if ( updatedInfo.GetCueStart() ) {
+						ok = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( updatedInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) ) &&
+							( SQLITE_OK == sqlite3_bind_int64( stmt, 3 /*param*/, *updatedInfo.GetCueStart() ) ) && ( SQLITE_OK == sqlite3_bind_int64( stmt, 4 /*param*/, updatedInfo.GetCueEnd().value_or( -1 ) ) );
+					} else {
+						ok = ( SQLITE_OK == sqlite3_bind_text( stmt, 2 /*param*/, WideStringToUTF8( updatedInfo.GetFilename() ).c_str(), -1 /*strLen*/, SQLITE_TRANSIENT ) );
+					}
+				}
+				if ( ok ) {
+					ok = ( SQLITE_DONE == sqlite3_step( stmt ) );
+				}
+			}
+			sqlite3_finalize( stmt );
+			if ( ok ) {
+				VUPlayer* vuplayer = VUPlayer::Get();
+				if ( nullptr != vuplayer ) {
+					vuplayer->OnMediaUpdated( previousInfo, updatedInfo );
+				}
+			}
+		}
+	}
 }
 
 void Library::UpdateMediaInfoFromDecoder( MediaInfo& mediaInfo, const Decoder& decoder, const bool sendNotification )

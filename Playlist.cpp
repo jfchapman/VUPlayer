@@ -154,7 +154,7 @@ bool Playlist::GetNextItem( const Item& currentItem, Item& nextItem, const bool 
 		if ( static_cast<size_t>( 1 + currentPosition ) < m_Playlist.size() ) {
 			nextItem = m_Playlist[ 1 + currentPosition ];
 			success = true;
-		} else if ( wrap ) {
+		} else if ( wrap && !m_Playlist.empty() ) {
 			nextItem = m_Playlist.front();
 			success = true;
 		}
@@ -170,7 +170,7 @@ bool Playlist::GetPreviousItem( const Item& currentItem, Item& previousItem, con
 		if ( currentPosition > 0 ) {
 			previousItem = m_Playlist[ currentPosition - 1 ];
 			success = true;
-		} else if ( wrap ) {
+		} else if ( wrap && !m_Playlist.empty() ) {
 			previousItem = m_Playlist.back();
 			success = true;
 		}
@@ -633,6 +633,10 @@ bool Playlist::LessThan( const Item& item1, const Item& item2, const Column colu
 		}
 		case Column::Publisher: {
 			lessThan = _wcsicmp( item1.Info.GetPublisher().c_str(), item2.Info.GetPublisher().c_str() ) < 0;
+			break;
+		}
+		case Column::PlayCount: {
+			lessThan = item1.Info.GetPlayCount() < item2.Info.GetPlayCount();
 			break;
 		}
 	}

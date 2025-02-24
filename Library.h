@@ -45,6 +45,7 @@ public:
 		Composer = 25,
 		Conductor = 26,
 		Publisher = 27,
+		PlayCount = 28,
 
 		_Undefined
 	};
@@ -206,6 +207,9 @@ public:
 
 	// Returns whether there has been a recent attempt to write the tags for the 'filename'.
 	bool HasRecentlyWrittenTag( const std::wstring& filename ) const;
+
+	// Updates the play count for a track.
+	void UpdatePlayCount( const MediaInfo& mediaInfo );
 
 private:
 	// Media library columns.

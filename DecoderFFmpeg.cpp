@@ -54,9 +54,9 @@ DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context contex
 										const AVSampleFormat dstFormat = AV_SAMPLE_FMT_FLT;
 										result = swr_alloc_set_opts2( &m_ResamplerContext, &dstLayout, dstFormat, codecParams->sample_rate, &srcLayout, srcFormat, codecParams->sample_rate, 0, nullptr );
 										if ( result >= 0 ) {
-											if ( swr_init( m_ResamplerContext ) < 0 ) {
+											result = swr_init( m_ResamplerContext );
+											if ( result < 0 ) {
 												swr_free( &m_ResamplerContext );
-												m_ResamplerContext = nullptr;
 											}
 										}
 									}
@@ -70,34 +70,33 @@ DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context contex
 	}
 
 	if ( ( nullptr == m_FormatContext ) || ( nullptr == m_DecoderContext ) || ( nullptr == m_Packet ) || ( nullptr == m_Frame ) || ( nullptr == m_ResamplerContext ) ) {
-		if ( nullptr != m_Packet ) {
-			av_packet_free( &m_Packet );
-		}
-		if ( nullptr != m_Frame ) {
-			av_frame_free( &m_Frame );
-		}
-		if ( nullptr != m_DecoderContext ) {
-			avcodec_free_context( &m_DecoderContext );
-		}
-		if ( nullptr != m_FormatContext ) {
-			avformat_close_input( &m_FormatContext );
-		}
-		if ( nullptr != m_ResamplerContext ) {
-			swr_free( &m_ResamplerContext );
-		}
+		FreeContexts();
 		throw std::runtime_error( "DecoderFFmpeg could not load file" );
 	}
 }
 
 DecoderFFmpeg::~DecoderFFmpeg()
 {
+	FreeContexts();
+}
+
+void DecoderFFmpeg::FreeContexts()
+{
 	if ( nullptr != m_Packet ) {
 		av_packet_free( &m_Packet );
 	}
-	av_frame_free( &m_Frame );
-	avcodec_free_context( &m_DecoderContext );
-	avformat_close_input( &m_FormatContext );
-	swr_free( &m_ResamplerContext );
+	if ( nullptr != m_Frame ) {
+		av_frame_free( &m_Frame );
+	}
+	if ( nullptr != m_DecoderContext ) {
+		avcodec_free_context( &m_DecoderContext );
+	}
+	if ( nullptr != m_FormatContext ) {
+		avformat_close_input( &m_FormatContext );
+	}
+	if ( nullptr != m_ResamplerContext ) {
+		swr_free( &m_ResamplerContext );
+	}
 }
 
 void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame )

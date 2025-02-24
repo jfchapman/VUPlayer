@@ -43,4 +43,41 @@ public:
 
 	// Called when the application 'settings' have changed.
 	void SettingsChanged( Settings& settings ) override;
+
+private:
+	// Configuration dialog initialisation information.
+	struct ConfigurationInfo {
+		// Configuration settings.
+		std::string& m_Settings;
+
+		// Handler object.
+		const HandlerFFmpeg* m_Handler;
+
+		// Application instance handle.
+		HINSTANCE m_hInst;
+	};
+
+	// Encoder configuration dialog box procedure.
+	static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
+	// Called when the encoder configuration dialog is initialised.
+	// 'hwnd' - dialog window handle.
+	// 'settings' - configuration settings.
+	void OnConfigureInit( const HWND hwnd, const std::string& settings ) const;
+
+	// Called when the default button is pressed on the encoder configuration dialog.
+	// 'hwnd' - dialog window handle.
+	// 'settings' - out, configuration settings.
+	void OnConfigureDefault( const HWND hwnd, std::string& settings ) const;
+
+	// Called when the encoder configuration dialog is closed.
+	// 'hwnd' - dialog window handle.
+	// 'settings' - out, configuration settings.
+	void OnConfigureClose( const HWND hwnd, std::string& settings ) const;
+
+	// Returns the current bitrate control value.
+	int GetBitrate( const HWND control ) const;
+
+	// Sets the current bitrate control value.
+	void SetBitrate( const HWND control, const int bitrate ) const;
 };

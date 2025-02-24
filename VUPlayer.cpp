@@ -102,6 +102,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_Hotkeys( m_hWnd, m_Settings ),
 	m_LastSkipCount( {} ),
 	m_LastOutputStateChange( 0 ),
+	m_LastPause( 0 ),
 	m_AddToPlaylistMenuMap(),
 	m_TitlebarText(),
 	m_IdleText(),
@@ -577,7 +578,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 
 void VUPlayer::OnOutputChanged( const Output::Item& previousItem, const Output::Item& currentItem )
 {
-	UpdateScrobbler( previousItem, currentItem );
+	UpdatePlayCount( previousItem, currentItem );
 	if ( ID_VISUAL_ARTWORK == m_Visual.GetCurrentVisualID() ) {
 		m_Splitter.Resize();
 		m_Visual.DoRender();
@@ -635,7 +636,7 @@ void VUPlayer::OnDestroy()
 
 	m_Output.Stop();
 
-	UpdateScrobbler( m_CurrentOutput, m_Output.GetCurrentPlaying() );
+	UpdatePlayCount( m_CurrentOutput, m_Output.GetCurrentPlaying() );
 
 	m_GainCalculator.Stop();
 	m_Maintainer.Stop();
@@ -697,9 +698,19 @@ void VUPlayer::OnCommand( const int commandID )
 		case ID_TRAY_PLAY: {
 			const Output::State state = m_Output.GetState();
 			switch ( state ) {
-				case Output::State::Paused:
+				case Output::State::Paused: {
+					m_Output.Pause();
+					if ( m_LastPause > 0 ) {
+						// Ignore time spent paused when scrobbling or incrementing the play count.
+						const auto now = time( nullptr );
+						m_LastOutputStateChange += ( now - m_LastPause );
+						m_LastPause = 0;
+					}
+					break;
+				}
 				case Output::State::Playing: {
 					m_Output.Pause();
+					m_LastPause = time( nullptr );
 					break;
 				}
 				default: {
@@ -1085,6 +1096,7 @@ void VUPlayer::OnCommand( const int commandID )
 		case ID_SHOWCOLUMNS_FILETIME:
 		case ID_SHOWCOLUMNS_TRACKGAIN:
 		case ID_SHOWCOLUMNS_ALBUMGAIN:
+		case ID_SHOWCOLUMNS_PLAYCOUNT:
 		case ID_SHOWCOLUMNS_STATUS: {
 			m_List.OnShowColumn( commandID );
 			break;
@@ -1109,7 +1121,8 @@ void VUPlayer::OnCommand( const int commandID )
 		case ID_SORTPLAYLIST_FILENAME:
 		case ID_SORTPLAYLIST_FILETIME:
 		case ID_SORTPLAYLIST_TRACKGAIN:
-		case ID_SORTPLAYLIST_ALBUMGAIN: {
+		case ID_SORTPLAYLIST_ALBUMGAIN:
+		case ID_SORTPLAYLIST_PLAYCOUNT: {
 			m_List.OnSortPlaylist( commandID );
 			break;
 		}
@@ -2166,12 +2179,30 @@ void VUPlayer::SetTitlebarText( const Output::Item& item )
 	}
 }
 
-void VUPlayer::UpdateScrobbler( const Output::Item& previousItem, const Output::Item& currentItem )
+void VUPlayer::UpdatePlayCount( const Output::Item& previousItem, const Output::Item& currentItem )
 {
 	const time_t now = time( nullptr );
-	m_Scrobbler.NowPlaying( currentItem.PlaylistItem.Info );
+	const auto& previousMediaInfo = previousItem.PlaylistItem.Info;
+	const auto& currentMediaInfo = currentItem.PlaylistItem.Info;
+
+	if ( m_LastPause > 0 ) {
+		// Ignore time spent paused.
+		m_LastOutputStateChange += ( now - m_LastPause );
+		m_LastPause = 0;
+	}
+
+	const time_t trackSeconds = static_cast<time_t>( previousMediaInfo.GetDuration() );
 	if ( 0 != previousItem.PlaylistItem.ID ) {
-		m_Scrobbler.Scrobble( previousItem.PlaylistItem.Info, m_LastOutputStateChange );
+		const time_t playedSeconds = now - m_LastOutputStateChange;
+		// Use a similar metric as the scrobbler to determine if a track has been played (either 4 minutes play time, or half the track length)
+		if ( ( playedSeconds >= 240 ) || ( ( trackSeconds > 0 ) && ( ( playedSeconds * 2 ) >= trackSeconds ) ) ) {
+			m_Library.UpdatePlayCount( previousMediaInfo );
+		}
+	}
+
+	m_Scrobbler.NowPlaying( currentMediaInfo );
+	if ( 0 != previousItem.PlaylistItem.ID ) {
+		m_Scrobbler.Scrobble( previousMediaInfo, m_LastOutputStateChange );
 	}
 	m_LastOutputStateChange = now;
 }

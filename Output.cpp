@@ -504,7 +504,7 @@ void Output::Previous( const bool forcePrevious, const float seek )
 							previousItem = m_Playlist->GetRandomItem( currentItem );
 						}
 					} else {
-						m_Playlist->GetPreviousItem( currentItem, previousItem );
+						m_Playlist->GetPreviousItem( currentItem, previousItem, GetRepeatPlaylist() );
 					}
 				}
 
@@ -541,7 +541,7 @@ void Output::Next()
 					nextItem = m_Playlist->GetRandomItem( currentItem );
 				}
 			} else {
-				m_Playlist->GetNextItem( currentItem, nextItem );
+				m_Playlist->GetNextItem( currentItem, nextItem, GetRepeatPlaylist() );
 			}
 		}
 

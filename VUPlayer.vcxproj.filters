@@ -357,7 +357,10 @@
     <ClInclude Include="Resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\sqlite-3.48.0\sqlite3.h">
+    <ClInclude Include="EncoderFFmpeg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\sqlite-3.49.1\sqlite3.h">
       <Filter>Third Party</Filter>
     </ClInclude>
   </ItemGroup>
@@ -665,7 +668,10 @@
     <ClCompile Include="Resampler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.48.0\sqlite3.c">
+    <ClCompile Include="EncoderFFmpeg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\sqlite-3.49.1\sqlite3.c">
       <Filter>Third Party</Filter>
     </ClCompile>
   </ItemGroup>

@@ -36,7 +36,8 @@ WndList::ColumnFormats WndList::s_ColumnFormats = {
 	{ Playlist::Column::GainTrack, ColumnFormat( {      ID_SHOWCOLUMNS_TRACKGAIN,       ID_SORTPLAYLIST_TRACKGAIN,      IDS_COLUMN_GAINTRACK,      LVCFMT_RIGHT,   static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
 	{ Playlist::Column::GainAlbum, ColumnFormat( {      ID_SHOWCOLUMNS_ALBUMGAIN,       ID_SORTPLAYLIST_ALBUMGAIN,      IDS_COLUMN_GAINALBUM,      LVCFMT_RIGHT,   static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
 	{ Playlist::Column::Bitrate, ColumnFormat( {        ID_SHOWCOLUMNS_BITRATE,         ID_SORTPLAYLIST_BITRATE,        IDS_COLUMN_BITRATE,        LVCFMT_RIGHT,   static_cast<int>( 100 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
-	{ Playlist::Column::Filename, ColumnFormat( {       ID_SHOWCOLUMNS_FILENAME,        ID_SORTPLAYLIST_FILENAME,       IDS_COLUMN_FILENAME,       LVCFMT_LEFT,    static_cast<int>( 150 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) }
+	{ Playlist::Column::Filename, ColumnFormat( {       ID_SHOWCOLUMNS_FILENAME,        ID_SORTPLAYLIST_FILENAME,       IDS_COLUMN_FILENAME,       LVCFMT_LEFT,    static_cast<int>( 150 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) },
+	{ Playlist::Column::PlayCount, ColumnFormat( {      ID_SHOWCOLUMNS_PLAYCOUNT,       ID_SORTPLAYLIST_PLAYCOUNT,      IDS_COLUMN_PLAYCOUNT,      LVCFMT_CENTER,  static_cast<int>( 50 * GetDPIScaling() ) /*width*/, false /*canEdit*/ } ) }
 };
 
 // List control ID
@@ -654,6 +655,16 @@ void WndList::OnDisplayInfo( LVITEM& lvItem )
 						text = mediaInfo.GetPublisher();
 						break;
 					}
+					case Playlist::Column::PlayCount: {
+						long playCount = mediaInfo.GetPlayCount();
+						for ( const auto& duplicate : playlistItem.Duplicates ) {
+							MediaInfo duplicateMediaInfo( duplicate );
+							m_Playlist->GetLibrary().GetMediaInfo( duplicateMediaInfo, false, false );
+							playCount += duplicateMediaInfo.GetPlayCount();
+						}
+						text = ( playCount > 0 ) ? std::to_wstring( playCount ) : std::wstring();
+						break;
+					}
 					default: {
 						break;
 					}
@@ -808,6 +819,7 @@ void WndList::OnCommand( const UINT command )
 		case ID_SHOWCOLUMNS_FILETIME:
 		case ID_SHOWCOLUMNS_TRACKGAIN:
 		case ID_SHOWCOLUMNS_ALBUMGAIN:
+		case ID_SHOWCOLUMNS_PLAYCOUNT:
 		case ID_SHOWCOLUMNS_STATUS: {
 			OnShowColumn( command );
 			break;
@@ -832,7 +844,8 @@ void WndList::OnCommand( const UINT command )
 		case ID_SORTPLAYLIST_FILENAME:
 		case ID_SORTPLAYLIST_FILETIME:
 		case ID_SORTPLAYLIST_TRACKGAIN:
-		case ID_SORTPLAYLIST_ALBUMGAIN: {
+		case ID_SORTPLAYLIST_ALBUMGAIN:
+		case ID_SORTPLAYLIST_PLAYCOUNT: {
 			OnSortPlaylist( command );
 			break;
 		}
@@ -1623,7 +1636,7 @@ void WndList::SelectPreviousItem()
 	if ( m_Playlist ) {
 		const Playlist::Item currentItem = GetCurrentSelectedItem();
 		Playlist::Item previousItem = {};
-		if ( m_Playlist->GetPreviousItem( currentItem, previousItem ) ) {
+		if ( m_Playlist->GetPreviousItem( currentItem, previousItem, m_Output.GetRepeatPlaylist() ) ) {
 			DeselectAllItems();
 			// Select previous item.
 			if ( const int itemIndex = FindItemIndex( previousItem.ID ); itemIndex >= 0 ) {
@@ -1639,7 +1652,7 @@ void WndList::SelectNextItem()
 	if ( m_Playlist ) {
 		const Playlist::Item currentItem = GetCurrentSelectedItem();
 		Playlist::Item nextItem = {};
-		if ( m_Playlist->GetNextItem( currentItem, nextItem ) ) {
+		if ( m_Playlist->GetNextItem( currentItem, nextItem, m_Output.GetRepeatPlaylist() ) ) {
 			DeselectAllItems();
 			// Select next item.
 			if ( const int itemIndex = FindItemIndex( nextItem.ID ); itemIndex >= 0 ) {
@@ -1989,16 +2002,16 @@ void WndList::GetColumnVisibility( std::set<UINT>& shown, std::set<UINT>& hidden
 
 bool WndList::SelectPlaylistItem( const long itemID )
 {
-	if ( const int selectedIndex = FindItemIndex( itemID ); selectedIndex >= 0 ) {
+	if ( const int itemIndexToSelect = FindItemIndex( itemID ); itemIndexToSelect >= 0 ) {
 		const int itemCount = ListView_GetItemCount( m_hWnd );
 		for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-			if ( itemIndex == selectedIndex ) {
-				ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
-				ListView_EnsureVisible( m_hWnd, itemIndex, FALSE /*partialOK*/ );
-			} else {
+			if ( itemIndex != itemIndexToSelect ) {
 				ListView_SetItemState( m_hWnd, itemIndex, 0, LVIS_SELECTED | LVIS_FOCUSED );
 			}
 		}
+		// Select the item after deselecting all other items, so that the item changed notification is not sent with the list in an intermediate state.
+		ListView_SetItemState( m_hWnd, itemIndexToSelect, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+		ListView_EnsureVisible( m_hWnd, itemIndexToSelect, FALSE /*partialOK*/ );
 		return true;
 	}
 	return false;

@@ -192,6 +192,15 @@ public:
 	// Sets the end position (for tracks from cue files), in frames (where there are 75 frames per second).
 	void SetCueEnd( const std::optional<long>& frames );
 
+	// Returns the number of times the track has been played.
+	long GetPlayCount() const;
+
+	// Sets the number of times the track has been played.
+	void SetPlayCount( const long count );
+
+	// Increments the number of times the track has been played.
+	void IncrementPlayCount();
+
 	// Returns the filename, including cues (if present).
 	// 'fullPath' - whether to return the full path, or just the filename component.
 	// 'removeExtension' - whether to return just the filename component with no extension.
@@ -245,4 +254,5 @@ private:
 	std::optional<float> m_GainAlbum = std::nullopt;
 	std::optional<long> m_CueStart = std::nullopt;
 	std::optional<long> m_CueEnd = std::nullopt;
+	long m_PlayCount = 0;
 };

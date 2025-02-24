@@ -9,6 +9,9 @@
 
 class WndTaskbar;
 
+// Maximum number of encoder threads.
+constexpr size_t kEncoderThreadLimit = 32;
+
 // Audio file converter.
 class Converter
 {
@@ -46,6 +49,16 @@ private:
 	// Encode thread handler.
 	void EncodeHandler();
 
+	// Handler which converts tracks into a single file.
+	// 'addToLibrary' - whether to add the encoded track to the media library.
+	// Returns true if conversion completed OK, false otherwise
+	bool JoinTracksHandler( const bool addToLibrary );
+
+	// Handler which converts individual tracks.
+	// 'addToLibrary' - whether to add the encoded track to the media library.
+	// Returns true if conversion completed OK, false otherwise
+	bool EncodeTracksHandler( const bool addToLibrary );
+
 	// Returns whether conversion has been cancelled.
 	bool Cancelled() const;
 
@@ -60,6 +73,9 @@ private:
 
 	// Returns a decoder for the 'item', or nullptr if a decoder could not be opened.
 	Decoder::Ptr OpenDecoder( const Playlist::Item& item ) const;
+
+	// Returns a unique output filename for the encoded 'track', using (and updating) the set of 'usedFilenames'. Returns nullopt if a filename could not be created.
+	std::optional<std::wstring> GetOutputFilename( const Playlist::Item& track, std::set<std::wstring>& usedFilenames );
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
@@ -80,7 +96,7 @@ private:
 	WndTaskbar& m_Taskbar;
 
 	// Tracks to convert.
-	Playlist::Items m_Tracks;
+	Playlist::Items& m_Tracks;
 
 	// Cancel event handle.
 	HANDLE m_CancelEvent;
@@ -103,18 +119,21 @@ private:
 	// The currently displayed track status.
 	long m_DisplayedTrack;
 
-	// The total number of tracks to convert.
-	long m_TrackCount;
-
 	// The encoder handler to use.
 	Handler::Ptr m_EncoderHandler;
-
-	// The encoder to use.
-	Encoder::Ptr m_Encoder;
 
 	// The encoder settings to use.
 	std::string m_EncoderSettings;
 
 	// The output filename, when joining tracks into a single file.
 	std::wstring m_JoinFilename;
+
+	// The (maximum) number of encoding threads to use.
+	const uint32_t m_EncoderThreadCount;
+
+	// Encoder progress bars, and the encoder progress in the range 0.0 to 1.0, when using multiple encoding threads.
+	std::array<std::pair<HWND, std::atomic<float>>, kEncoderThreadLimit> m_EncoderProgressBars;
+
+	// Encoder progress bar range, when using multiple encoding threads.
+	long m_EncoderProgressRange = 0;
 };

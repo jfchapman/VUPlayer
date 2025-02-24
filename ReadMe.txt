@@ -1,4 +1,4 @@
-VUPlayer 4.20
+VUPlayer 4.21
 Copyright (c) 2025 James Chapman
 ------------------------------------------------------------------------------
 website: http://www.vuplayer.com
@@ -36,10 +36,10 @@ http://xiph.org/vorbis/
 Opus is copyright (c) 2011-2024 Xiph.Org
 https://opus-codec.org/
 
-FLAC is copyright (c) 2000-2009 Josh Coalson, 2011-2023 Xiph.Org
+FLAC is copyright (c) 2000-2009 Josh Coalson, 2011-2025 Xiph.Org
 http://xiph.org/flac/
 
-WavPack is copyright (c) 1998-2024 David Bryant
+WavPack is copyright (c) 1998-2025 David Bryant
 http://www.wavpack.com
 
 MusicBrainz is copyright (c) The MetaBrainz Foundation

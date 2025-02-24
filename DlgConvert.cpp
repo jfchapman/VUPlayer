@@ -219,9 +219,11 @@ void DlgConvert::OnInitDialog( const HWND hwnd )
 	for ( const auto& encoder : encoders ) {
 		if ( encoder ) {
 			const std::wstring& description = encoder->GetDescription();
-			ComboBox_AddString( wndEncoders, description.c_str() );
 			m_Encoders.insert( EncoderMap::value_type( description, encoder ) );
 		}
+	}
+	for ( const auto& [description, encoder] : m_Encoders ) {
+		ComboBox_AddString( wndEncoders, description.c_str() );
 	}
 	const std::wstring encoder = m_Settings.GetEncoder();
 	if ( CB_ERR == ComboBox_SelectString( wndEncoders, -1, encoder.c_str() ) ) {
@@ -379,48 +381,16 @@ void DlgConvert::UpdateCheckedItems( const int itemIndex )
 
 void DlgConvert::UpdateDestinationControls()
 {
-	const Playlist::Items selectedTracks = GetSelectedTracks();
-	const bool enableIndividualTracks = !selectedTracks.empty();
-	bool enableJoinTracks = !selectedTracks.empty();
-	long commonChannels = 0;
-	long commonSampleRate = 0;
-	auto track = selectedTracks.begin();
-	if ( selectedTracks.end() != track ) {
-		commonChannels = track->Info.GetChannels();
-		commonSampleRate = track->Info.GetSampleRate();
-		++track;
-	}
-	while ( enableJoinTracks && ( selectedTracks.end() != track ) ) {
-		const long channels = track->Info.GetChannels();
-		const long sampleRate = track->Info.GetSampleRate();
-		enableJoinTracks = ( channels == commonChannels ) && ( sampleRate == commonSampleRate );
-		++track;
-	}
-
-	if ( enableJoinTracks != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_JOIN ) ) ? true : false ) ) {
-		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_JOIN ), enableJoinTracks );
-	}
-	if ( enableIndividualTracks != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_INDIVIDUAL ) ) ? true : false ) ) {
-		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_INDIVIDUAL ), enableIndividualTracks );
-	}
-
-	if ( !enableJoinTracks && enableIndividualTracks && ( BST_CHECKED == IsDlgButtonChecked( m_hWnd, IDC_CONVERT_JOIN ) ) ) {
-		CheckDlgButton( m_hWnd, IDC_CONVERT_INDIVIDUAL, BST_CHECKED );
-		CheckDlgButton( m_hWnd, IDC_CONVERT_JOIN, BST_UNCHECKED );
-	}
-
-	const bool enableConvertFolder = enableIndividualTracks && ( BST_CHECKED == IsDlgButtonChecked( m_hWnd, IDC_CONVERT_INDIVIDUAL ) );
-	const bool enableConvertFilename = enableConvertFolder;
-	const bool enableConvertBrowse = enableConvertFolder;
+	const bool enableConvertFolder = ( BST_CHECKED == IsDlgButtonChecked( m_hWnd, IDC_CONVERT_INDIVIDUAL ) );
 
 	if ( enableConvertFolder != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_FOLDER ) ) ? true : false ) ) {
 		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_FOLDER ), enableConvertFolder );
 	}
-	if ( enableConvertFilename != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_FILENAME ) ) ? true : false ) ) {
-		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_FILENAME ), enableConvertFilename );
+	if ( enableConvertFolder != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_FILENAME ) ) ? true : false ) ) {
+		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_FILENAME ), enableConvertFolder );
 	}
-	if ( enableConvertBrowse != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_BROWSE ) ) ? true : false ) ) {
-		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_BROWSE ), enableConvertBrowse );
+	if ( enableConvertFolder != ( IsWindowEnabled( GetDlgItem( m_hWnd, IDC_CONVERT_BROWSE ) ) ? true : false ) ) {
+		EnableWindow( GetDlgItem( m_hWnd, IDC_CONVERT_BROWSE ), enableConvertFolder );
 	}
 }
 

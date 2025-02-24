@@ -437,6 +437,7 @@ void CDDAExtract::EncodeHandler()
 		}
 
 		if ( encoderOK ) {
+			std::set<std::wstring> usedOutputFilenames;
 			const HANDLE eventHandles[ 2 ] = { m_CancelEvent, m_PendingEncodeEvent };
 			while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
 				MediaInfo mediaInfo;
@@ -467,7 +468,7 @@ void CDDAExtract::EncodeHandler()
 						}
 					}
 
-					std::wstring filename = extractJoin ? m_JoinFilename : m_Settings.GetOutputFilename( mediaInfo, m_hInst );
+					std::wstring filename = extractJoin ? m_JoinFilename : GetOutputFilename( mediaInfo, usedOutputFilenames );
 					if ( !filename.empty() ) {
 						if ( extractJoin || m_Encoder->Open( filename, sampleRate, channels, bps, trackSamplesTotal, m_EncoderSettings, m_Library.GetTags( mediaInfo ) ) ) {
 							const long sampleBufferSize = 65536;
@@ -715,4 +716,22 @@ void CDDAExtract::WriteAlbumTags( const std::wstring& filename, const MediaInfo&
 	if ( !tags.empty() ) {
 		m_EncoderHandler->SetTags( filename, tags );
 	}
+}
+
+std::wstring CDDAExtract::GetOutputFilename( const MediaInfo& mediaInfo, std::set<std::wstring>& usedFilenames )
+{
+	const std::wstring originalFilename = m_Settings.GetOutputFilename( mediaInfo, m_hInst );
+	std::wstring filename = originalFilename;
+	std::wstring filenameLowerCase = WideStringToLower( filename );
+	constexpr int kMaxRenameAttempts = 100;
+	int index = 1;
+	do {
+		if ( const auto found = usedFilenames.find( filenameLowerCase ); usedFilenames.end() == found ) {
+			usedFilenames.insert( filenameLowerCase );
+			return filename;
+		}
+		filename = originalFilename + L" (" + std::to_wstring( index ) + L")";
+		filenameLowerCase = WideStringToLower( filename );
+	} while ( ++index < kMaxRenameAttempts );
+	return {};
 }

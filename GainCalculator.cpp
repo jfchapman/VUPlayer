@@ -62,24 +62,18 @@ void GainCalculator::Stop()
 
 void GainCalculator::AddPending( const Playlist::Item& item )
 {
-	const long channels = item.Info.GetChannels();
-	const long samplerate = item.Info.GetSampleRate();
-	const std::wstring& album = item.Info.GetAlbum();
-	const AlbumKey albumKey = { channels, samplerate, album };
-	auto albumIter = m_AlbumQueue.find( albumKey );
-	if ( m_AlbumQueue.end() == albumIter ) {
-		albumIter = m_AlbumQueue.insert( AlbumMap::value_type( albumKey, Playlist::Items() ) ).first;
-	}
-	if ( m_AlbumQueue.end() != albumIter ) {
-		bool addTrack = true;
-		Playlist::Items& itemList = albumIter->second;
-		for ( auto itemIter = itemList.begin(); addTrack && ( itemList.end() != itemIter ); itemIter++ ) {
-			addTrack = std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) != std::tie( itemIter->Info.GetFilename(), itemIter->Info.GetCueStart(), itemIter->Info.GetCueEnd() );
-		}
-		if ( addTrack ) {
-			itemList.push_back( item );
-			++m_PendingCount;
-		}
+	const std::filesystem::path folder = std::filesystem::path( item.Info.GetFilename() ).parent_path();
+	const std::wstring& albumName = item.Info.GetAlbum();
+	const AlbumKey albumKey = { folder, albumName };
+	auto albumIter = m_AlbumQueue.insert( AlbumMap::value_type( albumKey, {} ) ).first;
+	Playlist::Items& itemList = albumIter->second;
+	const auto foundItem = std::find_if( itemList.begin(), itemList.end(), [ pendingItem = item ] ( const Playlist::Item& item )
+		{
+			return std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) == std::tie( pendingItem.Info.GetFilename(), pendingItem.Info.GetCueStart(), pendingItem.Info.GetCueEnd() );
+		} );
+	if ( itemList.end() == foundItem ) {
+		itemList.push_back( item );
+		++m_PendingCount;
 	}
 }
 
@@ -104,8 +98,8 @@ void GainCalculator::Handler()
 		if ( !pendingItems.empty() ) {
 			std::reverse( pendingItems.begin(), pendingItems.end() );
 
-			const std::wstring& album = std::get< 2 >( albumKey );
-			const bool calculateAlbumGain = !album.empty();
+			const auto& [folder, albumName] = albumKey;
+			const bool calculateAlbumGain = !albumName.empty();
 
 			std::mutex itemMutex;
 			std::mutex r128StatesMutex;
@@ -198,6 +192,7 @@ void GainCalculator::Handler()
 									}
 									if ( destroyState ) {
 										ebur128_destroy( &r128State );
+										r128State = nullptr;
 									}
 								}
 							}

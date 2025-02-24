@@ -3,6 +3,7 @@
 #include "stdafx.h"
 
 #include "Settings.h"
+#include "Utility.h"
 
 class DlgConvert
 {
@@ -24,8 +25,17 @@ public:
 	const std::wstring& GetJoinFilename() const;
 
 private:
+	// Case insensitive comparison for encoder descriptions.
+	struct EncoderMapCmp
+	{
+		bool operator()( const std::wstring& lhs, const std::wstring& rhs ) const
+		{
+			return WideStringToLower( lhs ) < WideStringToLower( rhs );
+		}
+	};
+
 	// Maps an encoder description to its handle.
-	typedef std::map<std::wstring, Handler::Ptr> EncoderMap;
+	using EncoderMap = std::map<std::wstring, Handler::Ptr, EncoderMapCmp>;
 
 	// Dialog box procedure.
 	static INT_PTR CALLBACK DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );

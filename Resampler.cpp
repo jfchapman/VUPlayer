@@ -44,17 +44,19 @@ Resampler::Resampler( Decoder::Ptr decoder, const long id, const uint32_t output
 	if ( 0 == result ) {
 		result = av_opt_set( m_Context, "filter_type", "kaiser", 0 );
 		result = swr_init( m_Context );
-		if ( 0 != result )
+		if ( result < 0 )
 			swr_free( &m_Context );
 	}
-	if ( 0 != result ) {
+	if ( nullptr == m_Context ) {
 		throw std::runtime_error( "Resampler could not be initialised" );
 	}
 }
 
 Resampler::~Resampler()
 {
-	swr_free( &m_Context );
+	if ( nullptr != m_Context ) {
+		swr_free( &m_Context );
+	}
 }
 
 long Resampler::Read( float* outputBuffer, const long outputSampleCount )

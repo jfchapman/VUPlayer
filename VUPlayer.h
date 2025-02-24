@@ -280,10 +280,10 @@ private:
 	// Sets the application title bar text according to the 'item'.
 	void SetTitlebarText( const Output::Item& item );
 
-	// Updates the scrobbler when the output state changes.
+	// Updates the play count (and scrobbler) when the output state changes.
 	// 'previousItem' - previous output item.
 	// 'currentItem' - current output item.
-	void UpdateScrobbler( const Output::Item& previousItem, const Output::Item& currentItem );
+	void UpdatePlayCount( const Output::Item& previousItem, const Output::Item& currentItem );
 
 	// Saves various applications settings.
 	void SaveSettings();
@@ -428,6 +428,9 @@ private:
 
 	// Timestamp of the last output state change.
 	time_t m_LastOutputStateChange;
+
+	// The last time output was paused.
+	time_t m_LastPause;
 
 	// Maps a menu command ID to a playlist for the Add to Playlist sub menu.
 	PlaylistMenuMap m_AddToPlaylistMenuMap;

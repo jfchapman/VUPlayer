@@ -1956,15 +1956,29 @@ std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINS
 	if ( outputFilename.empty() ) {
 		outputFilename = sourceFilename;
 	}
-	outputFilename = extractFolder + outputFilename;
 
 	// Create the output folder, if necessary.
-	size_t pos = outputFilename.find( '\\', extractFolder.size() );
+	size_t pos = outputFilename.find( '\\', 0 );
 	while ( std::wstring::npos != pos ) {
-		const std::wstring folder = outputFilename.substr( 0, pos );
-		CreateDirectory( folder.c_str(), NULL /*attributes*/ );
-		pos = outputFilename.find( '\\', 1 + folder.size() );
+		std::wstring folder = outputFilename.substr( 0, pos );
+		outputFilename = outputFilename.substr( 1 + pos );
+
+		// Folder names cannot have leading whitespace or trailing whitespace/periods.
+		if ( const auto p = folder.find_last_not_of( L". \t" ); std::wstring::npos != p ) {
+			folder = folder.substr( 0, 1 + p );
+		}
+		if ( const auto p = folder.find_first_not_of( L" \t" ); std::wstring::npos != p ) {
+			folder = folder.substr( p );
+		}
+
+		if ( !folder.empty() ) {
+			extractFolder += folder;
+			CreateDirectory( extractFolder.c_str(), NULL /*attributes*/ );
+			extractFolder += L"\\";
+		}
+		pos = outputFilename.find( '\\', 0 );
 	};
+	outputFilename = extractFolder + outputFilename;
 
 	return outputFilename;
 }

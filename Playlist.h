@@ -85,6 +85,7 @@ public:
 		Composer,
 		Conductor,
 		Publisher,
+		PlayCount,
 
 		_Undefined
 	};
@@ -152,14 +153,14 @@ public:
 	// 'nextItem' - out, the next item.
 	// 'wrap' - whether to wrap round to the first playlist item.
 	// Returns true if a 'nextItem' was returned.
-	bool GetNextItem( const Item& currentItem, Item& nextItem, const bool wrap = true );
+	bool GetNextItem( const Item& currentItem, Item& nextItem, const bool wrap );
 
 	// Gets the previous playlist item.
 	// 'currentItem' - the current item.
 	// 'previousItem' - out, the previous item.
 	// 'wrap' - whether to wrap round to the last playlist item.
 	// Returns true if a 'previousItem' was returned.
-	bool GetPreviousItem( const Item& currentItem, Item& previousItem, const bool wrap = true );
+	bool GetPreviousItem( const Item& currentItem, Item& previousItem, const bool wrap );
 
 	// Gets the first playlist item.
 	Item GetFirstItem();

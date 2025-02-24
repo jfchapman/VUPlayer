@@ -37,7 +37,7 @@ bool HandlerMP3::GetTags( const std::wstring& /*filename*/, Tags& /*tags*/ ) con
 
 bool HandlerMP3::SetTags( const std::wstring& filename, const Tags& tags ) const
 {
-	return ShellMetadata::Set( filename, tags );
+	return SetShellMetadata( filename, tags );
 }
 
 Decoder::Ptr HandlerMP3::OpenDecoder( const std::wstring& /*filename*/, const Decoder::Context /*context*/ ) const
@@ -128,7 +128,7 @@ INT_PTR CALLBACK HandlerMP3::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 bool HandlerMP3::ConfigureEncoder( const HINSTANCE instance, const HWND parent, std::string& settings ) const
 {
 	ConfigurationInfo* config = new ConfigurationInfo( { settings, this, instance } );
-	const bool configured = DialogBoxParam( instance, MAKEINTRESOURCE( IDD_ENCODER_MP3 ), parent, DialogProc, reinterpret_cast<LPARAM>( config ) );
+	const bool configured = static_cast<bool>( DialogBoxParam( instance, MAKEINTRESOURCE( IDD_ENCODER_MP3 ), parent, DialogProc, reinterpret_cast<LPARAM>( config ) ) );
 	delete config;
 	return configured;
 }

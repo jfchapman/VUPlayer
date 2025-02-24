@@ -37,6 +37,9 @@ private:
 	// Converts data from the 'frame' into the sample buffer.
 	void ConvertSampleData( const AVFrame* frame );
 
+	// Frees all FFmpeg contexts.
+	void FreeContexts();
+
 	// FFmpeg format context.
 	AVFormatContext* m_FormatContext = nullptr;
 

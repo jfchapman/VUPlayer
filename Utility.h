@@ -42,6 +42,16 @@ std::string StringToLower( const std::string& text );
 // Converts 'text' to uppercase.
 std::string StringToUpper( const std::string& text );
 
+// Converts a byte array to a base64 encoded string.
+// 'bytes' - byte array.
+// 'byteCount' - number of bytes.
+std::string Base64Encode( const BYTE* bytes, const int byteCount );
+
+// Converts a base64 encoded 'text' to a byte array.
+std::vector<BYTE> Base64Decode( const std::string& text );
+
+#ifndef _CONSOLE // Functionality that is not required by the shelltag console application
+
 // Converts a file size to a string.
 // 'instance' - module instance handle.
 // 'filesize' - file size to convert.
@@ -52,26 +62,6 @@ std::wstring FilesizeToString( const HINSTANCE instance, const long long filesiz
 // 'duration' - duration to convert.
 // 'colonDelimited' - true to delimit with colons, false to delimit with resource strings.
 std::wstring DurationToString( const HINSTANCE instance, const double duration, const bool colonDelimited );
-
-// Converts a byte array to a base64 encoded string.
-// 'bytes' - byte array.
-// 'byteCount' - number of bytes.
-std::string Base64Encode( const BYTE* bytes, const int byteCount );
-
-// Converts a base64 encoded 'text' to a byte array.
-std::vector<BYTE> Base64Decode( const std::string& text );
-
-// Gets image information.
-// 'image' - base64 encoded image.
-// 'mimeType' - out, MIME type.
-// 'width' - out, width in pixels.
-// 'height' - out, height in pixels.
-// 'depth' - out, bits per pixel.
-// 'colours' - out, number of colours (for palette indexed images).
-void GetImageInformation( const std::string& image, std::string& mimeType, int& width, int& height, int& depth, int& colours );
-
-// Converts 'image' to a base64 encoded form, converting non-PNG/JPG/GIF images to PNG format.
-std::string ConvertImage( const std::vector<BYTE>& image );
 
 // Generates a GUID.
 GUID GenerateGUID();
@@ -265,3 +255,17 @@ T StripQuotes( const T& str )
 {
 	return ( ( str.size() >= 2 ) && str.starts_with( '"' ) && str.ends_with( '"' ) ) ? str.substr( 1, str.size() - 2 ) : str;
 }
+
+// Gets image information.
+// 'image' - base64 encoded image.
+// 'mimeType' - out, MIME type.
+// 'width' - out, width in pixels.
+// 'height' - out, height in pixels.
+// 'depth' - out, bits per pixel.
+// 'colours' - out, number of colours (for palette indexed images).
+void GetImageInformation( const std::string& image, std::string& mimeType, int& width, int& height, int& depth, int& colours );
+
+// Converts 'image' to a base64 encoded form, converting non-PNG/JPG/GIF images to PNG format.
+std::string ConvertImage( const std::vector<BYTE>& image );
+
+#endif // !_CONSOLE

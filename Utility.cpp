@@ -144,6 +144,42 @@ std::string StringToUpper( const std::string& text )
 	return result;
 }
 
+std::string Base64Encode( const BYTE* bytes, const int byteCount )
+{
+	std::string result;
+	if ( ( nullptr != bytes ) && ( byteCount > 0 ) ) {
+		DWORD bufferSize = 0;
+		if ( FALSE != CryptBinaryToStringA( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, nullptr /*buffer*/, &bufferSize ) ) {
+			if ( bufferSize > 0 ) {
+				std::vector<char> buffer( bufferSize );
+				if ( FALSE != CryptBinaryToStringA( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, buffer.data(), &bufferSize ) ) {
+					result = buffer.data();
+				}
+			}
+		}
+	}
+	return result;
+}
+
+std::vector<BYTE> Base64Decode( const std::string& text )
+{
+	std::vector<BYTE> result;
+	if ( !text.empty() ) {
+		DWORD bufferSize = 0;
+		if ( FALSE != CryptStringToBinaryA( text.c_str(), 0 /*strLen*/, CRYPT_STRING_BASE64, nullptr /*buffer*/, &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
+			if ( bufferSize > 0 ) {
+				result.resize( bufferSize );
+				if ( FALSE == CryptStringToBinaryA( text.c_str(), 0 /*strLen*/, CRYPT_STRING_BASE64, &result[ 0 ], &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
+					result.clear();
+				}
+			}
+		}
+	}
+	return result;
+}
+
+#ifndef _CONSOLE
+
 std::wstring FilesizeToString( const HINSTANCE instance, const long long filesize )
 {
 	std::wstringstream ss;
@@ -232,136 +268,6 @@ std::wstring DurationToString( const HINSTANCE instance, const double _duration,
 	return str;
 }
 
-std::string Base64Encode( const BYTE* bytes, const int byteCount )
-{
-	std::string result;
-	if ( ( nullptr != bytes ) && ( byteCount > 0 ) ) {
-		DWORD bufferSize = 0;
-		if ( FALSE != CryptBinaryToStringA( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, nullptr /*buffer*/, &bufferSize ) ) {
-			if ( bufferSize > 0 ) {
-				std::vector<char> buffer( bufferSize );
-				if ( FALSE != CryptBinaryToStringA( bytes, static_cast<DWORD>( byteCount ), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, buffer.data(), &bufferSize ) ) {
-					result = buffer.data();
-				}
-			}
-		}
-	}
-	return result;
-}
-
-std::vector<BYTE> Base64Decode( const std::string& text )
-{
-	std::vector<BYTE> result;
-	if ( !text.empty() ) {
-		DWORD bufferSize = 0;
-		if ( FALSE != CryptStringToBinaryA( text.c_str(), 0 /*strLen*/, CRYPT_STRING_BASE64, nullptr /*buffer*/, &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
-			if ( bufferSize > 0 ) {
-				result.resize( bufferSize );
-				if ( FALSE == CryptStringToBinaryA( text.c_str(), 0 /*strLen*/, CRYPT_STRING_BASE64, &result[ 0 ], &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
-					result.clear();
-				}
-			}
-		}
-	}
-	return result;
-}
-
-void GetImageInformation( const std::string& image, std::string& mimeType, int& width, int& height, int& depth, int& colours )
-{
-	mimeType.clear();
-	width = 0;
-	height = 0;
-	depth = 0;
-	colours = 0;
-	std::vector<BYTE> imageBytes = Base64Decode( image );
-	const ULONG imageSize = static_cast<ULONG>( imageBytes.size() );
-	if ( imageSize > 0 ) {
-		IStream* stream = nullptr;
-		if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
-			if ( SUCCEEDED( stream->Write( &imageBytes[ 0 ], imageSize, NULL /*bytesWritten*/ ) ) ) {
-				try {
-					Gdiplus::Bitmap bitmap( stream );
-
-					width = static_cast<int>( bitmap.GetWidth() );
-					height = static_cast<int>( bitmap.GetHeight() );
-
-					const Gdiplus::PixelFormat pixelFormat = bitmap.GetPixelFormat();
-					switch ( pixelFormat ) {
-						case PixelFormat4bppIndexed: {
-							depth = 4;
-							break;
-						}
-						case PixelFormat8bppIndexed: {
-							depth = 8;
-							break;
-						}
-						case PixelFormat16bppGrayScale:
-						case PixelFormat16bppRGB555:
-						case PixelFormat16bppRGB565:
-						case PixelFormat16bppARGB1555: {
-							depth = 16;
-							break;
-						}
-						case PixelFormat24bppRGB: {
-							depth = 24;
-							break;
-						}
-						case PixelFormat32bppRGB:
-						case PixelFormat32bppARGB:
-						case PixelFormat32bppPARGB:
-						case PixelFormat32bppCMYK: {
-							depth = 32;
-							break;
-						}
-						case PixelFormat48bppRGB: {
-							depth = 48;
-							break;
-						}
-						case PixelFormat64bppARGB:
-						case PixelFormat64bppPARGB: {
-							depth = 64;
-							break;
-						}
-						default: {
-							break;
-						}
-					}
-
-					const INT paletteSize = bitmap.GetPaletteSize();
-					if ( paletteSize > 0 ) {
-						std::vector<char> buffer( paletteSize, 0 );
-						Gdiplus::ColorPalette* palette = reinterpret_cast<Gdiplus::ColorPalette*>( buffer.data() );
-						if ( Gdiplus::Ok == bitmap.GetPalette( palette, paletteSize ) ) {
-							colours = static_cast<int>( palette->Count );
-						}
-					}
-
-					GUID format = {};
-					if ( Gdiplus::Ok == bitmap.GetRawFormat( &format ) ) {
-						if ( ( Gdiplus::ImageFormatMemoryBMP == format ) || ( Gdiplus::ImageFormatBMP == format ) ) {
-							mimeType = "image/bmp";
-						} else if ( Gdiplus::ImageFormatEMF == format ) {
-							mimeType = "image/x-emf";
-						} else if ( Gdiplus::ImageFormatWMF == format ) {
-							mimeType = "image/x-wmf";
-						} else if ( Gdiplus::ImageFormatJPEG == format ) {
-							mimeType = "image/jpeg";
-						} else if ( Gdiplus::ImageFormatPNG == format ) {
-							mimeType = "image/png";
-						} else if ( Gdiplus::ImageFormatGIF == format ) {
-							mimeType = "image/gif";
-						} else if ( Gdiplus::ImageFormatTIFF == format ) {
-							mimeType = "image/tiff";
-						}
-					}
-				} catch ( ... ) {
-				}
-			}
-			stream->Release();
-		}
-	}
-}
-
 GUID GenerateGUID()
 {
 	UUID uuid = {};
@@ -379,64 +285,6 @@ std::string GenerateGUIDString()
 		RpcStringFreeA( &uuidStr );
 	}
 	return result;
-}
-
-std::string ConvertImage( const std::vector<BYTE>& imageBytes )
-{
-	std::string encodedImage;
-	const ULONG imageSize = static_cast<ULONG>( imageBytes.size() );
-	if ( imageSize > 0 ) {
-		IStream* stream = nullptr;
-		if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
-			if ( SUCCEEDED( stream->Write( &imageBytes[ 0 ], imageSize, NULL /*bytesWritten*/ ) ) ) {
-				try {
-					Gdiplus::Bitmap bitmap( stream );
-					GUID format = {};
-					if ( Gdiplus::Ok == bitmap.GetRawFormat( &format ) ) {
-						if ( ( Gdiplus::ImageFormatPNG == format ) || ( Gdiplus::ImageFormatJPEG == format ) || ( Gdiplus::ImageFormatGIF == format ) ) {
-							encodedImage = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageSize ) );
-						} else {
-							CLSID encoderClsid = {};
-							UINT numEncoders = 0;
-							UINT bufferSize = 0;
-							if ( ( Gdiplus::Ok == Gdiplus::GetImageEncodersSize( &numEncoders, &bufferSize ) ) && ( bufferSize > 0 ) ) {
-								std::vector<char> buffer( bufferSize, 0 );
-								Gdiplus::ImageCodecInfo* imageCodecInfo = reinterpret_cast<Gdiplus::ImageCodecInfo*>( buffer.data() );
-								if ( Gdiplus::Ok == Gdiplus::GetImageEncoders( numEncoders, bufferSize, imageCodecInfo ) ) {
-									for ( UINT index = 0; index < numEncoders; index++ ) {
-										if ( Gdiplus::ImageFormatPNG == imageCodecInfo[ index ].FormatID ) {
-											encoderClsid = imageCodecInfo[ index ].Clsid;
-											break;
-										}
-									}
-								}
-							}
-							IStream* encoderStream = nullptr;
-							if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &encoderStream ) ) ) {
-								if ( Gdiplus::Ok == bitmap.Save( encoderStream, &encoderClsid ) ) {
-									STATSTG stats = {};
-									if ( SUCCEEDED( encoderStream->Stat( &stats, STATFLAG_NONAME ) ) && ( stats.cbSize.QuadPart > 0 ) && ( stats.cbSize.QuadPart < sMaxConvertImageBytes ) ) {
-										if ( SUCCEEDED( encoderStream->Seek( { 0 }, STREAM_SEEK_SET, NULL /*newPosition*/ ) ) ) {
-											const ULONG encoderBufferSize = static_cast<ULONG>( stats.cbSize.QuadPart );
-											std::vector<BYTE> encoderBuffer( encoderBufferSize );
-											ULONG bytesRead = 0;
-											if ( SUCCEEDED( encoderStream->Read( &encoderBuffer[ 0 ], encoderBufferSize, &bytesRead ) ) && ( bytesRead == encoderBufferSize ) ) {
-												encodedImage = Base64Encode( &encoderBuffer[ 0 ], static_cast<int>( encoderBufferSize ) );
-											}
-										}
-									}
-								}
-								encoderStream->Release();
-							}
-						}
-					}
-				} catch ( ... ) {
-				}
-			}
-			stream->Release();
-		}
-	}
-	return encodedImage;
 }
 
 void WideStringReplace( std::wstring& text, const std::wstring& original, const std::wstring& replacement )
@@ -512,7 +360,7 @@ bool FolderExists( const std::wstring& folder )
 void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const std::wstring& replacement, const bool replaceFolderDelimiters )
 {
 	std::wstring output;
-	const std::wstring invalid( replaceFolderDelimiters ? L"\\/:*?\"<>|" : L":*?\"<>|" );
+	const std::wstring invalid( replaceFolderDelimiters ? L"\\/:*?\"<>|\t\r\n" : L":*?\"<>|\t\r\n" );
 	for ( const auto& c : filename ) {
 		if ( ( c < 0x20 ) || ( ( c >= 0x7f ) && ( c <= 0xa0 ) ) || ( std::wstring::npos != invalid.find( c ) ) ) {
 			output += replacement;
@@ -785,3 +633,158 @@ bool DeleteFiles( const std::set<std::filesystem::path> files, const HWND hwnd )
 	}
 	return false;
 }
+
+void GetImageInformation( const std::string& image, std::string& mimeType, int& width, int& height, int& depth, int& colours )
+{
+	mimeType.clear();
+	width = 0;
+	height = 0;
+	depth = 0;
+	colours = 0;
+	std::vector<BYTE> imageBytes = Base64Decode( image );
+	const ULONG imageSize = static_cast<ULONG>( imageBytes.size() );
+	if ( imageSize > 0 ) {
+		IStream* stream = nullptr;
+		if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
+			if ( SUCCEEDED( stream->Write( &imageBytes[ 0 ], imageSize, NULL /*bytesWritten*/ ) ) ) {
+				try {
+					Gdiplus::Bitmap bitmap( stream );
+
+					width = static_cast<int>( bitmap.GetWidth() );
+					height = static_cast<int>( bitmap.GetHeight() );
+
+					const Gdiplus::PixelFormat pixelFormat = bitmap.GetPixelFormat();
+					switch ( pixelFormat ) {
+						case PixelFormat4bppIndexed: {
+							depth = 4;
+							break;
+						}
+						case PixelFormat8bppIndexed: {
+							depth = 8;
+							break;
+						}
+						case PixelFormat16bppGrayScale:
+						case PixelFormat16bppRGB555:
+						case PixelFormat16bppRGB565:
+						case PixelFormat16bppARGB1555: {
+							depth = 16;
+							break;
+						}
+						case PixelFormat24bppRGB: {
+							depth = 24;
+							break;
+						}
+						case PixelFormat32bppRGB:
+						case PixelFormat32bppARGB:
+						case PixelFormat32bppPARGB:
+						case PixelFormat32bppCMYK: {
+							depth = 32;
+							break;
+						}
+						case PixelFormat48bppRGB: {
+							depth = 48;
+							break;
+						}
+						case PixelFormat64bppARGB:
+						case PixelFormat64bppPARGB: {
+							depth = 64;
+							break;
+						}
+						default: {
+							break;
+						}
+					}
+
+					const INT paletteSize = bitmap.GetPaletteSize();
+					if ( paletteSize > 0 ) {
+						std::vector<char> buffer( paletteSize, 0 );
+						Gdiplus::ColorPalette* palette = reinterpret_cast<Gdiplus::ColorPalette*>( buffer.data() );
+						if ( Gdiplus::Ok == bitmap.GetPalette( palette, paletteSize ) ) {
+							colours = static_cast<int>( palette->Count );
+						}
+					}
+
+					GUID format = {};
+					if ( Gdiplus::Ok == bitmap.GetRawFormat( &format ) ) {
+						if ( ( Gdiplus::ImageFormatMemoryBMP == format ) || ( Gdiplus::ImageFormatBMP == format ) ) {
+							mimeType = "image/bmp";
+						} else if ( Gdiplus::ImageFormatEMF == format ) {
+							mimeType = "image/x-emf";
+						} else if ( Gdiplus::ImageFormatWMF == format ) {
+							mimeType = "image/x-wmf";
+						} else if ( Gdiplus::ImageFormatJPEG == format ) {
+							mimeType = "image/jpeg";
+						} else if ( Gdiplus::ImageFormatPNG == format ) {
+							mimeType = "image/png";
+						} else if ( Gdiplus::ImageFormatGIF == format ) {
+							mimeType = "image/gif";
+						} else if ( Gdiplus::ImageFormatTIFF == format ) {
+							mimeType = "image/tiff";
+						}
+					}
+				} catch ( ... ) {
+				}
+			}
+			stream->Release();
+		}
+	}
+}
+
+std::string ConvertImage( const std::vector<BYTE>& imageBytes )
+{
+	std::string encodedImage;
+	const ULONG imageSize = static_cast<ULONG>( imageBytes.size() );
+	if ( imageSize > 0 ) {
+		IStream* stream = nullptr;
+		if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
+			if ( SUCCEEDED( stream->Write( &imageBytes[ 0 ], imageSize, NULL /*bytesWritten*/ ) ) ) {
+				try {
+					Gdiplus::Bitmap bitmap( stream );
+					GUID format = {};
+					if ( Gdiplus::Ok == bitmap.GetRawFormat( &format ) ) {
+						if ( ( Gdiplus::ImageFormatPNG == format ) || ( Gdiplus::ImageFormatJPEG == format ) || ( Gdiplus::ImageFormatGIF == format ) ) {
+							encodedImage = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageSize ) );
+						} else {
+							CLSID encoderClsid = {};
+							UINT numEncoders = 0;
+							UINT bufferSize = 0;
+							if ( ( Gdiplus::Ok == Gdiplus::GetImageEncodersSize( &numEncoders, &bufferSize ) ) && ( bufferSize > 0 ) ) {
+								std::vector<char> buffer( bufferSize, 0 );
+								Gdiplus::ImageCodecInfo* imageCodecInfo = reinterpret_cast<Gdiplus::ImageCodecInfo*>( buffer.data() );
+								if ( Gdiplus::Ok == Gdiplus::GetImageEncoders( numEncoders, bufferSize, imageCodecInfo ) ) {
+									for ( UINT index = 0; index < numEncoders; index++ ) {
+										if ( Gdiplus::ImageFormatPNG == imageCodecInfo[ index ].FormatID ) {
+											encoderClsid = imageCodecInfo[ index ].Clsid;
+											break;
+										}
+									}
+								}
+							}
+							IStream* encoderStream = nullptr;
+							if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &encoderStream ) ) ) {
+								if ( Gdiplus::Ok == bitmap.Save( encoderStream, &encoderClsid ) ) {
+									STATSTG stats = {};
+									if ( SUCCEEDED( encoderStream->Stat( &stats, STATFLAG_NONAME ) ) && ( stats.cbSize.QuadPart > 0 ) && ( stats.cbSize.QuadPart < sMaxConvertImageBytes ) ) {
+										if ( SUCCEEDED( encoderStream->Seek( { 0 }, STREAM_SEEK_SET, NULL /*newPosition*/ ) ) ) {
+											const ULONG encoderBufferSize = static_cast<ULONG>( stats.cbSize.QuadPart );
+											std::vector<BYTE> encoderBuffer( encoderBufferSize );
+											ULONG bytesRead = 0;
+											if ( SUCCEEDED( encoderStream->Read( &encoderBuffer[ 0 ], encoderBufferSize, &bytesRead ) ) && ( bytesRead == encoderBufferSize ) ) {
+												encodedImage = Base64Encode( &encoderBuffer[ 0 ], static_cast<int>( encoderBufferSize ) );
+											}
+										}
+									}
+								}
+								encoderStream->Release();
+							}
+						}
+					}
+				} catch ( ... ) {
+				}
+			}
+			stream->Release();
+		}
+	}
+	return encodedImage;
+}
+#endif

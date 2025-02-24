@@ -2,8 +2,8 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "VUPlayer"
-#define MyAppVersion "4.20"
-#define MyAppFullVersion "4.20.0.0"
+#define MyAppVersion "4.21"
+#define MyAppFullVersion "4.21.0.0"
 #define MyAppMainVersion "4"
 #define MyAppDefaultDir "VUPlayer 4"
 #define MyAppPublisher "James Chapman"
@@ -32,7 +32,7 @@ DisableProgramGroupPage=yes
 OutputBaseFilename=VUPlayerSetup
 Compression=lzma
 SolidCompression=yes
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
  
 #ifdef EnableSigning
 SignTool=signtool
@@ -46,6 +46,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "x64\Release\VUPlayer.exe"; DestDir: "{app}\"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\shelltag.exe"; DestDir: "{app}\"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\bass.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\bassmidi.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\bassdsd.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
@@ -59,6 +60,7 @@ Source: "x64\Release\avformat-61.dll"; DestDir: "{app}"; Check: Is64BitInstallMo
 Source: "x64\Release\avutil-59.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\swresample-5.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\VUPlayer.exe"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\shelltag.exe"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\bass.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\bassmidi.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\bassdsd.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion

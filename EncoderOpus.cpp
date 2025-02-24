@@ -6,9 +6,9 @@
 #include <vector>
 
 // Minimum/maximum/default bit rates.
-static const int s_MinimumBitrate = 8;
-static const int s_MaximumBitrate = 256;
-static const int s_DefaultBitrate = 128;
+constexpr int kMinimumOpusBitrate = 8;
+constexpr int kMaximumOpusBitrate = 256;
+constexpr int kDefaultOpusBitrate = 128;
 
 EncoderOpus::EncoderOpus() :
 	Encoder(),
@@ -158,7 +158,7 @@ void EncoderOpus::Close()
 
 int EncoderOpus::GetBitrate( const std::string& settings )
 {
-	int bitrate = s_DefaultBitrate;
+	int bitrate = kDefaultOpusBitrate;
 	try {
 		bitrate = std::stoi( settings );
 	} catch ( const std::logic_error& ) {
@@ -169,24 +169,24 @@ int EncoderOpus::GetBitrate( const std::string& settings )
 
 int EncoderOpus::GetDefaultBitrate()
 {
-	return s_DefaultBitrate;
+	return kDefaultOpusBitrate;
 }
 
 int EncoderOpus::GetMinimumBitrate()
 {
-	return s_MinimumBitrate;
+	return kMinimumOpusBitrate;
 }
 
 int EncoderOpus::GetMaximumBitrate()
 {
-	return s_MaximumBitrate;
+	return kMaximumOpusBitrate;
 }
 
 void EncoderOpus::LimitBitrate( int& bitrate )
 {
-	if ( bitrate < s_MinimumBitrate ) {
-		bitrate = s_MinimumBitrate;
-	} else if ( bitrate > s_MaximumBitrate ) {
-		bitrate = s_MaximumBitrate;
+	if ( bitrate < kMinimumOpusBitrate ) {
+		bitrate = kMinimumOpusBitrate;
+	} else if ( bitrate > kMaximumOpusBitrate ) {
+		bitrate = kMaximumOpusBitrate;
 	}
 }

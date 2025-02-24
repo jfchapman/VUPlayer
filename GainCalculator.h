@@ -7,6 +7,7 @@
 #include <atomic>
 #include <functional>
 #include <tuple>
+#include <filesystem>
 
 class GainCalculator
 {
@@ -35,7 +36,7 @@ public:
 
 private:
 	// Gain album key.
-	using AlbumKey = std::tuple<long, long, std::wstring>;
+	using AlbumKey = std::tuple<std::filesystem::path /*folder*/, std::wstring /*albumName*/>;
 
 	// Associates an album key with a list of items.
 	using AlbumMap = std::map<AlbumKey, Playlist::Items>;

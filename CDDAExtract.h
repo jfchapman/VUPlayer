@@ -74,6 +74,9 @@ private:
 	// Writes album specific tags to 'filename' based on the 'mediaInfo'.
 	void WriteAlbumTags( const std::wstring& filename, const MediaInfo& mediaInfo );
 
+	// Returns a unique output filename for the encoded 'mediaInfo', using (and updating) the set of 'usedFilenames'. Returns an empty string if a filename could not be created.
+	std::wstring GetOutputFilename( const MediaInfo& mediaInfo, std::set<std::wstring>& usedFilenames );
+
 	// Module instance handle.
 	HINSTANCE m_hInst;
 

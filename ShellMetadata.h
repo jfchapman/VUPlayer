@@ -1,49 +1,20 @@
 #pragma once
+#include <stdint.h>
 
-#include "Handler.h"
+// Exit codes returned by the shelltag console process
+constexpr uint32_t kShellTagExitCodeOK = 99;                // OK
+constexpr uint32_t kShellTagExitCodeFail = 98;              // Failed to read/write metadata
+constexpr uint32_t kShellTagExitCodeSharingViolation = 97;  // Sharing violation when writing metadata (file locked by another process)
 
-#include <Windows.h>
-#include <Shobjidl.h>
-#include <propkey.h>
-#include <propvarutil.h>
-#include <wmcodecdsp.h>
-#include <mfapi.h>
+#ifndef _CONSOLE
+#include "Tag.h"
 
-#include <mutex>
 #include <string>
+#include <optional>
 
-// Shell metadata functionality 
-class ShellMetadata
-{
-public:
-	ShellMetadata();
-	virtual ~ShellMetadata();
+// Returns tags if any were read from the file, nullopt otherwise.
+std::optional<Tags> GetShellMetadata( const std::wstring& filename );
 
-	// Gets metadata.
-	// 'filename' - file to get metadata from.
-	// 'tags' - out, metadata.
-	// Returns true if metadata was returned.
-	static bool Get( const std::wstring& filename, Tags& tags );
-
-	// Sets metadata.
-	// 'filename' - file to set metadata to.
-	// 'tags' - metadata.
-	// Returns true if metadata was set, or if there are no supported tag types in the metadata.
-	static bool Set( const std::wstring& filename, const Tags& tags );
-
-	// Returns the audio sub type description from the 'guid'.
-	static std::wstring GetAudioSubType( const std::wstring& guid );
-
-	// Converts a 'propVariant' to a string.
-	static std::wstring PropertyToString( const PROPVARIANT& propVariant );
-
-private:
-	// Maps a audio subtype GUID string to an audio format description.
-	typedef std::map<std::wstring, std::wstring> AudioFormatMap;
-
-	// Audio format descriptions
-	static AudioFormatMap s_AudioFormatDescriptions;
-
-	// Audio format descriptions mutex
-	static std::mutex s_AudioFormatMutex;
-};
+// Returns true if any tags were written to the file, or if none of the tags are supported.
+bool SetShellMetadata( const std::wstring& filename, const Tags& tags );
+#endif

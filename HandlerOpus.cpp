@@ -43,7 +43,7 @@ HandlerOpus::~HandlerOpus()
 std::wstring HandlerOpus::GetDescription() const
 {
 	const char* version = opus_get_version_string();
-	const std::wstring description = ( nullptr != version ) ? UTF8ToWideString( version ) : L"OPUS";
+	const std::wstring description = ( nullptr != version ) ? UTF8ToWideString( version ) : L"Opus";
 	return description;
 }
 
@@ -253,7 +253,7 @@ INT_PTR CALLBACK HandlerOpus::DialogProc( HWND hwnd, UINT message, WPARAM wParam
 bool HandlerOpus::ConfigureEncoder( const HINSTANCE instance, const HWND parent, std::string& settings ) const
 {
 	ConfigurationInfo* config = new ConfigurationInfo( { settings, this, instance } );
-	const bool configured = DialogBoxParam( instance, MAKEINTRESOURCE( IDD_ENCODER_OPUS ), parent, DialogProc, reinterpret_cast<LPARAM>( config ) );
+	const bool configured = static_cast<bool>( DialogBoxParam( instance, MAKEINTRESOURCE( IDD_ENCODER_OPUS ), parent, DialogProc, reinterpret_cast<LPARAM>( config ) ) );
 	delete config;
 	return configured;
 }

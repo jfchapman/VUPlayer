@@ -108,8 +108,11 @@ bool Handlers::GetTags( const std::wstring& filename, Tags& tags ) const
 			success = handler->GetTags( filename, tags );
 		}
 		if ( !success ) {
-			success = ShellMetadata::Get( filename, tags );
-			if ( !success ) {
+			const auto shellTags = GetShellMetadata( filename );
+			if ( shellTags ) {
+				tags = *shellTags;
+				success = true;
+			} else {
 				success = GetAPETags( filename, tags );
 			}
 		}
@@ -149,8 +152,9 @@ bool Handlers::SetTags( const MediaInfo& mediaInfo, Library& library ) const
 			const FILETIME lastModified = m_PreserveLastModifiedTime ? GetLastModifiedTime( filename ) : FILETIME();
 			Handler::Ptr handler = FindDecoderHandler( filename );
 			success = handler ? handler->SetTags( filename, tagsToWrite ) : false;
-			if ( !success ) {
-				success = ShellMetadata::Set( filename, tagsToWrite );
+			if ( !success && m_HandlerFFmpeg && ( handler != m_HandlerFFmpeg ) ) {
+				// Try the FFmpeg handler as a catch all.
+				m_HandlerFFmpeg->SetTags( filename, tagsToWrite );
 			}
 			if ( success && m_PreserveLastModifiedTime ) {
 				SetLastModifiedTime( filename, lastModified );

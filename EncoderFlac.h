@@ -12,6 +12,18 @@ public:
 
 	virtual ~EncoderFlac();
 
+	// Returns the compression level from the encoder 'settings'.
+	static int GetCompressionLevel( const std::string& settings );
+
+	// Returns the default compression level.
+	static int GetDefaultCompressionLevel();
+
+	// Returns the minimum compression level.
+	static int GetMinimumCompressionLevel();
+
+	// Returns the maximum compression level.
+	static int GetMaximumCompressionLevel();
+
 	// Opens the encoder.
 	// 'filename' - (in) output file name without file extension, (out) output file name with file extension.
 	// 'sampleRate' - sample rate.

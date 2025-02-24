@@ -4,6 +4,11 @@
 
 #include <vector>
 
+// Minimum/maximum/default compression levels.
+constexpr int kMinimumFlacCompression = 0;
+constexpr int kMaximumFlacCompression = 8;
+constexpr int kDefaultFlacCompression = 5;
+
 EncoderFlac::EncoderFlac() :
 	Encoder(),
 	FLAC::Encoder::File()
@@ -14,7 +19,7 @@ EncoderFlac::~EncoderFlac()
 {
 }
 
-bool EncoderFlac::Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> bitsPerSample, const long long totalSamples, const std::string& /*settings*/, const Tags& tags )
+bool EncoderFlac::Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> bitsPerSample, const long long totalSamples, const std::string& settings, const Tags& tags )
 {
 	bool success = false;
 	filename += L".flac";
@@ -22,7 +27,7 @@ bool EncoderFlac::Open( std::wstring& filename, const long sampleRate, const lon
 	if ( nullptr != f ) {
 		set_sample_rate( sampleRate );
 		set_channels( channels );
-		set_compression_level( 5 );
+		set_compression_level( GetCompressionLevel( settings ) );
 		set_verify( true );
 		set_total_samples_estimate( ( totalSamples > 0 ) ? static_cast<FLAC__uint64>( totalSamples ) : 0 );
 
@@ -191,4 +196,30 @@ std::unique_ptr<FLAC::Metadata::Picture> EncoderFlac::CreatePicture( const Tags&
 		}
 	}
 	return picture;
+}
+
+int EncoderFlac::GetCompressionLevel( const std::string& settings )
+{
+	if ( !settings.empty() ) {
+		try {
+			return std::clamp( std::stoi( settings ), GetMinimumCompressionLevel(), GetMaximumCompressionLevel() );
+		} catch ( const std::logic_error& ) {
+		}
+	}
+	return GetDefaultCompressionLevel();
+}
+
+int EncoderFlac::GetDefaultCompressionLevel()
+{
+	return kDefaultFlacCompression;
+}
+
+int EncoderFlac::GetMinimumCompressionLevel()
+{
+	return kMinimumFlacCompression;
+}
+
+int EncoderFlac::GetMaximumCompressionLevel()
+{
+	return kMaximumFlacCompression;
 }
