@@ -327,13 +327,13 @@ std::string HandlerOpus::GainToR128( const std::string& gain )
 std::string HandlerOpus::R128ToGain( const std::string& gain )
 {
 	// Convert from Q7.8 fixed point to floating point.
-	std::string str;
+	std::wstring str;
 	try {
 		const long r128 = std::stol( gain );
 		if ( ( r128 >= -32768 ) && ( r128 <= 32767 ) ) {
-			str = GainToString( LOUDNESS_REFERENCE - LOUDNESS_R128 + static_cast<float>( r128 ) / 256 );
+			str = GainToString( GetModuleHandle( nullptr ), LOUDNESS_REFERENCE - LOUDNESS_R128 + static_cast<float>( r128 ) / 256 );
 		}
 	} catch ( const std::logic_error& ) {
 	}
-	return str;
+	return WideStringToUTF8( str );
 }

@@ -1,5 +1,7 @@
 #include "DecoderBass.h"
 
+#include "bassdsd.h"
+
 #include "VUPlayer.h"
 #include "Utility.h"
 
@@ -58,6 +60,12 @@ DecoderBass::DecoderBass( const std::wstring& filename, const Context context ) 
 		SetSampleRate( static_cast<long>( info.freq ) );
 		SetBPS( static_cast<long>( info.origres ) );
 		SetChannels( static_cast<long>( info.chans ) );
+
+		if ( BASS_CTYPE_STREAM_DSD == info.ctype ) {
+			if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
+				SetSampleRate( vuplayer->GetApplicationSettings().GetDSDSamplerate() );
+			}
+		}
 
 		if ( const QWORD bytes = BASS_ChannelGetLength( m_Handle, BASS_POS_BYTE ); -1 != bytes ) {
 			SetDuration( static_cast<float>( BASS_ChannelBytes2Seconds( m_Handle, bytes ) ) );

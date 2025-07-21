@@ -690,7 +690,7 @@ void CDDAExtract::WriteTrackTags( const std::wstring& filename, const MediaInfo&
 	if ( !year.empty() ) {
 		tags.insert( Tags::value_type( Tag::Year, year ) );
 	}
-	const std::string gainTrack = GainToString( mediaInfo.GetGainTrack() );
+	const std::string gainTrack = GainToString( m_hInst, mediaInfo.GetGainTrack() );
 	if ( !gainTrack.empty() ) {
 		tags.insert( Tags::value_type( Tag::GainTrack, gainTrack ) );
 	}
@@ -708,7 +708,7 @@ void CDDAExtract::WriteTrackTags( const std::wstring& filename, const MediaInfo&
 void CDDAExtract::WriteAlbumTags( const std::wstring& filename, const MediaInfo& mediaInfo )
 {
 	Tags tags;
-	const std::string gainAlbum = GainToString( mediaInfo.GetGainAlbum() );
+	const std::string gainAlbum = GainToString( m_hInst, mediaInfo.GetGainAlbum() );
 	if ( !gainAlbum.empty() ) {
 		tags.insert( Tags::value_type( Tag::GainAlbum, gainAlbum ) );
 	}

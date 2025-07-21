@@ -37,6 +37,9 @@ private:
 	// Available title bar text formats, paired with the the resource ID of the description.
 	static std::vector<std::pair<Settings::TitleBarFormat, int>> s_TitleBarFormats;
 
+	// Available startup states, paired with the the resource ID of the description.
+	static std::vector<std::pair<Settings::StartupState, int>> s_StartupStates;
+
 	// Refreshes the output device list based on the currently selected output mode.
 	// 'hwnd' - dialog window handle.
 	void RefreshOutputDeviceList( const HWND hwnd );
@@ -46,6 +49,9 @@ private:
 
 	// Returns the currently selected title bar format.
 	Settings::TitleBarFormat GetSelectedTitleBarFormat( const HWND hwnd ) const;
+
+	// Returns the currently selected startup state.
+	Settings::StartupState GetSelectedStartupState( const HWND hwnd ) const;
 
 	// Returns the currently selected device name.
 	std::wstring GetSelectedDeviceName( const HWND hwnd ) const;

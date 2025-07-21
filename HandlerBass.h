@@ -58,19 +58,25 @@ private:
 	// Reads Ogg tags.
 	// 'oggTags' - series of null-terminated UTF-8 strings, ending with a double null.
 	// 'tags' - out, tag information.
-	void ReadOggTags( const char* oggTags, Tags& tags ) const;
+	static void ReadOggTags( const char* oggTags, Tags& tags );
 
 	// Writes Ogg 'tags' to 'filename', returning true if the tags were written.
 	// 'tags' - out, tag information.
-	bool WriteOggTags( const std::wstring& filename, const Tags& tags ) const;
+	static bool WriteOggTags( const std::wstring& filename, const Tags& tags );
 
 	// Reads RIFF tags.
 	// 'riffTags' - series of null-terminated strings (with assumed Windows-1252 encoding), ending with a double null.
 	// 'tags' - out, tag information.
-	void ReadRIFFTags( const char* riffTags, Tags& tags ) const;
+	static void ReadRIFFTags( const char* riffTags, Tags& tags );
+
+	// Reads the ID3 tag from a Dsf file.
+	// 'filename' - Dsf filename.
+	// 'tags' - out, tag information.
+	// Returns whether any tags were read.
+	static bool ReadDSDTag( const std::wstring& filename, Tags& tags );
 
 	// Returns a temporary file name.
-	std::wstring GetTemporaryFilename() const;
+	static std::wstring GetTemporaryFilename();
 
 	// BASS midi plugin.
 	HPLUGIN m_BassMidi;

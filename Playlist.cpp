@@ -912,18 +912,6 @@ void Playlist::CloseHandles()
 	}
 }
 
-void Playlist::UpdateItem( const Item& item )
-{
-	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	auto foundItem = std::find_if( m_Playlist.begin(), m_Playlist.end(), [ item ] ( const Item& entry )
-		{
-			return ( item.ID == entry.ID );
-		} );
-	if ( m_Playlist.end() != foundItem ) {
-		*foundItem = item;
-	}
-}
-
 bool Playlist::AddPlaylist( const std::wstring& filename, const bool startPendingThread )
 {
 	bool added = false;

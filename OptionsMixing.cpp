@@ -5,6 +5,7 @@
 
 #include "DlgModBASS.h"
 #include "DlgModOpenMPT.h"
+#include "Utility.h"
 
 // Maps an index to a pre-amp dB value.
 static const std::map<int, int> sPreampValues = {
@@ -51,6 +52,21 @@ void OptionsMixing::OnInit( const HWND hwnd )
 {
 	m_hWnd = hwnd;
 
+	const auto dsdSamplerateSetting = GetSettings().GetDSDSamplerate();
+
+	if ( const HWND hwndSamplerate = GetDlgItem( hwnd, IDC_OPTIONS_DSD_SAMPLERATE ); nullptr != hwndSamplerate ) {
+		constexpr auto samplerates = Settings::GetDSDSamplerates();
+		const HINSTANCE instance = GetInstanceHandle();
+		for ( const auto samplerate : samplerates ) {
+			const std::wstring str = SamplerateToString( instance, static_cast<long>( samplerate ), false /*kHz*/ );
+			ComboBox_AddString( hwndSamplerate, str.c_str() );
+			ComboBox_SetItemData( hwndSamplerate, ComboBox_GetCount( hwndSamplerate ) - 1, static_cast<LPARAM>( samplerate ) );
+			if ( samplerate == dsdSamplerateSetting ) {
+				ComboBox_SetCurSel( hwndSamplerate, ComboBox_GetCount( hwndSamplerate ) - 1 );
+			}
+		}
+	}
+
 #ifndef _DEBUG
 	const std::vector<std::pair<Settings::MODDecoder, std::wstring>>modDecoders = {
 		std::make_pair( Settings::MODDecoder::BASS, GetOutput().GetHandlers().GetBassVersion() ),
@@ -74,19 +90,16 @@ void OptionsMixing::OnInit( const HWND hwnd )
 		}
 	}
 
-	const auto samplerateSetting = GetSettings().GetMODSamplerate();
+	const auto modSamplerateSetting = GetSettings().GetMODSamplerate();
 
 	if ( const HWND hwndSamplerate = GetDlgItem( hwnd, IDC_OPTIONS_MOD_SAMPLERATE ); nullptr != hwndSamplerate ) {
 		constexpr auto samplerates = Settings::GetSupportedSamplerates();
-		const int bufferSize = 16;
-		WCHAR hz[ bufferSize ];
 		const HINSTANCE instance = GetInstanceHandle();
-		LoadString( instance, IDS_UNITS_HZ, hz, bufferSize );
 		for ( const auto samplerate : samplerates ) {
-			const std::wstring str = std::to_wstring( samplerate ) + L" " + hz;
+			const std::wstring str = SamplerateToString( instance, static_cast<long>( samplerate ), false /*kHz*/ );
 			ComboBox_AddString( hwndSamplerate, str.c_str() );
 			ComboBox_SetItemData( hwndSamplerate, ComboBox_GetCount( hwndSamplerate ) - 1, static_cast<LPARAM>( samplerate ) );
-			if ( samplerate == samplerateSetting ) {
+			if ( samplerate == modSamplerateSetting ) {
 				ComboBox_SetCurSel( hwndSamplerate, ComboBox_GetCount( hwndSamplerate ) - 1 );
 			}
 		}
@@ -148,17 +161,15 @@ void OptionsMixing::OnInit( const HWND hwnd )
 	if ( const HWND hwndResampleFormat = GetDlgItem( hwnd, IDC_OPTIONS_RESAMPLE_FORMAT ); nullptr != hwndResampleFormat ) {
 		constexpr auto samplerates = Settings::GetSupportedSamplerates();
 		const int bufferSize = 32;
-		WCHAR hz[ bufferSize ];
 		WCHAR mono[ bufferSize ];
 		WCHAR stereo[ bufferSize ];
 		const HINSTANCE instance = GetInstanceHandle();
-		LoadString( instance, IDS_UNITS_HZ, hz, bufferSize );
 		LoadString( instance, IDS_MONO, mono, bufferSize );
 		LoadString( instance, IDS_STEREO, stereo, bufferSize );
 		std::array<std::pair<uint32_t, std::wstring>, 2> channels = { std::make_pair( 2u, stereo ), std::make_pair( 1u, mono ) };
 		for ( const auto& [channelCount, channelText] : channels ) {
 			for ( const auto samplerate : samplerates ) {
-				const std::wstring str = channelText + L", " + std::to_wstring( samplerate ) + L" " + hz;
+				const std::wstring str = channelText + L", " + SamplerateToString( instance, static_cast<long>( samplerate ), false /*kHz*/ );
 				ComboBox_AddString( hwndResampleFormat, str.c_str() );
 				const LPARAM data = PackResampleFormat( samplerate, channelCount );
 				ComboBox_SetItemData( hwndResampleFormat, ComboBox_GetCount( hwndResampleFormat ) - 1, data );
@@ -173,6 +184,13 @@ void OptionsMixing::OnInit( const HWND hwnd )
 
 void OptionsMixing::OnSave( const HWND hwnd )
 {
+	if ( const HWND hwndSamplerate = GetDlgItem( hwnd, IDC_OPTIONS_DSD_SAMPLERATE ); nullptr != hwndSamplerate ) {
+		const int selectedSamplerate = ComboBox_GetCurSel( hwndSamplerate );
+		if ( selectedSamplerate >= 0 ) {
+			GetSettings().SetDSDSamplerate( static_cast<uint32_t>( ComboBox_GetItemData( hwndSamplerate, selectedSamplerate ) ) );
+		}
+	}
+
 	GetSettings().SetMODDecoder( GetPreferredDecoder( hwnd ) );
 
 	if ( const HWND hwndSamplerate = GetDlgItem( hwnd, IDC_OPTIONS_MOD_SAMPLERATE ); nullptr != hwndSamplerate ) {

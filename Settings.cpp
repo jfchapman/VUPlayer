@@ -906,7 +906,7 @@ void Settings::SetPeakMeterSettings( const COLORREF& base, const COLORREF& peak,
 	WriteSetting( "PeakMeterBackground", background );
 }
 
-void Settings::GetStartupPosition( int& x, int& y, int& width, int& height, bool& maximised, bool& minimised )
+void Settings::GetInitialWindowPosition( int& x, int& y, int& width, int& height, bool& maximised, bool& minimised )
 {
 	if ( const auto value = ReadSetting<int>( "StartupX" ); value ) {
 		x = *value;
@@ -928,7 +928,7 @@ void Settings::GetStartupPosition( int& x, int& y, int& width, int& height, bool
 	}
 }
 
-void Settings::SetStartupPosition( const int x, const int y, const int width, const int height, const bool maximised, const bool minimised )
+void Settings::SetInitialWindowPosition( const int x, const int y, const int width, const int height, const bool maximised, const bool minimised )
 {
 	WriteSetting( "StartupX", x );
 	WriteSetting( "StartupY", y );
@@ -991,6 +991,26 @@ void Settings::SetStartupFile( const std::wstring& filename, const std::optional
 	WriteSetting( "StartupFilename", filename );
 	WriteSetting( "StartupCueStart", cueStart.value_or( -1 ) );
 	WriteSetting( "StartupCueEnd", cueEnd.value_or( -1 ) );
+}
+
+float Settings::GetStartupOutputPosition()
+{
+	return ReadSetting<float>( "StartupOutputPosition" ).value_or( 0.0f );
+}
+
+void Settings::SetStartupOutputPosition( const float position )
+{
+	WriteSetting( "StartupOutputPosition", position );
+}
+
+Settings::StartupState Settings::GetStartupOutputState()
+{
+	return ReadSetting<StartupState>( "StartupOutputState" ).value_or( StartupState::None );
+}
+
+void Settings::SetStartupOutputState( const StartupState state )
+{
+	WriteSetting( "StartupOutputState", state );
 }
 
 void Settings::GetCounterSettings( LOGFONT& font, COLORREF& fontColour, bool& showRemaining )
@@ -1108,9 +1128,9 @@ void Settings::GetSystraySettings( bool& enable, bool& minimise, SystrayCommand&
 {
 	enable = false;
 	minimise = false;
-	singleClick = SystrayCommand::None;
-	doubleClick = SystrayCommand::None;
-	tripleClick = SystrayCommand::None;
+	singleClick = SystrayCommand::Play;
+	doubleClick = SystrayCommand::Next;
+	tripleClick = SystrayCommand::Previous;
 	quadClick = SystrayCommand::None;
 
 	if ( const auto value = ReadSetting<bool>( "SysTrayEnable" ); value ) {
@@ -2003,4 +2023,20 @@ void Settings::SetResamplerSettings( const bool enabled, const uint32_t samplera
 	WriteSetting<bool>( "ResamplerEnabled", enabled );
 	WriteSetting<uint32_t>( "ResamplerRate", samplerate );
 	WriteSetting<uint32_t>( "ResamplerChannels", channels );
+}
+
+uint32_t Settings::GetDSDSamplerate()
+{
+	constexpr uint32_t kDefaultDSDSamplerate = 88200;
+	uint32_t samplerate = ReadSetting<uint32_t>( "DSDSamplerate" ).value_or( kDefaultDSDSamplerate );
+	constexpr auto supportedSampleRates = GetDSDSamplerates();
+	if ( const auto it = std::find( supportedSampleRates.begin(), supportedSampleRates.end(), samplerate ); supportedSampleRates.end() == it ) {
+		samplerate = kDefaultDSDSamplerate;
+	}
+	return samplerate;
+}
+
+void Settings::SetDSDSamplerate( const uint32_t samplerate )
+{
+	WriteSetting<uint32_t>( "DSDSamplerate", samplerate );
 }

@@ -15,6 +15,7 @@
 #include "Settings.h"
 #include "ShellMetadata.h"
 #include "Utility.h"
+#include "TagReader.h"
 
 Handlers::Handlers() :
 	m_HandlerBASS( new HandlerBass() ),
@@ -108,12 +109,16 @@ bool Handlers::GetTags( const std::wstring& filename, Tags& tags ) const
 			success = handler->GetTags( filename, tags );
 		}
 		if ( !success ) {
-			const auto shellTags = GetShellMetadata( filename );
-			if ( shellTags ) {
-				tags = *shellTags;
+			TagReader tagReader( filename );
+			if ( const auto fileTags = tagReader.GetTags(); fileTags.has_value() ) {
+				tags = *fileTags;
 				success = true;
-			} else {
-				success = GetAPETags( filename, tags );
+			}
+			if ( !success ) {
+				if ( const auto shellTags = GetShellMetadata( filename ); shellTags.has_value() ) {
+					tags = *shellTags;
+					success = true;
+				}
 			}
 		}
 	}

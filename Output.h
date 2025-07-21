@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <functional>
+#include <optional>
 
 // Message ID for signalling that playback needs to be restarted from a playlist item ID (wParam).
 static const UINT MSG_RESTARTPLAYBACK = WM_APP + 191;
@@ -53,8 +54,7 @@ public:
 	// Starts playback.
 	// 'startID' - Playlist ID at which to start playback (or zero to start playback at the first playlist item).
 	// 'seek' - Initial start position in seconds (negative value to seek relative to the end of the track).
-	// Returns true if playback was started.
-	bool Play( const long startID = 0, const double seek = 0 );
+	void Play( const long startID = 0, const double seek = 0 );
 
 	// Stops playback.
 	void Stop();
@@ -73,7 +73,15 @@ public:
 	// Sets the current 'playlist', and starts playback.
 	// 'startID' - Playlist ID at which to start playback (or zero to start playback at the first playlist item).
 	// 'seek' - Initial start position in seconds (negative value to seek relative to the end of the track).
+	// 'pausedOnStartup' - Whether the application has been started in a paused state.
 	void Play( const Playlist::Ptr playlist, const long startID = 0, const float seek = 0.0f );
+
+	// Called on application startup to resume playback.
+	// 'playlist' - Startup playlist.
+	// 'startID' - Playlist ID with which to resume playback.
+	// 'seek' - Initial start position in seconds.
+	// 'paused' - Whether to start in a paused state.
+	void Startup( const Playlist::Ptr playlist, const long startID, const float seek, const bool paused );
 
 	// Gets the current playlist.
 	Playlist::Ptr GetPlaylist();
@@ -621,6 +629,9 @@ private:
 
 	// When starting playback in non-standard output mode, the lead-in length before passing through actual sample data.
 	float m_LeadInSeconds;
+
+	// Indicates whether the application has been started in a paused state.
+	bool m_PausedOnStartup;
 
 	// A preloaded decoder, which can be used to minimize the delay when switching streams.
 	PreloadedDecoder m_PreloadedDecoder;

@@ -238,9 +238,6 @@ public:
 	// Sets whether duplicate playlist items should be merged.
 	void SetMergeDuplicates( const bool merge );
 
-	// Updates the 'item' in the playlist.
-	void UpdateItem( const Item& item );
-
 	// Returns whether the playlist contains any items that can be converted (or extracted).
 	bool CanConvertAnyItems();
 

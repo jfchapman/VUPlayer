@@ -24,6 +24,12 @@ std::vector<std::pair<Settings::TitleBarFormat, int>> OptionsGeneral::s_TitleBar
 	std::make_pair( Settings::TitleBarFormat::ApplicationName,  IDS_OPTIONS_TITLEBAR_APPNAME )
 };
 
+std::vector<std::pair<Settings::StartupState, int>> OptionsGeneral::s_StartupStates = {
+	std::make_pair( Settings::StartupState::None,               IDS_OPTIONS_STARTUP_NONE ),
+	std::make_pair( Settings::StartupState::Play,               IDS_OPTIONS_STARTUP_PLAY ),
+	std::make_pair( Settings::StartupState::Pause,              IDS_OPTIONS_STARTUP_PAUSE )
+};
+
 OptionsGeneral::OptionsGeneral( HINSTANCE instance, Settings& settings, Output& output ) :
 	Options( instance, settings, output )
 {
@@ -61,6 +67,24 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 	RefreshOutputDeviceList( hwnd );
 
 	// Miscellaneous settings
+	const auto settingStartup = GetSettings().GetStartupOutputState();
+	if ( const HWND hwndStartup = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_STARTUP ); nullptr != hwndStartup ) {
+		const int bufferSize = MAX_PATH;
+		WCHAR buffer[ bufferSize ];
+		const HINSTANCE instance = GetInstanceHandle();
+		for ( const auto& [state, resourceID] : s_StartupStates ) {
+			LoadString( instance, resourceID, buffer, bufferSize );
+			ComboBox_AddString( hwndStartup, buffer );
+			ComboBox_SetItemData( hwndStartup, ComboBox_GetCount( hwndStartup ) - 1, static_cast<LPARAM>( state ) );
+			if ( state == settingStartup ) {
+				ComboBox_SetCurSel( hwndStartup, ComboBox_GetCount( hwndStartup ) - 1 );
+			}
+		}
+		if ( -1 == ComboBox_GetCurSel( hwndStartup ) ) {
+			ComboBox_SetCurSel( hwndStartup, 0 );
+		}
+	}
+
 	const auto settingTitleBar = GetSettings().GetTitleBarFormat();
 	if ( const HWND hwndTitleBar = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_TITLEBAR ); nullptr != hwndTitleBar ) {
 		const int bufferSize = MAX_PATH;
@@ -134,6 +158,9 @@ void OptionsGeneral::OnSave( const HWND hwnd )
 	GetSettings().SetOutputSettings( device, mode );
 
 	// Miscellaneous settings
+	const auto startupState = GetSelectedStartupState( hwnd );
+	GetSettings().SetStartupOutputState( startupState );
+
 	const auto titleBarFormat = GetSelectedTitleBarFormat( hwnd );
 	GetSettings().SetTitleBarFormat( titleBarFormat );
 
@@ -280,6 +307,17 @@ Settings::TitleBarFormat OptionsGeneral::GetSelectedTitleBarFormat( const HWND h
 		}
 	}
 	return format;
+}
+
+Settings::StartupState OptionsGeneral::GetSelectedStartupState( const HWND hwnd ) const
+{
+	Settings::StartupState state = Settings::StartupState::None;
+	if ( const HWND hwndState = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_STARTUP ); nullptr != hwndState ) {
+		if ( const int selectedState = ComboBox_GetCurSel( hwndState ); selectedState >= 0 ) {
+			state = static_cast<Settings::StartupState>( ComboBox_GetItemData( hwndState, selectedState ) );
+		}
+	}
+	return state;
 }
 
 std::wstring OptionsGeneral::GetSelectedDeviceName( const HWND hwnd ) const

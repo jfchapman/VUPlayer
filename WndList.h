@@ -57,8 +57,9 @@ public:
 
 	// Sets the current 'playlist'.
 	// 'initSelection' - whether to select the first playlist item (or the currently playing item if it's in the list).
-	// 'fileToSelect' - the file to select.
-	void SetPlaylist( const Playlist::Ptr playlist, const bool initSelection = true, const std::optional<MediaInfo>& fileToSelect = std::nullopt );
+	// 'startupFile' - the file to select, and the startup state & seek position to set (in seconds) on application startup.
+	// 'itemIDToSelect' - playlist item ID to select (if the currently playing item is not selected).
+	void SetPlaylist( const Playlist::Ptr playlist, const bool initSelection = true, const std::optional<std::tuple<MediaInfo, Settings::StartupState, float>>& startupFile = std::nullopt, const long itemIDToSelect = 0 );
 
 	// Called when an 'item' is added to the 'playlist' at a (0-based) 'position'.
 	void OnFileAdded( Playlist* playlist, const Playlist::Item& item, const int position );
@@ -368,8 +369,8 @@ private:
 	// Maps a filename (with optional cues) to an item ID collection.
 	FilenameToIDs m_FilenameToIDs;
 
-	// The file to select when setting the playlist.
-	std::optional<MediaInfo> m_FileToSelect;
+	// The file to select, and the output state & starting position (in seconds), when setting the playlist on application startup.
+	std::optional<std::tuple<MediaInfo, Settings::StartupState, float>> m_StartupFile;
 
 	// Whether to select the first list control item when a playlist item is added to the playlist.
 	bool m_SelectFirstItem = false;

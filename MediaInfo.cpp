@@ -89,11 +89,11 @@ MediaInfo::operator Tags() const
 	if ( m_Year > 0 ) {
 		tags.insert( Tags::value_type( Tag::Year, std::to_string( m_Year ) ) );
 	}
-	const std::string gainAlbum = GainToString( m_GainAlbum );
+	const std::string gainAlbum = GainToString( GetModuleHandle( nullptr ), m_GainAlbum );
 	if ( !gainAlbum.empty() ) {
 		tags.insert( Tags::value_type( Tag::GainAlbum, gainAlbum ) );
 	}
-	const std::string gainTrack = GainToString( m_GainTrack );
+	const std::string gainTrack = GainToString( GetModuleHandle( nullptr ), m_GainTrack );
 	if ( !gainTrack.empty() ) {
 		tags.insert( Tags::value_type( Tag::GainTrack, gainTrack ) );
 	}

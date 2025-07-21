@@ -99,6 +99,13 @@ public:
 		ApplicationName
 	};
 
+	// Output state on application startup.
+	enum class StartupState {
+		None = 0,
+		Play,
+		Pause
+	};
+
 	// EQ settings.
 	struct EQ {
 		// Maps a centre frequency, in Hz, to a gain value.
@@ -273,23 +280,23 @@ public:
 	// Sets the VUMeter decay settings.
 	void SetVUMeterDecay( const float decay );
 
-	// Gets the application startup position settings.
+	// Gets the initial window position settings.
 	// 'x' - out, desktop X position.
 	// 'y' - out, desktop Y position.
 	// 'width' - out, main window width.
 	// 'height' - out, main window height.
 	// 'maximised' - out, whether the main window is maximised.
 	// 'minimsed' - out, whether the main window is minimised.
-	void GetStartupPosition( int& x, int& y, int& width, int& height, bool& maximised, bool& minimised );
+	void GetInitialWindowPosition( int& x, int& y, int& width, int& height, bool& maximised, bool& minimised );
 
-	// Gets the application startup position settings.
+	// Gets the initial window position settings.
 	// 'x' - out, desktop X position.
 	// 'y' - out, desktop Y position.
 	// 'width' - out, main window width.
 	// 'height' - out, main window height.
 	// 'maximised' - out, whether the main window is maximised.
 	// 'minimsed' - out, whether the main window is minimised.
-	void SetStartupPosition( const int x, const int y, const int width, const int height, const bool maximised, const bool minimised );
+	void SetInitialWindowPosition( const int x, const int y, const int width, const int height, const bool maximised, const bool minimised );
 
 	// Returns the startup visual ID.
 	int GetVisualID();
@@ -320,6 +327,18 @@ public:
 
 	// Sets the startup 'filename' (with optional start & end cues).
 	void SetStartupFile( const std::wstring& filename, const std::optional<long>& cueStart = std::nullopt, const std::optional<long>& cueEnd = std::nullopt );
+
+	// Gets the output position (in seconds) on application startup.
+	float GetStartupOutputPosition();
+
+	// Sets the output position (in seconds) on application startup.
+	void SetStartupOutputPosition( const float position );
+
+	// Gets whether to resume or pause playback on application startup.
+	StartupState GetStartupOutputState();
+
+	// Sets whether to resume or pause playback on application startup.
+	void SetStartupOutputState( const StartupState state );
 
 	// Gets the counter settings.
 	// 'font' - out, counter font.
@@ -642,7 +661,10 @@ public:
 	void SetMODSamplerate( const uint32_t samplerate );
 
 	// Returns the supported sample rates for MOD music and the resampler.
-	static constexpr std::array<uint32_t, 8> GetSupportedSamplerates() { return { 192000, 96000, 48000, 44100, 22050, 16000, 11025, 8000 }; }
+	static constexpr std::array<uint32_t, 12> GetSupportedSamplerates() { return { 384000, 352800, 192000, 176400, 96000, 88200, 48000, 44100, 22050, 16000, 11025, 8000 }; }
+
+	// Returns the supported sample rates for DSD files.
+	static constexpr std::array<uint32_t, 4> GetDSDSamplerates() { return { 352800, 176400, 88200, 44100 }; }
 
 	// Gets default OpenMPT settings.
 	void GetDefaultOpenMPTSettings( bool& fadeout, long& separation, long& ramping, long& interpolation );
@@ -681,6 +703,12 @@ public:
 
 	// Sets whether resampling is enabled, and the samplerate & channel settings if so.
 	void SetResamplerSettings( const bool enabled, const uint32_t samplerate, const uint32_t channels );
+
+	// Gets the DSD sample rate.
+	uint32_t GetDSDSamplerate();
+
+	// Sets the DSD sample rate.
+	void SetDSDSamplerate( const uint32_t samplerate );
 
 	// Returns the supported OpenMPT ramping options.
 	static constexpr std::array<long, 12> GetOpenMPTSupportedRamping() { return { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }; }

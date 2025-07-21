@@ -333,15 +333,6 @@
     <ClInclude Include="DecoderOpenMPT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\libopenmpt-0.6.9\include\libopenmpt.hpp">
-      <Filter>Third Party</Filter>
-    </ClInclude>
-    <ClInclude Include="libs\libopenmpt-0.6.9\include\libopenmpt_config.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
-    <ClInclude Include="libs\libopenmpt-0.6.9\include\libopenmpt_version.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
     <ClInclude Include="DlgModBASS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -362,6 +353,9 @@
     </ClInclude>
     <ClInclude Include="libs\sqlite-3.49.1\sqlite3.h">
       <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TagReader.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -673,6 +667,9 @@
     </ClCompile>
     <ClCompile Include="libs\sqlite-3.49.1\sqlite3.c">
       <Filter>Third Party</Filter>
+    </ClCompile>
+    <ClCompile Include="TagReader.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

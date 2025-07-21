@@ -63,6 +63,30 @@ std::wstring FilesizeToString( const HINSTANCE instance, const long long filesiz
 // 'colonDelimited' - true to delimit with colons, false to delimit with resource strings.
 std::wstring DurationToString( const HINSTANCE instance, const double duration, const bool colonDelimited );
 
+// Converts a bitrate to a string.
+// 'instance' - module instance handle.
+// 'bitrate' - bitrate to convert.
+std::wstring BitrateToString( const HINSTANCE instance, const float bitrate );
+
+// Converts a sample rate to a string.
+// 'instance' - module instance handle.
+// 'samplerate' - sample rate to convert.
+// 'kHz' - true to convert to kHz, false to convert to Hz.
+std::wstring SamplerateToString( const HINSTANCE instance, const long samplerate, const bool kHz = true );
+
+// Converts a file time to a string.
+// 'instance' - module instance handle.
+// 'filetime' - file time to convert.
+std::wstring FiletimeToString( const long long filetime );
+
+// Converts a gain value to a string.
+// 'instance' - module instance handle.
+// 'gain' - gain value to convert.
+std::wstring GainToString( const HINSTANCE instance, const float gain );
+
+// Converts a 'gain' value to a string (returns an empty string if the gain is not valid).
+std::string GainToString( const HINSTANCE instance, const std::optional<float> gain );
+
 // Generates a GUID.
 GUID GenerateGUID();
 
@@ -93,9 +117,6 @@ bool FolderExists( const std::wstring& folder );
 // Replaces invalid characters in 'filename' with 'replacement'.
 // 'replaceFolderDelimiters' - whether folder delimiters should be replaced.
 void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const std::wstring& replacement, const bool replaceFolderDelimiters );
-
-// Converts a 'gain' value to a string (returns an empty string if the gain is not valid).
-std::string GainToString( const std::optional<float> gain );
 
 // Centres a 'dialog' with respect to its parent window, or the desktop window if the parent is not visible.
 void CentreDialog( const HWND dialog );

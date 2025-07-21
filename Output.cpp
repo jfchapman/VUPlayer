@@ -241,6 +241,7 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, S
 	m_OutputStreamFinished( false ),
 	m_MixerStreamHasEndSync( false ),
 	m_LeadInSeconds( 0 ),
+	m_PausedOnStartup( false ),
 	m_PreloadedDecoder( {} ),
 	m_PreloadedDecoderMutex(),
 	m_StreamTitleQueue(),
@@ -298,7 +299,7 @@ Output::~Output()
 	BASS_Free();
 }
 
-bool Output::Play( const long playlistID, const double seek )
+void Output::Play( const long playlistID, const double seek )
 {
 	Stop();
 
@@ -352,7 +353,7 @@ bool Output::Play( const long playlistID, const double seek )
 				}
 				UpdateEQ( m_CurrentEQ );
 
-				State state = StartOutput();
+				const State state = StartOutput();
 				if ( State::Playing == state ) {
 					Queue queue = GetOutputQueue();
 					queue.push_back( { item, 0, seekPosition } );
@@ -368,8 +369,6 @@ bool Output::Play( const long playlistID, const double seek )
 			}
 		}
 	}
-	const bool started = ( GetState() == State::Playing );
-	return started;
 }
 
 void Output::Stop()
@@ -439,6 +438,7 @@ void Output::Stop()
 	m_WASAPIPaused = false;
 	m_OutputStreamFinished = false;
 	m_MixerStreamHasEndSync = false;
+	m_PausedOnStartup = false;
 	StopCrossfadeCalculationThread();
 	StopLoudnessPrecalcThread();
 	std::lock_guard<std::mutex> lock( m_PreloadedDecoderMutex );
@@ -448,6 +448,13 @@ void Output::Stop()
 
 void Output::Pause()
 {
+	if ( m_PausedOnStartup ) {
+		m_PausedOnStartup = false;
+		if ( const auto queue = GetOutputQueue(); !queue.empty() )
+			Play( queue.front().PlaylistItem.ID, queue.front().InitialSeek );
+		return;
+	}
+
 	const State state = GetState();
 	switch ( m_OutputMode ) {
 		case Settings::OutputMode::Standard: {
@@ -558,6 +565,21 @@ void Output::Play( const Playlist::Ptr playlist, const long startID, const float
 	Play( startID, seek );
 }
 
+void Output::Startup( const Playlist::Ptr playlist, const long startID, const float seek, const bool paused )
+{
+	if ( playlist && paused && ( seek > 0.0f ) ) {
+		Playlist::Item item( { startID, MediaInfo() } );
+		if ( playlist->GetItem( item ) ) {
+			ChangePlaylist( playlist );
+			const Queue queue = { { item, 0, seek } };
+			SetOutputQueue( queue );
+			m_PausedOnStartup = true;
+		}
+	}	else {
+		Play( playlist, startID, seek );
+	}
+}
+
 Playlist::Ptr Output::GetPlaylist()
 {
 	return m_Playlist;
@@ -565,6 +587,9 @@ Playlist::Ptr Output::GetPlaylist()
 
 Output::State Output::GetState()
 {
+	if ( m_PausedOnStartup )
+		return State::Paused;
+
 	State state = State::Stopped;
 	switch ( m_OutputMode ) {
 		case Settings::OutputMode::Standard: {
@@ -1798,6 +1823,9 @@ float Output::GetDecodePosition() const
 
 float Output::GetOutputPosition() const
 {
+	if ( m_PausedOnStartup )
+		return 0;
+
 	float seconds = 0;
 	switch ( m_OutputMode ) {
 		case Settings::OutputMode::Standard: {
@@ -2121,7 +2149,6 @@ void Output::LoudnessPrecalcHandler()
 							const MediaInfo previousMediaInfo( item->Info );
 							item->Info.SetGainTrack( gain );
 							std::lock_guard<std::mutex> lock( m_PlaylistMutex );
-							m_Playlist->UpdateItem( *item );
 							m_Playlist->GetLibrary().UpdateTrackGain( previousMediaInfo, item->Info );
 						}
 					}

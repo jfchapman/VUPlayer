@@ -129,6 +129,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 			const LPARAM playlistType = static_cast<LPARAM>( playlist ? playlist->GetType() : Playlist::Type::_Undefined );
 			PostMessage( m_Tree.GetWindowHandle(), MSG_OUTPUTPLAYLISTCHANGED, playlistID, playlistType );
 		} );
+
 	m_Output.SetSelectFollowedTrackCallback( [ this ] ( const long itemID )
 		{
 			PostMessage( m_List.GetWindowHandle(), MSG_SELECTPLAYLISTITEM, itemID, 0 );
@@ -143,7 +144,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 		MediaInfo startupInfo( initialFilename );
 		startupInfo.SetCueStart( cueStart );
 		startupInfo.SetCueEnd( cueEnd );
-		m_List.SetPlaylist( m_Tree.GetSelectedPlaylist(), false, startupInfo );
+		const float seekPosition = ( Settings::StartupState::None == m_Settings.GetStartupOutputState() ) ? 0.0f : m_Settings.GetStartupOutputPosition();
+		m_List.SetPlaylist( m_Tree.GetSelectedPlaylist(), false, std::make_optional( std::make_tuple( startupInfo, m_Settings.GetStartupOutputState(), seekPosition ) ) );
 	}
 	m_Output.SetPlaylistInformationToFollow( m_List.GetPlaylist(), m_List.GetSelectedPlaylistItems() );
 
@@ -182,7 +184,7 @@ void VUPlayer::ReadWindowSettings()
 	int height = -1;
 	bool maximised = false;
 	bool minimised = false;
-	m_Settings.GetStartupPosition( x, y, width, height, maximised, minimised );
+	m_Settings.GetInitialWindowPosition( x, y, width, height, maximised, minimised );
 	const float dpiScaling = GetDPIScaling();
 	if ( ( width >= static_cast<int>( s_MinAppWidth * dpiScaling ) ) && ( height >= static_cast<int>( s_MinAppHeight * dpiScaling ) ) ) {
 		// Check that some portion of the title bar is visible.
@@ -235,7 +237,7 @@ void VUPlayer::WriteWindowSettings()
 	int height = -1;
 	bool maximised = false;
 	bool minimised = false;
-	m_Settings.GetStartupPosition( x, y, width, height, maximised, minimised );
+	m_Settings.GetInitialWindowPosition( x, y, width, height, maximised, minimised );
 	maximised = ( FALSE != IsZoomed( m_hWnd ) );
 	minimised = ( FALSE != IsIconic( m_hWnd ) );
 	if ( !maximised && !minimised ) {
@@ -246,7 +248,7 @@ void VUPlayer::WriteWindowSettings()
 		width = rect.right - rect.left;
 		height = rect.bottom - rect.top;
 	}
-	m_Settings.SetStartupPosition( x, y, width, height, maximised, minimised );
+	m_Settings.SetInitialWindowPosition( x, y, width, height, maximised, minimised );
 }
 
 std::filesystem::path VUPlayer::DocumentsFolder()
@@ -2194,8 +2196,9 @@ void VUPlayer::UpdatePlayCount( const Output::Item& previousItem, const Output::
 	const time_t trackSeconds = static_cast<time_t>( previousMediaInfo.GetDuration() );
 	if ( 0 != previousItem.PlaylistItem.ID ) {
 		const time_t playedSeconds = now - m_LastOutputStateChange;
-		// Use a similar metric as the scrobbler to determine if a track has been played (either 4 minutes play time, or half the track length)
-		if ( ( playedSeconds >= 240 ) || ( ( trackSeconds > 0 ) && ( ( playedSeconds * 2 ) >= trackSeconds ) ) ) {
+		// Use a similar metric as audioscrobbler to determine if a track has been played (half the track duration, or 4 minutes for tracks with unknown duration).
+		const bool updatePlayCount = ( trackSeconds > 0 ) ? ( ( playedSeconds * 2 ) >= trackSeconds ) : ( playedSeconds >= 240 );
+		if ( updatePlayCount ) {
 			m_Library.UpdatePlayCount( previousMediaInfo );
 		}
 	}
@@ -2209,7 +2212,8 @@ void VUPlayer::UpdatePlayCount( const Output::Item& previousItem, const Output::
 
 void VUPlayer::SaveSettings()
 {
-	const Output::Item currentPlaying = m_Output.GetCurrentPlaying();
+	const auto currentPlaying = m_Output.GetCurrentPlaying();
+	const auto playbackState = m_Output.GetState();
 	Playlist::Ptr playlist = m_Output.GetPlaylist();
 	MediaInfo info = currentPlaying.PlaylistItem.Info;
 	if ( ( 0 == currentPlaying.PlaylistItem.ID ) || !playlist || ( Playlist::Type::_Undefined == playlist->GetType() ) ) {
@@ -2220,6 +2224,9 @@ void VUPlayer::SaveSettings()
 	m_Tree.SaveStartupPlaylist( playlist );
 
 	m_Settings.SetStartupFile( info.GetFilename(), info.GetCueStart(), info.GetCueEnd() );
+	
+	const bool saveOutputPosition = ( Settings::StartupState::None != m_Settings.GetStartupOutputState() ) && ( Output::State::Stopped != playbackState ) && ( info.GetDuration() > 0.0f );
+	m_Settings.SetStartupOutputPosition( saveOutputPosition ? static_cast<float>( currentPlaying.Position ) : 0.0f );
 
 	m_Settings.SetVolume( m_Output.GetVolume() );
 	m_Settings.SetPlaybackSettings( m_Output.GetRandomPlay(), m_Output.GetRepeatTrack(), m_Output.GetRepeatPlaylist(), m_Output.GetCrossfade() );

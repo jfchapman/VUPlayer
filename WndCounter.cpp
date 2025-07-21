@@ -14,8 +14,8 @@ static const wchar_t s_CounterClass[] = L"VUCounterClass";
 // Counter widths
 static const std::map<Settings::ToolbarSize, int> s_CounterWidths = {
 	{ Settings::ToolbarSize::Small, 135 },
-	{ Settings::ToolbarSize::Medium, 150 },
-	{ Settings::ToolbarSize::Large, 165 }
+	{ Settings::ToolbarSize::Medium, 160 },
+	{ Settings::ToolbarSize::Large, 185 }
 };
 
 LRESULT CALLBACK WndCounter::CounterProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )

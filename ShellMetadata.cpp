@@ -1,5 +1,6 @@
 #include "ShellMetadata.h"
-#ifndef _CONSOLE
+
+#ifndef _CONSOLE // Functionality that is not required by the shelltag console application
 
 #include "Utility.h"
 
@@ -59,4 +60,5 @@ bool SetShellMetadata( const std::wstring& audioFilename, const Tags& tags )
 	std::filesystem::remove( tagsFilename, ec );
 	return success;
 }
-#endif
+
+#endif // !_CONSOLE

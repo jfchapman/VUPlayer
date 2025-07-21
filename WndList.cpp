@@ -506,16 +506,8 @@ void WndList::OnDisplayInfo( LVITEM& lvItem )
 						break;
 					}
 					case Playlist::Column::Bitrate: {
-						std::wstringstream ss;
-						const auto bitrate = mediaInfo.GetBitrate( true /*calculate*/ );
-						if ( bitrate.has_value() ) {
-							const int bufSize = 16;
-							WCHAR buf[ bufSize ] = {};
-							if ( 0 != LoadString( m_hInst, IDS_UNITS_BITRATE, buf, bufSize ) ) {
-								ss << std::to_wstring( std::lroundf( bitrate.value() ) ) << L" " << buf;
-							}
-						}
-						text = ss.str();
+						if ( const auto bitrate = mediaInfo.GetBitrate( true /*calculate*/ ); bitrate.has_value() )
+							text = BitrateToString( m_hInst, *bitrate );
 						break;
 					}
 					case Playlist::Column::BitsPerSample: {
@@ -560,41 +552,13 @@ void WndList::OnDisplayInfo( LVITEM& lvItem )
 						break;
 					}
 					case Playlist::Column::Filetime: {
-						std::wstringstream ss;
-						const long long filetime = mediaInfo.GetFiletime();
-						if ( filetime > 0 ) {
-							FILETIME ft;
-							ft.dwHighDateTime = static_cast<DWORD>( filetime >> 32 );
-							ft.dwLowDateTime = static_cast<DWORD>( filetime & 0xffffffff );
-							SYSTEMTIME st;
-							if ( 0 != FileTimeToSystemTime( &ft, &st ) ) {
-								SYSTEMTIME lt;
-								if ( 0 != SystemTimeToTzSpecificLocalTime( NULL /*timeZone*/, &st, &lt ) ) {
-									const int bufSize = 128;
-									WCHAR dateBuf[ bufSize ] = {};
-									WCHAR timeBuf[ bufSize ] = {};
-									if ( ( 0 != GetDateFormat( LOCALE_USER_DEFAULT, DATE_SHORTDATE, &lt, NULL /*format*/, dateBuf, bufSize ) ) &&
-										( 0 != GetTimeFormat( LOCALE_USER_DEFAULT, TIME_NOSECONDS, &lt, NULL /*format*/, timeBuf, bufSize ) ) ) {
-										ss << dateBuf << L" " << timeBuf;
-									}
-								}
-							}
-						}
-						text = ss.str();
+						text = FiletimeToString( mediaInfo.GetFiletime() );
 						break;
 					}
 					case Playlist::Column::GainAlbum:
 					case Playlist::Column::GainTrack: {
-						std::wstringstream ss;
-						const auto gain = ( Playlist::Column::GainAlbum == columnID ) ? mediaInfo.GetGainAlbum() : mediaInfo.GetGainTrack();
-						if ( gain.has_value() ) {
-							const int bufSize = 16;
-							WCHAR buf[ bufSize ] = {};
-							if ( 0 != LoadString( m_hInst, IDS_UNITS_DB, buf, bufSize ) ) {
-								ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain.value() << L" " << buf;
-							}
-						}
-						text = ss.str();
+						if ( const auto gain = ( Playlist::Column::GainAlbum == columnID ) ? mediaInfo.GetGainAlbum() : mediaInfo.GetGainTrack(); gain.has_value() )
+							text = GainToString( GetModuleHandle( nullptr ), *gain );
 						break;
 					}
 					case Playlist::Column::Genre: {
@@ -602,16 +566,7 @@ void WndList::OnDisplayInfo( LVITEM& lvItem )
 						break;
 					}
 					case Playlist::Column::SampleRate: {
-						std::wstringstream ss;
-						const long rate = mediaInfo.GetSampleRate();
-						if ( rate > 0 ) {
-							const int bufSize = 16;
-							WCHAR buf[ bufSize ] = {};
-							if ( 0 != LoadString( m_hInst, IDS_UNITS_HZ, buf, bufSize ) ) {
-								ss << std::to_wstring( rate ) << L" " << buf;
-							}
-						}
-						text = ss.str();
+						text = SamplerateToString( m_hInst, mediaInfo.GetSampleRate() );
 						break;
 					}
 					case Playlist::Column::Title: {
@@ -1002,11 +957,11 @@ void WndList::DeleteSelectedItems()
 	}
 }
 
-void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelection, const std::optional<MediaInfo>& fileToSelect )
+void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelection, const std::optional<std::tuple<MediaInfo, Settings::StartupState, float>>& startupFile, const long itemIDToSelect )
 {
 	m_FilenameToIDs.clear();
 	m_IconStatus = {};
-	m_FileToSelect = fileToSelect;
+	m_StartupFile = startupFile;
 	if ( m_Playlist != playlist ) {
 		m_Playlist = playlist;
 	}
@@ -1019,38 +974,53 @@ void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelectio
 			if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != filename ) {
 				filename->second.insert( item->ID );
 			}
-			if ( ( -1 == selectedIndex ) && m_FileToSelect && ( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ) == std::tie( m_FileToSelect->GetFilename(), m_FileToSelect->GetCueStart(), m_FileToSelect->GetCueEnd() ) ) ) {
-				if ( item->Info.GetCueStart() && ( Playlist::Type::Folder == m_Playlist->GetType() ) ) {
-					// When selecting a cue list item as part of a folder playlist at startup, ignore any intervening items which are not cue list items, as these are added later to the list control as pending items.
-					selectedIndex = 0;
-					for ( auto checkItem = playlistItems.begin(); checkItem != item; checkItem++ ) {
-						if ( checkItem->Info.GetCueStart() ) {
-							++selectedIndex;
+			if ( ( -1 == selectedIndex ) && m_StartupFile ) {
+				const auto& [ startupInfo, startupState, startupPosition ] = *m_StartupFile;
+				if ( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ) == std::tie( startupInfo.GetFilename(), startupInfo.GetCueStart(), startupInfo.GetCueEnd() ) ) {
+					if ( item->Info.GetCueStart() && ( Playlist::Type::Folder == m_Playlist->GetType() ) ) {
+						// When selecting a cue list item as part of a folder playlist at startup, ignore any intervening items which are not cue list items, as these are added later to the list control as pending items.
+						selectedIndex = 0;
+						for ( auto checkItem = playlistItems.begin(); checkItem != item; checkItem++ ) {
+							if ( checkItem->Info.GetCueStart() ) {
+								++selectedIndex;
+							}
 						}
+					} else {
+						selectedIndex = static_cast<int>( std::distance( playlistItems.begin(), item ) );
 					}
-				} else {
-					selectedIndex = static_cast<int>( std::distance( playlistItems.begin(), item ) );
+					if ( ( Settings::StartupState::None != startupState ) && ( startupPosition > 0 ) ) {
+						m_Output.Startup( m_Playlist, item->ID, startupPosition, Settings::StartupState::Pause == startupState );
+					}
 				}
 			}
 		}
 		if ( -1 != selectedIndex ) {
 			ListView_SetItemState( m_hWnd, selectedIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 			ListView_EnsureVisible( m_hWnd, selectedIndex, FALSE /*partialOK*/ );
-			m_FileToSelect.reset();
+			m_StartupFile.reset();
 		}
 	}
 	if ( initSelection ) {
 		const int itemCount = ListView_GetItemCount( m_hWnd );
 		if ( itemCount > 0 ) {
-			int selectedIndex = 0;
-			const long currentPlaying = m_Output.GetCurrentPlaying().PlaylistItem.ID;
-			for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-				const long playlistID = GetPlaylistItemID( itemIndex );
-				if ( playlistID == currentPlaying ) {
-					selectedIndex = itemIndex;
-					break;
+			int selectedIndex = -1;
+			if ( const long currentPlaying = m_Output.GetCurrentPlaying().PlaylistItem.ID; currentPlaying > 0 ) {
+				for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+					if ( const long playlistID = GetPlaylistItemID( itemIndex ); playlistID == currentPlaying ) {
+						selectedIndex = itemIndex;
+						break;
+					}
 				}
 			}
+			if ( ( -1 == selectedIndex ) && ( itemIDToSelect > 0 ) ) {
+				for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+					if ( const long playlistID = GetPlaylistItemID( itemIndex ); playlistID == itemIDToSelect ) {
+						selectedIndex = itemIndex;
+						break;
+					}
+				}
+			}
+			selectedIndex = std::max( 0, selectedIndex );
 			ListView_SetItemState( m_hWnd, selectedIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 			ListView_EnsureVisible( m_hWnd, selectedIndex, FALSE /*partialOK*/ );
 		} else {
@@ -1109,21 +1079,25 @@ void WndList::AddFileHandler( const AddedItem* addedItem )
 
 			int selectedIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
 
-			if ( !m_FileToSelect ) {
+			if ( !m_StartupFile ) {
 				if ( ( -1 == selectedIndex ) && ( ( 1 == ListView_GetItemCount( m_hWnd ) ) || m_SelectFirstItem ) ) {
 					ListView_SetItemState( m_hWnd, 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 				}
 				m_SelectFirstItem = false;
 			} else {
+				const auto& [ startupInfo, startupState, startupPosition ] = *m_StartupFile;
 				if ( -1 == selectedIndex ) {
 					const auto& info = addedItem->Item.Info;
-					if ( std::tie( info.GetFilename(), info.GetCueStart(), info.GetCueEnd() ) == std::tie( m_FileToSelect->GetFilename(), m_FileToSelect->GetCueStart(), m_FileToSelect->GetCueEnd() ) ) {
+					if ( std::tie( info.GetFilename(), info.GetCueStart(), info.GetCueEnd() ) == std::tie( startupInfo.GetFilename(), startupInfo.GetCueStart(), startupInfo.GetCueEnd() ) ) {
 						ListView_SetItemState( m_hWnd, addedItem->Position, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
 						ListView_EnsureVisible( m_hWnd, addedItem->Position, FALSE /*partialOK*/ );
-						m_FileToSelect.reset();
+						if ( ( Settings::StartupState::None != startupState ) && ( startupPosition > 0 ) ) {
+							m_Output.Startup( m_Playlist, addedItem->Item.ID, startupPosition, Settings::StartupState::Pause == startupState );
+						}
+						m_StartupFile.reset();
 					}
 				} else {
-					m_FileToSelect.reset();
+					m_StartupFile.reset();
 				}
 			}
 		}
@@ -1162,8 +1136,9 @@ void WndList::ItemUpdatedHandler( const Playlist::Item* item )
 void WndList::SortPlaylist( const Playlist::Column column )
 {
 	if ( m_Playlist ) {
+		const auto selectedItem = GetCurrentSelectedItem();
 		m_Playlist->Sort( column );
-		SetPlaylist( m_Playlist );
+		SetPlaylist( m_Playlist, true, std::nullopt, selectedItem.ID );
 	}
 }
 
@@ -1706,12 +1681,14 @@ void WndList::OnSelectAll()
 	if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr != editControl ) {
 		Edit_SetSel( editControl, 0, -1 );
 	} else {
-		const int itemCount = ListView_GetItemCount( m_hWnd );
-		SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
-		for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
-			ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED, LVIS_SELECTED );
+		if ( const int itemCount = ListView_GetItemCount( m_hWnd ); itemCount > 0 ) {
+			SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
+			ListView_SetItemState( m_hWnd, 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED );
+			for ( int itemIndex = 1; itemIndex < itemCount; itemIndex++ ) {
+				ListView_SetItemState( m_hWnd, itemIndex, LVIS_SELECTED, LVIS_SELECTED );
+			}
+			SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 		}
-		SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 	}
 }
 

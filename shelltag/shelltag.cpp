@@ -316,20 +316,8 @@ std::wstring ShellTag::GetAudioSubType( const std::wstring& guid )
 			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"IEEE Float" ) );
 			CoTaskMemFree( str );
 		}
-		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_MP3, &str ) ) ) {
-			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"MP3" ) );
-			CoTaskMemFree( str );
-		}
-		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_MPEG, &str ) ) ) {
-			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"MPEG-1" ) );
-			CoTaskMemFree( str );
-		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_MSP1, &str ) ) ) {
 			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA 9 Voice" ) );
-			CoTaskMemFree( str );
-		}
-		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_PCM, &str ) ) ) {
-			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"PCM" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_WMASPDIF, &str ) ) ) {
@@ -350,14 +338,6 @@ std::wstring ShellTag::GetAudioSubType( const std::wstring& guid )
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_ALAC, &str ) ) ) {
 			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Apple Lossless" ) );
-			CoTaskMemFree( str );
-		}
-		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_FLAC, &str ) ) ) {
-			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"FLAC" ) );
-			CoTaskMemFree( str );
-		}
-		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Opus, &str ) ) ) {
-			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Opus" ) );
 			CoTaskMemFree( str );
 		}
 	}

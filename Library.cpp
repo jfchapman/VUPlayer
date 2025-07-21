@@ -428,9 +428,30 @@ bool Library::GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags )
 			mediaInfo.SetBitrate( stream->GetBitrate() );
 
 			if ( getTags ) {
+				std::optional<MediaInfo> cueInfo = mediaInfo.GetCueStart() ? std::make_optional( mediaInfo ) : std::nullopt;
 				Tags tags;
 				if ( m_Handlers.GetTags( mediaInfo.GetFilename(), tags ) ) {
 					UpdateMediaInfoFromTags( mediaInfo, tags );
+					if ( cueInfo ) {
+						if ( cueInfo->GetYear() > 0 )
+							mediaInfo.SetYear( cueInfo->GetYear() );
+						if ( !cueInfo->GetTitle().empty() )
+							mediaInfo.SetTitle( cueInfo->GetTitle() );
+						if ( !cueInfo->GetArtist().empty() )
+							mediaInfo.SetArtist( cueInfo->GetArtist() );
+						if ( !cueInfo->GetAlbum().empty() )
+							mediaInfo.SetAlbum( cueInfo->GetAlbum() );
+						if ( !cueInfo->GetGenre().empty() )
+							mediaInfo.SetGenre( cueInfo->GetGenre() );
+						if ( !cueInfo->GetComposer().empty() )
+							mediaInfo.SetComposer( cueInfo->GetComposer() );
+						if ( !cueInfo->GetConductor().empty() )
+							mediaInfo.SetConductor( cueInfo->GetConductor() );
+						if ( !cueInfo->GetPublisher().empty() )
+							mediaInfo.SetPublisher( cueInfo->GetPublisher() );
+						if ( !cueInfo->GetComment().empty() )
+							mediaInfo.SetComment( cueInfo->GetComment() );
+					}
 				}
 			}
 

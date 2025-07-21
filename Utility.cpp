@@ -166,10 +166,10 @@ std::vector<BYTE> Base64Decode( const std::string& text )
 	std::vector<BYTE> result;
 	if ( !text.empty() ) {
 		DWORD bufferSize = 0;
-		if ( FALSE != CryptStringToBinaryA( text.c_str(), 0 /*strLen*/, CRYPT_STRING_BASE64, nullptr /*buffer*/, &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
+		if ( FALSE != CryptStringToBinaryA( text.c_str(), static_cast<DWORD>( text.size() ), CRYPT_STRING_BASE64, nullptr /*buffer*/, &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
 			if ( bufferSize > 0 ) {
 				result.resize( bufferSize );
-				if ( FALSE == CryptStringToBinaryA( text.c_str(), 0 /*strLen*/, CRYPT_STRING_BASE64, &result[ 0 ], &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
+				if ( FALSE == CryptStringToBinaryA( text.c_str(), static_cast<DWORD>( text.size() ) , CRYPT_STRING_BASE64, result.data(), &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
 					result.clear();
 				}
 			}
@@ -266,6 +266,69 @@ std::wstring DurationToString( const HINSTANCE instance, const double _duration,
 	}
 	const std::wstring str = ss.str();
 	return str;
+}
+
+std::wstring BitrateToString( const HINSTANCE instance, const float bitrate )
+{
+	std::wstringstream ss;
+	const int bufSize = 16;
+	WCHAR buf[ bufSize ] = {};
+	if ( 0 != LoadString( instance, IDS_UNITS_BITRATE, buf, bufSize ) )
+		ss << std::to_wstring( std::lroundf( bitrate ) ) << L" " << buf;
+	return ss.str();
+}
+
+std::wstring SamplerateToString( const HINSTANCE instance, const long samplerate, const bool kHz )
+{
+	std::wstringstream ss;
+	if ( samplerate > 0 ) {
+		const float value = kHz ? samplerate / 1000.f : samplerate;
+		const int bufSize = 16;
+		WCHAR buf[ bufSize ] = {};
+		if ( 0 != LoadString( instance, kHz ? IDS_UNITS_KHZ : IDS_UNITS_HZ, buf, bufSize ) ) {
+			ss << value << L" " << buf;
+		}
+	}
+	return ss.str();
+}
+
+std::wstring FiletimeToString( const long long filetime )
+{
+	std::wstringstream ss;
+	if ( filetime > 0 ) {
+		FILETIME ft;
+		ft.dwHighDateTime = static_cast<DWORD>( filetime >> 32 );
+		ft.dwLowDateTime = static_cast<DWORD>( filetime & 0xffffffff );
+		SYSTEMTIME st;
+		if ( 0 != FileTimeToSystemTime( &ft, &st ) ) {
+			SYSTEMTIME lt;
+			if ( 0 != SystemTimeToTzSpecificLocalTime( NULL /*timeZone*/, &st, &lt ) ) {
+				const int bufSize = 128;
+				WCHAR dateBuf[ bufSize ] = {};
+				WCHAR timeBuf[ bufSize ] = {};
+				if ( ( 0 != GetDateFormat( LOCALE_USER_DEFAULT, DATE_SHORTDATE, &lt, NULL /*format*/, dateBuf, bufSize ) ) &&
+					( 0 != GetTimeFormat( LOCALE_USER_DEFAULT, TIME_NOSECONDS, &lt, NULL /*format*/, timeBuf, bufSize ) ) ) {
+					ss << dateBuf << L" " << timeBuf;
+				}
+			}
+		}
+	}
+	return ss.str();
+}
+
+std::wstring GainToString( const HINSTANCE instance, const float gain )
+{
+	std::wstringstream ss;
+	const int bufSize = 16;
+	WCHAR buf[ bufSize ] = {};
+	if ( ( 0 != LoadString( instance, IDS_UNITS_DB, buf, bufSize ) ) && std::isfinite( gain ) )
+		ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain << L" " << buf;
+	return ss.str();
+}
+
+std::string GainToString( const HINSTANCE instance, const std::optional<float> gain )
+{
+	return gain.has_value() ? WideStringToUTF8( GainToString( instance, *gain ) ) : std::string();
 }
 
 GUID GenerateGUID()
@@ -369,15 +432,6 @@ void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const s
 		}
 	}
 	filename = output;
-}
-
-std::string GainToString( const std::optional<float> gain )
-{
-	std::stringstream ss;
-	if ( gain.has_value() && std::isfinite( gain.value() ) ) {
-		ss << std::fixed << std::setprecision( 2 ) << std::showpos << gain.value() << " dB";
-	}
-	return ss.str();
 }
 
 void CentreDialog( const HWND dialog )
@@ -787,4 +841,4 @@ std::string ConvertImage( const std::vector<BYTE>& imageBytes )
 	}
 	return encodedImage;
 }
-#endif
+#endif // !_CONSOLE

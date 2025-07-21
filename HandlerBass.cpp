@@ -5,10 +5,12 @@
 #include "Utility.h"
 
 #include "vcedit.h"
+#include "TagReader.h"
 
 #include <list>
 #include <sstream>
 #include <regex>
+#include <fstream>
 
 HandlerBass::HandlerBass() :
 	Handler(),
@@ -97,15 +99,44 @@ bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
 					success = true;
 				}
 			} else if ( BASS_CTYPE_STREAM_DSD == info.ctype ) {
-				const char* dsdArtist = BASS_ChannelGetTags( stream, BASS_TAG_DSD_ARTIST );
-				if ( ( nullptr != dsdArtist ) && ( strlen( dsdArtist ) > 0 ) ) {
-					tags.insert( Tags::value_type( Tag::Artist, dsdArtist ) );
+				if ( ReadDSDTag( filename, tags ) ) {
 					success = true;
+				} else {
+					const char* dsdArtist = BASS_ChannelGetTags( stream, BASS_TAG_DSD_ARTIST );
+					if ( ( nullptr != dsdArtist ) && ( strlen( dsdArtist ) > 0 ) ) {
+						tags.insert( Tags::value_type( Tag::Artist, dsdArtist ) );
+						success = true;
+					}
+					const char* dsdTitle = BASS_ChannelGetTags( stream, BASS_TAG_DSD_TITLE );
+					if ( ( nullptr != dsdTitle ) && ( strlen( dsdTitle ) > 0 ) ) {
+						tags.insert( Tags::value_type( Tag::Title, dsdTitle ) );
+						success = true;
+					}
 				}
-				const char* dsdTitle = BASS_ChannelGetTags( stream, BASS_TAG_DSD_TITLE );
-				if ( ( nullptr != dsdTitle ) && ( strlen( dsdTitle ) > 0 ) ) {
-					tags.insert( Tags::value_type( Tag::Title, dsdTitle ) );
-					success = true;
+				if ( float rate = 0; BASS_ChannelGetAttribute( stream, BASS_ATTRIB_DSD_RATE, &rate ) ) {
+					std::string format;
+					constexpr int kDSDBaseRate = 2822400;
+					switch ( static_cast<int>( rate ) ) {
+						case kDSDBaseRate:
+							format = "DSD64";
+							break;
+						case 2 * kDSDBaseRate:
+							format = "DSD128";
+							break;
+						case 4 * kDSDBaseRate:
+							format = "DSD256";
+							break;
+						case 8 * kDSDBaseRate:
+							format = "DSD512";
+							break;
+						case 16 * kDSDBaseRate:
+							format = "DSD1024";
+							break;
+					}
+					if ( !format.empty() ) {
+						tags.insert( { Tag::Version, format } );
+						success = true;
+					}
 				}
 			} else if ( BASS_CTYPE_STREAM_WAV & info.ctype ) {
 				if ( const char* riffTags = BASS_ChannelGetTags( stream, BASS_TAG_RIFF_INFO ); nullptr != riffTags ) {
@@ -171,7 +202,7 @@ bool HandlerBass::ConfigureEncoder( const HINSTANCE /*instance*/, const HWND /*p
 	return false;
 }
 
-void HandlerBass::ReadOggTags( const char* oggTags, Tags& tags ) const
+void HandlerBass::ReadOggTags( const char* oggTags, Tags& tags )
 {
 	if ( nullptr != oggTags ) {
 		const char* currentTag = oggTags;
@@ -224,7 +255,7 @@ void HandlerBass::ReadOggTags( const char* oggTags, Tags& tags ) const
 	}
 }
 
-bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags ) const
+bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 {
 	bool handled = true;
 
@@ -380,7 +411,7 @@ bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 	return handled;
 }
 
-void HandlerBass::ReadRIFFTags( const char* riffTags, Tags& tags ) const
+void HandlerBass::ReadRIFFTags( const char* riffTags, Tags& tags )
 {
 	if ( nullptr == riffTags )
 		return;
@@ -417,7 +448,40 @@ void HandlerBass::ReadRIFFTags( const char* riffTags, Tags& tags ) const
 	}
 }
 
-std::wstring HandlerBass::GetTemporaryFilename() const
+bool HandlerBass::ReadDSDTag( const std::wstring& filename, Tags& tags )
+{
+	if ( std::ifstream dsdFile( filename, std::ios::binary ); dsdFile.good() ) {
+		dsdFile.seekg( 0, std::ios::end );
+		const uint64_t filesize = dsdFile.tellg();
+		dsdFile.seekg( 0 );
+		if ( dsdFile.good() ) {
+			constexpr uint32_t kDsdHeaderSize = 28;
+			std::vector<char> header( kDsdHeaderSize );
+			dsdFile.read( header.data(), kDsdHeaderSize );
+			if ( dsdFile.good() && ( "DSD " == std::string( header.data(), 4 ) ) && ( kDsdHeaderSize == header[ 4 ] ) ) {
+				const uint32_t dsdSize = *reinterpret_cast<uint32_t*>( &header[ 12 ] );
+				const uint32_t tagOffset = *reinterpret_cast<uint32_t*>( &header[ 20 ] );
+				const uint32_t tagSize = ( tagOffset > 0 && tagOffset < dsdSize && dsdSize <= filesize ) ? ( dsdSize - tagOffset ) : 0;
+				constexpr uint32_t kMaximumTagSize = 0x10000000;
+				if ( tagSize > 0 && tagSize <= kMaximumTagSize ) {
+					std::vector<char> id3v2( tagSize );
+					dsdFile.seekg( tagOffset );
+					dsdFile.read( id3v2.data(), id3v2.size() );
+					if ( dsdFile.good() ) {
+						TagReader tagReader( id3v2 );
+						if ( const auto fileTags = tagReader.GetTags(); fileTags.has_value() ) {
+							tags = *fileTags;
+							return true;
+						}
+					}
+				}
+			}
+		}
+	}
+	return false;
+}
+
+std::wstring HandlerBass::GetTemporaryFilename()
 {
 	std::wstring filename;
 	WCHAR pathName[ MAX_PATH ];
@@ -430,6 +494,7 @@ std::wstring HandlerBass::GetTemporaryFilename() const
 void HandlerBass::SettingsChanged( Settings& settings )
 {
 	LoadSoundFont( settings );
+	BASS_SetConfig( BASS_CONFIG_DSD_FREQ, settings.GetDSDSamplerate() );
 }
 
 void HandlerBass::LoadSoundFont( Settings& settings )
