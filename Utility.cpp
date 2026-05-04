@@ -169,7 +169,7 @@ std::vector<BYTE> Base64Decode( const std::string& text )
 		if ( FALSE != CryptStringToBinaryA( text.c_str(), static_cast<DWORD>( text.size() ), CRYPT_STRING_BASE64, nullptr /*buffer*/, &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
 			if ( bufferSize > 0 ) {
 				result.resize( bufferSize );
-				if ( FALSE == CryptStringToBinaryA( text.c_str(), static_cast<DWORD>( text.size() ) , CRYPT_STRING_BASE64, result.data(), &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
+				if ( FALSE == CryptStringToBinaryA( text.c_str(), static_cast<DWORD>( text.size() ), CRYPT_STRING_BASE64, result.data(), &bufferSize, nullptr /*skip*/, nullptr /*flags*/ ) ) {
 					result.clear();
 				}
 			}
@@ -577,12 +577,12 @@ std::optional<COLORREF> ChooseColour( const HWND hwnd, const COLORREF initialCol
 	return result;
 }
 
-HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int size, const COLORREF colour )
+HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int size, const COLORREF colour, const BYTE alpha )
 {
-	return CreateColourBitmap( instance, iconID, size, size, colour );
+	return CreateColourBitmap( instance, iconID, size, size, colour, alpha );
 }
 
-HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int width, const int height, const COLORREF colour )
+HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int width, const int height, const COLORREF colour, const BYTE alpha )
 {
 	HBITMAP hBitmap = nullptr;
 	if ( const HICON hIcon = static_cast<HICON>( LoadImage( instance, MAKEINTRESOURCE( iconID ), IMAGE_ICON, width, height, LR_DEFAULTCOLOR | LR_SHARED ) ); nullptr != hIcon ) {
@@ -601,11 +601,17 @@ HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const i
 						const unsigned char r = GetRValue( colour );
 						const unsigned char g = GetGValue( colour );
 						const unsigned char b = GetBValue( colour );
+						const bool modifyAlpha = alpha < 255;
 						for ( int i = 0; i < bm.bmWidth * bm.bmHeight * 4; i += 4 ) {
 							if ( 0 != bits[ i + 3 ] ) {
 								bits[ i ] = b;
 								bits[ i + 1 ] = g;
 								bits[ i + 2 ] = r;
+								if ( modifyAlpha ) {
+									const BYTE originalAlpha = bits[ i + 3 ];
+									const BYTE modifiedAlpha = static_cast<BYTE>( originalAlpha * alpha / 255.0f );
+									bits[ i + 3 ] = modifiedAlpha;
+								}
 							}
 						}
 						if ( SetDIBits( dc, iconInfo.hbmColor, 0, bm.bmHeight, bits.data(), &bitmapInfo, DIB_RGB_COLORS ) ) {

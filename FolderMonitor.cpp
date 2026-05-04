@@ -12,7 +12,7 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 		const DWORD bufferSize = 32768;
 		std::vector<unsigned char> buffer( bufferSize );
 		const BOOL watchSubtree = TRUE;
-		const DWORD notifyFilter = ( ChangeType::FileChange == monitorInfo->ChangeType ) ? ( FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE ) : FILE_NOTIFY_CHANGE_DIR_NAME;
+		const DWORD notifyFilter = ( ChangeType::FileChange == monitorInfo->ChangeType ) ? ( FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE ) : ( FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES );
 		DWORD bytesReturned = 0;
 
 		OVERLAPPED overlapped = {};
@@ -34,7 +34,7 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 								switch ( notifyInfo->Action ) {
 									case FILE_ACTION_ADDED: {
 										const DWORD attributes = GetFileAttributes( filename.c_str() );
-										if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
+										if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
 											if ( ChangeType::FileChange == monitorInfo->ChangeType ) {
 												// Delay the callback.
 												std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
@@ -48,11 +48,13 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 									case FILE_ACTION_MODIFIED: {
 										if ( ChangeType::FileChange == monitorInfo->ChangeType ) {
 											const DWORD attributes = GetFileAttributes( filename.c_str() );
-											if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
+											if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) && !( FILE_ATTRIBUTE_DIRECTORY & attributes ) ) {
 												// Delay the callback.
 												std::lock_guard<std::mutex> lock( monitorInfo->PendingMutex );
 												monitorInfo->Pending.push_back( std::make_tuple( PendingAction::FileModified, currentTime, filename, filename ) );
 											}
+										} else {
+											monitorInfo->Callback( FolderMonitor::Event::FolderModified, filename, filename );
 										}
 										break;
 									}
@@ -67,7 +69,7 @@ DWORD WINAPI FolderMonitor::MonitorThreadProc( LPVOID lpParam )
 											if ( FILE_ACTION_RENAMED_NEW_NAME == notifyInfo->Action ) {
 												const std::wstring newFilename = monitorInfo->DirectoryPath + std::wstring( notifyInfo->FileName, notifyInfo->FileNameLength / 2 );
 												const DWORD attributes = GetFileAttributes( newFilename.c_str() );
-												if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_HIDDEN & attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
+												if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
 													if ( ChangeType::FolderChange == monitorInfo->ChangeType ) {
 														monitorInfo->Callback( FolderMonitor::Event::FolderRenamed, filename, newFilename );
 													} else {

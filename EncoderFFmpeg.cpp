@@ -1,7 +1,6 @@
 #include "EncoderFFmpeg.h"
 
 #include "Utility.h"
-#include <stdexcept>
 
 extern "C"
 {
@@ -23,49 +22,7 @@ EncoderFFmpeg::~EncoderFFmpeg()
 	FreeContexts();
 }
 
-// Minimum/maximum/default bit rates.
-constexpr int kMinimumFFmpegBitrate = 64;
-constexpr int kMaximumFFmpegBitrate = 320;
-constexpr int kDefaultFFmpegBitrate = 128;
-
-int EncoderFFmpeg::GetBitrate( const std::string& settings )
-{
-	int bitrate = kDefaultFFmpegBitrate;
-	if ( !settings.empty() ) {
-		try {
-			bitrate = std::stoi( settings );
-			LimitBitrate( bitrate );
-		} catch ( const std::logic_error& ) {
-		}
-	}
-	return bitrate;
-}
-
-int EncoderFFmpeg::GetDefaultBitrate()
-{
-	return kDefaultFFmpegBitrate;
-}
-
-int EncoderFFmpeg::GetMinimumBitrate()
-{
-	return kMinimumFFmpegBitrate;
-}
-
-int EncoderFFmpeg::GetMaximumBitrate()
-{
-	return kMaximumFFmpegBitrate;
-}
-
-void EncoderFFmpeg::LimitBitrate( int& bitrate )
-{
-	if ( bitrate < kMinimumFFmpegBitrate ) {
-		bitrate = kMinimumFFmpegBitrate;
-	} else if ( bitrate > kMaximumFFmpegBitrate ) {
-		bitrate = kMaximumFFmpegBitrate;
-	}
-}
-
-static AVChannelLayout GetChannelLayout( const uint32_t channels )
+AVChannelLayout EncoderFFmpeg::GetChannelLayout( const uint32_t channels )
 {
 	const std::map<uint32_t, AVChannelLayout> kChannelLayouts =
 	{
@@ -83,45 +40,27 @@ static AVChannelLayout GetChannelLayout( const uint32_t channels )
 	};
 	if ( const auto layout = kChannelLayouts.find( channels ); kChannelLayouts.end() != layout )
 		return layout->second;
-	return {};
+	return AV_CHANNEL_LAYOUT_STEREO;
 }
 
-bool EncoderFFmpeg::Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> /*bitsPerSample*/, const long long /*totalSamples*/, const std::string& settings, const Tags& /*tags*/ )
+bool EncoderFFmpeg::Open( std::wstring& filename, const long sampleRate, const long channels, const std::optional<long> bitsPerSample, const long long /*totalSamples*/, const std::string& settings, const Tags& /*tags*/ )
 {
-	filename += L".m4a";
+	filename += GetFileExtension();
 	const auto u8Filename = WideStringToUTF8( filename );
 	if ( AVIOContext* ioContext = nullptr; avio_open( &ioContext, u8Filename.c_str(), AVIO_FLAG_WRITE ) >= 0 ) {
 		if ( m_avformatContext = avformat_alloc_context(); nullptr != m_avformatContext ) {
 			m_avformatContext->pb = ioContext;
 			if ( m_avformatContext->oformat = av_guess_format( nullptr, u8Filename.c_str(), nullptr ); nullptr != m_avformatContext->oformat ) {
 				if ( m_avformatContext->url = av_strdup( u8Filename.c_str() ); nullptr != m_avformatContext->url ) {
-					if ( const AVCodec* avCodec = avcodec_find_encoder( AV_CODEC_ID_AAC ); nullptr != avCodec ) {
+					if ( const AVCodec* avCodec = GetCodec(); nullptr != avCodec ) {
 						if ( AVStream* avStream = avformat_new_stream( m_avformatContext, nullptr ); nullptr != avStream ) {
-							if ( m_avcodecContext = avcodec_alloc_context3( avCodec ); nullptr != m_avcodecContext ) {
+							if ( m_avcodecContext = avcodec_alloc_context3( avCodec ); ( nullptr != m_avcodecContext ) && SetupCodecContext( m_avcodecContext, avCodec, sampleRate, channels, bitsPerSample, settings ) ) {
 								m_InputSampleRate = static_cast<int>( sampleRate );
-
-								m_OutputSampleRate = 0;
-								int numSupportedSampleRates = 0;
-								const int* pSupportedSampleRates = nullptr;
-								avcodec_get_supported_config( m_avcodecContext, avCodec, AV_CODEC_CONFIG_SAMPLE_RATE, 0, reinterpret_cast<const void**>( &pSupportedSampleRates ), &numSupportedSampleRates );
-								std::set<int> supportedSampleRates;
-								supportedSampleRates.insert( pSupportedSampleRates, pSupportedSampleRates + numSupportedSampleRates );
-								for ( const auto supportedSampleRate : supportedSampleRates ) {
-									if ( supportedSampleRate >= m_InputSampleRate ) {
-										m_OutputSampleRate = supportedSampleRate;
-										break;
-									}
-								}
-								if ( ( 0 == m_OutputSampleRate ) && !supportedSampleRates.empty() ) {
-									m_OutputSampleRate = *supportedSampleRates.rbegin();
-								}
-
-								if ( m_OutputSampleRate > 0 ) {
-									m_OutputChannels = std::min( static_cast<int>( m_SampleBuffers.size() ), static_cast<int>( channels ) );
-									m_avcodecContext->ch_layout = GetChannelLayout( m_OutputChannels );
-									m_avcodecContext->sample_rate = static_cast<int>( m_OutputSampleRate );
-									m_avcodecContext->bit_rate = 1000 * GetBitrate( settings );
-									m_avcodecContext->sample_fmt = AV_SAMPLE_FMT_FLTP;
+								m_OutputSampleRate = m_avcodecContext->sample_rate;
+								m_OutputChannels = m_avcodecContext->ch_layout.nb_channels;
+								m_BytesPerSample = static_cast<uint32_t>( av_get_bytes_per_sample( m_avcodecContext->sample_fmt ) );
+								if ( ( m_OutputSampleRate > 0 ) && ( m_OutputChannels > 0 ) && ( m_BytesPerSample > 0 ) ) {
+									m_SampleBuffers.resize( m_OutputChannels );
 
 									m_pts = 0;
 									avStream->time_base.den = m_avcodecContext->sample_rate;
@@ -162,6 +101,23 @@ bool EncoderFFmpeg::Open( std::wstring& filename, const long sampleRate, const l
 	return true;
 }
 
+bool EncoderFFmpeg::Write( float* inputSamples, const long inputSampleCount )
+{
+	return EncodeSamples( inputSamples, inputSampleCount );
+}
+
+void EncoderFFmpeg::Close()
+{
+	// Flush the resampler.
+	EncodeSamples( nullptr, 0 );
+
+	// Flush the encoder and close the output file.
+	avcodec_send_frame( m_avcodecContext, nullptr );
+	av_write_trailer( m_avformatContext );
+
+	FreeContexts();
+}
+
 void EncoderFFmpeg::FreeContexts()
 {
 	if ( nullptr != m_avcodecContext ) {
@@ -179,78 +135,54 @@ void EncoderFFmpeg::FreeContexts()
 	}
 }
 
-bool EncoderFFmpeg::Write( float* inputSamples, const long inputSampleCount )
+bool EncoderFFmpeg::EncodeSamples( float* inputSamples, const long inputSampleCount )
 {
+	const bool flushResampler = ( nullptr == inputSamples );
+	const uint32_t outputSampleCount = flushResampler ?
+		static_cast<uint32_t>( swr_get_out_samples( m_swrContext, inputSampleCount ) ) :
+		static_cast<uint32_t>( static_cast<int64_t>( inputSampleCount ) * m_OutputSampleRate / m_InputSampleRate );
+	uint64_t bufferSampleCount = m_SampleBuffers[ 0 ].size() / m_BytesPerSample;
+
 	// Resample audio input.
-	const uint32_t outputSampleCount = static_cast<uint32_t>( static_cast<int64_t>( inputSampleCount ) * m_OutputSampleRate / m_InputSampleRate );
-	uint64_t bufferSamples = m_SampleBuffers[ 0 ].size();
-	std::vector<uint8_t*> outputBuffers( m_OutputChannels );
 	if ( outputSampleCount > 0 ) {
+		std::vector<uint8_t*> outputBuffers( m_OutputChannels );
 		for ( int channel = 0; channel < m_OutputChannels; channel++ ) {
-			m_SampleBuffers[ channel ].resize( bufferSamples + outputSampleCount );
-			outputBuffers[ channel ] = reinterpret_cast<uint8_t*>( m_SampleBuffers[ channel ].data() + bufferSamples );
+			m_SampleBuffers[ channel ].resize( ( bufferSampleCount + outputSampleCount ) * m_BytesPerSample );
+			outputBuffers[ channel ] = m_SampleBuffers[ channel ].data() + bufferSampleCount * m_BytesPerSample;
 		}
-	}
-	if ( const uint32_t samplesConverted = Resample( inputSamples, inputSampleCount, outputBuffers.data(), outputSampleCount ); samplesConverted > 0 ) {
+		const uint32_t samplesConverted = Resample( inputSamples, inputSampleCount, outputBuffers.data(), outputSampleCount );
 		for ( int channel = 0; channel < m_OutputChannels; channel++ ) {
-			m_SampleBuffers[ channel ].resize( bufferSamples + samplesConverted );
+			m_SampleBuffers[ channel ].resize( ( bufferSampleCount + samplesConverted ) * m_BytesPerSample );
 		}
-		bufferSamples = m_SampleBuffers[ 0 ].size();
+		bufferSampleCount = m_SampleBuffers[ 0 ].size() / m_BytesPerSample;
 	}
 
 	// Encode audio frames.
+	auto keepEncoding = [ flushResampler, this ] ( const uint64_t sampleCount ) {
+		return flushResampler ? ( sampleCount > 0 ) : ( sampleCount >= m_avcodecContext->frame_size );
+	};
+
 	bool success = true;
-	while ( success && ( bufferSamples >= m_avcodecContext->frame_size ) ) {
+	while ( success && keepEncoding( bufferSampleCount ) ) {
 		success = EncodeFrame();
-		bufferSamples = m_SampleBuffers[ 0 ].size();
+		bufferSampleCount = m_SampleBuffers[ 0 ].size() / m_BytesPerSample;
 	}
+
 	return success;
-}
-
-void EncoderFFmpeg::Close()
-{
-	// Flush the resampler.
-	if ( const int sampleCount = swr_get_out_samples( m_swrContext, 0 ); sampleCount > 0 ) {
-		uint64_t bufferSamples = m_SampleBuffers[ 0 ].size();
-		std::vector<uint8_t*> outputBuffers( m_OutputChannels );
-		for ( int channel = 0; channel < m_OutputChannels; channel++ ) {
-			m_SampleBuffers[ channel ].resize( bufferSamples + sampleCount );
-			outputBuffers[ channel ] = reinterpret_cast<uint8_t*>( m_SampleBuffers[ channel ].data() + bufferSamples );
-		}
-		if ( const uint32_t samplesConverted = Resample( nullptr, 0, outputBuffers.data(), sampleCount ); samplesConverted > 0 ) {
-			for ( int channel = 0; channel < m_OutputChannels; channel++ ) {
-				m_SampleBuffers[ channel ].resize( bufferSamples + samplesConverted );
-			}
-		}
-	}
-
-	// Encode any remaining audio frames.
-	uint64_t bufferSamples = m_SampleBuffers[ 0 ].size();
-	bool success = true;
-	while ( success && ( bufferSamples > 0 ) ) {
-		success = EncodeFrame();
-		bufferSamples = m_SampleBuffers[ 0 ].size();
-	}
-
-	// Flush the encoder and close the output file.
-	avcodec_send_frame( m_avcodecContext, nullptr );
-	av_write_trailer( m_avformatContext );
-
-	FreeContexts();
 }
 
 bool EncoderFFmpeg::EncodeFrame()
 {
 	bool success = false;
 	if ( AVFrame* frame = av_frame_alloc(); nullptr != frame ) {
-		frame->nb_samples = std::min( m_avcodecContext->frame_size, static_cast<int>( m_SampleBuffers[ 0 ].size() ) );
+		frame->nb_samples = std::min( m_avcodecContext->frame_size, static_cast<int>( m_SampleBuffers[ 0 ].size() / m_BytesPerSample ) );
 		frame->ch_layout = m_avcodecContext->ch_layout;
 		frame->format = m_avcodecContext->sample_fmt;
 		frame->sample_rate = m_avcodecContext->sample_rate;
 		if ( av_frame_get_buffer( frame, 0 ) >= 0 ) {
 			for ( int channel = 0; channel < m_OutputChannels; channel++ ) {
-				std::copy( m_SampleBuffers[ channel ].begin(), m_SampleBuffers[ channel ].begin() + frame->nb_samples, reinterpret_cast<float*>( frame->data[ channel ] ) );
-				m_SampleBuffers[ channel ].erase( m_SampleBuffers[ channel ].begin(), m_SampleBuffers[ channel ].begin() + frame->nb_samples );
+				std::copy( m_SampleBuffers[ channel ].begin(), m_SampleBuffers[ channel ].begin() + frame->nb_samples * m_BytesPerSample, frame->data[ channel ] );
+				m_SampleBuffers[ channel ].erase( m_SampleBuffers[ channel ].begin(), m_SampleBuffers[ channel ].begin() + frame->nb_samples * m_BytesPerSample );
 			}
 			if ( AVPacket* packet = av_packet_alloc(); nullptr != packet ) {
 				frame->pts = m_pts;

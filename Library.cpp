@@ -433,6 +433,8 @@ bool Library::GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags )
 				if ( m_Handlers.GetTags( mediaInfo.GetFilename(), tags ) ) {
 					UpdateMediaInfoFromTags( mediaInfo, tags );
 					if ( cueInfo ) {
+						if ( cueInfo->GetTrack() > 0 )
+							mediaInfo.SetTrack( cueInfo->GetTrack() );
 						if ( cueInfo->GetYear() > 0 )
 							mediaInfo.SetYear( cueInfo->GetYear() );
 						if ( !cueInfo->GetTitle().empty() )

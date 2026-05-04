@@ -297,15 +297,19 @@ std::wstring ShellTag::GetAudioSubType( const std::wstring& guid )
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Dolby_AC3, &str ) ) ) {
-			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby Digital" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby AC-3" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Dolby_AC3_SPDIF, &str ) ) ) {
-			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby Digital" ) );
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby AC-3" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Dolby_DDPlus, &str ) ) ) {
 			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby Digital Plus" ) );
+			CoTaskMemFree( str );
+		}
+		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Dolby_AC4, &str ) ) ) {
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Dolby AC-4" ) );
 			CoTaskMemFree( str );
 		}
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_DTS, &str ) ) ) {
@@ -335,11 +339,20 @@ std::wstring ShellTag::GetAudioSubType( const std::wstring& guid )
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_WMAudioV9, &str ) ) ) {
 			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"WMA 9 Pro" ) );
 			CoTaskMemFree( str );
-		}
+		}		
 		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_ALAC, &str ) ) ) {
 			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Apple Lossless" ) );
 			CoTaskMemFree( str );
 		}
+		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_FLAC, &str ) ) ) {
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"FLAC" ) );
+			CoTaskMemFree( str );
+		}
+		if ( SUCCEEDED( StringFromCLSID( MFAudioFormat_Opus, &str ) ) ) {
+			s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( str ), L"Opus" ) );
+			CoTaskMemFree( str );
+		}
+		s_AudioFormatDescriptions.insert( AudioFormatMap::value_type( WideStringToLower( L"{616C6163-767A-494D-B478-F29D25DC9037}" ), L"Apple Lossless" ) );
 	}
 	std::wstring description;
 	const auto iter = s_AudioFormatDescriptions.find( WideStringToLower( guid ) );

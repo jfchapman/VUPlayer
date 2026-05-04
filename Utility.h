@@ -159,8 +159,9 @@ std::optional<COLORREF> ChooseColour( const HWND hwnd, const COLORREF initialCol
 // 'iconID' - icon resource ID.
 // 'size' - pixel size.
 // 'colour' - colour value.
+// 'alpha' - alpha value.
 // Returns the bitmap handle on success (to be deleted by the caller), or nullptr on failure.
-HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int size, const COLORREF colour );
+HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int size, const COLORREF colour, const BYTE alpha = 255 );
 
 // Creates a flat colour bitmap from an icon resource (32-bit, with transparency).
 // 'instance' - module instance handle.
@@ -168,8 +169,9 @@ HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const i
 // 'width' - pixel width.
 // 'height' - pixel height.
 // 'colour' - colour value.
+// 'alpha' - alpha value.
 // Returns the bitmap handle on success (to be deleted by the caller), or nullptr on failure.
-HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int width, const int height, const COLORREF colour );
+HBITMAP CreateColourBitmap( const HINSTANCE instance, const UINT iconID, const int width, const int height, const COLORREF colour, const BYTE alpha = 255 );
 
 // Returns whether high contrast mode is active.
 bool IsHighContrastActive();

@@ -6,8 +6,7 @@
 
 #include "ebur128.h"
 
-#include <iomanip>
-#include <sstream>
+#include <numeric>
 
 // The maximum number of times to read a CDDA sector.
 static const long s_MaxReadPasses = 9;
@@ -240,7 +239,7 @@ void CDDAExtract::ReadHandler()
 
 	// A cache of CDDA sectors.
 	CDDAMedia::DataMap sectorCache;
-	const long maxCachedSectors = 32;
+	constexpr long kMaxCachedSectors = 32;
 
 	bool readError = false;
 	const DiscManager::CDDAMediaMap drives = m_DiscManager.GetCDDADrives();
@@ -259,9 +258,9 @@ void CDDAExtract::ReadHandler()
 
 		// Keep reading the current track until we get two consistent reads for each sector.
 		if ( nullptr != media ) {
-			const long sectorCount = media->GetSectorCount( track );
+			long sectorCount = media->GetSectorCount( track );
 			const long sectorStart = media->GetStartSector( track );
-			const long sectorEnd = sectorStart + sectorCount;
+			long sectorEnd = sectorStart + sectorCount;
 
 			if ( sectorCount > 0 ) {
 				const HANDLE mediaHandle = media->Open();
@@ -284,13 +283,19 @@ void CDDAExtract::ReadHandler()
 					while ( !Cancelled() && ( pass <= s_MaxReadPasses ) && !sectorsRemaining.empty() ) {
 						// Re-read all sectors on each pass, not just the remaining sectors, in an attempt to flush any cache on the device.
 						long sectorIndex = sectorStart;
-						while ( !Cancelled() && ( sectorIndex < sectorEnd ) && !sectorsRemaining.empty() ) {
+
+						constexpr long kMaxReadFailures = 75;
+						long readFailures = 0;
+
+						while ( !Cancelled() && ( sectorIndex < sectorEnd ) && !sectorsRemaining.empty() && ( readFailures <= kMaxReadFailures ) ) {
 
 							auto cacheIter = sectorCache.find( sectorIndex );
 							if ( sectorCache.end() == cacheIter ) {
 								sectorCache.clear();
-								if ( media->Read( mediaHandle, sectorIndex, std::min<long>( maxCachedSectors, sectorEnd - sectorIndex ), sectorCache ) ) {
+								if ( media->Read( mediaHandle, sectorIndex, std::min<long>( kMaxCachedSectors, sectorEnd - sectorIndex ), sectorCache ) ) {
 									cacheIter = sectorCache.find( sectorIndex );
+								} else {
+									++readFailures;
 								}
 							}
 
@@ -314,8 +319,22 @@ void CDDAExtract::ReadHandler()
 							++sectorIndex;
 							m_ProgressRead.store( static_cast<float>( sectorIndex - sectorStart ) / sectorCount );
 						}
+
+						if ( ( readFailures > 0 ) && ( 1 == pass ) ) {
+							// For enhanced CDs, the last audio track length may be reported incorrectly (e.g. The Egg - Forwards).
+							if ( media->IsEnhancedCD() && media->IsLastAudioTrack( track ) && !sectorMap.empty() ) {
+								// Ignore read errors past the 'end' of the last audio track.
+								const long lastSector = 1 + sectorMap.rbegin()->first;
+								for ( long i = lastSector; i < sectorEnd; i++ ) {
+									sectorsRemaining.erase( i );
+								}
+								sectorEnd = lastSector;
+								sectorCount = sectorEnd - sectorStart;
+							}
+						}
+
 						++pass;
-						if ( pass <= s_MaxReadPasses ) {
+						if ( ( pass <= s_MaxReadPasses ) && !sectorsRemaining.empty() ) {
 							m_StatusPass.store( pass );
 						}
 					}
@@ -380,7 +399,11 @@ void CDDAExtract::ReadHandler()
 									trackData->insert( trackData->end(), sectorData.begin(), sectorData.end() );
 								}
 								std::lock_guard<std::mutex> lock( m_PendingEncodeMutex );
-								m_PendingEncode.insert( MediaData::value_type( trackIter->Info, trackData ) );
+								auto mediaInfo = trackIter->Info;
+								mediaInfo.SetFilesize( trackData->size() * sizeof( short ) );
+								if ( mediaInfo.GetSampleRate() && mediaInfo.GetChannels() )
+									mediaInfo.SetDuration( static_cast<float>( trackData->size() ) / ( mediaInfo.GetSampleRate() * mediaInfo.GetChannels() ) );
+								m_PendingEncode.insert( MediaData::value_type( mediaInfo, trackData ) );
 								SetEvent( m_PendingEncodeEvent );
 							}
 						} else {

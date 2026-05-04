@@ -112,17 +112,14 @@ void WndTray::Update( const Output::Item& item )
 				( position + L"/" + DurationToString( m_hInst, item.PlaylistItem.Info.GetDuration(), true /*colonDelimited*/ ) ) : position;
 			std::wstring tooltip;
 			if ( !item.StreamTitle.empty() ) {
-				std::wstring title = item.StreamTitle;
-				WideStringReplace( title, L"&", L"&&&" );
+				const std::wstring title = item.StreamTitle;
 				tooltip = counter + L"\r\n" + title;
 				if ( tooltip.size() > sMaxTooltip ) {
 					tooltip = tooltip.substr( 0, sMaxTooltip - 3 ) + L"...";
 				}
 			} else {
-				std::wstring artist = item.PlaylistItem.Info.GetArtist();
-				WideStringReplace( artist, L"&", L"&&&" );
-				std::wstring title = item.PlaylistItem.Info.GetTitle( true /*filenameAsTitle*/ );
-				WideStringReplace( title, L"&", L"&&&" );
+				const std::wstring artist = item.PlaylistItem.Info.GetArtist();
+				const std::wstring title = item.PlaylistItem.Info.GetTitle( true /*filenameAsTitle*/ );
 				if ( artist.empty() ) {
 					tooltip = counter + L"\r\n" + title;
 					if ( tooltip.size() > sMaxTooltip ) {

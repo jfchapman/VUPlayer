@@ -53,8 +53,12 @@ bool HandlerOpenMPT::GetTags( const std::wstring& filename, Tags& tags ) const
 	return true;
 }
 
-bool HandlerOpenMPT::SetTags( const std::wstring& /*filename*/, const Tags& /*tags*/ ) const
+bool HandlerOpenMPT::SetTags( const std::wstring& filename, const Tags& /*tags*/ ) const
 {
+	// MOD music tagging is not supported, so return true to indicate this has been handled (and prevent other handlers from trying to write tags).
+	if ( OpenDecoder( filename, Decoder::Context::Temporary ) )
+		return true;
+
 	return false;
 }
 

@@ -23,6 +23,7 @@ LibraryMaintainer::LibraryMaintainer( const HINSTANCE instance, Library& library
 	m_StatusMutex(),
 	m_StatusScanningComputer(),
 	m_StatusUpdatingLibrary(),
+	m_ScanHiddenFolders( false ),
 	m_FileAddedCallback( nullptr ),
 	m_FinishedCallback( nullptr )
 {
@@ -45,9 +46,10 @@ LibraryMaintainer::~LibraryMaintainer()
 	CloseHandle( m_StopEvent );
 }
 
-void LibraryMaintainer::Start( FileAddedCallback fileAddedCallback, FinishedCallback finishedCallback )
+void LibraryMaintainer::Start( const bool scanHiddenFolders, FileAddedCallback fileAddedCallback, FinishedCallback finishedCallback )
 {
 	Stop();
+	m_ScanHiddenFolders = scanHiddenFolders;
 	m_FileAddedCallback = fileAddedCallback;
 	m_FinishedCallback = finishedCallback;
 	m_Thread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, MaintainerThreadProc, reinterpret_cast<LPVOID>( this ), 0 /*flags*/, NULL /*threadId*/ );
@@ -126,7 +128,7 @@ void LibraryMaintainer::Handler()
 				status += L" - " + TruncatePath( *path );
 				SetStatus( status );
 
-				MediaInfo mediaInfo( path->c_str() );
+				MediaInfo mediaInfo( *path );
 				if ( m_Library.GetMediaInfo( mediaInfo, true /*scanMedia*/, true /*sendNotification*/, true /*removeMissing*/ ) ) {
 					if ( ( nullptr != m_FileAddedCallback ) && ( existingFiles.end() == existingFiles.find( *path ) ) ) {
 						m_FileAddedCallback( *path );
@@ -177,11 +179,13 @@ void LibraryMaintainer::ScanFolder( const std::filesystem::path& folder, std::se
 	if ( INVALID_HANDLE_VALUE != handle ) {
 		BOOL found = TRUE;
 		while ( found && ( WAIT_OBJECT_0 != WaitForSingleObject( m_StopEvent, 0 ) ) ) {
-			if ( !( ( findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN ) || ( findData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM ) ) ) {
+			if ( !( findData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM ) ) {
 				if ( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) {
-					if ( ( findData.cFileName[ 0 ] != '.' ) ) {
-						path = folder / findData.cFileName;
-						ScanFolder( path, mediaFiles );
+					if ( !( findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN ) || m_ScanHiddenFolders ) {
+						if ( ( findData.cFileName[ 0 ] != '.' ) ) {
+							path = folder / findData.cFileName;
+							ScanFolder( path, mediaFiles );
+						}
 					}
 				} else if ( IsSupportedFileType( findData.cFileName ) ) {
 					path = folder / findData.cFileName;
@@ -189,7 +193,7 @@ void LibraryMaintainer::ScanFolder( const std::filesystem::path& folder, std::se
 
 					std::wstring status = m_StatusScanningComputer;
 					WideStringReplace( status, L"%", std::to_wstring( mediaFiles.size() ) );
-					status += L" - " + TruncatePath( path );
+					status += L" " + TruncatePath( path );
 					SetStatus( status );
 				}
 			}

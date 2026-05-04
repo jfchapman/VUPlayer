@@ -23,6 +23,7 @@ public:
 		FolderRenamed,  // A folder has been renamed.
 		FolderCreated,  // A folder has been created.
 		FolderDeleted,  // A folder has been deleted.
+		FolderModified, // A folder's attributes have been modified.
 		FileRenamed,    // A file has been renamed.
 		FileCreated,    // A file has been created.
 		FileDeleted,    // A file has been deleted.

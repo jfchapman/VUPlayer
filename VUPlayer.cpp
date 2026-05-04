@@ -1014,7 +1014,7 @@ void VUPlayer::OnCommand( const int commandID )
 			break;
 		}
 		case ID_FILE_REFRESHMEDIALIBRARY: {
-			m_Maintainer.Start(
+			m_Maintainer.Start( m_Tree.IsShown( ID_TREEMENU_HIDDENFOLDERS ),
 				[ playlistAll = m_Tree.GetPlaylistAll() ] ( const std::filesystem::path& file ) {
 					if ( playlistAll ) {
 						playlistAll->AddPending( MediaInfo( file ) );
@@ -1190,6 +1190,10 @@ void VUPlayer::OnCommand( const int commandID )
 			m_Tree.OnYears();
 			break;
 		}
+		case ID_TREEMENU_HIDDENFOLDERS: {
+			m_Tree.OnHiddenFolders();
+			break;
+		}
 		case ID_TRAYMENU_SHOWVUPLAYER: {
 			if ( IsIconic( m_hWnd ) ) {
 				if ( !IsWindowVisible( m_hWnd ) ) {
@@ -1307,6 +1311,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		CheckMenuItem( menu, ID_TREEMENU_ALBUMS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_ALBUMS ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_GENRES, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_GENRES ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_YEARS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_YEARS ) ? MF_CHECKED : MF_UNCHECKED ) );
+		CheckMenuItem( menu, ID_TREEMENU_HIDDENFOLDERS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_HIDDENFOLDERS ) ? MF_CHECKED : MF_UNCHECKED ) );
 
 		const UINT trackInfoEnabled = ( m_List.GetCurrentSelectedIndex() >= 0 ) ? MF_ENABLED : MF_DISABLED;
 		EnableMenuItem( menu, ID_VIEW_TRACKINFORMATION, MF_BYCOMMAND | trackInfoEnabled );

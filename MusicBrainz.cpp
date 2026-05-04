@@ -594,16 +594,20 @@ static std::wstring ParseLabel( const nlohmann::json& labelInfo )
 {
 	std::wstring result;
 	if ( labelInfo.is_array() ) {
+		std::set<std::wstring> labels;
 		for ( const auto& labelObject : labelInfo ) {
 			if ( labelObject.is_object() ) {
 				if ( const auto label = labelObject.find( "label" ); ( labelObject.end() != label ) && label->is_object() ) {
 					if ( const auto labelName = label->find( "name" ); ( label->end() != labelName ) && labelName->is_string() && !labelName->empty() ) {
-						if ( !result.empty() )
-							result += L", ";
-						result += UTF8ToWideString( *labelName );
+						labels.insert( UTF8ToWideString( *labelName ) );
 					}
 				}
 			}
+		}
+		for ( const auto& label : labels ) {
+			if ( !result.empty() )
+				result += L", ";
+			result += label;
 		}
 	}
 	return result;
@@ -614,6 +618,8 @@ static void ParseRelations( const nlohmann::json& relations, std::wstring& compo
 	composer.clear();
 	conductor.clear();
 	if ( relations.is_array() ) {
+		std::set<std::wstring> composers;
+		std::set<std::wstring> conductors;
 		for ( const auto& relation : relations ) {
 			if ( relation.is_object() ) {
 				if ( const auto artist = relation.find( "artist" ); ( relation.end() != artist ) && artist->is_object() ) {
@@ -621,18 +627,47 @@ static void ParseRelations( const nlohmann::json& relations, std::wstring& compo
 						if ( const auto type = relation.find( "type" ); ( relation.end() != type ) && type->is_string() ) {
 							const std::string relationType = *type;
 							if ( "composer" == relationType ) {
-								if ( !composer.empty() )
-									composer += L", ";
-								composer += UTF8ToWideString( *name );
+								composers.insert( UTF8ToWideString( *name ) );
 							} else if ( "conductor" == relationType ) {
-								if ( !conductor.empty() )
-									conductor += L", ";
-								conductor += UTF8ToWideString( *name );
+								conductors.insert( UTF8ToWideString( *name ) );
 							}
 						}
 					}
 				}
 			}
+		}
+		for ( const auto& entry : composers ) {
+			if ( !composer.empty() )
+				composer += L", ";
+			composer += entry;
+		}
+		for ( const auto& entry : conductors ) {
+			if ( !conductor.empty() )
+				conductor += L", ";
+			conductor += entry;
+		}
+	}
+}
+
+static void ParseTrack( const nlohmann::json& track, MusicBrainz::Album& album )
+{
+	if ( const auto trackposition = track.find( "position" ); ( track.end() != trackposition ) && trackposition->is_number() ) {
+		if ( const auto title = track.find( "title" ); ( track.end() != title ) && title->is_string() ) {
+			const std::wstring trackTitle = UTF8ToWideString( *title );
+
+			std::wstring trackArtist;
+			if ( const auto artistCredit = track.find( "artist-credit" ); ( track.end() != artistCredit ) && artistCredit->is_array() ) {
+				trackArtist = ParseArtistCredit( *artistCredit );
+			}
+
+			long trackYear = 0;
+			if ( const auto recording = track.find( "recording" ); ( track.end() != recording ) && recording->is_object() ) {
+				if ( const auto date = recording->find( "first-release-date" ); ( recording->end() != date ) && date->is_string() ) {
+					trackYear = ParseYear( *date );
+				}
+			}
+
+			album.Tracks.emplace( *trackposition, std::make_tuple( trackTitle, trackArtist, trackYear ) );
 		}
 	}
 }
@@ -648,7 +683,7 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 
 				auto albumCompare = [] ( const Album& a, const Album& b )
 					{
-						return  std::tie( a.Artist, a.Title, a.Label, a.Composer, a.Conductor, a.Year, a.Tracks, a.Artwork ) <
+						return std::tie( a.Artist, a.Title, a.Label, a.Composer, a.Conductor, a.Year, a.Tracks, a.Artwork ) <
 							std::tie( b.Artist, b.Title, b.Label, b.Composer, b.Conductor, b.Year, b.Tracks, b.Artwork );
 					};
 				std::set<Album, decltype( albumCompare )> albums( albumCompare );
@@ -707,26 +742,13 @@ bool MusicBrainz::ParseDiscResponse( const std::string& response, Result& result
 								album.Conductor = releaseConductor;
 								album.Year = releaseYear;
 								for ( const auto& track : *tracks ) {
-									if ( const auto trackposition = track.find( "position" ); ( track.end() != trackposition ) && trackposition->is_number() ) {
-										if ( const auto title = track.find( "title" ); ( track.end() != title ) && title->is_string() ) {
-											const std::wstring trackTitle = UTF8ToWideString( *title );
-
-											std::wstring trackArtist;
-											if ( const auto artistCredit = track.find( "artist-credit" ); ( track.end() != artistCredit ) && artistCredit->is_array() ) {
-												trackArtist = ParseArtistCredit( *artistCredit );
-											}
-
-											long trackYear = 0;
-											if ( const auto recording = track.find( "recording" ); ( track.end() != recording ) && recording->is_object() ) {
-												if ( const auto date = recording->find( "first-release-date" ); ( recording->end() != date ) && date->is_string() ) {
-													trackYear = ParseYear( *date );
-												}
-											}
-
-											album.Tracks.emplace( *trackposition, std::make_tuple( trackTitle, trackArtist, trackYear ) );
-										}
-									}
+									ParseTrack( track, album );
 								}
+
+								if ( const auto pregap = medium.find( "pregap" ); ( medium.end() != pregap ) && pregap->is_object() ) {
+									ParseTrack( *pregap, album );
+								}
+
 								releaseAlbums.emplace_back( album );
 							}
 

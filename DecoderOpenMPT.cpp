@@ -6,7 +6,6 @@
 #include "Utility.h"
 #include "VUPlayer.h"
 
-#include <numeric>
 #include <queue>
 
 DecoderOpenMPT::DecoderOpenMPT( const std::wstring& filename, const Context context ) :

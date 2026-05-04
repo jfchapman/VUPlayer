@@ -1,5 +1,5 @@
-VUPlayer 4.22
-Copyright (c) 2025 James Chapman
+VUPlayer 4.23
+Copyright (c) 2026 James Chapman
 ------------------------------------------------------------------------------
 website: http://www.vuplayer.com
 email:   james@vuplayer.com
@@ -24,10 +24,10 @@ Please note that, when running in 'portable' mode, database storage requires wri
 
 Credits
 -------
-Main application is copyright (c) 2025 James Chapman
+Main application is copyright (c) 2026 James Chapman
 http://www.vuplayer.com
 
-BASS library is copyright (c) 1999-2025 Un4seen Developments Ltd.
+BASS library is copyright (c) 1999-2026 Un4seen Developments Ltd.
 http://www.un4seen.com
 
 Ogg Vorbis is copyright (c) 1994-2023 Xiph.Org
@@ -36,33 +36,33 @@ http://xiph.org/vorbis/
 Opus is copyright (c) 2011-2024 Xiph.Org
 https://opus-codec.org/
 
-FLAC is copyright (c) 2000-2009 Josh Coalson, 2011-2025 Xiph.Org
+FLAC is copyright (c) 2000-2009 Josh Coalson, 2011-2026 Xiph.Org
 http://xiph.org/flac/
 
-WavPack is copyright (c) 1998-2025 David Bryant
+WavPack is copyright (c) 1998-2026 David Bryant
 http://www.wavpack.com
 
 MusicBrainz is copyright (c) The MetaBrainz Foundation
 https://musicbrainz.org/
 
-Audioscrobbler is copyright (c) 2025 Last.fm Ltd.
+Audioscrobbler is copyright (c) 2026 Last.fm Ltd.
 http://www.last.fm
 
-JSON for Modern C++ is copyright (c) 2013-2024 Niels Lohmann
+JSON for Modern C++ is copyright (c) 2013-2026 Niels Lohmann
 https://github.com/nlohmann/json
 
 This software uses libraries from the FFmpeg project under the LGPLv2.1
 https://ffmpeg.org/
 
 This software uses the libopenmpt library under the BSD-3-Clause License
-Copyright (c) 2004-2025, OpenMPT Project Developers and Contributors
+Copyright (c) 2004-2026, OpenMPT Project Developers and Contributors
 Copyright (c) 1997-2003, Olivier Lapicque
 https://lib.openmpt.org/libopenmpt/
 
 
 License
 -------
-Copyright (c) 2025 James Chapman
+Copyright (c) 2026 James Chapman
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

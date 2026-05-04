@@ -42,6 +42,11 @@ static constexpr UINT MSG_FOLDERDELETE = WM_APP + 111;
 // 'lParam' : std::wstring* - new folder path, to be deleted by the message handler.
 static constexpr UINT MSG_FOLDERRENAME = WM_APP + 112;
 
+// Message ID for updating a folder in the computer node when its attributes change.
+// 'wParam' : HTREEITEM - the parent item containing the folder.
+// 'lParam' : std::wstring* - folder name, to be deleted by the message handler.
+static constexpr UINT MSG_FOLDERMODIFIED = WM_APP + 113;
+
 // Command ID of the first playlist entry on the Add to Playlist context sub menu.
 static constexpr UINT MSG_TREEMENU_ADDTOPLAYLIST_START = WM_APP + 0xE00;
 
@@ -140,6 +145,15 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				delete newFolderPath;
 				break;
 			}
+			case MSG_FOLDERMODIFIED: {
+				const HTREEITEM parentNode = reinterpret_cast<HTREEITEM>( wParam );
+				const std::wstring* folderPath = reinterpret_cast<std::wstring*>( lParam );
+				if ( nullptr != parentNode && nullptr != folderPath ) {
+					wndTree->OnFolderModified( parentNode, *folderPath );
+				}
+				delete folderPath;
+				break;
+			}
 			case MSG_OUTPUTPLAYLISTCHANGED: {
 				const Playlist* const playlist = reinterpret_cast<Playlist*>( wParam );
 				const Playlist::Type playlistType = static_cast<Playlist::Type>( lParam );
@@ -192,6 +206,17 @@ DWORD WINAPI WndTree::ScratchListUpdateProc( LPVOID lpParam )
 	return 0;
 }
 
+DWORD WINAPI WndTree::LoadAllTracksProc( LPVOID lpParam )
+{
+	WndTree* wndTree = static_cast<WndTree*>( lpParam );
+	if ( nullptr != wndTree ) {
+		CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED );
+		wndTree->LoadAllTracksThreadHandler();
+		CoUninitialize();
+	}
+	return 0;
+}
+
 DWORD WINAPI WndTree::FileModifiedProc( LPVOID lpParam )
 {
 	WndTree* wndTree = static_cast<WndTree*>( lpParam );
@@ -234,7 +259,7 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_YearMap(),
 	m_CDDAMap(),
 	m_FolderPlaylistMap(),
-	m_PlaylistAll( nullptr ),
+	m_PlaylistAll( new Playlist( m_Library, Playlist::Type::All ) ),
 	m_PlaylistFavourites( nullptr ),
 	m_PlaylistStreams( nullptr ),
 	m_ChosenFont( NULL ),
@@ -249,6 +274,7 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_IconIndexDrive( 0 ),
 	m_IconIndexPlaying( 0 ),
 	m_IconIndexPaused( 0 ),
+	m_IconIndexHiddenFolder( 0 ),
 	m_RootComputerFolders(),
 	m_FolderNodesMap(),
 	m_FolderNodesMapMutex(),
@@ -261,9 +287,12 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_FilesModifiedMutex(),
 	m_ScratchListUpdateThread( nullptr ),
 	m_ScratchListUpdateStopEvent( CreateEvent( nullptr /*securityAttributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
+	m_LoadAllTracksThread( nullptr ),
+	m_AllTracksLoaded( false ),
 	m_MergeDuplicates( settings.GetMergeDuplicates() ),
 	m_EditControlWndProc( nullptr ),
 	m_IsHighContrast( IsHighContrastActive() ),
+	m_ShowHiddenFolders( false ),
 	m_AddToPlaylistMenuMap(),
 	m_AddedFolderTracks()
 {
@@ -282,6 +311,7 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( TreeProc ) ) );
 	SetWindowAccessibleName( instance, m_hWnd, IDS_ACCNAME_TREEVIEW );
 	ApplySettings();
+	m_LoadAllTracksThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, LoadAllTracksProc, this /*param*/, 0 /*flags*/, NULL /*threadId*/ );
 }
 
 WndTree::~WndTree()
@@ -300,6 +330,9 @@ WndTree::~WndTree()
 	}
 	if ( nullptr != m_FileModifiedWakeEvent ) {
 		CloseHandle( m_FileModifiedWakeEvent );
+	}
+	if ( nullptr != m_LoadAllTracksThread ) {
+		CloseHandle( m_LoadAllTracksThread );
 	}
 }
 
@@ -581,6 +614,10 @@ void WndTree::OnCommand( const UINT command )
 			OnYears();
 			break;
 		}
+		case ID_TREEMENU_HIDDENFOLDERS: {
+			OnHiddenFolders();
+			break;
+		}
 		default: {
 			if ( ( command >= MSG_TREEMENU_ADDTOPLAYLIST_START ) && ( command <= MSG_TREEMENU_ADDTOPLAYLIST_END ) ) {
 				OnAddToPlaylist( command );
@@ -615,6 +652,7 @@ void WndTree::OnContextMenu( const POINT& position )
 			CheckMenuItem( treemenu, ID_TREEMENU_ALBUMS, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_ALBUMS ) ? MF_CHECKED : MF_UNCHECKED ) );
 			CheckMenuItem( treemenu, ID_TREEMENU_GENRES, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_GENRES ) ? MF_CHECKED : MF_UNCHECKED ) );
 			CheckMenuItem( treemenu, ID_TREEMENU_YEARS, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_YEARS ) ? MF_CHECKED : MF_UNCHECKED ) );
+			CheckMenuItem( treemenu, ID_TREEMENU_HIDDENFOLDERS, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_HIDDENFOLDERS ) ? MF_CHECKED : MF_UNCHECKED ) );
 
 			const HTREEITEM hSelectedItem = TreeView_GetSelection( m_hWnd );
 			const Playlist::Ptr playlist = GetPlaylist( hSelectedItem );
@@ -794,7 +832,7 @@ Playlist::Ptr WndTree::GetPlaylist( const HTREEITEM node )
 			break;
 		}
 		case Playlist::Type::All: {
-			playlist = m_PlaylistAll;
+			playlist = GetPlaylistAll();
 			break;
 		}
 		case Playlist::Type::Favourites: {
@@ -1025,9 +1063,7 @@ void WndTree::OnDestroy()
 		m_PlaylistStreams->StopPendingThread();
 	}
 
-	if ( m_PlaylistAll ) {
-		m_PlaylistAll->StopPendingThread();
-	}
+	GetPlaylistAll()->StopPendingThread();
 
 	for ( const auto& iter : m_ArtistMap ) {
 		if ( iter.second ) {
@@ -1406,7 +1442,7 @@ void WndTree::ApplySettings()
 	bool publishers = false;
 	bool composers = false;
 	bool conductors = false;
-	m_Settings.GetTreeSettings( logFont, m_ColourFont, m_ColourBackground, m_ColourHighlight, m_ColourIcon, favourites, streams, allTracks, artists, albums, genres, years, publishers, composers, conductors );
+	m_Settings.GetTreeSettings( logFont, m_ColourFont, m_ColourBackground, m_ColourHighlight, m_ColourIcon, favourites, streams, allTracks, artists, albums, genres, years, publishers, composers, conductors, m_ShowHiddenFolders );
 	SetColours();
 	SetFont( logFont );
 }
@@ -1428,7 +1464,7 @@ void WndTree::SaveSettings()
 	const bool publishers = IsShown( ID_TREEMENU_PUBLISHERS );
 	const bool composers = IsShown( ID_TREEMENU_COMPOSERS );
 	const bool conductors = IsShown( ID_TREEMENU_CONDUCTORS );
-	m_Settings.SetTreeSettings( logFont, fontColour, backgroundColour, highlightColour, iconColour, favourites, streams, allTracks, artists, albums, genres, years, publishers, composers, conductors );
+	m_Settings.SetTreeSettings( logFont, fontColour, backgroundColour, highlightColour, iconColour, favourites, streams, allTracks, artists, albums, genres, years, publishers, composers, conductors, m_ShowHiddenFolders );
 }
 
 void WndTree::OnSelectColour( const UINT commandID )
@@ -1797,15 +1833,22 @@ void WndTree::AddCDDA()
 
 HTREEITEM WndTree::AddTreeItem( const HTREEITEM parentItem, const std::wstring& label, const Playlist::Type type, const bool redraw )
 {
+	const auto iconIndex = GetIconIndex( type );
+	const auto itemData = CreateItemData( type, iconIndex );
+	return AddTreeItem( parentItem, label, iconIndex, itemData, redraw );
+}
+
+HTREEITEM WndTree::AddTreeItem( const HTREEITEM parentItem, const std::wstring& label, const int iconIndex, const LPARAM itemData, const bool redraw )
+{
 	HTREEITEM addedItem = nullptr;
 	if ( ( nullptr != parentItem ) && !label.empty() ) {
 		const bool isFirstChildItem = ( nullptr == TreeView_GetChild( m_hWnd, parentItem ) );
 		TVITEMEX tvItem = {};
 		tvItem.mask = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 		tvItem.pszText = const_cast<LPWSTR>( label.c_str() );
-		tvItem.iImage = GetIconIndex( type );
+		tvItem.iImage = iconIndex;
 		tvItem.iSelectedImage = tvItem.iImage;
-		tvItem.lParam = CreateItemData( type, tvItem.iImage );
+		tvItem.lParam = itemData;
 		TVINSERTSTRUCT tvInsert = {};
 		tvInsert.hParent = parentItem;
 		tvInsert.hInsertAfter = TVI_SORT;
@@ -1941,6 +1984,16 @@ void WndTree::SetItemLabel( const HTREEITEM item, const std::wstring& label ) co
 	TreeView_SetItem( m_hWnd, &tvItem );
 }
 
+void WndTree::SetOriginalIconIndex( const HTREEITEM item, const int iconIndex )
+{
+	const auto [ playlistType, originalIconIndex, itemOrder ] = GetItemData( item );
+	TVITEMEX tvItem = {};
+	tvItem.mask = TVIF_HANDLE | TVIF_PARAM;
+	tvItem.hItem = item;
+	tvItem.lParam = CreateItemData( playlistType, iconIndex, itemOrder );
+	TreeView_SetItem( m_hWnd, &tvItem );
+}
+
 Playlist::Set WndTree::OnUpdatedMedia( const MediaInfo& previousMediaInfo, const MediaInfo& updatedMediaInfo )
 {
 	Playlist::Set updatedPlaylists;
@@ -1963,7 +2016,7 @@ void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList, const bool libra
 {
 	SendMessage( m_hWnd, WM_SETREDRAW, FALSE, 0 );
 	const Playlist::Ptr selectedPlaylist = GetSelectedPlaylist();
-	const bool updateAllTracks = m_PlaylistAll && ( selectedPlaylist != m_PlaylistAll );
+	const bool updateAllTracks = ( selectedPlaylist != GetPlaylistAll() );
 	const bool updateStreams = m_PlaylistStreams && ( selectedPlaylist != m_PlaylistStreams );
 
 	for ( const auto& previousMediaInfo : mediaList ) {
@@ -1979,14 +2032,14 @@ void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList, const bool libra
 		UpdateGenres( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		UpdateYears( previousMediaInfo, updatedMediaInfo, updatedPlaylists );
 		if ( updateAllTracks && !libraryMaintenance ) {
-			m_PlaylistAll->RemoveItem( previousMediaInfo );
+			GetPlaylistAll()->RemoveItem( previousMediaInfo );
 		}
 		if ( updateStreams && IsURL( previousMediaInfo.GetFilename() ) ) {
 			m_PlaylistStreams->RemoveItem( previousMediaInfo );
 		}
 	}
-	if ( m_PlaylistAll && libraryMaintenance ) {
-		m_PlaylistAll->RemoveFiles( mediaList );
+	if ( libraryMaintenance ) {
+		GetPlaylistAll()->RemoveFiles( mediaList );
 	}
 	SendMessage( m_hWnd, WM_SETREDRAW, TRUE, 0 );
 }
@@ -2053,8 +2106,8 @@ void WndTree::UpdatePlaylists( const MediaInfo& updatedMediaInfo, Playlist::Set&
 		}
 	}
 
-	if ( m_PlaylistAll && m_PlaylistAll->OnUpdatedMedia( updatedMediaInfo ) ) {
-		updatedPlaylists.insert( m_PlaylistAll );
+	if ( GetPlaylistAll()->OnUpdatedMedia( updatedMediaInfo ) ) {
+		updatedPlaylists.insert( GetPlaylistAll() );
 	}
 
 	if ( m_PlaylistFavourites && m_PlaylistFavourites->OnUpdatedMedia( updatedMediaInfo ) ) {
@@ -2640,6 +2693,10 @@ bool WndTree::IsShown( const UINT commandID ) const
 			isShown = ( nullptr != m_NodeYears );
 			break;
 		}
+		case ID_TREEMENU_HIDDENFOLDERS: {
+			isShown = m_ShowHiddenFolders;
+			break;
+		}
 	}
 	return isShown;
 }
@@ -2930,7 +2987,6 @@ void WndTree::Populate()
 	m_YearMap.clear();
 	m_CDDAMap.clear();
 
-	LoadAllTracks();
 	LoadFavourites();
 	LoadStreams();
 
@@ -2949,7 +3005,7 @@ void WndTree::Populate()
 	bool publishers = false;
 	bool composers = false;
 	bool conductors = false;
-	m_Settings.GetTreeSettings( font, fontColour, backgroundColour, highlightColour, iconColour, favourites, streams, allTracks, artists, albums, genres, years, publishers, composers, conductors );
+	m_Settings.GetTreeSettings( font, fontColour, backgroundColour, highlightColour, iconColour, favourites, streams, allTracks, artists, albums, genres, years, publishers, composers, conductors, m_ShowHiddenFolders );
 	if ( favourites ) {
 		AddFavourites();
 	}
@@ -3037,6 +3093,11 @@ void WndTree::CreateImageList()
 			m_IconIndexPaused = ImageList_Add( m_ImageList, hBitmap, nullptr /*mask*/ );
 			DeleteObject( hBitmap );
 		}
+		constexpr uint8_t kHiddenFolderAlpha = 128;
+		if ( const HBITMAP hBitmap = CreateColourBitmap( m_hInst, IDI_FOLDER, iconSize, colour, kHiddenFolderAlpha ); nullptr != hBitmap ) {
+			m_IconIndexHiddenFolder = ImageList_Add( m_ImageList, hBitmap, nullptr /*mask*/ );
+			DeleteObject( hBitmap );
+		}
 	}
 
 	TreeView_SetImageList( m_hWnd, m_ImageList, TVSIL_NORMAL );
@@ -3067,12 +3128,15 @@ Playlist::Ptr WndTree::GetPlaylistStreams() const
 
 Playlist::Ptr WndTree::GetPlaylistAll() const
 {
+	if ( !m_AllTracksLoaded ) {
+		WaitForSingleObject( m_LoadAllTracksThread, INFINITE );
+		m_AllTracksLoaded = true;
+	}
 	return m_PlaylistAll;
 }
 
-void WndTree::LoadAllTracks()
+void WndTree::LoadAllTracksThreadHandler()
 {
-	m_PlaylistAll.reset( new Playlist( m_Library, Playlist::Type::All ) );
 	const MediaInfo::List allMedia = m_Library.GetAllMedia();
 	for ( const auto& mediaInfo : allMedia ) {
 		m_PlaylistAll->AddItem( mediaInfo );
@@ -3387,9 +3451,9 @@ WndTree::RootFolderInfoList WndTree::GetComputerDrives() const
 	return computerDrives;
 }
 
-std::set<std::wstring> WndTree::GetSubFolders( const std::wstring& parent ) const
+std::set<std::pair<std::wstring, bool>> WndTree::GetSubFolders( const std::wstring& parent ) const
 {
-	std::set<std::wstring> subfolders;
+	std::set<std::pair<std::wstring, bool>> subfolders;
 
 	std::wstring filename = parent;
 	if ( !filename.empty() && ( filename.back() != '\\' ) && ( filename.back() != '/' ) ) {
@@ -3405,8 +3469,9 @@ std::set<std::wstring> WndTree::GetSubFolders( const std::wstring& parent ) cons
 	if ( INVALID_HANDLE_VALUE != handle ) {
 		BOOL found = TRUE;
 		while ( found ) {
-			if ( ( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && !( findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN ) && !( findData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM ) && ( findData.cFileName[ 0 ] != '.' ) ) {
-				subfolders.insert( findData.cFileName );
+			if ( ( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && !( findData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM ) && ( findData.cFileName[ 0 ] != '.' ) ) {
+				if ( !( findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN ) || m_ShowHiddenFolders ) 
+					subfolders.insert( std::make_pair( findData.cFileName, findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN ) );
 			}
 			found = FindNextFile( handle, &findData );
 		}
@@ -3438,9 +3503,11 @@ void WndTree::AddSubFolders( const HTREEITEM item )
 		std::wstring folderPath;
 		GetFolderPath( item, folderPath );
 		if ( !folderPath.empty() ) {
-			const std::set<std::wstring> subFolders = GetSubFolders( folderPath );
-			for ( const auto& subFolder : subFolders ) {
-				AddTreeItem( item, subFolder, Playlist::Type::Folder, false /*redraw*/ );
+			const auto subFolders = GetSubFolders( folderPath );
+			for ( const auto& [ subFolder, hidden ] : subFolders ) {
+				const auto iconIndex = hidden ? m_IconIndexHiddenFolder : m_IconIndexFolder;
+				const auto itemData = CreateItemData( Playlist::Type::Folder, iconIndex );
+				AddTreeItem( item, subFolder, iconIndex, itemData, false /*redraw*/ );
 			}
 		}
 	}
@@ -3477,7 +3544,7 @@ void WndTree::AddFolderTracks( const HTREEITEM item, Playlist::Ptr playlist )
 			if ( INVALID_HANDLE_VALUE != handle ) {
 				BOOL found = TRUE;
 				while ( found ) {
-					if ( !( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && !( findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN ) && !( findData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM ) ) {
+					if ( !( findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && !( findData.dwFileAttributes & FILE_ATTRIBUTE_SYSTEM ) ) {
 						const std::wstring fileName = folderPath + findData.cFileName;
 						IShellItem* shellItem = nullptr;
 						if ( SUCCEEDED( SHCreateItemFromParsingName( fileName.c_str(), nullptr /*bindContext*/, IID_PPV_ARGS( &shellItem ) ) ) ) {
@@ -3547,7 +3614,7 @@ void WndTree::OnDeviceHandleRemoved( const HANDLE handle )
 void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, const std::wstring& oldFilename, const std::wstring& newFilename )
 {
 	const std::wstring& folder =
-		( ( FolderMonitor::Event::FolderRenamed == monitorEvent ) || ( FolderMonitor::Event::FolderCreated == monitorEvent ) || ( FolderMonitor::Event::FolderDeleted == monitorEvent ) ) ?
+		( ( FolderMonitor::Event::FolderRenamed == monitorEvent ) || ( FolderMonitor::Event::FolderCreated == monitorEvent ) || ( FolderMonitor::Event::FolderDeleted == monitorEvent ) || ( FolderMonitor::Event::FolderModified == monitorEvent ) ) ?
 		oldFilename :
 		oldFilename.substr( 0 /*offset*/, oldFilename.find_last_of( L"/\\" ) );
 
@@ -3586,6 +3653,20 @@ void WndTree::OnFolderMonitorCallback( const FolderMonitor::Event monitorEvent, 
 			if ( m_FolderNodesMap.end() != folderIter ) {
 				for ( const auto& node : folderIter->second ) {
 					PostMessage( m_hWnd, MSG_FOLDERDELETE, reinterpret_cast<WPARAM>( node ), 0 /*lParam*/ );
+				}
+			}
+			break;
+		}
+		case FolderMonitor::Event::FolderModified: {
+			const size_t pos = folder.find_last_of( L"/\\" );
+			if ( std::wstring::npos != pos ) {
+				const std::wstring parentFolder( folder.substr( 0 /*offset*/, pos ) );
+				const auto folderIter = m_FolderNodesMap.find( parentFolder );
+				if ( m_FolderNodesMap.end() != folderIter ) {
+					for ( const auto& node : folderIter->second ) {
+						std::wstring* folderName = new std::wstring( folder.substr( 1 + pos /*offset*/ ) );
+						PostMessage( m_hWnd, MSG_FOLDERMODIFIED, reinterpret_cast<WPARAM>( node ), reinterpret_cast<LPARAM>( folderName ) );
+					}
 				}
 			}
 			break;
@@ -3721,7 +3802,18 @@ HTREEITEM WndTree::OnFolderAdd( const HTREEITEM parent, const std::wstring& fold
 	}
 
 	if ( nullptr == addedItem ) {
-		addedItem = AddTreeItem( parent, folder, Playlist::Type::Folder );
+		std::wstring path;
+		GetFolderPath( parent, path );
+		if ( !path.empty() ) {
+			const DWORD attributes = GetFileAttributes( std::filesystem::path( std::filesystem::path( path ) / folder ).c_str() );
+			if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
+				const bool isHiddenFolder = FILE_ATTRIBUTE_HIDDEN & attributes;
+				if ( !isHiddenFolder || m_ShowHiddenFolders ) {
+					const int iconIndex = isHiddenFolder ? m_IconIndexHiddenFolder : m_IconIndexFolder;
+					addedItem = AddTreeItem( parent, folder, iconIndex, CreateItemData( Playlist::Type::Folder, iconIndex ) );
+				}
+			}
+		}
 	}
 
 	if ( nullptr != addedItem ) {
@@ -3756,28 +3848,86 @@ void WndTree::OnFolderRename( const std::wstring& oldFolderPath, const std::wstr
 		RemoveTreeItem( item );
 	}
 
-	// Get the parent nodes of the new folder path.
-	const size_t pos = newFolderPath.find_last_of( L"/\\" );
-	if ( std::wstring::npos != pos ) {
-		const std::wstring parentFolderPath = newFolderPath.substr( 0 /*offset*/, pos );
-		const std::wstring newFolderName = newFolderPath.substr( 1 + pos );
-		std::set<HTREEITEM> parentNodes;
-		{
-			std::lock_guard<std::mutex> lock( m_FolderNodesMapMutex );
-			const auto parentFolderIter = m_FolderNodesMap.find( parentFolderPath );
-			if ( m_FolderNodesMap.end() != parentFolderIter ) {
-				parentNodes = parentFolderIter->second;
+	const DWORD attributes = GetFileAttributes( newFolderPath.c_str() );
+	if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
+		const bool isHiddenFolder = FILE_ATTRIBUTE_HIDDEN & attributes;
+		if ( !isHiddenFolder || m_ShowHiddenFolders ) {
+			// Get the parent nodes of the new folder path.
+			const size_t pos = newFolderPath.find_last_of( L"/\\" );
+			if ( std::wstring::npos != pos ) {
+				const std::wstring parentFolderPath = newFolderPath.substr( 0 /*offset*/, pos );
+				const std::wstring newFolderName = newFolderPath.substr( 1 + pos );
+				std::set<HTREEITEM> parentNodes;
+				{
+					std::lock_guard<std::mutex> lock( m_FolderNodesMapMutex );
+					const auto parentFolderIter = m_FolderNodesMap.find( parentFolderPath );
+					if ( m_FolderNodesMap.end() != parentFolderIter ) {
+						parentNodes = parentFolderIter->second;
+					}
+				}
+				for ( const auto& item : parentNodes ) {
+					const int iconIndex = isHiddenFolder ? m_IconIndexHiddenFolder : m_IconIndexFolder;
+					const HTREEITEM addedItem = AddTreeItem( item, newFolderName, iconIndex, CreateItemData( Playlist::Type::Folder, iconIndex ) );
+					if ( nullptr != addedItem ) {
+						AddSubFolders( addedItem );
+					}
+					if ( selectRenamedFolder ) {
+						TreeView_SelectItem( m_hWnd, addedItem );
+						TreeView_Expand( m_hWnd, addedItem, TVE_EXPAND );
+						selectRenamedFolder = false;
+					}
+				}
 			}
 		}
-		for ( const auto& item : parentNodes ) {
-			const HTREEITEM addedItem = AddTreeItem( item, newFolderName, Playlist::Type::Folder );
-			if ( nullptr != addedItem ) {
-				AddSubFolders( addedItem );
-			}
-			if ( selectRenamedFolder ) {
-				TreeView_SelectItem( m_hWnd, addedItem );
-				TreeView_Expand( m_hWnd, addedItem, TVE_EXPAND );
-				selectRenamedFolder = false;
+	}
+}
+
+void WndTree::OnFolderModified( const HTREEITEM parent, const std::wstring& folderName )
+{
+	std::wstring path;
+	GetFolderPath( parent, path );
+	if ( !path.empty() ) {
+		const DWORD attributes = GetFileAttributes( std::filesystem::path( std::filesystem::path( path ) / folderName ).c_str() );
+		if ( ( INVALID_FILE_ATTRIBUTES != attributes ) && !( FILE_ATTRIBUTE_SYSTEM & attributes ) ) {
+			const bool isHiddenFolder = FILE_ATTRIBUTE_HIDDEN & attributes;
+			if ( m_ShowHiddenFolders ) {
+				// Update folder icon, if necessary.
+				HTREEITEM childItem = TreeView_GetChild( m_hWnd, parent );
+				while ( nullptr != childItem ) {
+					if ( GetItemLabel( childItem ) == folderName ) {
+						const bool isHiddenFolderIcon = GetOriginalIconIndex( childItem ) == m_IconIndexHiddenFolder;
+						if ( isHiddenFolder != isHiddenFolderIcon ) {
+							SetOriginalIconIndex( childItem, isHiddenFolder ? m_IconIndexHiddenFolder : m_IconIndexFolder );
+							UpdateIcon( childItem, m_Output.GetState() );
+						}
+						break;
+					} else {
+						childItem = TreeView_GetNextSibling( m_hWnd, childItem );
+					}
+				}
+			} else {
+				if ( isHiddenFolder ) {
+					// Remove folder if it has become hidden.
+					HTREEITEM childItem = TreeView_GetChild( m_hWnd, parent );
+					while ( nullptr != childItem ) {
+						if ( GetItemLabel( childItem ) == folderName ) {
+							RemoveTreeItem( childItem );
+							break;
+						} else {
+							childItem = TreeView_GetNextSibling( m_hWnd, childItem );
+						}
+					}
+				} else {
+					// Add folder if it has become visible.
+					bool addNode = true;
+					HTREEITEM childItem = TreeView_GetChild( m_hWnd, parent );
+					while ( addNode && nullptr != childItem ) {
+						addNode = GetItemLabel( childItem ) != folderName;
+						childItem = TreeView_GetNextSibling( m_hWnd, childItem );
+					}
+					if ( addNode )
+						AddTreeItem( parent, folderName, Playlist::Type::Folder );
+				}
 			}
 		}
 	}
@@ -4470,4 +4620,58 @@ Playlist::Ptr WndTree::GetFolderPlaylist( const std::string& playlistID )
 			return playlist.second;
 	}
 	return nullptr;
+}
+
+void WndTree::OnHiddenFolders()
+{
+	m_ShowHiddenFolders = !m_ShowHiddenFolders;
+	if ( m_ShowHiddenFolders ) {
+		for ( const auto& [ node, info ] : m_RootComputerFolders ) {
+			AddHiddenFolderNodes( node );
+		}
+	} else {
+		std::set<HTREEITEM> nodesToRemove;
+		{
+			std::lock_guard<std::mutex> lock( m_FolderNodesMapMutex );
+			for ( const auto& [ name, nodes ] : m_FolderNodesMap ) {
+				for ( const auto node : nodes ) {
+					if ( m_IconIndexHiddenFolder == GetOriginalIconIndex( node ) )
+						nodesToRemove.insert( node );
+				}
+			}
+		}
+		for ( const auto nodeToRemove : nodesToRemove )
+			RemoveTreeItem( nodeToRemove );
+	}
+}
+
+void WndTree::AddHiddenFolderNodes( const HTREEITEM parent )
+{
+	std::wstring path;
+	GetFolderPath( parent, path );
+	if ( !path.empty() ) {
+		const auto folderNames = GetSubFolders( path );
+
+		std::map<std::wstring, HTREEITEM> childNodes;
+		HTREEITEM childItem = TreeView_GetChild( m_hWnd, parent );
+		while ( nullptr != childItem ) {
+			childNodes.insert( { GetItemLabel( childItem ), childItem } );
+			childItem = TreeView_GetNextSibling( m_hWnd, childItem );
+		}
+
+		for ( const auto& [ name, hidden ] : folderNames ) {
+			if ( hidden ) {
+				// Double check that the hidden folder is not already shown.
+				if ( const auto it = childNodes.find( name ); childNodes.end() == it ) {
+					if ( const auto addedItem = AddTreeItem( parent, name, m_IconIndexHiddenFolder, CreateItemData( Playlist::Type::Folder, m_IconIndexHiddenFolder ) ); nullptr != addedItem ) {
+						// Also add any child folders of the hidden folder.
+						AddSubFolders( addedItem );
+					}
+				}
+			}
+		}
+
+		for ( const auto& [ name, node ] : childNodes )
+			AddHiddenFolderNodes( node );
+	}
 }

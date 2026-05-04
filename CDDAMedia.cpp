@@ -62,9 +62,9 @@ bool CDDAMedia::FromMediaFilepath( const std::wstring& filepath, wchar_t& drive,
 			drive = driveStr.front();
 			try {
 				track = std::stol( match.str( 2 ) );
+				success = track >= 0;
 			} catch ( const std::logic_error& ) {
 			}
-			success = ( track > 0 );
 		}
 	}
 	return success;
@@ -190,6 +190,12 @@ long CDDAMedia::GetSectorCount( const long track ) const
 				sectorCount = ( offset2 - offset1 );
 			}
 		}
+	} else if ( ( 0 == track ) && HasHiddenTrack( m_TOC ) ) {
+		const long offset1 = PREGAP;
+		const long offset2 = GetStartSector( 1 + track );
+		if ( offset2 > offset1 ) {
+			sectorCount = ( offset2 - offset1 );
+		}
 	}
 	return sectorCount;
 }
@@ -198,6 +204,28 @@ long CDDAMedia::GetTrackLength( const long track ) const
 {
 	const long trackLength = GetSectorCount( track ) * SECTORSIZE;
 	return trackLength;
+}
+
+bool CDDAMedia::IsEnhancedCD() const
+{
+	if ( m_TOC.FirstTrack != 1 || m_TOC.LastTrack <= m_TOC.FirstTrack || m_TOC.LastTrack > MAXIMUM_NUMBER_TRACKS )
+		return false;
+	
+	const bool isFirstTrackAudio = !( m_TOC.TrackData[ m_TOC.FirstTrack - 1 ].Control & 4 );
+	const bool isLastTrackData = ( m_TOC.TrackData[ m_TOC.LastTrack - 1 ].Control & 4 ) && ( 0xAA != m_TOC.TrackData[ m_TOC.LastTrack - 1 ].TrackNumber );
+	return isFirstTrackAudio && isLastTrackData;
+}
+
+bool CDDAMedia::IsLastAudioTrack( const long track ) const
+{
+	if ( track < m_TOC.FirstTrack )
+		return false;
+
+	const size_t index = static_cast<size_t>( track - m_TOC.FirstTrack );
+	if ( ( 1 + index ) >= MAXIMUM_NUMBER_TRACKS )
+		return false;
+
+	return !( m_TOC.TrackData[ index ].Control & 4 ) && ( ( 0xAA == m_TOC.TrackData[ 1 + index ].TrackNumber ) || ( m_TOC.TrackData[ 1 + index ].Control & 4 ) );
 }
 
 bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
@@ -222,7 +250,8 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 			cdTextDiscTitle = cdTextIter->second.second;
 		}
 
-		for ( unsigned char track = m_TOC.FirstTrack; track <= m_TOC.LastTrack; track++ ) {
+		unsigned char track = HasHiddenTrack( m_TOC ) ? 0 : m_TOC.FirstTrack;
+		for ( ; track <= m_TOC.LastTrack; track++ ) {
 			if ( const long trackBytes = GetTrackLength( track ); trackBytes > 0 ) {
 				MediaInfo mediaInfo( GetCDDB() );
 				MediaInfo previousMediaInfo( mediaInfo );
@@ -504,8 +533,21 @@ long CDDAMedia::GetStartSector( const CDROM_TOC& toc, const long track )
 		if ( const unsigned long index = track - toc.FirstTrack; index < MAXIMUM_NUMBER_TRACKS ) {
 			trackOffset = ( toc.TrackData[ index ].Address[ 1 ] * 60 * 75 ) + ( toc.TrackData[ index ].Address[ 2 ] * 75 ) + ( toc.TrackData[ index ].Address[ 3 ] );
 		}
+	} else if ( ( 0 == track ) && HasHiddenTrack( toc ) ) {
+		trackOffset = PREGAP;
 	}
 	return trackOffset;
+}
+
+bool CDDAMedia::HasHiddenTrack( const CDROM_TOC& toc )
+{
+	if ( ( 1 != toc.FirstTrack ) || ( toc.TrackData[ toc.FirstTrack - 1 ].Control & 4 ) )
+		return false;
+
+	constexpr long kMinimumHiddenTrackLength = 10 * 75;
+
+	const long sectorStart = ( toc.TrackData[ 0 ].Address[ 1 ] * 60 * 75 ) + ( toc.TrackData[ 0 ].Address[ 2 ] * 75 ) + ( toc.TrackData[ 0 ].Address[ 3 ] );
+	return sectorStart >= ( PREGAP + kMinimumHiddenTrackLength );
 }
 
 std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<long> /*startCues*/, std::wstring /*backingFile*/>> CDDAMedia::GetMusicBrainzPlaylistID( Playlist* const playlist )

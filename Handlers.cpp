@@ -7,6 +7,8 @@
 #include "HandlerOpus.h"
 #include "HandlerPCM.h"
 #include "HandlerWavpack.h"
+#include "HandlerAAC.h"
+#include "HandlerALAC.h"
 #include "HandlerOpenMPT.h"
 
 #include "DecoderBin.h"
@@ -29,6 +31,8 @@ Handlers::Handlers() :
 		Handler::Ptr( new HandlerWavpack() ),
 		Handler::Ptr( new HandlerMP3() ),
 		Handler::Ptr( new HandlerPCM() ),
+		Handler::Ptr( new HandlerAAC() ),
+		Handler::Ptr( new HandlerALAC() ),
 		Handler::Ptr( m_HandlerBASS ),
 #ifndef _DEBUG
 		Handler::Ptr( m_HandlerOpenMPT ),

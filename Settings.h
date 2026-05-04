@@ -190,9 +190,10 @@ public:
 	// 'showPublishers' - out, whether Publishers are shown.
 	// 'showComposers' - out, whether Composers are shown.
 	// 'showConductors' - out, whether Conductors are shown.
+	// 'showHidden' - out, whether folders are shown.
 	void GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour,
 		bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears,
-		bool& showPublishers, bool& showComposers, bool& showConductors );
+		bool& showPublishers, bool& showComposers, bool& showConductors, bool& showHidden );
 
 	// Sets the tree control settings.
 	// 'font' - tree control font.
@@ -210,9 +211,10 @@ public:
 	// 'showPublishers' - whether Publishers are shown.
 	// 'showComposers' - whether Composers are shown.
 	// 'showConductors' - whether Conductors are shown.
+	// 'showHidden' - whether folders are shown.
 	void SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF iconColour,
 		const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears,
-		const bool showPublishers, const bool showComposers, const bool showConductors );
+		const bool showPublishers, const bool showComposers, const bool showConductors, const bool showHidden );
 
 	// Gets the playlists.
 	Playlists GetPlaylists();

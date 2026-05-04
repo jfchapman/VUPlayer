@@ -2,8 +2,8 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "VUPlayer"
-#define MyAppVersion "4.22"
-#define MyAppFullVersion "4.22.0.0"
+#define MyAppVersion "4.23"
+#define MyAppFullVersion "4.23.0.0"
 #define MyAppMainVersion "4"
 #define MyAppDefaultDir "VUPlayer 4"
 #define MyAppPublisher "James Chapman"
@@ -55,10 +55,10 @@ Source: "x64\Release\basswasapi.dll"; DestDir: "{app}"; Check: Is64BitInstallMod
 Source: "x64\Release\bassasio.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\basshls.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "x64\Release\scrobbler.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
-Source: "x64\Release\avcodec-61.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
-Source: "x64\Release\avformat-61.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
-Source: "x64\Release\avutil-59.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
-Source: "x64\Release\swresample-5.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\avcodec-62.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\avformat-62.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\avutil-60.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
+Source: "x64\Release\swresample-6.dll"; DestDir: "{app}"; Check: Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\VUPlayer.exe"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\shelltag.exe"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\bass.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
@@ -69,20 +69,24 @@ Source: "Release\basswasapi.dll"; DestDir: "{app}"; Check: not Is64BitInstallMod
 Source: "Release\bassasio.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\basshls.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "Release\scrobbler.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
-Source: "Release\avcodec-61.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
-Source: "Release\avformat-61.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
-Source: "Release\avutil-59.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
-Source: "Release\swresample-5.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\avcodec-62.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\avformat-62.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\avutil-60.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
+Source: "Release\swresample-6.dll"; DestDir: "{app}"; Check: not Is64BitInstallMode; Flags: ignoreversion
 Source: "readme.txt"; DestDir: "{app}"; Flags: solidbreak
 
 [InstallDelete]
 Type: files; Name: "{app}\avcodec-59.dll"
 Type: files; Name: "{app}\avcodec-60.dll"
+Type: files; Name: "{app}\avcodec-61.dll"
 Type: files; Name: "{app}\avformat-59.dll"
 Type: files; Name: "{app}\avformat-60.dll"
+Type: files; Name: "{app}\avformat-61.dll"
 Type: files; Name: "{app}\avutil-57.dll"
 Type: files; Name: "{app}\avutil-58.dll"
+Type: files; Name: "{app}\avutil-59.dll"
 Type: files; Name: "{app}\swresample-4.dll"
+Type: files; Name: "{app}\swresample-5.dll"
 
 [Icons]
 Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

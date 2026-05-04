@@ -3,37 +3,21 @@
 #include "Encoder.h"
 
 #include <vector>
-#include <array>
 
 struct AVCodecContext;
 struct AVIOContext;
 struct AVStream;
 struct AVCodec;
 struct AVFormatContext;
+struct AVChannelLayout;
 struct SwrContext;
 
-// FFmpeg (AAC) encoder
 class EncoderFFmpeg : public Encoder
 {
 public:
 	EncoderFFmpeg();
 
 	virtual ~EncoderFFmpeg();
-
-	// Returns the bitrate from the encoder 'settings'.
-	static int GetBitrate( const std::string& settings );
-
-	// Returns the default bitrate.
-	static int GetDefaultBitrate();
-
-	// Returns the minimum bitrate.
-	static int GetMinimumBitrate();
-
-	// Returns the maximum bitrate.
-	static int GetMaximumBitrate();
-
-	// Clamps the bitrate between the allowed limits.
-	static void LimitBitrate( int& bitrate );
 
 	// Opens the encoder.
 	// 'filename' - (in) output file name without file extension, (out) output file name with file extension.
@@ -55,6 +39,19 @@ public:
 	// Closes the encoder.
 	void Close() override;
 
+protected:
+	// Returns the file extension used by the encoder.
+	virtual std::wstring GetFileExtension() const = 0;
+
+	// Returns the FFmpeg codec used by the encoder.
+	virtual const AVCodec* GetCodec() const = 0;
+
+	// Sets up the FFmpeg codec context.
+	virtual bool SetupCodecContext( AVCodecContext* codecContext, const AVCodec* codec, const long sampleRate, const long channels, const std::optional<long> bitsPerSample, const std::string& settings ) const = 0;
+
+	// Returns the FFmpeg channel layout for the number of 'channels'.
+	static AVChannelLayout GetChannelLayout( const uint32_t channels );
+
 private:
 	// Converts sample data using the FFmpeg resampler.
 	// 'inputBuffer' - input samples (interleaved).
@@ -63,6 +60,12 @@ private:
 	// 'outputSamples' - output sample count.
 	// Returns the number of samples converted.
 	uint32_t Resample( const float* const inputBuffer, const uint32_t inputSamples, uint8_t** outputBuffers, const uint32_t outputSamples );
+
+	// Encodes sample data.
+	// 'samples' - input samples (floating point format scaled to +/-1.0f).
+	// 'sampleCount' - number of samples to write.
+	// Returns whether the samples were encoded successfully.
+	bool EncodeSamples( float* inputSamples, const long inputSampleCount );
 
 	// Encodes the next frame from the sample buffer, returning false if there was any error.
 	bool EncodeFrame();
@@ -74,8 +77,9 @@ private:
 	AVCodecContext* m_avcodecContext = nullptr;
 	SwrContext* m_swrContext = nullptr;
 	int64_t m_pts = 0;
+	uint32_t m_BytesPerSample = 0;
 	int m_InputSampleRate = 0;
 	int m_OutputSampleRate = 0;
 	int m_OutputChannels = 0;
-	std::array<std::vector<float>, 8> m_SampleBuffers;
+	std::vector<std::vector<uint8_t>> m_SampleBuffers;
 };

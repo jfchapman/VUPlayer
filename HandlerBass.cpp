@@ -152,7 +152,12 @@ bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
 
 bool HandlerBass::SetTags( const std::wstring& filename, const Tags& tags ) const
 {
-	bool success = false;
+	if ( const HMUSIC music = BASS_MusicLoad( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, BASS_UNICODE | BASS_MUSIC_NOSAMPLE, 0 /*freq*/ ); 0 != music ) {
+		// MOD music tagging is not supported, so return true to indicate this has been handled (and prevent other handlers from trying to write tags).
+		BASS_MusicFree( music );
+		return true;
+	}
+
 	const DWORD flags = BASS_UNICODE | BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE;
 	const HSTREAM handle = BASS_StreamCreateFile( FALSE /*mem*/, filename.c_str(), 0 /*offset*/, 0 /*length*/, flags );
 	if ( 0 != handle ) {
@@ -160,10 +165,10 @@ bool HandlerBass::SetTags( const std::wstring& filename, const Tags& tags ) cons
 		BASS_ChannelGetInfo( handle, &info );
 		BASS_StreamFree( handle );
 		if ( BASS_CTYPE_STREAM_OGG == info.ctype ) {
-			success = WriteOggTags( filename, tags );
+			return WriteOggTags( filename, tags );
 		}
 	}
-	return success;
+	return false;
 }
 
 Decoder::Ptr HandlerBass::OpenDecoder( const std::wstring& filename, const Decoder::Context context ) const

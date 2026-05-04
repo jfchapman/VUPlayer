@@ -82,6 +82,12 @@ public:
 	// Returns the 'track' length, in bytes (returns zero for data tracks).
 	long GetTrackLength( const long track ) const;
 
+	// Returns whether the CD contains audio tracks followed by a data track.
+	bool IsEnhancedCD() const;
+
+	// Returns whether 'track' is the last audio track.
+	bool IsLastAudioTrack( const long track ) const;
+
 	// Returns the MusicBrainz ID for disc queries.
 	std::pair<std::string /*discid*/, std::string /*toc*/> GetMusicBrainzDiscID() const;
 
@@ -124,6 +130,9 @@ private:
 
 	// Returns the start sector of the CD audio 'track' from the 'toc'.
 	static long GetStartSector( const CDROM_TOC& toc, const long track );
+
+	// Returns whether the CD 'toc' has a hidden audio track (e.g. Hybrid - Morning Sci-Fi).
+	static bool HasHiddenTrack( const CDROM_TOC& toc );
 
 	// CD-ROM drive path.
 	const std::wstring m_DrivePath;

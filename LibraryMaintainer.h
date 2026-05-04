@@ -24,9 +24,10 @@ public:
 	using FinishedCallback = std::function<void( const MediaInfo::List& removedFiles )>;
 
 	// Starts library maintenance.
+	// 'scanHiddenFolders' - whether to scan hidden folders.
 	// 'fileAddedCallback' - callback for when a new file is added to the library.
 	// 'finishedCallback' - callback for when library maintenance has finished.
-	void Start( FileAddedCallback fileAddedCallback, FinishedCallback finishedCallback );
+	void Start( const bool scanHiddenFolders, FileAddedCallback fileAddedCallback, FinishedCallback finishedCallback );
 
 	// Stops library maintenance.
 	void Stop();
@@ -82,6 +83,9 @@ private:
 
 	// Status text for updating the library.
 	std::wstring m_StatusUpdatingLibrary;
+
+	// Whether to scan hidden folders.
+	bool m_ScanHiddenFolders;
 
 	// A callback for when a new file is added to the library. 
 	FileAddedCallback m_FileAddedCallback;

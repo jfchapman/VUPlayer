@@ -135,6 +135,9 @@ public:
 	// Toggles years on the tree control.
 	void OnYears();
 
+	// Toggles the showing of hidden folders on the tree control.
+	void OnHiddenFolders();
+
 	// Returns whether the tree control node represented by 'commandID' is shown.
 	bool IsShown( const UINT commandID ) const;
 
@@ -232,6 +235,9 @@ private:
 
 	// Thread for updating media information in the scratch list.
 	static DWORD WINAPI ScratchListUpdateProc( LPVOID lpParam );
+
+	// Thread for loading the 'All Tracks' playlist.
+	static DWORD WINAPI LoadAllTracksProc( LPVOID lpParam );
 
 	// Thread for handling file modification events from the folder monitor.
 	static DWORD WINAPI FileModifiedProc( LPVOID lpParam );
@@ -387,6 +393,15 @@ private:
 	// Returns the added item.
 	HTREEITEM AddTreeItem( const HTREEITEM parentItem, const std::wstring& label, const Playlist::Type type, const bool redraw = true );
 
+	// Adds an item to the tree control.
+	// 'parentItem' - parent tree item.
+	// 'label' - item label.
+	// 'iconIndex' - icon index.
+	// 'itemData' - custom item data.
+	// 'redraw' - whether to redraw the control.
+	// Returns the added item.
+	HTREEITEM AddTreeItem( const HTREEITEM parentItem, const std::wstring& label, const int iconIndex, const LPARAM itemData, const bool redraw = true );
+
 	// Removes an item from the tree control.
 	// 'item' - item to remove.
 	void RemoveTreeItem( const HTREEITEM item );
@@ -405,6 +420,9 @@ private:
 
 	// Sets the tree 'item' 'label'.
 	void SetItemLabel( const HTREEITEM item, const std::wstring& label ) const;
+
+	// Sets the original icon index on a tree 'item'.
+	void SetOriginalIconIndex( const HTREEITEM item, const int iconIndex );
 
 	// Returns all the playlist names.
 	std::set<std::wstring> GetPlaylistNames() const;
@@ -477,8 +495,8 @@ private:
 	// Gets the icon index corresponding to a playlist 'type'.
 	int GetIconIndex( const Playlist::Type type ) const;
 
-	// Loads the 'All Tracks' playlist.
-	void LoadAllTracks();
+	// Thread handler for loading the 'All Tracks' playlist.
+	void LoadAllTracksThreadHandler();
 
 	// Loads the 'Favourites' playlist.
 	void LoadFavourites();
@@ -498,8 +516,8 @@ private:
 	// Returns the logical drives.
 	RootFolderInfoList GetComputerDrives() const;
 
-	// Returns the sub folders of the 'parent' folder.
-	std::set<std::wstring> GetSubFolders( const std::wstring& parent ) const;
+	// Returns the sub folders (the folder path name, and whether it is hidden) of the 'parent' folder.
+	std::set<std::pair<std::wstring, bool>> GetSubFolders( const std::wstring& parent ) const;
 
 	// Gets the folder 'path' of the tree 'item'.
 	void GetFolderPath( const HTREEITEM item, std::wstring& path ) const;
@@ -531,6 +549,9 @@ private:
 
 	// Called when an 'oldFolderPath' has been renamed to 'newFolderPath'.
 	void OnFolderRename( const std::wstring& oldFolderPath, const std::wstring& newFolderPath );
+
+	// Called when the 'folder' attributes of a 'parent' tree item have been modified. 
+	void OnFolderModified( const HTREEITEM parent, const std::wstring& folder );
 
 	// Adds the tree 'item' to the folder nodes map.
 	void AddToFolderNodesMap( const HTREEITEM item );
@@ -598,6 +619,9 @@ private:
 	// 'updatedPlaylist' - playlist set into which to add any updated playlist.
 	// Returns the child album node which was updated, or nullptr if the child album node was not found.
 	HTREEITEM RemoveFromChildAlbumNode( const HTREEITEM parent, const MediaInfo& mediaInfo, Playlist::Set& updatedPlaylists );
+
+	// Adds hidden folders to the 'parent' tree item.
+	void AddHiddenFolderNodes( const HTREEITEM parent );
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
@@ -734,6 +758,9 @@ private:
 	// Icon index for the currently paused icon.
 	int m_IconIndexPaused;
 
+	// Icon index for the hidden folder icon.
+	int m_IconIndexHiddenFolder;
+
 	// The root computer folders.
 	RootFolderInfoMap m_RootComputerFolders;
 
@@ -770,6 +797,12 @@ private:
 	// Scratch list stop event handle.
 	HANDLE m_ScratchListUpdateStopEvent;
 
+	// Thread handle for loading the 'All Tracks' playlist.
+	HANDLE m_LoadAllTracksThread;
+
+	// Indicates whether the 'All Tracks' playlist has loaded.
+	mutable std::atomic_bool m_AllTracksLoaded;
+
 	// Whether duplicate tracks are merged into a single entry (for Artist/Album/Genre/Year playlists).
 	bool m_MergeDuplicates;
 
@@ -778,6 +811,9 @@ private:
 
 	// Indicates whether high contrast mode is active.
 	bool m_IsHighContrast;
+
+	// Indicates whether hidden folders are shown.
+	bool m_ShowHiddenFolders;
 
 	// Maps a menu command ID to a playlist for the Add to Playlist context sub menu.
 	PlaylistMenuMap m_AddToPlaylistMenuMap;

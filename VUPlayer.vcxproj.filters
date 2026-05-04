@@ -315,16 +315,7 @@
     <ClInclude Include="CDDACache.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\json-3.11.3\json.hpp">
-      <Filter>Third Party</Filter>
-    </ClInclude>
     <ClInclude Include="libs\libebur128-1.2.6\ebur128.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
-    <ClInclude Include="libs\vorbis-tools-1.4.2\vorbiscomment\i18n.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
-    <ClInclude Include="libs\vorbis-tools-1.4.2\vorbiscomment\vcedit.h">
       <Filter>Third Party</Filter>
     </ClInclude>
     <ClInclude Include="HandlerOpenMPT.h">
@@ -351,10 +342,31 @@
     <ClInclude Include="EncoderFFmpeg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libs\sqlite-3.49.1\sqlite3.h">
+    <ClInclude Include="TagReader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\json-3.12\json.hpp">
       <Filter>Third Party</Filter>
     </ClInclude>
-    <ClInclude Include="TagReader.h">
+    <ClInclude Include="libs\sqlite-3.53.0\sqlite3.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\vorbis-tools-1.4.3\vorbiscomment\i18n.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="libs\vorbis-tools-1.4.3\vorbiscomment\vcedit.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="EncoderAAC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EncoderALAC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HandlerAAC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HandlerALAC.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -635,9 +647,6 @@
     <ClCompile Include="libs\libebur128-1.2.6\ebur128.c">
       <Filter>Third Party</Filter>
     </ClCompile>
-    <ClCompile Include="libs\vorbis-tools-1.4.2\vorbiscomment\vcedit.c">
-      <Filter>Third Party</Filter>
-    </ClCompile>
     <ClCompile Include="HandlerOpenMPT.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -665,10 +674,25 @@
     <ClCompile Include="EncoderFFmpeg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="libs\sqlite-3.49.1\sqlite3.c">
+    <ClCompile Include="TagReader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libs\sqlite-3.53.0\sqlite3.c">
       <Filter>Third Party</Filter>
     </ClCompile>
-    <ClCompile Include="TagReader.cpp">
+    <ClCompile Include="libs\vorbis-tools-1.4.3\vorbiscomment\vcedit.c">
+      <Filter>Third Party</Filter>
+    </ClCompile>
+    <ClCompile Include="EncoderAAC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EncoderALAC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlerAAC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HandlerALAC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

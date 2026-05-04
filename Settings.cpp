@@ -533,7 +533,7 @@ void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const bool s
 
 void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour,
 	bool& showFavourites, bool& showStreams, bool& showAllTracks, bool& showArtists, bool& showAlbums, bool& showGenres, bool& showYears,
-	bool& showPublishers, bool& showComposers, bool& showConductors )
+	bool& showPublishers, bool& showComposers, bool& showConductors, bool& showHidden )
 {
 	if ( const auto value = ReadSetting<LOGFONT>( "TreeFont" ); value ) {
 		font = *value;
@@ -580,11 +580,14 @@ void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& b
 	if ( const auto value = ReadSetting<bool>( "TreeConductors" ); value ) {
 		showConductors = *value;
 	}
+	if ( const auto value = ReadSetting<bool>( "ShowHiddenFolders" ); value ) {
+		showHidden = *value;
+	}
 }
 
 void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF iconColour,
 	const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears,
-	const bool showPublishers, const bool showComposers, const bool showConductors )
+	const bool showPublishers, const bool showComposers, const bool showConductors, const bool showHidden )
 {
 	WriteSetting( "TreeFont", font );
 	WriteSetting( "TreeFontColour", fontColour );
@@ -601,6 +604,7 @@ void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, 
 	WriteSetting( "TreePublishers", showPublishers );
 	WriteSetting( "TreeComposers", showComposers );
 	WriteSetting( "TreeConductors", showConductors );
+	WriteSetting( "ShowHiddenFolders", showHidden );
 }
 
 Playlists Settings::GetPlaylists()
@@ -1974,6 +1978,12 @@ std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINS
 		outputFilename.clear();
 	}
 	if ( outputFilename.empty() ) {
+		outputFilename = sourceFilename;
+	}
+
+	// Restrict filename length, for maximum compatibility.
+	constexpr size_t kFileExtensionLength = 10;	
+	if ( const auto checkPath = std::filesystem::path( extractFolder ) / outputFilename; checkPath.native().size() + kFileExtensionLength >= MAX_PATH ) {
 		outputFilename = sourceFilename;
 	}
 
