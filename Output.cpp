@@ -358,11 +358,24 @@ void Output::Play( const long playlistID, const double seek )
 					Queue queue = GetOutputQueue();
 					queue.push_back( { item, 0, seekPosition } );
 					SetOutputQueue( queue );
-					if ( GetCrossfade() ) {
+                 if ( GetCrossfade() ) {
 						StartCrossfadeCalculationThread( item, seekPosition );
+
 					}
-					StartLoudnessPrecalcThread();
+
+					
+                    StartLoudnessPrecalcThread();
 					PreloadNextDecoder( item );
+
+						//// Ensure UI updates the playlist and highlights the currently playing item.
+						//if ( m_OnPlaylistChangeCallback ) {
+						//	m_OnPlaylistChangeCallback( m_Playlist );
+						//}
+
+						//if ( m_OnSelectFollowedTrackCallback ) {
+						//	m_OnSelectFollowedTrackCallback( item.ID );
+						//}
+
 				} else {
 					Stop();
 				}
