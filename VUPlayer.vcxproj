@@ -90,7 +90,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.18\c;libs\sqlite-3.53.0;libs\libogg-1.3.6\include;libs\libvorbis-1.3.7\include;libs\flac-1.5.0\include;libs\vorbis-tools-1.4.3\vorbiscomment;libs\WavPack-5.9.0\include;libs\opus-1.6.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.3\include;libs\json-3.12;libs\ffmpeg-8.1\include;libs\libopenmpt-0.8.6\include;libs\lame-3.100\include;libs\bassmidi-2.4.15\c;libs\bassdsd-2.4.2\c;libs\scrobbler\include;libs\libebur128-1.2.6;libs\libebur128-1.2.6\queue;libs\basswasapi-2.4.4\c;libs\bassmix-2.4.12\c;libs\bassasio-1.4.2\c;libs\basshls-2.4.5\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.18\c;libs\sqlite-3.53.0;libs\libogg-1.3.6\include;libs\libvorbis-1.3.7\include;libs\flac-1.5.0\include;libs\vorbis-tools-1.4.3\vorbiscomment;libs\WavPack-5.9.0\include;libs\opus-1.6.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.3\include;libs\json-3.12;libs\ffmpeg-8.1.2\include;libs\libopenmpt-0.8.7\include;libs\lame-3.100\include;libs\bassmidi-2.4.16\c;libs\bassdsd-2.4.2\c;libs\scrobbler\include;libs\libebur128-1.2.6;libs\libebur128-1.2.6\queue;libs\basswasapi-2.4.4\c;libs\bassmix-2.4.12\c;libs\bassasio-1.4.3\c;libs\basshls-2.4.5\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
@@ -100,21 +100,21 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;libs\bass-2.4.18\c\bass.lib;libs\libvorbis-1.3.7\x86\libvorbis_static.lib;libs\libvorbis-1.3.7\x86\libvorbisfile_static.lib;libs\WavPack-5.9.0\x86\libwavpack.lib;libs\opus-1.6.1\x86\opus.lib;libs\opusfile-0.12\x86\opusfile.lib;libs\libopusenc-0.3\x86\opusenc.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.15\c\bassmidi.lib;libs\bassdsd-2.4.2\c\bassdsd.lib;libs\basswasapi-2.4.4\c\basswasapi.lib;libs\bassmix-2.4.12\c\bassmix.lib;libs\bassasio-1.4.2\c\bassasio.lib;libs\basshls-2.4.5\c\basshls.lib;libs\ffmpeg-8.1\lib\x86\avcodec.lib;libs\ffmpeg-8.1\lib\x86\avformat.lib;libs\ffmpeg-8.1\lib\x86\avutil.lib;libs\ffmpeg-8.1\lib\x86\swresample.lib;libs\flac-1.5.0\x86\debug\FLAC.lib;libs\flac-1.5.0\x86\debug\FLAC++.lib;libs\flac-1.5.0\x86\debug\utf8.lib;libs\libogg-1.3.6\x86\libogg.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;libs\bass-2.4.18\c\bass.lib;libs\libvorbis-1.3.7\x86\libvorbis_static.lib;libs\libvorbis-1.3.7\x86\libvorbisfile_static.lib;libs\WavPack-5.9.0\x86\libwavpack.lib;libs\opus-1.6.1\x86\opus.lib;libs\opusfile-0.12\x86\opusfile.lib;libs\libopusenc-0.3\x86\opusenc.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.16\c\bassmidi.lib;libs\bassdsd-2.4.2\c\bassdsd.lib;libs\basswasapi-2.4.4\c\basswasapi.lib;libs\bassmix-2.4.12\c\bassmix.lib;libs\bassasio-1.4.3\c\bassasio.lib;libs\basshls-2.4.5\c\basshls.lib;libs\ffmpeg-8.1.2\lib\x86\avcodec.lib;libs\ffmpeg-8.1.2\lib\x86\avformat.lib;libs\ffmpeg-8.1.2\lib\x86\avutil.lib;libs\ffmpeg-8.1.2\lib\x86\swresample.lib;libs\flac-1.5.0\x86\debug\FLAC.lib;libs\flac-1.5.0\x86\debug\FLAC++.lib;libs\flac-1.5.0\x86\debug\utf8.lib;libs\libogg-1.3.6\x86\libogg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)libs\bass-2.4.18\bass.dll" "$(OutDir)bass.dll"
-copy "$(ProjectDir)libs\bassmidi-2.4.15\bassmidi.dll" "$(OutDir)bassmidi.dll"
+copy "$(ProjectDir)libs\bassmidi-2.4.16\bassmidi.dll" "$(OutDir)bassmidi.dll"
 copy "$(ProjectDir)libs\bassdsd-2.4.2\bassdsd.dll" "$(OutDir)bassdsd.dll"
 copy "$(ProjectDir)libs\bassmix-2.4.12\bassmix.dll" "$(OutDir)bassmix.dll"
 copy "$(ProjectDir)libs\basswasapi-2.4.4\basswasapi.dll" "$(OutDir)basswasapi.dll"
-copy "$(ProjectDir)libs\bassasio-1.4.2\bassasio.dll" "$(OutDir)bassasio.dll"
+copy "$(ProjectDir)libs\bassasio-1.4.3\bassasio.dll" "$(OutDir)bassasio.dll"
 copy "$(ProjectDir)libs\basshls-2.4.5\basshls.dll" "$(OutDir)basshls.dll"
 copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\avformat-62.dll" $(OutDir)avformat-62.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\avcodec-62.dll" $(OutDir)avcodec-62.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\avutil-60.dll" $(OutDir)avutil-60.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\swresample-6.dll" $(OutDir)swresample-6.dll</Command>
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x86\avformat-62.dll" $(OutDir)avformat-62.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x86\avcodec-62.dll" $(OutDir)avcodec-62.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x86\avutil-60.dll" $(OutDir)avutil-60.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x86\swresample-6.dll" $(OutDir)swresample-6.dll</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -130,7 +130,7 @@ copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\swresample-6.dll" $(OutDir)swresample
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.18\c;libs\sqlite-3.53.0;libs\libogg-1.3.6\include;libs\libvorbis-1.3.7\include;libs\flac-1.5.0\include;libs\vorbis-tools-1.4.3\vorbiscomment;libs\WavPack-5.9.0\include;libs\opus-1.6.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.3\include;libs\json-3.12;libs\ffmpeg-8.1\include;libs\libopenmpt-0.8.6\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.15\c;libs\bassdsd-2.4.2\c;libs\scrobbler\include;libs\libebur128-1.2.6;libs\libebur128-1.2.6\queue;libs\basswasapi-2.4.4\c;libs\bassmix-2.4.12\c;libs\bassasio-1.4.2\c;libs\basshls-2.4.5\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.18\c;libs\sqlite-3.53.0;libs\libogg-1.3.6\include;libs\libvorbis-1.3.7\include;libs\flac-1.5.0\include;libs\vorbis-tools-1.4.3\vorbiscomment;libs\WavPack-5.9.0\include;libs\opus-1.6.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.3\include;libs\json-3.12;libs\ffmpeg-8.1.2\include;libs\libopenmpt-0.8.7\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.16\c;libs\bassdsd-2.4.2\c;libs\scrobbler\include;libs\libebur128-1.2.6;libs\libebur128-1.2.6\queue;libs\basswasapi-2.4.4\c;libs\bassmix-2.4.12\c;libs\bassasio-1.4.3\c;libs\basshls-2.4.5\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
@@ -140,21 +140,21 @@ copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\swresample-6.dll" $(OutDir)swresample
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;libs\bass-2.4.18\c\x64\bass.lib;libs\libvorbis-1.3.7\x64\libvorbis_static.lib;libs\libvorbis-1.3.7\x64\libvorbisfile_static.lib;libs\WavPack-5.9.0\x64\libwavpack.lib;libs\opus-1.6.1\x64\opus.lib;libs\opusfile-0.12\x64\opusfile.lib;libs\libopusenc-0.3\x64\opusenc.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.15\c\x64\bassmidi.lib;libs\bassdsd-2.4.2\c\x64\bassdsd.lib;libs\basswasapi-2.4.4\c\x64\basswasapi.lib;libs\bassmix-2.4.12\c\x64\bassmix.lib;libs\bassasio-1.4.2\c\x64\bassasio.lib;libs\basshls-2.4.5\c\x64\basshls.lib;libs\ffmpeg-8.1\lib\x64\avcodec.lib;libs\ffmpeg-8.1\lib\x64\avformat.lib;libs\ffmpeg-8.1\lib\x64\avutil.lib;libs\ffmpeg-8.1\lib\x64\swresample.lib;libs\flac-1.5.0\x64\debug\FLAC.lib;libs\flac-1.5.0\x64\debug\FLAC++.lib;libs\flac-1.5.0\x64\debug\utf8.lib;libs\libogg-1.3.6\x64\libogg.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;libs\bass-2.4.18\c\x64\bass.lib;libs\libvorbis-1.3.7\x64\libvorbis_static.lib;libs\libvorbis-1.3.7\x64\libvorbisfile_static.lib;libs\WavPack-5.9.0\x64\libwavpack.lib;libs\opus-1.6.1\x64\opus.lib;libs\opusfile-0.12\x64\opusfile.lib;libs\libopusenc-0.3\x64\opusenc.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.16\c\x64\bassmidi.lib;libs\bassdsd-2.4.2\c\x64\bassdsd.lib;libs\basswasapi-2.4.4\c\x64\basswasapi.lib;libs\bassmix-2.4.12\c\x64\bassmix.lib;libs\bassasio-1.4.3\c\x64\bassasio.lib;libs\basshls-2.4.5\c\x64\basshls.lib;libs\ffmpeg-8.1.2\lib\x64\avcodec.lib;libs\ffmpeg-8.1.2\lib\x64\avformat.lib;libs\ffmpeg-8.1.2\lib\x64\avutil.lib;libs\ffmpeg-8.1.2\lib\x64\swresample.lib;libs\flac-1.5.0\x64\debug\FLAC.lib;libs\flac-1.5.0\x64\debug\FLAC++.lib;libs\flac-1.5.0\x64\debug\utf8.lib;libs\libogg-1.3.6\x64\libogg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)libs\bass-2.4.18\x64\bass.dll" "$(OutDir)bass.dll"
-copy "$(ProjectDir)libs\bassmidi-2.4.15\x64\bassmidi.dll" "$(OutDir)bassmidi.dll"
+copy "$(ProjectDir)libs\bassmidi-2.4.16\x64\bassmidi.dll" "$(OutDir)bassmidi.dll"
 copy "$(ProjectDir)libs\bassdsd-2.4.2\x64\bassdsd.dll" "$(OutDir)bassdsd.dll"
 copy "$(ProjectDir)libs\bassmix-2.4.12\x64\bassmix.dll" "$(OutDir)bassmix.dll"
 copy "$(ProjectDir)libs\basswasapi-2.4.4\x64\basswasapi.dll" "$(OutDir)basswasapi.dll"
-copy "$(ProjectDir)libs\bassasio-1.4.2\x64\bassasio.dll" "$(OutDir)bassasio.dll"
+copy "$(ProjectDir)libs\bassasio-1.4.3\x64\bassasio.dll" "$(OutDir)bassasio.dll"
 copy "$(ProjectDir)libs\basshls-2.4.5\x64\basshls.dll" "$(OutDir)basshls.dll"
 copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x64\avformat-62.dll" $(OutDir)avformat-62.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x64\avcodec-62.dll" $(OutDir)avcodec-62.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x64\avutil-60.dll" $(OutDir)avutil-60.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x64\swresample-6.dll" $(OutDir)swresample-6.dll</Command>
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\avformat-62.dll" $(OutDir)avformat-62.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\avcodec-62.dll" $(OutDir)avcodec-62.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\avutil-60.dll" $(OutDir)avutil-60.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\swresample-6.dll" $(OutDir)swresample-6.dll</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -172,7 +172,7 @@ copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x64\swresample-6.dll" $(OutDir)swresample
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.18\c;libs\sqlite-3.53.0;libs\libogg-1.3.6\include;libs\libvorbis-1.3.7\include;libs\flac-1.5.0\include;libs\vorbis-tools-1.4.3\vorbiscomment;libs\WavPack-5.9.0\include;libs\opus-1.6.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.3\include;libs\json-3.12;libs\ffmpeg-8.1\include;libs\libopenmpt-0.8.6\include;libs\lame-3.100\include;libs\bassmidi-2.4.15\c;libs\bassdsd-2.4.2\c;libs\scrobbler\include;libs\libebur128-1.2.6;libs\libebur128-1.2.6\queue;libs\basswasapi-2.4.4\c;libs\bassmix-2.4.12\c;libs\bassasio-1.4.2\c;libs\basshls-2.4.5\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.18\c;libs\sqlite-3.53.0;libs\libogg-1.3.6\include;libs\libvorbis-1.3.7\include;libs\flac-1.5.0\include;libs\vorbis-tools-1.4.3\vorbiscomment;libs\WavPack-5.9.0\include;libs\opus-1.6.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.3\include;libs\json-3.12;libs\ffmpeg-8.1.2\include;libs\libopenmpt-0.8.7\include;libs\lame-3.100\include;libs\bassmidi-2.4.16\c;libs\bassdsd-2.4.2\c;libs\scrobbler\include;libs\libebur128-1.2.6;libs\libebur128-1.2.6\queue;libs\basswasapi-2.4.4\c;libs\bassmix-2.4.12\c;libs\bassasio-1.4.3\c;libs\basshls-2.4.5\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
@@ -185,23 +185,23 @@ copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x64\swresample-6.dll" $(OutDir)swresample
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;libs\bass-2.4.18\c\bass.lib;libs\libvorbis-1.3.7\x86\libvorbis_static.lib;libs\libvorbis-1.3.7\x86\libvorbisfile_static.lib;libs\WavPack-5.9.0\x86\libwavpack.lib;libs\opus-1.6.1\x86\opus.lib;libs\opusfile-0.12\x86\opusfile.lib;libs\libopusenc-0.3\x86\opusenc.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.15\c\bassmidi.lib;libs\bassdsd-2.4.2\c\bassdsd.lib;libs\basswasapi-2.4.4\c\basswasapi.lib;libs\bassmix-2.4.12\c\bassmix.lib;libs\bassasio-1.4.2\c\bassasio.lib;libs\basshls-2.4.5\c\basshls.lib;libs\ffmpeg-8.1\lib\x86\avcodec.lib;libs\ffmpeg-8.1\lib\x86\avformat.lib;libs\ffmpeg-8.1\lib\x86\avutil.lib;libs\ffmpeg-8.1\lib\x86\swresample.lib;libs\flac-1.5.0\x86\release\FLAC.lib;libs\flac-1.5.0\x86\release\FLAC++.lib;libs\flac-1.5.0\x86\release\utf8.lib;libs\libogg-1.3.6\x86\libogg.lib;libs\libopenmpt-0.8.6\lib\x86\Release\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;libs\bass-2.4.18\c\bass.lib;libs\libvorbis-1.3.7\x86\libvorbis_static.lib;libs\libvorbis-1.3.7\x86\libvorbisfile_static.lib;libs\WavPack-5.9.0\x86\libwavpack.lib;libs\opus-1.6.1\x86\opus.lib;libs\opusfile-0.12\x86\opusfile.lib;libs\libopusenc-0.3\x86\opusenc.lib;libs\lame-3.100\x86\libmp3lame-static.lib;libs\bassmidi-2.4.16\c\bassmidi.lib;libs\bassdsd-2.4.2\c\bassdsd.lib;libs\basswasapi-2.4.4\c\basswasapi.lib;libs\bassmix-2.4.12\c\bassmix.lib;libs\bassasio-1.4.3\c\bassasio.lib;libs\basshls-2.4.5\c\basshls.lib;libs\ffmpeg-8.1.2\lib\x86\avcodec.lib;libs\ffmpeg-8.1.2\lib\x86\avformat.lib;libs\ffmpeg-8.1.2\lib\x86\avutil.lib;libs\ffmpeg-8.1.2\lib\x86\swresample.lib;libs\flac-1.5.0\x86\release\FLAC.lib;libs\flac-1.5.0\x86\release\FLAC++.lib;libs\flac-1.5.0\x86\release\utf8.lib;libs\libogg-1.3.6\x86\libogg.lib;libs\libopenmpt-0.8.7\lib\x86\Release\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>
       </LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)libs\bass-2.4.18\bass.dll" "$(OutDir)bass.dll"
-copy "$(ProjectDir)libs\bassmidi-2.4.15\bassmidi.dll" "$(OutDir)bassmidi.dll"
+copy "$(ProjectDir)libs\bassmidi-2.4.16\bassmidi.dll" "$(OutDir)bassmidi.dll"
 copy "$(ProjectDir)libs\bassdsd-2.4.2\bassdsd.dll" "$(OutDir)bassdsd.dll"
 copy "$(ProjectDir)libs\bassmix-2.4.12\bassmix.dll" "$(OutDir)bassmix.dll"
 copy "$(ProjectDir)libs\basswasapi-2.4.4\basswasapi.dll" "$(OutDir)basswasapi.dll"
-copy "$(ProjectDir)libs\bassasio-1.4.2\bassasio.dll" "$(OutDir)bassasio.dll"
+copy "$(ProjectDir)libs\bassasio-1.4.3\bassasio.dll" "$(OutDir)bassasio.dll"
 copy "$(ProjectDir)libs\basshls-2.4.5\basshls.dll" "$(OutDir)basshls.dll"
 copy "$(ProjectDir)libs\scrobbler\x86\scrobbler.dll" "$(OutDir)scrobbler.dll"
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\avformat-62.dll" $(OutDir)avformat-62.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\avcodec-62.dll" $(OutDir)avcodec-62.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\avutil-60.dll" $(OutDir)avutil-60.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\swresample-6.dll" $(OutDir)swresample-6.dll</Command>
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x86\avformat-62.dll" $(OutDir)avformat-62.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x86\avcodec-62.dll" $(OutDir)avcodec-62.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x86\avutil-60.dll" $(OutDir)avutil-60.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x86\swresample-6.dll" $(OutDir)swresample-6.dll</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>
@@ -219,7 +219,7 @@ copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\swresample-6.dll" $(OutDir)swresample
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>libs\bass-2.4.18\c;libs\sqlite-3.53.0;libs\libogg-1.3.6\include;libs\libvorbis-1.3.7\include;libs\flac-1.5.0\include;libs\vorbis-tools-1.4.3\vorbiscomment;libs\WavPack-5.9.0\include;libs\opus-1.6.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.3\include;libs\json-3.12;libs\ffmpeg-8.1\include;libs\libopenmpt-0.8.6\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.15\c;libs\bassdsd-2.4.2\c;libs\scrobbler\include;libs\libebur128-1.2.6;libs\libebur128-1.2.6\queue;libs\basswasapi-2.4.4\c;libs\bassmix-2.4.12\c;libs\bassasio-1.4.2\c;libs\basshls-2.4.5\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>libs\bass-2.4.18\c;libs\sqlite-3.53.0;libs\libogg-1.3.6\include;libs\libvorbis-1.3.7\include;libs\flac-1.5.0\include;libs\vorbis-tools-1.4.3\vorbiscomment;libs\WavPack-5.9.0\include;libs\opus-1.6.1\include;libs\opusfile-0.12\include;libs\libopusenc-0.3\include;libs\json-3.12;libs\ffmpeg-8.1.2\include;libs\libopenmpt-0.8.7\include;libs\gnsdk_vuplayer\include;libs\lame-3.100\include;libs\bassmidi-2.4.16\c;libs\bassdsd-2.4.2\c;libs\scrobbler\include;libs\libebur128-1.2.6;libs\libebur128-1.2.6\queue;libs\basswasapi-2.4.4\c;libs\bassmix-2.4.12\c;libs\bassasio-1.4.3\c;libs\basshls-2.4.5\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
@@ -232,23 +232,23 @@ copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x86\swresample-6.dll" $(OutDir)swresample
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;libs\bass-2.4.18\c\x64\bass.lib;libs\libvorbis-1.3.7\x64\libvorbis_static.lib;libs\libvorbis-1.3.7\x64\libvorbisfile_static.lib;libs\WavPack-5.9.0\x64\libwavpack.lib;libs\opus-1.6.1\x64\opus.lib;libs\opusfile-0.12\x64\opusfile.lib;libs\libopusenc-0.3\x64\opusenc.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.15\c\x64\bassmidi.lib;libs\bassdsd-2.4.2\c\x64\bassdsd.lib;libs\basswasapi-2.4.4\c\x64\basswasapi.lib;libs\bassmix-2.4.12\c\x64\bassmix.lib;libs\bassasio-1.4.2\c\x64\bassasio.lib;libs\basshls-2.4.5\c\x64\basshls.lib;libs\ffmpeg-8.1\lib\x64\avcodec.lib;libs\ffmpeg-8.1\lib\x64\avformat.lib;libs\ffmpeg-8.1\lib\x64\avutil.lib;libs\ffmpeg-8.1\lib\x64\swresample.lib;libs\flac-1.5.0\x64\release\FLAC.lib;libs\flac-1.5.0\x64\release\FLAC++.lib;libs\flac-1.5.0\x64\release\utf8.lib;libs\libogg-1.3.6\x64\libogg.lib;libs\libopenmpt-0.8.6\lib\x86_64\Release\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;libs\bass-2.4.18\c\x64\bass.lib;libs\libvorbis-1.3.7\x64\libvorbis_static.lib;libs\libvorbis-1.3.7\x64\libvorbisfile_static.lib;libs\WavPack-5.9.0\x64\libwavpack.lib;libs\opus-1.6.1\x64\opus.lib;libs\opusfile-0.12\x64\opusfile.lib;libs\libopusenc-0.3\x64\opusenc.lib;libs\lame-3.100\x64\libmp3lame-static.lib;libs\bassmidi-2.4.16\c\x64\bassmidi.lib;libs\bassdsd-2.4.2\c\x64\bassdsd.lib;libs\basswasapi-2.4.4\c\x64\basswasapi.lib;libs\bassmix-2.4.12\c\x64\bassmix.lib;libs\bassasio-1.4.3\c\x64\bassasio.lib;libs\basshls-2.4.5\c\x64\basshls.lib;libs\ffmpeg-8.1.2\lib\x64\avcodec.lib;libs\ffmpeg-8.1.2\lib\x64\avformat.lib;libs\ffmpeg-8.1.2\lib\x64\avutil.lib;libs\ffmpeg-8.1.2\lib\x64\swresample.lib;libs\flac-1.5.0\x64\release\FLAC.lib;libs\flac-1.5.0\x64\release\FLAC++.lib;libs\flac-1.5.0\x64\release\utf8.lib;libs\libogg-1.3.6\x64\libogg.lib;libs\libopenmpt-0.8.7\lib\x86_64\Release\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>
       </LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)libs\bass-2.4.18\x64\bass.dll" "$(OutDir)bass.dll"
-copy "$(ProjectDir)libs\bassmidi-2.4.15\x64\bassmidi.dll" "$(OutDir)bassmidi.dll"
+copy "$(ProjectDir)libs\bassmidi-2.4.16\x64\bassmidi.dll" "$(OutDir)bassmidi.dll"
 copy "$(ProjectDir)libs\bassdsd-2.4.2\x64\bassdsd.dll" "$(OutDir)bassdsd.dll"
 copy "$(ProjectDir)libs\bassmix-2.4.12\x64\bassmix.dll" "$(OutDir)bassmix.dll"
 copy "$(ProjectDir)libs\basswasapi-2.4.4\x64\basswasapi.dll" "$(OutDir)basswasapi.dll"
-copy "$(ProjectDir)libs\bassasio-1.4.2\x64\bassasio.dll" "$(OutDir)bassasio.dll"
+copy "$(ProjectDir)libs\bassasio-1.4.3\x64\bassasio.dll" "$(OutDir)bassasio.dll"
 copy "$(ProjectDir)libs\basshls-2.4.5\x64\basshls.dll" "$(OutDir)basshls.dll"
 copy "$(ProjectDir)libs\scrobbler\x64\scrobbler.dll" "$(OutDir)scrobbler.dll"
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x64\avformat-62.dll" $(OutDir)avformat-62.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x64\avcodec-62.dll" $(OutDir)avcodec-62.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x64\avutil-60.dll" $(OutDir)avutil-60.dll
-copy "$(ProjectDir)libs\ffmpeg-8.1\bin\x64\swresample-6.dll" $(OutDir)swresample-6.dll</Command>
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\avformat-62.dll" $(OutDir)avformat-62.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\avcodec-62.dll" $(OutDir)avcodec-62.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\avutil-60.dll" $(OutDir)avutil-60.dll
+copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\swresample-6.dll" $(OutDir)swresample-6.dll</Command>
     </PostBuildEvent>
     <Manifest>
       <EnableDpiAwareness>true</EnableDpiAwareness>

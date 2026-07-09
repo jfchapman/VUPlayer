@@ -331,21 +331,16 @@ std::string GainToString( const HINSTANCE instance, const std::optional<float> g
 	return gain.has_value() ? WideStringToUTF8( GainToString( instance, *gain ) ) : std::string();
 }
 
-GUID GenerateGUID()
-{
-	UUID uuid = {};
-	UuidCreate( &uuid );
-	return uuid;
-}
-
 std::string GenerateGUIDString()
 {
 	std::string result;
-	UUID uuid = GenerateGUID();
-	RPC_CSTR uuidStr;
-	if ( RPC_S_OK == UuidToStringA( &uuid, &uuidStr ) ) {
-		result = reinterpret_cast<char*>( uuidStr );
-		RpcStringFreeA( &uuidStr );
+	UUID uuid = {};
+	if (RPC_S_OK == UuidCreate( &uuid ) ) {
+		RPC_CSTR uuidStr;
+		if ( RPC_S_OK == UuidToStringA( &uuid, &uuidStr ) ) {
+			result = reinterpret_cast<char*>( uuidStr );
+			RpcStringFreeA( &uuidStr );
+		}
 	}
 	return result;
 }

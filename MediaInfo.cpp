@@ -347,23 +347,25 @@ void MediaInfo::SetBitrate( const std::optional<float> bitrate )
 
 std::wstring MediaInfo::GetArtworkID( const bool checkFolder ) const
 {
-	std::wstring artworkID = m_ArtworkID;
-	if ( checkFolder && artworkID.empty() && !GetFilename().empty() && ( Source::File == GetSource() ) ) {
-		const std::array<std::wstring, 2> artworkFileNames = { L"cover", L"folder" };
-		const std::array<std::wstring, 2> artworkFileTypes = { L"jpg", L"png" };
-		const std::filesystem::path filePath( GetFilename() );
-		for ( auto artworkFileName = artworkFileNames.begin(); artworkID.empty() && ( artworkFileNames.end() != artworkFileName ); artworkFileName++ ) {
-			for ( auto artworkFileType = artworkFileTypes.begin(); artworkID.empty() && ( artworkFileTypes.end() != artworkFileType ); artworkFileType++ ) {
-				std::filesystem::path artworkPath = filePath.parent_path() / *artworkFileName;
-				artworkPath.replace_extension( *artworkFileType );
-				if ( std::filesystem::exists( artworkPath ) ) {
-					artworkID = artworkPath;
-					break;
-				}
+	if ( checkFolder && m_ArtworkID.empty() && !GetFilename().empty() && ( Source::File == GetSource() ) ) {
+		const std::set<std::wstring> kImageFileExtensions = { L".jpg", L".jpeg", L".png", L".bmp", L".gif", L".tif", L".tiff" };
+		const std::set<std::wstring> kPreferredFilenames = { L"cover", L"folder" };
+		std::error_code ec;
+		std::wstring imageFilename;
+		for ( const auto& entry : std::filesystem::directory_iterator( std::filesystem::path( GetFilename() ).parent_path(), ec ) ) {
+			if ( !entry.is_directory( ec ) && kImageFileExtensions.contains( WideStringToLower( entry.path().extension() ) ) ) {
+				if ( kPreferredFilenames.contains( WideStringToLower( entry.path().stem() ) ) )
+					return entry.path();
+
+				// Use any image file if it's the only one in the folder.
+				if ( !imageFilename.empty() )
+					return {};
+				imageFilename = entry.path();
 			}
 		}
+		return imageFilename;
 	}
-	return artworkID;
+	return m_ArtworkID;
 }
 
 void MediaInfo::SetArtworkID( const std::wstring& id )

@@ -252,23 +252,26 @@ void Library::CreateIndices()
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
-		const std::string artistIndex = "CREATE INDEX IF NOT EXISTS MediaIndex_Artist ON Media(Artist);";
-		sqlite3_exec( database, artistIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-		const std::string composerIndex = "CREATE INDEX IF NOT EXISTS MediaIndex_Composer ON Media(Composer);";
-		sqlite3_exec( database, composerIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-		const std::string conductorIndex = "CREATE INDEX IF NOT EXISTS MediaIndex_Conductor ON Media(Conductor);";
-		sqlite3_exec( database, conductorIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-		const std::string publisherIndex = "CREATE INDEX IF NOT EXISTS MediaIndex_Publisher ON Media(Publisher);";
-		sqlite3_exec( database, publisherIndex.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		constexpr char artistIndex[] = "CREATE INDEX IF NOT EXISTS MediaIndex_Artist ON Media(Artist);";
+		sqlite3_exec( database, artistIndex, NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		constexpr char composerIndex[] = "CREATE INDEX IF NOT EXISTS MediaIndex_Composer ON Media(Composer);";
+		sqlite3_exec( database, composerIndex, NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		constexpr char conductorIndex[] = "CREATE INDEX IF NOT EXISTS MediaIndex_Conductor ON Media(Conductor);";
+		sqlite3_exec( database, conductorIndex, NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		constexpr char publisherIndex[] = "CREATE INDEX IF NOT EXISTS MediaIndex_Publisher ON Media(Publisher);";
+		sqlite3_exec( database, publisherIndex, NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 
-		const std::string artistCues = "CREATE INDEX IF NOT EXISTS CuesIndex_Artist ON Cues(Artist);";
-		sqlite3_exec( database, artistCues.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-		const std::string composerCues = "CREATE INDEX IF NOT EXISTS CuesIndex_Composer ON Cues(Composer);";
-		sqlite3_exec( database, composerCues.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-		const std::string conductorCues = "CREATE INDEX IF NOT EXISTS CuesIndex_Conductor ON Cues(Conductor);";
-		sqlite3_exec( database, conductorCues.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
-		const std::string publisherCues = "CREATE INDEX IF NOT EXISTS CuesIndex_Publisher ON Cues(Publisher);";
-		sqlite3_exec( database, publisherCues.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		constexpr char artistCues[] = "CREATE INDEX IF NOT EXISTS CuesIndex_Artist ON Cues(Artist);";
+		sqlite3_exec( database, artistCues, NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		constexpr char composerCues[] = "CREATE INDEX IF NOT EXISTS CuesIndex_Composer ON Cues(Composer);";
+		sqlite3_exec( database, composerCues, NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		constexpr char conductorCues[] = "CREATE INDEX IF NOT EXISTS CuesIndex_Conductor ON Cues(Conductor);";
+		sqlite3_exec( database, conductorCues, NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+		constexpr char publisherCues[] = "CREATE INDEX IF NOT EXISTS CuesIndex_Publisher ON Cues(Publisher);";
+		sqlite3_exec( database, publisherCues, NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
+
+		constexpr char artworkIndex[] = "CREATE INDEX IF NOT EXISTS ArtworkIndex_Size ON Artwork(Size);";
+		sqlite3_exec( database, artworkIndex, NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 	}
 }
 
