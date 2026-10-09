@@ -2,6 +2,7 @@
 
 #include "CDDAExtract.h"
 #include "Converter.h"
+#include "DarkMode.h"
 
 #include "DlgConvert.h"
 #include "DlgOptions.h"
@@ -118,6 +119,15 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	ReadWindowSettings();
 
 	InitialiseRebar();
+
+	// Apply the dark mode preference before the main window is shown.
+	// (Child windows have already loaded their colours using the initial dark mode state, so these need reloading if the state changes).
+	// Note that this must happen after the rebar has been initialised, so that the rebar items are also notified of the change.
+	if ( DarkMode::SetMode( m_Settings.GetDarkMode() ) ) {
+		OnDarkModeChange();
+	} else {
+		ApplyDarkModeToControls();
+	}
 
 	for ( auto& iter : m_CustomColours ) {
 		iter = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
@@ -400,16 +410,7 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 								break;
 							}
 							case CDDS_ITEMPREPAINT: {
-								const COLORREF backColour = TreeView_GetBkColor( hdr->hwndFrom );
-								const COLORREF highlightColour = m_Tree.GetHighlightColour();
-								const HTREEITEM treeItem = reinterpret_cast<HTREEITEM>( nmtvcd->nmcd.dwItemSpec );
-								const bool selected = ( TreeView_GetSelection( m_Tree.GetWindowHandle() ) == treeItem );
-								if ( selected ) {
-									nmtvcd->clrText = backColour;
-									nmtvcd->clrTextBk = highlightColour;
-								}
-
-								// Mask out selection state so that the custom highlight colour takes effect.
+								// Mask out selection state, so that the selected item is drawn as normal (the custom highlight is drawn after the item has been painted).
 								nmtvcd->nmcd.uItemState &= ~CDIS_SELECTED;
 
 								// Mask out focus state so that a focus rectangle is not drawn.
@@ -417,6 +418,48 @@ bool VUPlayer::OnNotify( WPARAM wParam, LPARAM lParam, LRESULT& result )
 									nmtvcd->nmcd.uItemState ^= CDIS_FOCUS;
 								}
 
+								const HTREEITEM treeItem = reinterpret_cast<HTREEITEM>( nmtvcd->nmcd.dwItemSpec );
+								const bool selected = ( TreeView_GetSelection( hdr->hwndFrom ) == treeItem );
+								if ( selected ) {
+									// Use the normal colours, otherwise the tree fills the background behind both the icon & label using its own selection colours.
+									nmtvcd->clrText = TreeView_GetTextColor( hdr->hwndFrom );
+									nmtvcd->clrTextBk = TreeView_GetBkColor( hdr->hwndFrom );
+								}
+								result = selected ? ( CDRF_DODEFAULT | CDRF_NOTIFYPOSTPAINT ) : CDRF_DODEFAULT;
+								break;
+							}
+							case CDDS_ITEMPOSTPAINT: {
+								const HTREEITEM treeItem = reinterpret_cast<HTREEITEM>( nmtvcd->nmcd.dwItemSpec );
+
+								// Draw the custom highlight behind the label of the selected item only.
+								// (The tree's item background colour cannot be used, as the Explorer theme fills the background behind the icon as well as the label).
+								const bool selected = ( TreeView_GetSelection( hdr->hwndFrom ) == treeItem );
+								if ( RECT labelRect = {}; selected && TreeView_GetItemRect( hdr->hwndFrom, treeItem, &labelRect, TRUE /*textOnly*/ ) ) {
+									constexpr int kTextSize = 512;
+									WCHAR text[ kTextSize ] = {};
+									TVITEM item = {};
+									item.mask = TVIF_TEXT;
+									item.hItem = treeItem;
+									item.pszText = text;
+									item.cchTextMax = kTextSize;
+									if ( TreeView_GetItem( hdr->hwndFrom, &item ) ) {
+										const HDC dc = nmtvcd->nmcd.hdc;
+										if ( const HBRUSH brush = CreateSolidBrush( m_Tree.GetHighlightColour() ); nullptr != brush ) {
+											FillRect( dc, &labelRect, brush );
+											DeleteObject( brush );
+										}
+										const HFONT font = reinterpret_cast<HFONT>( SendMessage( hdr->hwndFrom, WM_GETFONT, 0, 0 ) );
+										const HGDIOBJ previousFont = ( nullptr != font ) ? SelectObject( dc, font ) : nullptr;
+										const int previousBkMode = SetBkMode( dc, TRANSPARENT );
+										const COLORREF previousTextColour = SetTextColor( dc, TreeView_GetBkColor( hdr->hwndFrom ) );
+										DrawText( dc, text, -1 /*count*/, &labelRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX );
+										SetTextColor( dc, previousTextColour );
+										SetBkMode( dc, previousBkMode );
+										if ( nullptr != previousFont ) {
+											SelectObject( dc, previousFont );
+										}
+									}
+								}
 								result = CDRF_DODEFAULT;
 								break;
 							}
@@ -1066,6 +1109,20 @@ void VUPlayer::OnCommand( const int commandID )
 			m_EQ.ToggleVisibility();
 			break;
 		}
+		case ID_VIEW_DARKMODE_SYSTEM:
+		case ID_VIEW_DARKMODE_LIGHT:
+		case ID_VIEW_DARKMODE_DARK: {
+			const DarkMode::Mode mode = ( ID_VIEW_DARKMODE_LIGHT == commandID ) ? DarkMode::Mode::Light : ( ( ID_VIEW_DARKMODE_DARK == commandID ) ? DarkMode::Mode::Dark : DarkMode::Mode::System );
+			m_Settings.SetDarkMode( mode );
+			if ( DarkMode::SetMode( mode ) ) {
+				OnDarkModeChange();
+			}
+			break;
+		}
+		case ID_VIEW_RESETCOLOURS: {
+			OnResetColours();
+			break;
+		}
 		case ID_VIEW_ALWAYSONTOP: {
 			const bool alwaysOnTop = !m_Settings.GetAlwaysOnTop();
 			m_Settings.SetAlwaysOnTop( alwaysOnTop );
@@ -1301,6 +1358,16 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
 
 		// View menu
+		const DarkMode::Mode darkMode = m_Settings.GetDarkMode();
+		const UINT darkModeEnabled = DarkMode::IsSupported() ? MF_ENABLED : MF_DISABLED;
+		CheckMenuItem( menu, ID_VIEW_DARKMODE_SYSTEM, MF_BYCOMMAND | ( ( DarkMode::Mode::System == darkMode ) ? MF_CHECKED : MF_UNCHECKED ) );
+		CheckMenuItem( menu, ID_VIEW_DARKMODE_LIGHT, MF_BYCOMMAND | ( ( DarkMode::Mode::Light == darkMode ) ? MF_CHECKED : MF_UNCHECKED ) );
+		CheckMenuItem( menu, ID_VIEW_DARKMODE_DARK, MF_BYCOMMAND | ( ( DarkMode::Mode::Dark == darkMode ) ? MF_CHECKED : MF_UNCHECKED ) );
+		EnableMenuItem( menu, ID_VIEW_DARKMODE_SYSTEM, MF_BYCOMMAND | darkModeEnabled );
+		EnableMenuItem( menu, ID_VIEW_DARKMODE_LIGHT, MF_BYCOMMAND | darkModeEnabled );
+		EnableMenuItem( menu, ID_VIEW_DARKMODE_DARK, MF_BYCOMMAND | darkModeEnabled );
+		EnableMenuItem( menu, ID_VIEW_RESETCOLOURS, MF_BYCOMMAND | ( IsHighContrastActive() ? MF_DISABLED : MF_ENABLED ) );
+
 		CheckMenuItem( menu, ID_TREEMENU_FAVOURITES, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_FAVOURITES ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_STREAMS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_STREAMS ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_ALLTRACKS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_ALLTRACKS ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1640,7 +1707,7 @@ std::unique_ptr<Gdiplus::Bitmap> VUPlayer::GetPlaceholderImage( const bool useSe
 {
 	std::unique_ptr<Gdiplus::Bitmap> bitmap = useSettings ? LoadDefaultArtwork() : nullptr;
 	if ( !bitmap ) {
-		bitmap = LoadResourcePNG( IDB_PLACEHOLDER );
+		bitmap = LoadResourcePNG( DarkMode::IsActive() ? IDB_PLACEHOLDER_DARK : IDB_PLACEHOLDER );
 	}
 	return bitmap;
 }
@@ -1650,6 +1717,7 @@ void VUPlayer::OnOptions()
 	const std::string previousScrobblerToken = m_Scrobbler.GetToken();
 	const auto previousPlaceholderArtwork = m_Settings.GetDefaultArtwork();
 	const COLORREF previousTaskbarButtonColour = m_Settings.GetTaskbarButtonColour();
+	const bool previousTaskbarButtonAutoColour = m_Settings.GetTaskbarButtonAutoColour();
 
 	m_Hotkeys.Unregister();
 	DlgOptions options( m_hInst, m_hWnd, m_Settings, m_Output );
@@ -1687,7 +1755,7 @@ void VUPlayer::OnOptions()
 		m_Visual.DoRender();
 	}
 
-	if ( const COLORREF taskbarButtonColour = m_Settings.GetTaskbarButtonColour(); taskbarButtonColour != previousTaskbarButtonColour ) {
+	if ( ( m_Settings.GetTaskbarButtonColour() != previousTaskbarButtonColour ) || ( m_Settings.GetTaskbarButtonAutoColour() != previousTaskbarButtonAutoColour ) ) {
 		m_Taskbar.SetToolbarButtonColour( m_Settings );
 	}
 	m_Taskbar.EnableProgressBar( m_Settings.GetTaskbarShowProgress() );
@@ -1703,6 +1771,11 @@ Settings& VUPlayer::GetApplicationSettings()
 void VUPlayer::OnTrayNotify( WPARAM wParam, LPARAM lParam )
 {
 	m_Tray.OnNotify( wParam, lParam );
+}
+
+void VUPlayer::OnInitMenuPopup( const HMENU menu )
+{
+	m_Tray.OnInitMenuPopup( menu );
 }
 
 void VUPlayer::OnHotkey( WPARAM wParam )
@@ -2295,6 +2368,56 @@ void VUPlayer::OnSysColorChange()
 	m_List.OnSysColorChange( m_IsHighContrast );
 	m_Rebar.OnSysColorChange( m_IsHighContrast, IsClassicThemeActive() );
 	m_Visual.OnSysColorChange();
+	m_Status.OnSysColorChange();
+	m_Taskbar.SetToolbarButtonColour( m_Settings );
+	InvalidateRect( m_Splitter.GetWindowHandle(), nullptr /*rect*/, FALSE /*erase*/ );
+	RedrawWindow( m_hWnd, nullptr /*rect*/, nullptr /*rgn*/, RDW_INVALIDATE | RDW_FRAME );
+}
+
+void VUPlayer::OnDarkModeChange()
+{
+	DarkMode::ApplyToMainWindow( m_hWnd );
+
+	// Colour settings are stored separately for light & dark modes, so reload them for the new mode.
+	// Note that colour settings are always saved when they are changed, so there is no need to save the previous mode's colours here.
+	ReloadColours();
+
+	ApplyDarkModeToControls();
+	m_EQ.OnDarkModeChange();
+	OnSysColorChange();
+}
+
+void VUPlayer::ReloadColours()
+{
+	m_List.LoadColours();
+	m_Tree.LoadColours();
+	m_Counter.LoadColours();
+	m_Rebar.OnChangeSettings();
+	m_Visual.ReloadColours();
+}
+
+void VUPlayer::OnResetColours()
+{
+	m_Settings.ResetColours();
+	ReloadColours();
+	OnSysColorChange();
+}
+
+void VUPlayer::ApplyDarkModeToControls()
+{
+	// Note that a dark mode theme is not applied to the list control itself, as the themes which provide dark scrollbars ('DarkMode_Explorer', 'DarkMode_DarkTheme')
+	// also change how the list is drawn (column separators & hover highlighting), and the list does not fully revert when the theme is removed.
+	// Instead, the list uses a dark scrollbar overlay.
+	m_List.ApplyDarkMode();
+	DarkMode::ApplyToHeader( ListView_GetHeader( m_List.GetWindowHandle() ) );
+	DarkMode::ApplyToControl( m_Tree.GetWindowHandle(), WndTree::LightTheme );
+	DarkMode::ApplyToChildTooltips( m_hWnd );
+}
+
+void VUPlayer::OnColourModeChange()
+{
+	// The taskbar follows the Windows colour mode, independently of the application dark mode state.
+	m_Taskbar.SetToolbarButtonColour( m_Settings );
 }
 
 void VUPlayer::OnPaint( const PAINTSTRUCT& ps )
@@ -2313,7 +2436,7 @@ void VUPlayer::OnPaint( const PAINTSTRUCT& ps )
 		MapWindowRect( nullptr, m_hWnd, &rect );
 		ExcludeClipRect( ps.hdc, rect.left, rect.top, rect.right, rect.bottom );
 	}
-	FillRect( ps.hdc, &ps.rcPaint, HBRUSH( COLOR_3DFACE + 1 ) );
+	FillRect( ps.hdc, &ps.rcPaint, DarkMode::IsActive() ? DarkMode::GetBackgroundBrush() : HBRUSH( COLOR_3DFACE + 1 ) );
 }
 
 void VUPlayer::OnTaskbarButtonCreated()

@@ -24,6 +24,17 @@ const Settings::ButtonSizeMap Settings::s_ButtonSizes = {
 // Default conversion/extraction filename format.
 static const wchar_t s_DefaultExtractFilename[] = L"%A\\%D\\%N - %T";
 
+// Colour settings, which are stored separately for light & dark modes.
+static constexpr std::array s_ColourSettings = {
+	"ListFontColour", "ListBackgroundColour", "ListHighlightColour", "ListStatusIconColour",
+	"TreeFontColour", "TreeBackgroundColour", "TreeHighlightColour", "TreeIconColour",
+	"CounterFontColour",
+	"ToolbarButtonColour", "ToolbarBackgroundColour",
+	"OscilloscopeColour", "OscilloscopeBackground",
+	"SpectrumAnalyserBase", "SpectrumAnalyserPeak", "SpectrumAnalyserBackground",
+	"PeakMeterBase", "PeakMeterPeak", "PeakMeterBackground"
+};
+
 template <typename T>
 std::optional<T> Settings::ReadSetting( const std::string& name )
 {
@@ -102,6 +113,16 @@ Settings::Settings( Database& database, Library& library ) :
 
 Settings::~Settings()
 {
+}
+
+std::string Settings::ColourSettingName( const std::string& name )
+{
+	return DarkMode::IsActive() ? ( name + "Dark" ) : name;
+}
+
+COLORREF Settings::DefaultColour( const COLORREF lightColour, const COLORREF darkColour )
+{
+	return DarkMode::IsActive() ? darkColour : lightColour;
 }
 
 void Settings::UpdateDatabase()
@@ -426,42 +447,6 @@ void Settings::GetPlaylistSettings( PlaylistColumns& columns, bool& showStatusIc
 		}
 
 		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ListFontColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				fontColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ListBackgroundColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				backgroundColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ListHighlightColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				highlightColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
-		query = "SELECT Value FROM Settings WHERE Setting='ListStatusIconColour';";
-		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
-			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
-				statusIconColour = static_cast<COLORREF>( sqlite3_column_int( stmt, 0 /*columnIndex*/ ) );
-			}
-			sqlite3_finalize( stmt );
-		}
-
-		stmt = nullptr;
 		query = "SELECT Value FROM Settings WHERE Setting='ListStatusIconEnable';";
 		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
 			if ( ( SQLITE_ROW == sqlite3_step( stmt ) ) && ( 1 == sqlite3_column_count( stmt ) ) ) {
@@ -470,6 +455,16 @@ void Settings::GetPlaylistSettings( PlaylistColumns& columns, bool& showStatusIc
 			sqlite3_finalize( stmt );
 		}
 	}
+
+	GetPlaylistColours( fontColour, backgroundColour, highlightColour, statusIconColour );
+}
+
+void Settings::GetPlaylistColours( COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& statusIconColour )
+{
+	fontColour = ReadSetting<COLORREF>( ColourSettingName( "ListFontColour" ) ).value_or( DefaultColour( GetSystemTextColour(), DarkMode::GetListTextColour() ) );
+	backgroundColour = ReadSetting<COLORREF>( ColourSettingName( "ListBackgroundColour" ) ).value_or( DefaultColour( GetSystemWindowColour(), DarkMode::GetListBackgroundColour() ) );
+	highlightColour = ReadSetting<COLORREF>( ColourSettingName( "ListHighlightColour" ) ).value_or( DefaultColour( GetSystemHighlightColour(), DarkMode::GetAccentColour() ) );
+	statusIconColour = ReadSetting<COLORREF>( ColourSettingName( "ListStatusIconColour" ) ).value_or( DefaultColour( DEFAULT_ICONCOLOUR, DarkMode::GetAccentColour() ) );
 }
 
 void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const bool showStatusIcon, const LOGFONT& font,
@@ -500,26 +495,6 @@ void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const bool s
 			sqlite3_step( stmt );
 			sqlite3_reset( stmt );
 
-			sqlite3_bind_text( stmt, 1, "ListFontColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( fontColour ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "ListBackgroundColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( backgroundColour ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "ListHighlightColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( highlightColour ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
-			sqlite3_bind_text( stmt, 1, "ListStatusIconColour", -1 /*strLen*/, SQLITE_STATIC );
-			sqlite3_bind_int( stmt, 2, static_cast<int>( statusIconColour ) );
-			sqlite3_step( stmt );
-			sqlite3_reset( stmt );
-
 			sqlite3_bind_text( stmt, 1, "ListStatusIconEnable", -1 /*strLen*/, SQLITE_STATIC );
 			sqlite3_bind_int( stmt, 2, static_cast<int>( showStatusIcon ) );
 			sqlite3_step( stmt );
@@ -529,6 +504,11 @@ void Settings::SetPlaylistSettings( const PlaylistColumns& columns, const bool s
 			stmt = nullptr;
 		}
 	}
+
+	WriteSetting( ColourSettingName( "ListFontColour" ), fontColour );
+	WriteSetting( ColourSettingName( "ListBackgroundColour" ), backgroundColour );
+	WriteSetting( ColourSettingName( "ListHighlightColour" ), highlightColour );
+	WriteSetting( ColourSettingName( "ListStatusIconColour" ), statusIconColour );
 }
 
 void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour,
@@ -538,18 +518,7 @@ void Settings::GetTreeSettings( LOGFONT& font, COLORREF& fontColour, COLORREF& b
 	if ( const auto value = ReadSetting<LOGFONT>( "TreeFont" ); value ) {
 		font = *value;
 	}
-	if ( const auto value = ReadSetting<COLORREF>( "TreeFontColour" ); value ) {
-		fontColour = *value;
-	}
-	if ( const auto value = ReadSetting<COLORREF>( "TreeBackgroundColour" ); value ) {
-		backgroundColour = *value;
-	}
-	if ( const auto value = ReadSetting<COLORREF>( "TreeHighlightColour" ); value ) {
-		highlightColour = *value;
-	}
-	if ( const auto value = ReadSetting<COLORREF>( "TreeIconColour" ); value ) {
-		iconColour = *value;
-	}
+	GetTreeColours( fontColour, backgroundColour, highlightColour, iconColour );
 	if ( const auto value = ReadSetting<bool>( "TreeFavourites" ); value ) {
 		showFavourites = *value;
 	}
@@ -590,10 +559,10 @@ void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, 
 	const bool showPublishers, const bool showComposers, const bool showConductors, const bool showHidden )
 {
 	WriteSetting( "TreeFont", font );
-	WriteSetting( "TreeFontColour", fontColour );
-	WriteSetting( "TreeBackgroundColour", backgroundColour );
-	WriteSetting( "TreeHighlightColour", highlightColour );
-	WriteSetting( "TreeIconColour", iconColour );
+	WriteSetting( ColourSettingName( "TreeFontColour" ), fontColour );
+	WriteSetting( ColourSettingName( "TreeBackgroundColour" ), backgroundColour );
+	WriteSetting( ColourSettingName( "TreeHighlightColour" ), highlightColour );
+	WriteSetting( ColourSettingName( "TreeIconColour" ), iconColour );
 	WriteSetting( "TreeFavourites", showFavourites );
 	WriteSetting( "TreeStreams", showStreams );
 	WriteSetting( "TreeAllTracks", showAllTracks );
@@ -605,6 +574,14 @@ void Settings::SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, 
 	WriteSetting( "TreeComposers", showComposers );
 	WriteSetting( "TreeConductors", showConductors );
 	WriteSetting( "ShowHiddenFolders", showHidden );
+}
+
+void Settings::GetTreeColours( COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour )
+{
+	fontColour = ReadSetting<COLORREF>( ColourSettingName( "TreeFontColour" ) ).value_or( DefaultColour( GetSystemTextColour(), DarkMode::GetListTextColour() ) );
+	backgroundColour = ReadSetting<COLORREF>( ColourSettingName( "TreeBackgroundColour" ) ).value_or( DefaultColour( GetSystemWindowColour(), DarkMode::GetBackgroundColour() ) );
+	highlightColour = ReadSetting<COLORREF>( ColourSettingName( "TreeHighlightColour" ) ).value_or( DefaultColour( GetSystemHighlightColour(), DarkMode::GetAccentColour() ) );
+	iconColour = ReadSetting<COLORREF>( ColourSettingName( "TreeIconColour" ) ).value_or( DefaultColour( DEFAULT_ICONCOLOUR, DarkMode::GetAccentColour() ) );
 }
 
 Playlists Settings::GetPlaylists()
@@ -828,26 +805,28 @@ void Settings::SetDefaultArtwork( const std::filesystem::path& artwork )
 
 COLORREF Settings::GetOscilloscopeColour()
 {
-	constexpr COLORREF kDefaultBackground = RGB( 0, 0, 0 );
+	constexpr COLORREF kDefaultColour = RGB( 0, 0, 0 );
+	constexpr COLORREF kDefaultDarkModeColour = RGB( 255, 255, 255 );
 
-	return ReadSetting<COLORREF>( "OscilloscopeColour" ).value_or( kDefaultBackground );
+	return ReadSetting<COLORREF>( ColourSettingName( "OscilloscopeColour" ) ).value_or( DefaultColour( kDefaultColour, kDefaultDarkModeColour ) );
 }
 
 void Settings::SetOscilloscopeColour( const COLORREF colour )
 {
-	WriteSetting( "OscilloscopeColour", colour );
+	WriteSetting( ColourSettingName( "OscilloscopeColour" ), colour );
 }
 
 COLORREF Settings::GetOscilloscopeBackground()
 {
 	constexpr COLORREF kDefaultBackground = RGB( 255, 255, 255 );
+	constexpr COLORREF kDefaultDarkModeBackground = RGB( 0, 0, 0 );
 
-	return ReadSetting<COLORREF>( "OscilloscopeBackground" ).value_or( kDefaultBackground );
+	return ReadSetting<COLORREF>( ColourSettingName( "OscilloscopeBackground" ) ).value_or( DefaultColour( kDefaultBackground, kDefaultDarkModeBackground ) );
 }
 
 void Settings::SetOscilloscopeBackground( const COLORREF colour )
 {
-	WriteSetting( "OscilloscopeBackground", colour );
+	WriteSetting( ColourSettingName( "OscilloscopeBackground" ), colour );
 }
 
 float Settings::GetOscilloscopeWeight()
@@ -880,16 +859,17 @@ void Settings::GetSpectrumAnalyserSettings( COLORREF& base, COLORREF& peak, COLO
 	constexpr COLORREF kPeak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
 	constexpr COLORREF kBackground = RGB( 0x00 /*red*/, 0x00 /*green*/, 0x00 /*blue*/ );
 
-	base = ReadSetting<COLORREF>( "SpectrumAnalyserBase" ).value_or( kBase );
-	peak = ReadSetting<COLORREF>( "SpectrumAnalyserPeak" ).value_or( kPeak );
-	background = ReadSetting<COLORREF>( "SpectrumAnalyserBackground" ).value_or( kBackground );
+	// Note that the default colours are the same for light & dark modes.
+	base = ReadSetting<COLORREF>( ColourSettingName( "SpectrumAnalyserBase" ) ).value_or( kBase );
+	peak = ReadSetting<COLORREF>( ColourSettingName( "SpectrumAnalyserPeak" ) ).value_or( kPeak );
+	background = ReadSetting<COLORREF>( ColourSettingName( "SpectrumAnalyserBackground" ) ).value_or( kBackground );
 }
 
 void Settings::SetSpectrumAnalyserSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background )
 {
-	WriteSetting( "SpectrumAnalyserBase", base );
-	WriteSetting( "SpectrumAnalyserPeak", peak );
-	WriteSetting( "SpectrumAnalyserBackground", background );
+	WriteSetting( ColourSettingName( "SpectrumAnalyserBase" ), base );
+	WriteSetting( ColourSettingName( "SpectrumAnalyserPeak" ), peak );
+	WriteSetting( ColourSettingName( "SpectrumAnalyserBackground" ), background );
 }
 
 void Settings::GetPeakMeterSettings( COLORREF& base, COLORREF& peak, COLORREF& background )
@@ -898,16 +878,17 @@ void Settings::GetPeakMeterSettings( COLORREF& base, COLORREF& peak, COLORREF& b
 	constexpr COLORREF kPeak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
 	constexpr COLORREF kBackground = RGB( 0 /*red*/, 0 /*green*/, 0 /*blue*/ );
 
-	base = ReadSetting<COLORREF>( "PeakMeterBase" ).value_or( kBase );
-	peak = ReadSetting<COLORREF>( "PeakMeterPeak" ).value_or( kPeak );
-	background = ReadSetting<COLORREF>( "PeakMeterBackground" ).value_or( kBackground );
+	// Note that the default colours are the same for light & dark modes.
+	base = ReadSetting<COLORREF>( ColourSettingName( "PeakMeterBase" ) ).value_or( kBase );
+	peak = ReadSetting<COLORREF>( ColourSettingName( "PeakMeterPeak" ) ).value_or( kPeak );
+	background = ReadSetting<COLORREF>( ColourSettingName( "PeakMeterBackground" ) ).value_or( kBackground );
 }
 
 void Settings::SetPeakMeterSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background )
 {
-	WriteSetting( "PeakMeterBase", base );
-	WriteSetting( "PeakMeterPeak", peak );
-	WriteSetting( "PeakMeterBackground", background );
+	WriteSetting( ColourSettingName( "PeakMeterBase" ), base );
+	WriteSetting( ColourSettingName( "PeakMeterPeak" ), peak );
+	WriteSetting( ColourSettingName( "PeakMeterBackground" ), background );
 }
 
 void Settings::GetInitialWindowPosition( int& x, int& y, int& width, int& height, bool& maximised, bool& minimised )
@@ -960,6 +941,36 @@ int Settings::GetSplitWidth()
 void Settings::SetSplitWidth( const int width )
 {
 	WriteSetting( "SplitWidth", width );
+}
+
+DarkMode::Mode Settings::GetDarkMode()
+{
+	return ReadSetting<DarkMode::Mode>( "DarkMode" ).value_or( DarkMode::Mode::System );
+}
+
+void Settings::SetDarkMode( const DarkMode::Mode mode )
+{
+	WriteSetting( "DarkMode", mode );
+}
+
+void Settings::ResetColours()
+{
+	for ( const auto& name : s_ColourSettings ) {
+		RemoveSetting( ColourSettingName( name ) );
+	}
+}
+
+void Settings::RemoveSetting( const std::string& name )
+{
+	if ( sqlite3* database = m_Database.GetDatabase(); nullptr != database ) {
+		const std::string query = "DELETE FROM Settings WHERE Setting=?1;";
+		sqlite3_stmt* stmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+			sqlite3_bind_text( stmt, 1, name.c_str(), -1 /*strLen*/, SQLITE_STATIC );
+			sqlite3_step( stmt );
+			sqlite3_finalize( stmt );
+		}
+	}
 }
 
 float Settings::GetVolume()
@@ -1022,9 +1033,7 @@ void Settings::GetCounterSettings( LOGFONT& font, COLORREF& fontColour, bool& sh
 	if ( const auto value = ReadSetting<LOGFONT>( "CounterFont" ); value ) {
 		font = *value;
 	}
-	if ( const auto value = ReadSetting<COLORREF>( "CounterFontColour" ); value ) {
-		fontColour = *value;
-	}
+	fontColour = GetCounterFontColour();
 	if ( const auto value = ReadSetting<bool>( "CounterRemaining" ); value ) {
 		showRemaining = *value;
 	}
@@ -1033,8 +1042,13 @@ void Settings::GetCounterSettings( LOGFONT& font, COLORREF& fontColour, bool& sh
 void Settings::SetCounterSettings( const LOGFONT& font, const COLORREF fontColour, const bool showRemaining )
 {
 	WriteSetting( "CounterFont", font );
-	WriteSetting( "CounterFontColour", fontColour );
+	WriteSetting( ColourSettingName( "CounterFontColour" ), fontColour );
 	WriteSetting( "CounterRemaining", showRemaining );
+}
+
+COLORREF Settings::GetCounterFontColour()
+{
+	return ReadSetting<COLORREF>( ColourSettingName( "CounterFontColour" ) ).value_or( DefaultColour( DEFAULT_ICONCOLOUR, DarkMode::GetAccentColour() ) );
 }
 
 void Settings::GetOutputSettings( std::wstring& deviceName, OutputMode& mode )
@@ -1609,18 +1623,14 @@ int Settings::GetToolbarButtonSize( const ToolbarSize size )
 
 void Settings::GetToolbarColours( COLORREF& buttonColour, COLORREF& backgroundColour )
 {
-	if ( const auto value = ReadSetting<COLORREF>( "ToolbarButtonColour" ); value ) {
-		buttonColour = *value;
-	}
-	if ( const auto value = ReadSetting<COLORREF>( "ToolbarBackgroundColour" ); value ) {
-		backgroundColour = *value;
-	}
+	buttonColour = ReadSetting<COLORREF>( ColourSettingName( "ToolbarButtonColour" ) ).value_or( DefaultColour( DEFAULT_ICONCOLOUR, DarkMode::GetAccentColour() ) );
+	backgroundColour = ReadSetting<COLORREF>( ColourSettingName( "ToolbarBackgroundColour" ) ).value_or( DefaultColour( GetSystemWindowColour(), DarkMode::GetBackgroundColour() ) );
 }
 
 void Settings::SetToolbarColours( const COLORREF buttonColour, const COLORREF backgroundColour )
 {
-	WriteSetting( "ToolbarButtonColour", buttonColour );
-	WriteSetting( "ToolbarBackgroundColour", backgroundColour );
+	WriteSetting( ColourSettingName( "ToolbarButtonColour" ), buttonColour );
+	WriteSetting( ColourSettingName( "ToolbarBackgroundColour" ), backgroundColour );
 }
 
 bool Settings::GetHardwareAccelerationEnabled()
@@ -1711,6 +1721,16 @@ COLORREF Settings::GetTaskbarButtonColour()
 void Settings::SetTaskbarButtonColour( const COLORREF colour )
 {
 	WriteSetting( "TaskbarButtonColour", colour );
+}
+
+bool Settings::GetTaskbarButtonAutoColour()
+{
+	return ReadSetting<bool>( "TaskbarButtonAutoColour" ).value_or( true );
+}
+
+void Settings::SetTaskbarButtonAutoColour( const bool autoColour )
+{
+	WriteSetting( "TaskbarButtonAutoColour", autoColour );
 }
 
 bool Settings::GetTaskbarShowProgress()

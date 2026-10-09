@@ -7,6 +7,9 @@
 #include "Output.h"
 #include "Playlist.h"
 #include "Settings.h"
+#include "WndListScrollbar.h"
+
+#include <memory>
 
 // Message ID for signalling when a playlist item should be selected.
 // 'wParam' : playlist item ID to select.
@@ -184,6 +187,16 @@ public:
 	// Called on a system colour change event.
 	// 'isHighContrast' - indicates whether high contrast mode is active.
 	void OnSysColorChange( const bool isHighContrast );
+
+	// Reloads the colours from the application settings (e.g. when dark mode is activated or deactivated).
+	// OnSysColorChange should be called afterwards to apply the colours.
+	void LoadColours();
+
+	// Applies the current dark mode state to the list control's scrollbar.
+	void ApplyDarkMode();
+
+	// Synchronises the dark mode scrollbar with the list control's own scrollbar.
+	void UpdateDarkModeScrollbar();
 
 	// Called when display information for 'lvItem' needs updating in the virtual list control.
 	void OnDisplayInfo( LVITEM& lvItem );
@@ -386,4 +399,7 @@ private:
 
 	// Indicates whether high contrast mode is active.
 	bool m_IsHighContrast;
+
+	// Dark mode scrollbar overlay.
+	std::unique_ptr<WndListScrollbar> m_DarkModeScrollbar;
 };

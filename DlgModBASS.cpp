@@ -3,6 +3,8 @@
 #include "bass.h"
 
 #include "resource.h"
+
+#include "DarkMode.h"
 #include "windowsx.h"
 #include "Utility.h"
 
@@ -14,6 +16,7 @@ INT_PTR CALLBACK DlgModBASS::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
+				DarkMode::ApplyToDialog( hwnd );
 				return TRUE;
 			}
 			break;

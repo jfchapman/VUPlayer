@@ -1,11 +1,13 @@
 #include "WndTree.h"
 
 #include <windowsx.h>
+#include <Uxtheme.h>
 
 #include <fstream>
 #include <array>
 
 #include "resource.h"
+#include "DarkMode.h"
 #include "Utility.h"
 #include "VUPlayer.h"
 
@@ -75,6 +77,15 @@ LRESULT CALLBACK WndTree::TreeProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 	WndTree* wndTree = reinterpret_cast<WndTree*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
 	if ( nullptr != wndTree ) {
 		switch ( message ) {
+			case WM_NCPAINT: {
+				// In dark mode, paint over the corner between the scrollbars (which is otherwise drawn lighter than the scrollbars).
+				if ( DarkMode::IsActive() ) {
+					const LRESULT result = CallWindowProc( wndTree->GetDefaultWndProc(), hwnd, message, wParam, lParam );
+					DarkMode::DrawScrollbarCorner( hwnd );
+					return result;
+				}
+				break;
+			}
 			case WM_COMMAND: {
 				const UINT commandID = LOWORD( wParam );
 				wndTree->OnCommand( commandID );
@@ -268,6 +279,7 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_ColourHighlight( GetSysColor( COLOR_HIGHLIGHT ) ),
 	m_ColourIcon( DEFAULT_ICONCOLOUR ),
 	m_ImageList( nullptr ),
+	m_InitialIndent( 0 ),
 	m_IconMap(),
 	m_IconIndexComputer( 0 ),
 	m_IconIndexFolder( 0 ),
@@ -306,7 +318,9 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	const int height = 0;
 	LPVOID param = NULL;
 	m_hWnd = CreateWindowEx( exStyle, className, windowName, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndTreeID ), instance, param );
+	m_InitialIndent = TreeView_GetIndent( m_hWnd );
 	TreeView_SetExtendedStyle( m_hWnd, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER );
+	SetWindowTheme( m_hWnd, LightTheme, nullptr );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( TreeProc ) ) );
 	SetWindowAccessibleName( instance, m_hWnd, IDS_ACCNAME_TREEVIEW );
@@ -1420,6 +1434,12 @@ LOGFONT WndTree::GetFont()
 void WndTree::SetFont( const LOGFONT& logFont )
 {
 	const HFONT hNewFont = CreateFontIndirect( &logFont );
+
+	// The tree control increases its indentation to fit a larger image list, but does not decrease it again for a smaller one.
+	// So remove the current image list and restore the initial indentation, so that the control resizes as it does when first created.
+	TreeView_SetImageList( m_hWnd, nullptr, TVSIL_NORMAL );
+	TreeView_SetIndent( m_hWnd, m_InitialIndent );
+
 	SendMessage( m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>( hNewFont ), FALSE /*redraw*/ );
 	RedrawWindow( m_hWnd, NULL /*rect*/, NULL /*rgn*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN );
 	if ( nullptr != m_ChosenFont ) {
@@ -3064,7 +3084,7 @@ void WndTree::CreateImageList()
 
 	const int iconSize = GetIconSize();
 	const int imageCount = 1;
-	const HIMAGELIST previousImageList = TreeView_GetImageList( m_hWnd, TVSIL_NORMAL );
+	const HIMAGELIST previousImageList = m_ImageList;
 	if ( m_ImageList = ImageList_Create( iconSize, iconSize, ILC_COLOR32, 0 /*initial*/, imageCount /*grow*/ ); nullptr != m_ImageList ) {
 		const COLORREF colour = m_IsHighContrast ? GetSysColor( COLOR_HIGHLIGHT ) : GetIconColour();
 		for ( const auto &[playlistType, iconID] : treeIconResourceMap ) {
@@ -4227,6 +4247,11 @@ void WndTree::OnSysColorChange( const bool isHighContrast )
 	m_IsHighContrast = isHighContrast;
 	CreateImageList();
 	SetColours();
+}
+
+void WndTree::LoadColours()
+{
+	m_Settings.GetTreeColours( m_ColourFont, m_ColourBackground, m_ColourHighlight, m_ColourIcon );
 }
 
 void WndTree::UpdateOutputIcon()

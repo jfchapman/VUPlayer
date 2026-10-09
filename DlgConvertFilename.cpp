@@ -1,6 +1,8 @@
 #include "DlgConvertFilename.h"
 
 #include "resource.h"
+
+#include "DarkMode.h"
 #include "Utility.h"
 
 INT_PTR CALLBACK DlgConvertFilename::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -11,6 +13,7 @@ INT_PTR CALLBACK DlgConvertFilename::DialogProc( HWND hwnd, UINT message, WPARAM
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
+				DarkMode::ApplyToDialog( hwnd );
 				return TRUE;
 			}
 			break;

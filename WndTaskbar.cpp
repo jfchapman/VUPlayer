@@ -5,6 +5,20 @@
 
 #include <array>
 
+namespace
+{
+	// Returns the thumbnail preview toolbar button colour to use, based on the Windows colour mode (which applies to the taskbar & thumbnail previews).
+	COLORREF GetAutomaticButtonColour()
+	{
+		// Note that if the 'SystemUsesLightTheme' value does not exist (i.e. Windows 10 prior to 1903), the taskbar is always dark.
+		DWORD value = 0;
+		DWORD size = sizeof( value );
+		const LSTATUS status = RegGetValue( HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", L"SystemUsesLightTheme", RRF_RT_REG_DWORD, nullptr /*type*/, &value, &size );
+		const bool lightTaskbar = ( ERROR_SUCCESS == status ) && ( 0 != value );
+		return lightTaskbar ? RGB( 0x20 /*red*/, 0x20 /*green*/, 0x20 /*blue*/ ) : RGB( 0xf0 /*red*/, 0xf0 /*green*/, 0xf0 /*blue*/ );
+	}
+}
+
 WndTaskbar::WndTaskbar( HINSTANCE instance, HWND parent ) :
 	m_hInst( instance ),
 	m_hWnd( parent )
@@ -168,7 +182,9 @@ void WndTaskbar::SetToolbarButtonColour( Settings& settings )
 
 		const HIMAGELIST imageList = ImageList_Create( buttonWidth, buttonHeight, ILC_COLOR32, 0 /*initial*/, kIconCount /*grow*/ );
 		if ( nullptr != imageList ) {
-			const COLORREF colour = settings.GetTaskbarButtonColour();
+			// Note that in high contrast mode, the thumbnail toolbar buttons are always drawn with a dark background (even for light contrast themes).
+			constexpr COLORREF kHighContrastColour = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
+			const COLORREF colour = IsHighContrastActive() ? kHighContrastColour : ( settings.GetTaskbarButtonAutoColour() ? GetAutomaticButtonColour() : settings.GetTaskbarButtonColour() );
 			for ( const auto& iconID : kIcons ) {
 				if ( const HBITMAP bitmap = CreateColourBitmap( m_hInst, iconID, buttonWidth, buttonHeight, colour ); nullptr != bitmap ) {
 					ImageList_Add( imageList, bitmap, nullptr );

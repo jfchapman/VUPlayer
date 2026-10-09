@@ -3,6 +3,7 @@
 #include <windowsx.h>
 
 #include "resource.h"
+#include "DarkMode.h"
 #include "Utility.h"
 #include "VUPlayer.h"
 
@@ -58,9 +59,11 @@ LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LP
 				break;
 			}
 			case WM_PAINT: {
+				// Note that the rebar background is only visible in the gaps between items (dividers), and along the bottom border.
+				// In dark mode, these use the same colour as the status bar dividers.
 				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
-				FillRect( ps.hdc, &ps.rcPaint, HBRUSH( COLOR_3DFACE + 1 ) );
+				FillRect( ps.hdc, &ps.rcPaint, DarkMode::IsActive() ? DarkMode::GetEdgeBrush() : HBRUSH( COLOR_3DFACE + 1 ) );
 				EndPaint( hwnd, &ps );
 				break;
 			}

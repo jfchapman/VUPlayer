@@ -6,6 +6,8 @@
 #include "Utility.h"
 #include "resource.h"
 
+#include "DarkMode.h"
+
 // Amount of padding to add when writing out FLAC files that don't contain any padding.
 constexpr uint32_t kPaddingSize = 1024;
 
@@ -379,6 +381,7 @@ INT_PTR CALLBACK HandlerFlac::DialogProc( HWND hwnd, UINT message, WPARAM wParam
 			if ( ( nullptr != config ) && ( nullptr != config->m_Handler ) ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, reinterpret_cast<LPARAM>( config ) );
 				config->m_Handler->OnConfigureInit( hwnd, config->m_Settings );
+				DarkMode::ApplyToDialog( hwnd );
 			}
 			break;
 		}

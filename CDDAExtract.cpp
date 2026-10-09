@@ -1,6 +1,8 @@
 #include "CDDAExtract.h"
 
 #include "resource.h"
+
+#include "DarkMode.h"
 #include "Utility.h"
 #include "WndTaskbar.h"
 
@@ -41,6 +43,7 @@ INT_PTR CALLBACK CDDAExtract::DialogProc( HWND hwnd, UINT message, WPARAM wParam
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
+				DarkMode::ApplyToDialog( hwnd );
 				return TRUE;
 			}
 			break;

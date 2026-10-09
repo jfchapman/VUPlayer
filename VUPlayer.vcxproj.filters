@@ -78,6 +78,12 @@
     <ClInclude Include="WndTree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DarkMode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WndListScrollbar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="WndStatus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -419,6 +425,12 @@
     <ClCompile Include="WndMain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DarkMode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="WndListScrollbar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="WndStatus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -706,6 +718,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\placeholder.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\placeholder_dark.png">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\play.ico">

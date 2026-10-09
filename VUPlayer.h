@@ -155,6 +155,9 @@ public:
 	// Called when a notification area icon message is received.
 	void OnTrayNotify( WPARAM wParam, LPARAM lParam );
 
+	// Called when a popup 'menu' is about to be displayed.
+	void OnInitMenuPopup( const HMENU menu );
+
 	// Called when a hotkey message is received.
 	void OnHotkey( WPARAM wParam );
 
@@ -214,6 +217,13 @@ public:
 	// Called on a system colour change event.
 	void OnSysColorChange();
 
+	// Called when the Windows colour mode changes (but the application dark mode state does not).
+	void OnColourModeChange();
+
+	// Called when dark mode is activated or deactivated.
+	// Applies the dark mode state to the main window, and reloads all colours for the new (light or dark) mode.
+	void OnDarkModeChange();
+
 	// Called when the window needs painting with the 'ps'.
 	void OnPaint( const PAINTSTRUCT& ps );
 
@@ -235,6 +245,15 @@ private:
 
 	// Reads and applies windows position from settings.
 	void ReadWindowSettings();
+
+	// Applies the current dark mode state to the common controls (list header & tree), which are themed by Windows.
+	void ApplyDarkModeToControls();
+
+	// Reloads all user interface colours from the application settings (OnSysColorChange should be called afterwards to apply the colours).
+	void ReloadColours();
+
+	// Resets all user interface colours for the current (light or dark) mode to their defaults.
+	void OnResetColours();
 
 	// Writes windows position to settings.
 	void WriteWindowSettings();

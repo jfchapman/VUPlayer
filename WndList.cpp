@@ -4,6 +4,7 @@
 
 #include <windowsx.h>
 
+#include "DarkMode.h"
 #include "DlgAddStream.h"
 #include "Settings.h"
 #include "Utility.h"
@@ -69,6 +70,19 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			case WM_COMMAND: {
 				const UINT commandID = LOWORD( wParam );
 				wndList->OnCommand( commandID );
+				break;
+			}
+			case WM_NOTIFY: {
+				// In dark mode, the header text colour needs to be set explicitly (the header background is drawn dark by the theme).
+				if ( LPNMHDR hdr = reinterpret_cast<LPNMHDR>( lParam ); ( nullptr != hdr ) && ( NM_CUSTOMDRAW == hdr->code ) && ( ListView_GetHeader( hwnd ) == hdr->hwndFrom ) && DarkMode::IsActive() ) {
+					LPNMCUSTOMDRAW nmcd = reinterpret_cast<LPNMCUSTOMDRAW>( lParam );
+					if ( CDDS_PREPAINT == nmcd->dwDrawStage ) {
+						return CDRF_NOTIFYITEMDRAW;
+					} else if ( CDDS_ITEMPREPAINT == nmcd->dwDrawStage ) {
+						SetTextColor( nmcd->hdc, DarkMode::GetTextColour() );
+						return CDRF_DODEFAULT;
+					}
+				}
 				break;
 			}
 			case WM_DROPFILES: {
@@ -178,7 +192,13 @@ LRESULT CALLBACK WndList::ListProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			}
 		}
 	}
-	return CallWindowProc( wndList->GetDefaultWndProc(), hwnd, message, wParam, lParam );
+	const LRESULT result = CallWindowProc( wndList->GetDefaultWndProc(), hwnd, message, wParam, lParam );
+
+	// Any message might have scrolled the list, or changed its size or contents, so keep the dark mode scrollbar in sync.
+	if ( ( nullptr != wndList ) && ( WM_DESTROY != message ) && ( WM_NCDESTROY != message ) ) {
+		wndList->UpdateDarkModeScrollbar();
+	}
+	return result;
 }
 
 LRESULT CALLBACK WndList::EditControlProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -244,6 +264,7 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	SetWindowLongPtr( ListView_GetHeader( m_hWnd ), GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( ListProc ) ) );
 	SetWindowAccessibleName( instance, m_hWnd, IDS_ACCNAME_LISTVIEW );
+	m_DarkModeScrollbar = std::make_unique<WndListScrollbar>( instance, m_hWnd );
 
 	// Insert the main column, which will contain the search text and status icon.
 	LVCOLUMN lvc = {};
@@ -2091,6 +2112,25 @@ void WndList::OnSysColorChange( const bool isHighContrast )
 	m_IsHighContrast = isHighContrast;
 	CreateImageList();
 	SetColours();
+}
+
+void WndList::LoadColours()
+{
+	m_Settings.GetPlaylistColours( m_ColourFont, m_ColourBackground, m_ColourHighlight, m_ColourStatusIcon );
+}
+
+void WndList::ApplyDarkMode()
+{
+	if ( m_DarkModeScrollbar ) {
+		m_DarkModeScrollbar->SetActive( DarkMode::IsActive() );
+	}
+}
+
+void WndList::UpdateDarkModeScrollbar()
+{
+	if ( m_DarkModeScrollbar ) {
+		m_DarkModeScrollbar->Update();
+	}
 }
 
 void WndList::RefreshItem( const int itemIndex )

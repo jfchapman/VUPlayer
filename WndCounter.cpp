@@ -286,8 +286,14 @@ void WndCounter::OnSelectColour()
 	COLORREF* customColours = ( nullptr != vuplayer ) ? vuplayer->GetCustomColours() : nullptr;
 	if ( const auto colour = ChooseColour( m_hWnd, m_FontColour, customColours ); colour.has_value() ) {
 		m_FontColour = colour.value();
+		SaveSettings();
 		Redraw();
 	}
+}
+
+void WndCounter::LoadColours()
+{
+	m_FontColour = m_Settings.GetCounterFontColour();
 }
 
 bool WndCounter::GetTrackRemaining() const

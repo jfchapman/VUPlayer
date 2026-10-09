@@ -16,6 +16,9 @@ static constexpr UINT MSG_OUTPUTPLAYLISTCHANGED = WM_APP + 119;
 class WndTree
 {
 public:
+	// Visual style theme used for the tree control when dark mode is not active (for Windows Explorer style expand/collapse buttons).
+	static constexpr wchar_t LightTheme[] = L"Explorer";
+
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
 	// 'library' - media library.
@@ -201,6 +204,10 @@ public:
 	// Called on a system colour change event.
 	// 'isHighContrast' - indicates whether high contrast mode is active.
 	void OnSysColorChange( const bool isHighContrast );
+
+	// Reloads the colours from the application settings (e.g. when dark mode is activated or deactivated).
+	// OnSysColorChange should be called afterwards to apply the colours.
+	void LoadColours();
 
 	// Called when the current output playlist changes.
 	// 'playlist' - playlist pointer (used for identification only, not for dereferencing).
@@ -739,6 +746,9 @@ private:
 
 	// Image list.
 	HIMAGELIST m_ImageList;
+
+	// Indentation of the tree control when it was created (before a font or image list was applied).
+	int m_InitialIndent;
 
 	// Icon map.
 	IconMap m_IconMap;

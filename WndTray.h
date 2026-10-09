@@ -79,6 +79,9 @@ public:
 	// Called when the click timer has elapsed.
 	void OnTimerElapsed();
 
+	// Called when a popup 'menu' is about to be displayed.
+	void OnInitMenuPopup( const HMENU menu );
+
 private:
 	// Maps a context menu command ID to a playlist item ID.
 	typedef std::map<UINT, long> PlaylistMenuItemMap;
@@ -88,6 +91,15 @@ private:
 
 	// Returns a 'playlist' menu, or a NULL menu if the playlist is empty.
 	HMENU CreatePlaylistMenu( const Playlist::Ptr playlist );
+
+	// Fills the 'playlistMenu' with up to 'maxPlaylistEntries' entries from the 'playlist' (centred on the currently playing item, if there is one).
+	void FillPlaylistMenu( const HMENU playlistMenu, const Playlist::Ptr playlist, const int maxPlaylistEntries );
+
+	// Returns an estimate of the number of menu entries which fit on the screen (based on the system menu height metric).
+	int GetEstimatedMenuCapacity() const;
+
+	// Returns the number of menu entries which fit on the screen, measured from the tray menu which is currently displayed (or zero if this cannot be measured).
+	int GetMeasuredMenuCapacity() const;
 
 	// Does a 'command'.
 	void DoCommand( const Settings::SystrayCommand command );
@@ -136,4 +148,10 @@ private:
 
 	// The click count when the timer elapses.
 	int m_ClickCount;
+
+	// The tray menu, while it is being displayed.
+	HMENU m_TrayMenu = nullptr;
+
+	// Playlist menus which are yet to be filled (just before they are shown), mapped to their playlists.
+	std::map<HMENU, Playlist::Ptr> m_PendingPlaylistMenus;
 };

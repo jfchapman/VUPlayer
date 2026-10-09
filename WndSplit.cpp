@@ -1,5 +1,6 @@
 #include "WndSplit.h"
 
+#include "DarkMode.h"
 #include "Utility.h"
 
 // Split window ID
@@ -25,7 +26,7 @@ LRESULT CALLBACK WndSplit::SplitProc( HWND hwnd, UINT message, WPARAM wParam, LP
 			case WM_PAINT: {
 				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
-				FillRect( ps.hdc, &ps.rcPaint, HBRUSH( COLOR_3DFACE + 1 ) );
+				FillRect( ps.hdc, &ps.rcPaint, DarkMode::IsActive() ? DarkMode::GetBackgroundBrush() : HBRUSH( COLOR_3DFACE + 1 ) );
 				EndPaint( hwnd, &ps );
 				break;
 			}

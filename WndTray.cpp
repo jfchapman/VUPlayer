@@ -15,8 +15,6 @@ static const int sMaxTooltip = 127;
 static const int sMaxPlaylists = 30;
 
 // Maximum number of columns to show on a playlist menu.
-static const int sMaxPlaylistColumns = 4;
-
 // Maximum string length of an entry on the playlist menu.
 static const size_t sMaxPlaylistItemLength = 64;
 
@@ -341,7 +339,10 @@ void WndTray::ShowContextMenu()
 			Shell_NotifyIconGetRect( &notifyIconID, &rect );
 
 			SetForegroundWindow( m_NotifyIconData.hWnd );
+			m_TrayMenu = traymenu;
 			TrackPopupMenu( traymenu, TPM_RIGHTBUTTON, rect.left, rect.top, 0 /*reserved*/, m_NotifyIconData.hWnd, NULL /*rect*/ );
+			m_TrayMenu = nullptr;
+			m_PendingPlaylistMenus.clear();
 		}
 		DestroyMenu( menu );
 	}
@@ -350,81 +351,121 @@ void WndTray::ShowContextMenu()
 HMENU WndTray::CreatePlaylistMenu( const Playlist::Ptr playlist )
 {
 	HMENU playlistMenu = NULL;
-	if ( playlist ) {
-		const Playlist::Items playlistItems = playlist->GetItems();
-		if ( !playlistItems.empty() ) {
-			playlistMenu = CreatePopupMenu();
-			if ( nullptr != playlistMenu ) {
-
-				int itemsPerColumn = 0;
-				const int menuItemHeight = GetSystemMetrics( SM_CYMENU );
-				const int screenHeight = GetSystemMetrics( SM_CYSCREEN );
-				if ( ( menuItemHeight > 0 ) && ( screenHeight > 0 ) ) {
-					itemsPerColumn = screenHeight / menuItemHeight - 1;
-				}
-
-				const int maxPlaylistEntries = sMaxPlaylistColumns * itemsPerColumn;
-
-				int columnCount = 0;
-				int playlistItemMenuIndex = 0;
-				auto playlistItemIter = playlistItems.begin();
-
-				Playlist::Item currentPlayingItem = m_Output.GetCurrentPlaying().PlaylistItem;
-				int currentPlayingItemIndex = -1;
-				if ( playlist->GetItem( currentPlayingItem, currentPlayingItemIndex ) ) {
-					const int playlistItemCount = static_cast<int>( playlistItems.size() );
-					if ( ( playlistItemCount > maxPlaylistEntries ) && ( currentPlayingItemIndex > maxPlaylistEntries / 2 ) ) {
-						int itemsToAdvance = currentPlayingItemIndex - maxPlaylistEntries / 2;
-						if ( ( playlistItemCount - itemsToAdvance ) < maxPlaylistEntries ) {
-							itemsToAdvance = playlistItemCount - maxPlaylistEntries;
-						}
-						std::advance( playlistItemIter, itemsToAdvance );
-					}
-				}
-
-				for ( ; ( playlistItemMenuIndex < maxPlaylistEntries ) && ( playlistItemIter != playlistItems.end() ) && ( m_NextPlaylistMenuItemID < MSG_TRAYMENUEND ); playlistItemIter++, playlistItemMenuIndex++ ) {
-					const Playlist::Item& playlistItem = *playlistItemIter;
-					std::wstring entryText;
-					std::wstring artist = playlistItem.Info.GetArtist();
-					WideStringReplace( artist, L"&", L"&&" );
-					std::wstring title = playlistItem.Info.GetTitle( true /*filenameAsTitle*/ );
-					WideStringReplace( title, L"&", L"&&" );
-					if ( artist.empty() ) {
-						entryText = title;
-						if ( entryText.size() > sMaxPlaylistItemLength ) {
-							entryText = entryText.substr( 0, sMaxPlaylistItemLength - 3 );
-							entryText += L"...";
-						}
-					} else {
-						entryText = artist + L" - " + title;
-						if ( entryText.size() > sMaxPlaylistItemLength ) {
-							entryText = title;
-							if ( entryText.size() > sMaxPlaylistItemLength ) {
-								entryText = entryText.substr( 0, sMaxPlaylistItemLength - 3 );
-								entryText += L"...";
-							}
-						}
-					}
-
-					UINT flags = MF_STRING;
-					if ( ( 0 == ( playlistItemMenuIndex % itemsPerColumn ) ) && ( 0 != playlistItemMenuIndex ) ) {
-						if ( ++columnCount < sMaxPlaylistColumns ) {
-							flags |= MF_MENUBARBREAK;
-						}
-					}
-					m_PlaylistMenuItems.insert( PlaylistMenuItemMap::value_type( m_NextPlaylistMenuItemID, playlistItem.ID ) );
-
-					AppendMenu( playlistMenu, flags, m_NextPlaylistMenuItemID, entryText.c_str() );
-					if ( playlistItem.ID == currentPlayingItem.ID ) {
-						CheckMenuItem( playlistMenu, m_NextPlaylistMenuItemID, MF_BYCOMMAND | MF_CHECKED );
-					}
-
-					++m_NextPlaylistMenuItemID;
-				}
-			}
+	if ( playlist && !playlist->GetItems().empty() ) {
+		playlistMenu = CreatePopupMenu();
+		if ( nullptr != playlistMenu ) {
+			// Playlist menus use a single column (dark mode menus do not support multiple columns, so a single column is used in both modes, for consistency).
+			// The menu is filled just before it is shown (see OnInitMenuPopup), when the number of entries which fit on the screen can be determined.
+			m_PendingPlaylistMenus.insert( { playlistMenu, playlist } );
 		}
 	}
 	return playlistMenu;
+}
+
+int WndTray::GetEstimatedMenuCapacity() const
+{
+	int capacity = 0;
+	const int menuItemHeight = GetSystemMetrics( SM_CYMENU );
+	const int screenHeight = GetSystemMetrics( SM_CYSCREEN );
+	if ( ( menuItemHeight > 0 ) && ( screenHeight > 0 ) ) {
+		capacity = screenHeight / menuItemHeight - 1;
+	}
+	return capacity;
+}
+
+int WndTray::GetMeasuredMenuCapacity() const
+{
+	// Measure the height of a menu item (and the menu padding) from the tray menu, which is currently being displayed.
+	int capacity = 0;
+	if ( RECT itemRect = {}; ( nullptr != m_TrayMenu ) && GetMenuItemRect( nullptr, m_TrayMenu, 0 /*item*/, &itemRect ) ) {
+		if ( const int itemHeight = itemRect.bottom - itemRect.top; itemHeight > 0 ) {
+			int padding = 0;
+			const POINT itemCentre = { ( itemRect.left + itemRect.right ) / 2, ( itemRect.top + itemRect.bottom ) / 2 };
+			if ( RECT menuRect = {}; GetWindowRect( WindowFromPoint( itemCentre ), &menuRect ) && ( itemRect.top >= menuRect.top ) ) {
+				padding = itemRect.top - menuRect.top;
+			}
+			MONITORINFO monitorInfo = {};
+			monitorInfo.cbSize = sizeof( MONITORINFO );
+			if ( GetMonitorInfo( MonitorFromRect( &itemRect, MONITOR_DEFAULTTONEAREST ), &monitorInfo ) ) {
+				const int monitorHeight = monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top;
+				capacity = ( monitorHeight - 2 * padding ) / itemHeight;
+			}
+		}
+	}
+	return capacity;
+}
+
+void WndTray::FillPlaylistMenu( const HMENU playlistMenu, const Playlist::Ptr playlist, const int maxPlaylistEntries )
+{
+	if ( ( nullptr == playlistMenu ) || !playlist ) {
+		return;
+	}
+	const Playlist::Items playlistItems = playlist->GetItems();
+	int playlistItemMenuIndex = 0;
+	auto playlistItemIter = playlistItems.begin();
+
+	// Centre the entries on the currently playing item (if there is one).
+	Playlist::Item currentPlayingItem = m_Output.GetCurrentPlaying().PlaylistItem;
+	int currentPlayingItemIndex = -1;
+	if ( playlist->GetItem( currentPlayingItem, currentPlayingItemIndex ) ) {
+		const int playlistItemCount = static_cast<int>( playlistItems.size() );
+		if ( ( playlistItemCount > maxPlaylistEntries ) && ( currentPlayingItemIndex > maxPlaylistEntries / 2 ) ) {
+			int itemsToAdvance = currentPlayingItemIndex - maxPlaylistEntries / 2;
+			if ( ( playlistItemCount - itemsToAdvance ) < maxPlaylistEntries ) {
+				itemsToAdvance = playlistItemCount - maxPlaylistEntries;
+			}
+			std::advance( playlistItemIter, itemsToAdvance );
+		}
+	}
+
+	for ( ; ( playlistItemMenuIndex < maxPlaylistEntries ) && ( playlistItemIter != playlistItems.end() ) && ( m_NextPlaylistMenuItemID < MSG_TRAYMENUEND ); playlistItemIter++, playlistItemMenuIndex++ ) {
+		const Playlist::Item& playlistItem = *playlistItemIter;
+		std::wstring entryText;
+		std::wstring artist = playlistItem.Info.GetArtist();
+		WideStringReplace( artist, L"&", L"&&" );
+		std::wstring title = playlistItem.Info.GetTitle( true /*filenameAsTitle*/ );
+		WideStringReplace( title, L"&", L"&&" );
+		if ( artist.empty() ) {
+			entryText = title;
+			if ( entryText.size() > sMaxPlaylistItemLength ) {
+				entryText = entryText.substr( 0, sMaxPlaylistItemLength - 3 );
+				entryText += L"...";
+			}
+		} else {
+			entryText = artist + L" - " + title;
+			if ( entryText.size() > sMaxPlaylistItemLength ) {
+				entryText = title;
+				if ( entryText.size() > sMaxPlaylistItemLength ) {
+					entryText = entryText.substr( 0, sMaxPlaylistItemLength - 3 );
+					entryText += L"...";
+				}
+			}
+		}
+
+		m_PlaylistMenuItems.insert( PlaylistMenuItemMap::value_type( m_NextPlaylistMenuItemID, playlistItem.ID ) );
+
+		AppendMenu( playlistMenu, MF_STRING, m_NextPlaylistMenuItemID, entryText.c_str() );
+		if ( playlistItem.ID == currentPlayingItem.ID ) {
+			CheckMenuItem( playlistMenu, m_NextPlaylistMenuItemID, MF_BYCOMMAND | MF_CHECKED );
+		}
+
+		++m_NextPlaylistMenuItemID;
+	}
+}
+
+void WndTray::OnInitMenuPopup( const HMENU menu )
+{
+	// Playlist menus are filled just before they are shown, with a single column of entries which fits on the screen
+	// (a menu which does not fit on the screen is always scrolled to the top when it opens, whereas the entries are centred on the currently playing item).
+	if ( const auto pendingMenu = m_PendingPlaylistMenus.find( menu ); m_PendingPlaylistMenus.end() != pendingMenu ) {
+		const Playlist::Ptr playlist = pendingMenu->second;
+		m_PendingPlaylistMenus.erase( pendingMenu );
+		int capacity = GetMeasuredMenuCapacity();
+		if ( capacity <= 0 ) {
+			capacity = GetEstimatedMenuCapacity();
+		}
+		FillPlaylistMenu( menu, playlist, capacity );
+	}
 }
 
 void WndTray::OnSingleClick()

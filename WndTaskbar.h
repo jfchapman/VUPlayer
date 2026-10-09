@@ -28,7 +28,8 @@ public:
 	// 'output' - output object.
 	void Update( WndToolbarPlayback& toolbarPlayback, Output& output );
 
-	// Sets the thumbnail preview toolbar button colour, using the application settings.
+	// Sets the thumbnail preview toolbar button colour, using the application settings, the Windows colour mode & high contrast state.
+	// This should be called whenever any of these change.
 	void SetToolbarButtonColour( Settings& settings );
 
 	// Sets whether the progress bar is enabled.

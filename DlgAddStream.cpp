@@ -1,6 +1,7 @@
 #include "DlgAddStream.h"
 
 #include "resource.h"
+#include "DarkMode.h"
 #include "Utility.h"
 
 INT_PTR CALLBACK DlgAddStream::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
@@ -54,6 +55,7 @@ DlgAddStream::DlgAddStream( const HINSTANCE instance, const HWND parent ) :
 void DlgAddStream::OnInitDialog( const HWND hwnd )
 {
 	m_hWnd = hwnd;
+	DarkMode::ApplyToDialog( m_hWnd );
 	CentreDialog( m_hWnd );
 }
 

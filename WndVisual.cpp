@@ -5,6 +5,7 @@
 #include "resource.h"
 
 #include "Artwork.h"
+#include "DarkMode.h"
 #include "NullVisual.h"
 #include "Oscilloscope.h"
 #include "PeakMeter.h"
@@ -362,7 +363,7 @@ void WndVisual::OnPaint( const PAINTSTRUCT& ps )
 		OutputDebugString( debugStr.c_str() );
 #endif
 	} else {
-		FillRect( ps.hdc, &ps.rcPaint, reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 ) );
+		FillRect( ps.hdc, &ps.rcPaint, DarkMode::IsActive() ? DarkMode::GetBackgroundBrush() : reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 ) );
 	}
 }
 
@@ -605,6 +606,16 @@ void WndVisual::OnSysColorChange()
 			visual->OnSysColorChange();
 		}
 	}
+}
+
+void WndVisual::ReloadColours()
+{
+	for ( const auto& [id, visual] : m_Visuals ) {
+		if ( nullptr != visual ) {
+			visual->OnSettingsChange();
+		}
+	}
+	InvalidateRect( m_hWnd, nullptr /*rect*/, FALSE /*erase*/ );
 }
 
 void WndVisual::OnDisplayChange()

@@ -1,6 +1,8 @@
 #include "DlgModOpenMPT.h"
 
 #include "resource.h"
+
+#include "DarkMode.h"
 #include "windowsx.h"
 #include "Utility.h"
 
@@ -12,6 +14,7 @@ INT_PTR CALLBACK DlgModOpenMPT::DialogProc( HWND hwnd, UINT message, WPARAM wPar
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
+				DarkMode::ApplyToDialog( hwnd );
 				return TRUE;
 			}
 			break;

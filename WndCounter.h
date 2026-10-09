@@ -73,6 +73,10 @@ public:
 	// 'isClassicTheme' - indicates whether the Windows classic theme is active.
 	void OnSysColorChange( const bool isHighContrast, const bool isClassicTheme ) override;
 
+	// Reloads the font colour from the application settings (e.g. when dark mode is activated or deactivated).
+	// OnSysColorChange should be called afterwards to apply the colour.
+	void LoadColours();
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK CounterProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );

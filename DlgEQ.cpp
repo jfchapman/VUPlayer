@@ -1,6 +1,7 @@
 #include "DlgEQ.h"
 
 #include "resource.h"
+#include "DarkMode.h"
 #include "Utility.h"
 
 #include <iomanip>
@@ -20,6 +21,7 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
+				DarkMode::ApplyToDialog( hwnd );
 				return TRUE;
 			}
 			break;
@@ -311,6 +313,33 @@ std::wstring DlgEQ::GetTooltip( const HWND slider ) const
 void DlgEQ::Init( const HWND parent )
 {
 	CreateDialogParam( m_hInst, MAKEINTRESOURCE( IDD_EQ ), parent, DialogProc, reinterpret_cast<LPARAM>( this ) );
+}
+
+void DlgEQ::OnDarkModeChange()
+{
+	// The dialog is modeless, so it can be open while dark mode is activated or deactivated.
+	// Rather than updating all the dialog controls in place, the dialog is recreated (the settings, position & visibility are saved when the dialog is destroyed, and restored when it is recreated).
+	if ( nullptr == m_hWnd ) {
+		return;
+	}
+	const HWND owner = GetWindow( m_hWnd, GW_OWNER );
+	const HWND previousActiveWnd = GetActiveWindow();
+	const HWND previousFocusWnd = GetFocus();
+	const bool wasActive = ( previousActiveWnd == m_hWnd );
+
+	DestroyWindow( m_hWnd );
+	m_hWnd = nullptr;
+	Init( owner );
+
+	// Restore the previous activation & focus, so that recreating the dialog does not take the focus from the main window.
+	if ( wasActive ) {
+		SetActiveWindow( m_hWnd );
+	} else if ( IsWindow( previousActiveWnd ) ) {
+		SetActiveWindow( previousActiveWnd );
+		if ( IsWindow( previousFocusWnd ) ) {
+			SetFocus( previousFocusWnd );
+		}
+	}
 }
 
 HWND DlgEQ::GetWindowHandle() const

@@ -63,11 +63,16 @@ void OptionsTaskbar::OnInit( const HWND hwnd )
 	// Taskbar settings
 	if ( IsWindows10() ) {
 		m_ToolbarButtonColour = GetSettings().GetTaskbarButtonColour();
+		if ( HWND hwndAutoColour = GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_AUTOCOLOUR ); nullptr != hwndAutoColour ) {
+			Button_SetCheck( hwndAutoColour, ( GetSettings().GetTaskbarButtonAutoColour() ? BST_CHECKED : BST_UNCHECKED ) );
+		}
+		EnableButtonColourControl( hwnd );
 		if ( HWND hwndProgress = GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_PROGRESS ); nullptr != hwndProgress ) {
 			Button_SetCheck( hwndProgress, ( GetSettings().GetTaskbarShowProgress() ? BST_CHECKED : BST_UNCHECKED ) );
 		}
 	} else {
 		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_THUMBNAILGROUP ), SW_HIDE );
+		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_AUTOCOLOUR ), SW_HIDE );
 		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_BUTTONCOLOUR ), SW_HIDE );
 		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_PROGRESS ), SW_HIDE );
 	}
@@ -86,6 +91,7 @@ void OptionsTaskbar::OnSave( const HWND hwnd )
 
 	// Thumbnail preview settings
 	GetSettings().SetTaskbarButtonColour( m_ToolbarButtonColour );
+	GetSettings().SetTaskbarButtonAutoColour( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_AUTOCOLOUR ) ) );
 
 	// Progress bar
 	GetSettings().SetTaskbarShowProgress( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_PROGRESS ) ) );
@@ -99,6 +105,10 @@ void OptionsTaskbar::OnCommand( const HWND hwnd, const WPARAM wParam, const LPAR
 		switch ( controlID ) {
 			case IDC_OPTIONS_SYSTRAY_ENABLE: {
 				EnableSystrayControls( hwnd );
+				break;
+			}
+			case IDC_OPTIONS_TASKBAR_AUTOCOLOUR: {
+				EnableButtonColourControl( hwnd );
 				break;
 			}
 			case IDC_OPTIONS_TASKBAR_BUTTONCOLOUR: {
@@ -125,4 +135,10 @@ void OptionsTaskbar::EnableSystrayControls( const HWND hwnd )
 	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_SYSTRAY_TRIPLECLICK ), enable );
 	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_SYSTRAY_QUADLABEL ), enable );
 	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_SYSTRAY_QUADCLICK ), enable );
+}
+
+void OptionsTaskbar::EnableButtonColourControl( const HWND hwnd )
+{
+	const BOOL enable = !IsDlgButtonChecked( hwnd, IDC_OPTIONS_TASKBAR_AUTOCOLOUR );
+	EnableWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_BUTTONCOLOUR ), enable );
 }

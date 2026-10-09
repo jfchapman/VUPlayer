@@ -179,6 +179,15 @@ bool IsHighContrastActive();
 // Returns whether the Windows classic theme is active.
 bool IsClassicThemeActive();
 
+// Returns the system window text colour.
+COLORREF GetSystemTextColour();
+
+// Returns the system window background colour.
+COLORREF GetSystemWindowColour();
+
+// Returns the system highlight colour.
+COLORREF GetSystemHighlightColour();
+
 // Returns whether the OS is Windows 10 (or later).
 bool IsWindows10();
 

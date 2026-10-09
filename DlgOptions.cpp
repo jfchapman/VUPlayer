@@ -7,6 +7,7 @@
 #include "OptionsTaskbar.h"
 
 #include "resource.h"
+#include "DarkMode.h"
 #include "Utility.h"
 #include "windowsx.h"
 
@@ -25,8 +26,11 @@ INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam
 					options->OnInit( hwnd );
 				}
 			}
+			DarkMode::ApplyToDialog( hwnd );
 			if ( !s_IsCentred ) {
 				s_IsCentred = true;
+				// Apply dark mode to the property sheet itself (title bar, tabs & buttons) when the first page is initialised.
+				DarkMode::ApplyToDialog( GetParent( hwnd ) );
 				CentreDialog( GetParent( hwnd ) );
 			}
 			return TRUE;

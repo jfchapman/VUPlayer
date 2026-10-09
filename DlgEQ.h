@@ -31,6 +31,9 @@ public:
 	// Returns the modeless dialog window handle.
 	HWND GetWindowHandle() const;
 
+	// Called when dark mode is activated or deactivated.
+	void OnDarkModeChange();
+
 private:
 	// Maps a slider control handle to a value.
 	typedef std::map<HWND, int> SliderValueMap;

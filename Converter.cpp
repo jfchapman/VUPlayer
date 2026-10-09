@@ -1,6 +1,8 @@
 #include "Converter.h"
 
 #include "resource.h"
+
+#include "DarkMode.h"
 #include "Utility.h"
 #include "WndTaskbar.h"
 #include "Resampler.h"
@@ -31,6 +33,7 @@ INT_PTR CALLBACK Converter::DialogProc( HWND hwnd, UINT message, WPARAM wParam, 
 			if ( nullptr != converter ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				converter->OnInitDialog( hwnd );
+				DarkMode::ApplyToDialog( hwnd );
 				return TRUE;
 			}
 			break;

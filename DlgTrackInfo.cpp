@@ -4,6 +4,8 @@
 #include "VUPlayer.h"
 
 #include "resource.h"
+
+#include "DarkMode.h"
 #include "windowsx.h"
 
 #include <fstream>
@@ -29,6 +31,7 @@ INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 			if ( nullptr != dialog ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
+				DarkMode::ApplyToDialog( hwnd );
 				return TRUE;
 			}
 			break;
@@ -406,7 +409,10 @@ void DlgTrackInfo::OnOwnerDraw( DRAWITEMSTRUCT* drawItemStruct )
 		const int clientHeight = drawItemStruct->rcItem.bottom - drawItemStruct->rcItem.top;
 		Gdiplus::Rect clientRect( 0, 0, clientWidth, clientHeight );
 		Gdiplus::Graphics graphics( drawItemStruct->hDC );
-		graphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::White ) );
+		// Fill using the dialog background colour.
+		Gdiplus::Color backgroundColour;
+		backgroundColour.SetFromCOLORREF( DarkMode::IsActive() ? DarkMode::GetBackgroundColour() : GetSysColor( COLOR_3DFACE ) );
+		graphics.Clear( backgroundColour );
 		if ( m_Bitmap ) {
 			const UINT bitmapWidth = m_Bitmap->GetWidth();
 			const UINT bitmapHeight = m_Bitmap->GetHeight();

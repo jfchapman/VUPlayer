@@ -641,6 +641,21 @@ bool IsClassicThemeActive()
 	return !IsAppThemed();
 }
 
+COLORREF GetSystemTextColour()
+{
+	return GetSysColor( COLOR_WINDOWTEXT );
+}
+
+COLORREF GetSystemWindowColour()
+{
+	return GetSysColor( COLOR_WINDOW );
+}
+
+COLORREF GetSystemHighlightColour()
+{
+	return GetSysColor( COLOR_HIGHLIGHT );
+}
+
 bool IsWindows10()
 {
 	return IsWindows10OrGreater();

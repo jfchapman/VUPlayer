@@ -29,6 +29,10 @@ private:
 	// 'hwnd' - dialog window handle.
 	void EnableSystrayControls( const HWND hwnd );
 
+	// Enables the thumbnail toolbar button colour control based on whether the automatic colour option is selected.
+	// 'hwnd' - dialog window handle.
+	void EnableButtonColourControl( const HWND hwnd );
+
 	// Thumbnail preview toolbar button colour.
 	COLORREF m_ToolbarButtonColour = 0;
 };

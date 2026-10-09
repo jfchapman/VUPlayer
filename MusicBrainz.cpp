@@ -1,5 +1,7 @@
 #include "MusicBrainz.h"
 
+#include "DarkMode.h"
+
 #include "Utility.h"
 #include "VUPlayer.h"
 
@@ -82,6 +84,7 @@ INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM w
 			if ( nullptr != musicBrainz ) {
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				musicBrainz->OnInitMatchDialog( hwnd, matchInfo->m_Result );
+				DarkMode::ApplyToDialog( hwnd );
 			}
 			return TRUE;
 		}

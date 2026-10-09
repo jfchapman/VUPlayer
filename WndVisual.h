@@ -105,6 +105,9 @@ public:
 	// Called on a system colour change event.
 	void OnSysColorChange();
 
+	// Reloads the visual colours (& placeholder artwork) from the application settings (e.g. when dark mode is activated or deactivated).
+	void ReloadColours();
+
 	// Called when the display resolution has changed.
 	void OnDisplayChange();
 

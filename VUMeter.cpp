@@ -1,5 +1,7 @@
 #include "VUMeter.h"
 
+#include "DarkMode.h"
+
 // Render thread millisecond interval.
 constexpr DWORD kRenderThreadInterval = 15;
 
@@ -290,7 +292,9 @@ void VUMeter::LoadResources( ID2D1DeviceContext* deviceContext )
 	if ( nullptr != deviceContext ) {
 
 		if ( !m_Brush ) {
-			deviceContext->CreateSolidColorBrush( D2D1::ColorF( GetSysColor( COLOR_3DFACE ) ), &m_Brush );
+			// The rounded corners use the same colour as the surrounding window background.
+			const COLORREF cornerColour = DarkMode::IsActive() ? DarkMode::GetBackgroundColour() : GetSysColor( COLOR_3DFACE );
+			deviceContext->CreateSolidColorBrush( D2D1::ColorF( cornerColour ), &m_Brush );
 		}
 
 		if ( s_MeterLoaded && !m_BitmapLeft && !m_BitmapRight ) {

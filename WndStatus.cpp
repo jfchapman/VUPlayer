@@ -2,8 +2,11 @@
 
 #include "resource.h"
 
+#include "DarkMode.h"
 #include "Utility.h"
 
+#include <algorithm>
+#include <iterator>
 #include <sstream>
 #include <vector>
 
@@ -27,6 +30,22 @@ LRESULT CALLBACK WndStatus::StatusProc( HWND hwnd, UINT message, WPARAM wParam, 
 			case WM_SIZE: {
 				if ( SIZE_MINIMIZED != wParam ) {
 					wndStatus->Resize( static_cast<int>( LOWORD( lParam ) ) );
+				}
+				if ( DarkMode::IsActive() ) {
+					InvalidateRect( hwnd, nullptr /*rect*/, FALSE /*erase*/ );
+				}
+				break;
+			}
+			case WM_ERASEBKGND: {
+				if ( DarkMode::IsActive() ) {
+					return TRUE;
+				}
+				break;
+			}
+			case WM_PAINT: {
+				if ( DarkMode::IsActive() ) {
+					wndStatus->OnPaintDarkMode();
+					return 0;
 				}
 				break;
 			}
@@ -207,5 +226,118 @@ void WndStatus::Refresh()
 	}
 	if ( previous4 != part4 ) {
 		SendMessage( m_hWnd, SB_SETTEXT, 3, reinterpret_cast<LPARAM>( part4.c_str() ) );
+	}
+}
+
+void WndStatus::OnSysColorChange()
+{
+	RedrawWindow( m_hWnd, nullptr /*rect*/, nullptr /*rgn*/, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME );
+}
+
+void WndStatus::OnPaintDarkMode()
+{
+	PAINTSTRUCT ps = {};
+	if ( const HDC dc = BeginPaint( m_hWnd, &ps ); nullptr != dc ) {
+		RECT clientRect = {};
+		GetClientRect( m_hWnd, &clientRect );
+		const int width = clientRect.right - clientRect.left;
+		const int height = clientRect.bottom - clientRect.top;
+		if ( ( width > 0 ) && ( height > 0 ) ) {
+			// Draw to an offscreen bitmap, to avoid flicker.
+			if ( const HDC memDC = CreateCompatibleDC( dc ); nullptr != memDC ) {
+				if ( const HBITMAP bitmap = CreateCompatibleBitmap( dc, width, height ); nullptr != bitmap ) {
+					const HGDIOBJ previousBitmap = SelectObject( memDC, bitmap );
+					DrawDarkMode( memDC, clientRect );
+					BitBlt( dc, 0, 0, width, height, memDC, 0, 0, SRCCOPY );
+					SelectObject( memDC, previousBitmap );
+					DeleteObject( bitmap );
+				}
+				DeleteDC( memDC );
+			}
+		}
+		EndPaint( m_hWnd, &ps );
+	}
+}
+
+void WndStatus::DrawDarkMode( const HDC dc, const RECT& clientRect )
+{
+	const float dpiScaling = GetDPIScaling();
+
+	// Background.
+	FillRect( dc, &clientRect, DarkMode::GetBackgroundBrush() );
+
+	// Top edge, separating the status bar from the window contents.
+	RECT edgeRect = clientRect;
+	edgeRect.bottom = edgeRect.top + 1;
+	FillRect( dc, &edgeRect, DarkMode::GetEdgeBrush() );
+
+	const HFONT font = reinterpret_cast<HFONT>( SendMessage( m_hWnd, WM_GETFONT, 0, 0 ) );
+	const HGDIOBJ previousFont = ( nullptr != font ) ? SelectObject( dc, font ) : nullptr;
+	SetBkMode( dc, TRANSPARENT );
+	SetTextColor( dc, DarkMode::GetTextColour() );
+
+	// Status bar text can contain up to three tab delimited sections, which are left, centre & right aligned.
+	constexpr UINT sectionAlignment[] = { DT_LEFT, DT_CENTER, DT_RIGHT };
+	constexpr UINT textFlags = DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS;
+
+	const int textPadding = static_cast<int>( 4 * dpiScaling );
+	const int separatorInset = static_cast<int>( 3 * dpiScaling );
+	const int partCount = static_cast<int>( SendMessage( m_hWnd, SB_GETPARTS, 0, 0 ) );
+	for ( int part = 0; part < partCount; part++ ) {
+		RECT partRect = {};
+		if ( !SendMessage( m_hWnd, SB_GETRECT, part, reinterpret_cast<LPARAM>( &partRect ) ) ) {
+			continue;
+		}
+
+		// Separator between parts.
+		if ( part > 0 ) {
+			RECT separatorRect = { partRect.left - 1, partRect.top + separatorInset, partRect.left, partRect.bottom - separatorInset };
+			FillRect( dc, &separatorRect, DarkMode::GetEdgeBrush() );
+		}
+
+		const int textLength = LOWORD( SendMessage( m_hWnd, SB_GETTEXTLENGTH, part, 0 ) );
+		if ( textLength > 0 ) {
+			std::vector<WCHAR> buffer( 1 + textLength, 0 );
+			SendMessage( m_hWnd, SB_GETTEXT, part, reinterpret_cast<LPARAM>( buffer.data() ) );
+			const std::wstring text( buffer.data() );
+
+			RECT textRect = partRect;
+			InflateRect( &textRect, -textPadding, 0 );
+
+			size_t sectionStart = 0;
+			for ( size_t section = 0; section < std::size( sectionAlignment ); section++ ) {
+				const bool isLastSection = ( ( 1 + section ) == std::size( sectionAlignment ) );
+				const size_t sectionEnd = isLastSection ? std::wstring::npos : text.find( '\t', sectionStart );
+				const std::wstring sectionText = text.substr( sectionStart, ( std::wstring::npos == sectionEnd ) ? std::wstring::npos : ( sectionEnd - sectionStart ) );
+				if ( !sectionText.empty() ) {
+					DrawText( dc, sectionText.c_str(), static_cast<int>( sectionText.size() ), &textRect, sectionAlignment[ section ] | textFlags );
+				}
+				if ( std::wstring::npos == sectionEnd ) {
+					break;
+				}
+				sectionStart = 1 + sectionEnd;
+			}
+		}
+	}
+
+	if ( nullptr != previousFont ) {
+		SelectObject( dc, previousFont );
+	}
+
+	// Size grip (a triangle of dots in the bottom right corner), which is hidden when the main window is maximised.
+	const bool hasSizeGrip = ( SBARS_SIZEGRIP & GetWindowLongPtr( m_hWnd, GWL_STYLE ) );
+	if ( hasSizeGrip && !IsZoomed( GetParent( m_hWnd ) ) ) {
+		const int dotSize = std::max( 2, static_cast<int>( 2 * dpiScaling ) );
+		const int dotSpacing = 2 * dotSize;
+		const int margin = dotSize;
+		constexpr int rows = 3;
+		for ( int row = 0; row < rows; row++ ) {
+			for ( int column = 0; column < ( rows - row ); column++ ) {
+				const int x = clientRect.right - margin - ( 1 + column ) * dotSpacing + dotSize;
+				const int y = clientRect.bottom - margin - ( 1 + row ) * dotSpacing + dotSize;
+				const RECT dotRect = { x, y, x + dotSize, y + dotSize };
+				FillRect( dc, &dotRect, DarkMode::GetGripBrush() );
+			}
+		}
 	}
 }

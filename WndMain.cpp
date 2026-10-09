@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+#include "DarkMode.h"
 #include "Utility.h"
 #include "VUPlayer.h"
 
@@ -138,6 +139,9 @@ int APIENTRY wWinMain( _In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstanc
 		return FALSE;
 	}
 
+	// Initialise dark mode support (this must happen before any windows are created).
+	DarkMode::Initialise();
+
 	// Perform application initialization
 	MyRegisterClass( hInstance );
 	if ( !InitInstance( hInstance, nCmdShow ) ) {
@@ -219,6 +223,9 @@ BOOL InitInstance( HINSTANCE hInstance, int /*nCmdShow*/ )
 	const int height = static_cast<int>( 768 * GetDPIScaling() );
 	g_hWnd = CreateWindowW( g_szWindowClass, g_szTitle, style, x, y, width, height, nullptr, nullptr, hInstance, nullptr );
 	const BOOL success = ( NULL != g_hWnd );
+	if ( success ) {
+		DarkMode::ApplyToMainWindow( g_hWnd );
+	}
 
 	return success;
 }
@@ -226,6 +233,10 @@ BOOL InitInstance( HINSTANCE hInstance, int /*nCmdShow*/ )
 // Message handler for main window
 LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
+	if ( LRESULT darkModeResult = 0; DarkMode::HandleMainWindowMessage( hWnd, message, wParam, lParam, darkModeResult ) ) {
+		return darkModeResult;
+	}
+
 	VUPlayer* vuplayer = reinterpret_cast<VUPlayer*>( GetWindowLongPtr( hWnd, GWLP_USERDATA ) );
 	switch ( message )
 	{
@@ -261,7 +272,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnPaint( ps );
 			} else {
-				FillRect( ps.hdc, &ps.rcPaint, reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 ) );
+				FillRect( ps.hdc, &ps.rcPaint, DarkMode::IsActive() ? DarkMode::GetBackgroundBrush() : reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 ) );
 			}
 			EndPaint( hWnd, &ps );
 			break;
@@ -309,6 +320,13 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
+		case WM_INITMENUPOPUP: {
+			if ( nullptr != vuplayer ) {
+				const HMENU menu = reinterpret_cast<HMENU>( wParam );
+				vuplayer->OnInitMenuPopup( menu );
+			}
+			break;
+		}
 		case WM_HOTKEY: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnHotkey( wParam );
@@ -322,8 +340,30 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			break;
 		}
 		case WM_SYSCOLORCHANGE: {
-			if ( nullptr != vuplayer ) {
+			// The high contrast state might have changed, which affects whether dark mode is active.
+			if ( DarkMode::Refresh() ) {
+				if ( nullptr != vuplayer ) {
+					vuplayer->OnDarkModeChange();
+				} else {
+					DarkMode::ApplyToMainWindow( hWnd );
+				}
+			} else if ( nullptr != vuplayer ) {
 				vuplayer->OnSysColorChange();
+			}
+			break;
+		}
+		case WM_SETTINGCHANGE: {
+			// Handle changes to the Windows app colour scheme.
+			if ( DarkMode::IsColourSchemeChange( lParam ) ) {
+				if ( DarkMode::Refresh() ) {
+					if ( nullptr != vuplayer ) {
+						vuplayer->OnDarkModeChange();
+					} else {
+						DarkMode::ApplyToMainWindow( hWnd );
+					}
+				} else if ( nullptr != vuplayer ) {
+					vuplayer->OnColourModeChange();
+				}
 			}
 			break;
 		}
@@ -444,6 +484,7 @@ INT_PTR CALLBACK About( HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam )
 				const std::wstring bassVersion = vuplayer->GetBassVersion();
 				SetDlgItemText( hDlg, IDC_ABOUT_BASSVERSION, bassVersion.c_str() );
 			}
+			DarkMode::ApplyToDialog( hDlg );
 			return (INT_PTR)TRUE;
 		}
 		case WM_NOTIFY: {

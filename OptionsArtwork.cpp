@@ -1,6 +1,7 @@
 #include "OptionsArtwork.h"
 
 #include "resource.h"
+#include "DarkMode.h"
 #include "Utility.h"
 #include "VUPlayer.h"
 
@@ -112,7 +113,13 @@ void OptionsArtwork::OnDrawArtwork( DRAWITEMSTRUCT* drawItemStruct )
 		const int clientHeight = drawItemStruct->rcItem.bottom - drawItemStruct->rcItem.top;
 		Gdiplus::Rect clientRect( 0, 0, clientWidth, clientHeight );
 		Gdiplus::Graphics graphics( drawItemStruct->hDC );
-		graphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::White ) );
+		if ( DarkMode::IsActive() ) {
+			Gdiplus::Color backgroundColour;
+			backgroundColour.SetFromCOLORREF( DarkMode::GetBackgroundColour() );
+			graphics.Clear( backgroundColour );
+		} else {
+			graphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::White ) );
+		}
 		if ( m_Artwork ) {
 			const UINT bitmapWidth = m_Artwork->GetWidth();
 			const UINT bitmapHeight = m_Artwork->GetHeight();

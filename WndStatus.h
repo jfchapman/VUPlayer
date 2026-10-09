@@ -35,9 +35,18 @@ public:
 	// Refreshes the status bar contents.
 	void Refresh();
 
+	// Called when the system colours (or dark mode state) change.
+	void OnSysColorChange();
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK StatusProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
+	// Paints the status bar when dark mode is active.
+	void OnPaintDarkMode();
+
+	// Draws the dark mode status bar onto the 'dc', using the 'clientRect'.
+	void DrawDarkMode( const HDC dc, const RECT& clientRect );
 
 	// Module instance handle.
 	HINSTANCE m_hInst;

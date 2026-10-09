@@ -352,6 +352,8 @@ copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\swresample-6.dll" $(OutDir)swresamp
     <ClInclude Include="WndRebar.h" />
     <ClInclude Include="WndRebarItem.h" />
     <ClInclude Include="WndSplit.h" />
+    <ClInclude Include="DarkMode.h" />
+    <ClInclude Include="WndListScrollbar.h" />
     <ClInclude Include="WndStatus.h" />
     <ClInclude Include="WndTaskbar.h" />
     <ClInclude Include="WndToolbar.h" />
@@ -527,6 +529,8 @@ copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\swresample-6.dll" $(OutDir)swresamp
     </ClCompile>
     <ClCompile Include="WndRebar.cpp" />
     <ClCompile Include="WndSplit.cpp" />
+    <ClCompile Include="DarkMode.cpp" />
+    <ClCompile Include="WndListScrollbar.cpp" />
     <ClCompile Include="WndStatus.cpp" />
     <ClCompile Include="WndTaskbar.cpp" />
     <ClCompile Include="WndToolbar.cpp" />
@@ -593,6 +597,7 @@ copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\swresample-6.dll" $(OutDir)swresamp
     <Image Include="res\pause.ico" />
     <Image Include="res\pitch.ico" />
     <Image Include="res\placeholder.png" />
+    <Image Include="res\placeholder_dark.png" />
     <Image Include="res\play.ico" />
     <Image Include="res\playlist.ico" />
     <Image Include="res\previous.ico" />

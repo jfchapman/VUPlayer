@@ -1,6 +1,7 @@
 #include "WndToolbar.h"
 
 #include "resource.h"
+#include "DarkMode.h"
 #include "Utility.h"
 #include "VUPlayer.h"
 
@@ -197,6 +198,36 @@ std::optional<LRESULT> WndToolbar::OnCustomDraw( LPNMCUSTOMDRAW nmcd )
 			colour.SetFromCOLORREF( m_BackgroundColour );
 			graphics.Clear( colour );
 			result = CDRF_SKIPDEFAULT;
+		} else if ( DarkMode::IsActive() ) {
+			// In dark mode, the hot & checked button backgrounds are drawn here, as the (light) themed button backgrounds are too bright.
+			// The colours follow the same scheme as the light theme, by blending the button colour into the background colour.
+			if ( CDDS_PREPAINT == nmcd->dwDrawStage ) {
+				result = CDRF_NOTIFYITEMDRAW;
+			} else if ( CDDS_ITEMPREPAINT == nmcd->dwDrawStage ) {
+				const bool checked = ( ( CDIS_CHECKED | CDIS_SELECTED ) & nmcd->uItemState );
+				const bool hot = ( CDIS_HOT & nmcd->uItemState );
+				if ( checked || hot ) {
+					const auto blend = [ this ] ( const float amount ) {
+						const auto component = [ amount ] ( const BYTE background, const BYTE button ) {
+							return static_cast<BYTE>( background + ( button - background ) * amount );
+						};
+						return RGB( component( GetRValue( m_BackgroundColour ), GetRValue( m_ButtonColour ) ),
+							component( GetGValue( m_BackgroundColour ), GetGValue( m_ButtonColour ) ),
+							component( GetBValue( m_BackgroundColour ), GetBValue( m_ButtonColour ) ) );
+					};
+					const COLORREF fillColour = blend( checked ? 0.2f : 0.1f );
+					const COLORREF borderColour = blend( checked ? 0.4f : 0.2f );
+					if ( const HBRUSH brush = CreateSolidBrush( fillColour ); nullptr != brush ) {
+						FillRect( nmcd->hdc, &nmcd->rc, brush );
+						DeleteObject( brush );
+					}
+					if ( const HBRUSH brush = CreateSolidBrush( borderColour ); nullptr != brush ) {
+						FrameRect( nmcd->hdc, &nmcd->rc, brush );
+						DeleteObject( brush );
+					}
+				}
+				result = CDRF_DODEFAULT | TBCDRF_NOBACKGROUND | TBCDRF_NOEDGES;
+			}
 		}
 	}
 	return result;

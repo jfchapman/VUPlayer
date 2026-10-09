@@ -5,6 +5,7 @@
 #include <optional>
 #include <array>
 
+#include "DarkMode.h"
 #include "Database.h"
 #include "Library.h"
 #include "Playlist.h"
@@ -12,7 +13,9 @@
 // MOD music fadeout flag.
 static const DWORD VUPLAYER_MUSIC_FADEOUT = 0x80000000;
 
-// Application settings
+// Application settings.
+// Note that user interface colour settings are stored separately for light & dark modes, based on whether dark mode is currently active.
+// (The taskbar button colour is the exception, as this is drawn by Windows according to the Windows colour mode).
 class Settings
 {
 public:
@@ -174,6 +177,13 @@ public:
 	void SetPlaylistSettings( const PlaylistColumns& columns, const bool showStatusIcon, const LOGFONT& font,
 		const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF statusIconColour );
 
+	// Returns the playlist control colours.
+	// 'fontColour' - out, list control font colour.
+	// 'backgroundColour' - out, list control background colour.
+	// 'highlightColour' - out, list control highlight colour.
+	// 'statusIconColour' - out, - list control status icon colour.
+	void GetPlaylistColours( COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& statusIconColour );
+
 	// Returns the tree control settings.
 	// 'font' - out, tree control font.
 	// 'fontColour' - out, tree control font colour.
@@ -215,6 +225,13 @@ public:
 	void SetTreeSettings( const LOGFONT& font, const COLORREF fontColour, const COLORREF backgroundColour, const COLORREF highlightColour, const COLORREF iconColour,
 		const bool showFavourites, const bool showStreams, const bool showAllTracks, const bool showArtists, const bool showAlbums, const bool showGenres, const bool showYears,
 		const bool showPublishers, const bool showComposers, const bool showConductors, const bool showHidden );
+
+	// Returns the tree control colours.
+	// 'fontColour' - out, tree control font colour.
+	// 'backgroundColour' - out, tree control background colour.
+	// 'highlightColour' - out, tree control highlight colour.
+	// 'iconColour' - out, tree control icon colour.
+	void GetTreeColours( COLORREF& fontColour, COLORREF& backgroundColour, COLORREF& highlightColour, COLORREF& iconColour );
 
 	// Gets the playlists.
 	Playlists GetPlaylists();
@@ -312,6 +329,16 @@ public:
 	// Sets the startup split width.
 	void SetSplitWidth( const int width );
 
+	// Returns the dark mode preference.
+	DarkMode::Mode GetDarkMode();
+
+	// Sets the dark mode preference.
+	void SetDarkMode( const DarkMode::Mode mode );
+
+	// Resets all user interface colours for the current (light or dark) mode to their defaults.
+	// The colours for the other mode are not affected.
+	void ResetColours();
+
 	// Returns the startup volume level.
 	float GetVolume();
 
@@ -353,6 +380,9 @@ public:
 	// 'fontColour' - font colour.
 	// 'showRemaining' - true to display remaining time, false for elapsed time.
 	void SetCounterSettings( const LOGFONT& font, const COLORREF fontColour, const bool showRemaining );
+
+	// Returns the counter font colour.
+	COLORREF GetCounterFontColour();
 
 	// Gets the output settings.
 	// 'deviceName' - out, device name (or an empty string for the default device).
@@ -632,6 +662,12 @@ public:
 	// Sets the taskbar thumbnail preview toolbar button colour.
 	void SetTaskbarButtonColour( const COLORREF colour );
 
+	// Returns whether the taskbar thumbnail preview toolbar button colour is chosen automatically, based on the Windows colour mode.
+	bool GetTaskbarButtonAutoColour();
+
+	// Sets whether the taskbar thumbnail preview toolbar button colour is chosen automatically, based on the Windows colour mode.
+	void SetTaskbarButtonAutoColour( const bool autoColour );
+
 	// Returns whether to show a progress bar in the taskbar button.
 	bool GetTaskbarShowProgress();
 
@@ -745,6 +781,16 @@ private:
 
 	// Returns whether a GUID string is valid.
 	static bool IsValidGUID( const std::string& guid );
+
+	// Returns the setting name to use for the colour setting 'name', based on whether dark mode is active.
+	// Light mode colours use the original setting names (so that existing settings are preserved), dark mode colours use a 'Dark' suffix.
+	static std::string ColourSettingName( const std::string& name );
+
+	// Returns the default colour to use, based on whether dark mode is active.
+	static COLORREF DefaultColour( const COLORREF lightColour, const COLORREF darkColour );
+
+	// Removes the setting 'name' from the database.
+	void RemoveSetting( const std::string& name );
 
 	// Returns the value of the setting 'name', or nullopt if the setting is not in the database.
 	template <typename T>

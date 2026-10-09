@@ -1,6 +1,7 @@
 #include "WndTrackbar.h"
 
 #include "resource.h"
+#include "DarkMode.h"
 #include "Utility.h"
 #include "VUPlayer.h"
 #include "windowsx.h"
@@ -302,7 +303,11 @@ std::optional<LRESULT> WndTrackbar::OnCustomDraw( LPNMCUSTOMDRAW nmcd )
 		if ( CDDS_PREPAINT == nmcd->dwDrawStage ) {
 			result = CDRF_NOTIFYITEMDRAW;
 		} else if ( CDDS_ITEMPREPAINT == nmcd->dwDrawStage ) {
-			if ( TBCD_THUMB == nmcd->dwItemSpec ) {
+			if ( ( TBCD_CHANNEL == nmcd->dwItemSpec ) && DarkMode::IsActive() ) {
+				// In dark mode, draw the channel with a border, in the same style as the light themed channel.
+				DarkMode::DrawTrackbarChannel( nmcd->hdc, nmcd->rc );
+				result = CDRF_SKIPDEFAULT;
+			} else if ( TBCD_THUMB == nmcd->dwItemSpec ) {
 				Gdiplus::Graphics graphics( nmcd->hdc );
 				Gdiplus::Color colour;
 				colour.SetFromCOLORREF( GetThumbColour( nmcd->rc ) );
@@ -371,18 +376,19 @@ COLORREF WndTrackbar::GetBackgroundColour() const
 COLORREF WndTrackbar::GetThumbColour( const RECT& thumbRect ) const
 {
 	COLORREF colour = m_ThumbColour;
+	const bool darkMode = DarkMode::IsActive();
 	if ( IsWindowEnabled( m_hTrackbarWnd ) ) {
 		if ( m_hTrackbarWnd == GetCapture() ) {
-			colour = GetSysColor( COLOR_SCROLLBAR );
+			colour = darkMode ? DarkMode::GetTrackbarChannelColour() : GetSysColor( COLOR_SCROLLBAR );
 		} else {
 			if ( POINT pt = {}; GetCursorPos( &pt ) && MapWindowPoints( nullptr, m_hTrackbarWnd, &pt, 1 ) ) {
 				if ( PtInRect( &thumbRect, pt ) ) {
-					colour = 0;
+					colour = darkMode ? DarkMode::GetTrackbarHotThumbColour() : 0;
 				}
 			}
 		}
 	} else {
-		colour = GetSysColor( COLOR_SCROLLBAR );
+		colour = darkMode ? DarkMode::GetTrackbarDisabledThumbColour() : GetSysColor( COLOR_SCROLLBAR );
 	}
 	return colour;
 }
