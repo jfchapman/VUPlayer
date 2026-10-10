@@ -91,7 +91,16 @@ void SpectrumAnalyser::OnPaint()
 				GetOutput().GetFFTData( fft );
 				const size_t fftSize = fft.size();
 				if ( fftSize > 0 ) {
-					const long width = static_cast<long>( targetSize.width );
+					// The device context already scales from DIPs to pixels, so lay the bars out in whole pixels (and convert back to DIPs when drawing),
+					// keeping bar edges crisp with a gap that is half the bar width (to the nearest pixel).
+					FLOAT dpiX = 96;
+					FLOAT dpiY = 96;
+					deviceContext->GetDpi( &dpiX, &dpiY );
+					const FLOAT scaling = dpiX / 96;
+					const long barWidth = std::max( 1l, std::lround( 2 * scaling ) );
+					const long gapWidth = std::max( 1l, barWidth / 2 );
+
+					const long width = std::lround( targetSize.width * scaling );
 
 					if ( m_Values.size() != static_cast<size_t>( width ) ) {
 						m_Values.resize( width, targetSize.height );
@@ -99,9 +108,12 @@ void SpectrumAnalyser::OnPaint()
 
 					const float decay = targetSize.height / s_DecayFactor;
 
-					const long barWidth = static_cast<long>( 3 * GetDPIScalingFactor() );
-					for ( long pos = 1; ( pos < width ); pos += barWidth ) {
-						const size_t bin = std::lround( pow( static_cast<float>( fftSize - 1 ), pow( ( static_cast<float>( pos ) / width ), 0.38 ) ) );
+					// Non-linear frequency scale, to give more of the width to the lower frequencies.
+					// An exponent of 0.36 (or less) ensures that no two bars show the same FFT bin, at the maximum visual width, for 100-200% DPI scaling.
+					constexpr double kScaleExponent = 0.36;
+
+					for ( long pos = 0; ( pos < width ); pos += ( barWidth + gapWidth ) ) {
+						const size_t bin = std::lround( pow( static_cast<float>( fftSize - 1 ), pow( ( static_cast<float>( pos ) / width ), kScaleExponent ) ) );
 						const float value = fft.at( bin );
 						float y = ( -targetSize.height / 4.0f ) * ( ( value < 0.0001 ) ? -4.0f : log10f( value ) );
 
@@ -118,7 +130,7 @@ void SpectrumAnalyser::OnPaint()
 							y = m_Values.at( pos );
 						}
 
-						const D2D1_RECT_F rect = D2D1::RectF( static_cast<FLOAT>( pos - 1 ) /*left*/, y /*top*/, static_cast<FLOAT>( pos + 1 ) /*right*/, targetSize.height );
+						const D2D1_RECT_F rect = D2D1::RectF( pos / scaling /*left*/, y /*top*/, ( pos + barWidth ) / scaling /*right*/, targetSize.height );
 						deviceContext->FillRectangle( rect, m_Colour.Get() );
 					}
 				}

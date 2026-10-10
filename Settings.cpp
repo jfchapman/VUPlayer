@@ -855,14 +855,17 @@ void Settings::SetVUMeterDecay( const float decay )
 
 void Settings::GetSpectrumAnalyserSettings( COLORREF& base, COLORREF& peak, COLORREF& background )
 {
-	constexpr COLORREF kBase = RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ );
-	constexpr COLORREF kPeak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
-	constexpr COLORREF kBackground = RGB( 0x00 /*red*/, 0x00 /*green*/, 0x00 /*blue*/ );
+	constexpr COLORREF kBase = RGB( 0x00 /*red*/, 0x3e /*green*/, 0x92 /*blue*/ );
+	constexpr COLORREF kPeak = RGB( 0x4c /*red*/, 0xc2 /*green*/, 0xff /*blue*/ );
+	constexpr COLORREF kBackground = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
+	constexpr COLORREF kDarkModeBase = RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ );
+	constexpr COLORREF kDarkModePeak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
+	constexpr COLORREF kDarkModeBackground = RGB( 0x00 /*red*/, 0x00 /*green*/, 0x00 /*blue*/ );
 
-	// Note that the default colours are the same for light & dark modes.
-	base = ReadSetting<COLORREF>( ColourSettingName( "SpectrumAnalyserBase" ) ).value_or( kBase );
-	peak = ReadSetting<COLORREF>( ColourSettingName( "SpectrumAnalyserPeak" ) ).value_or( kPeak );
-	background = ReadSetting<COLORREF>( ColourSettingName( "SpectrumAnalyserBackground" ) ).value_or( kBackground );
+	// Light mode uses a blue to light blue gradient on a white background, dark mode uses a blue to white gradient on a black background.
+	base = ReadSetting<COLORREF>( ColourSettingName( "SpectrumAnalyserBase" ) ).value_or( DefaultColour( kBase, kDarkModeBase ) );
+	peak = ReadSetting<COLORREF>( ColourSettingName( "SpectrumAnalyserPeak" ) ).value_or( DefaultColour( kPeak, kDarkModePeak ) );
+	background = ReadSetting<COLORREF>( ColourSettingName( "SpectrumAnalyserBackground" ) ).value_or( DefaultColour( kBackground, kDarkModeBackground ) );
 }
 
 void Settings::SetSpectrumAnalyserSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background )
@@ -874,14 +877,17 @@ void Settings::SetSpectrumAnalyserSettings( const COLORREF& base, const COLORREF
 
 void Settings::GetPeakMeterSettings( COLORREF& base, COLORREF& peak, COLORREF& background )
 {
-	constexpr COLORREF kBase = RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ );
-	constexpr COLORREF kPeak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
-	constexpr COLORREF kBackground = RGB( 0 /*red*/, 0 /*green*/, 0 /*blue*/ );
+	constexpr COLORREF kBase = RGB( 0x00 /*red*/, 0x3e /*green*/, 0x92 /*blue*/ );
+	constexpr COLORREF kPeak = RGB( 0x4c /*red*/, 0xc2 /*green*/, 0xff /*blue*/ );
+	constexpr COLORREF kBackground = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
+	constexpr COLORREF kDarkModeBase = RGB( 0 /*red*/, 122 /*green*/, 217 /*blue*/ );
+	constexpr COLORREF kDarkModePeak = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
+	constexpr COLORREF kDarkModeBackground = RGB( 0x00 /*red*/, 0x00 /*green*/, 0x00 /*blue*/ );
 
-	// Note that the default colours are the same for light & dark modes.
-	base = ReadSetting<COLORREF>( ColourSettingName( "PeakMeterBase" ) ).value_or( kBase );
-	peak = ReadSetting<COLORREF>( ColourSettingName( "PeakMeterPeak" ) ).value_or( kPeak );
-	background = ReadSetting<COLORREF>( ColourSettingName( "PeakMeterBackground" ) ).value_or( kBackground );
+	// Light mode uses a blue to light blue gradient on a white background, dark mode uses a blue to white gradient on a black background.
+	base = ReadSetting<COLORREF>( ColourSettingName( "PeakMeterBase" ) ).value_or( DefaultColour( kBase, kDarkModeBase ) );
+	peak = ReadSetting<COLORREF>( ColourSettingName( "PeakMeterPeak" ) ).value_or( DefaultColour( kPeak, kDarkModePeak ) );
+	background = ReadSetting<COLORREF>( ColourSettingName( "PeakMeterBackground" ) ).value_or( DefaultColour( kBackground, kDarkModeBackground ) );
 }
 
 void Settings::SetPeakMeterSettings( const COLORREF& base, const COLORREF& peak, const COLORREF& background )
