@@ -1718,27 +1718,15 @@ void WndList::OnCommandAddFolder()
 	WCHAR title[ MAX_PATH ] = {};
 	LoadString( m_hInst, IDS_ADDFOLDERTOPLAYLIST_TITLE, title, MAX_PATH );
 
-	WCHAR buffer[ MAX_PATH ] = {};
-	BROWSEINFO bi = {};
-	bi.hwndOwner = m_hWnd;
-	bi.lpszTitle = title;
-	bi.pszDisplayName = buffer;
-	bi.ulFlags = BIF_NEWDIALOGSTYLE | BIF_NONEWFOLDERBUTTON;
-	LPITEMIDLIST idlist = SHBrowseForFolder( &bi );
-	if ( nullptr != idlist ) {
-		const DWORD pathSize = 1024;
-		WCHAR path[ pathSize ] = {};
-		if ( TRUE == SHGetPathFromIDListEx( idlist, path, pathSize, GPFIDL_DEFAULT ) ) {
-			const bool addToExisting = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
-			if ( !addToExisting ) {
-				VUPlayer* vuplayer = VUPlayer::Get();
-				if ( nullptr != vuplayer ) {
-					m_Playlist = vuplayer->NewPlaylist();
-				}
+	if ( const std::filesystem::path folder = ChooseFolder( m_hWnd, title, {} ); !folder.empty() ) {
+		const bool addToExisting = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
+		if ( !addToExisting ) {
+			VUPlayer* vuplayer = VUPlayer::Get();
+			if ( nullptr != vuplayer ) {
+				m_Playlist = vuplayer->NewPlaylist();
 			}
-			AddFolderToPlaylist( path );
 		}
-		CoTaskMemFree( idlist );
+		AddFolderToPlaylist( folder.wstring() );
 	}
 }
 
@@ -1747,68 +1735,43 @@ void WndList::OnCommandAddFiles()
 	WCHAR title[ MAX_PATH ] = {};
 	LoadString( m_hInst, IDS_ADDFILES_TITLE, title, MAX_PATH );
 
-	WCHAR filter[ MAX_PATH ] = {};
-	LoadString( m_hInst, IDS_ADDFILES_FILTERAUDIO, filter, MAX_PATH );
-	const std::wstring filter1( filter );
+	WCHAR filterAudio[ MAX_PATH ] = {};
+	LoadString( m_hInst, IDS_ADDFILES_FILTERAUDIO, filterAudio, MAX_PATH );
 	std::set<std::wstring> fileTypes = m_Output.GetAllSupportedFileExtensions();
 
 	std::set<std::wstring> playlistTypes = Playlist::GetSupportedPlaylistExtensions();
 	fileTypes.merge( playlistTypes );
 
-	std::wstring filter2;
+	std::wstring audioPatterns;
 	for ( const auto& iter : fileTypes ) {
-		filter2 += L"*." + iter + L";";
+		audioPatterns += L"*." + iter + L";";
 	}
-	if ( !filter2.empty() ) {
-		filter2.pop_back();
+	if ( !audioPatterns.empty() ) {
+		audioPatterns.pop_back();
 	}
-	LoadString( m_hInst, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
-	const std::wstring filter3( filter );
-	const std::wstring filter4( L"*.*" );
-	std::vector<WCHAR> filterStr;
-	filterStr.reserve( MAX_PATH );
-	filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter3.begin(), filter3.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter4.begin(), filter4.end() );
-	filterStr.push_back( 0 );
-	filterStr.push_back( 0 );
+	WCHAR filterAll[ MAX_PATH ] = {};
+	LoadString( m_hInst, IDS_CHOOSE_FILTERALL, filterAll, MAX_PATH );
+	const FileFilters filters = {
+		{ filterAudio, audioPatterns },
+		{ filterAll, L"*.*" }
+	};
 
 	const std::string initialFolderSetting = "AddFiles";
 	const std::wstring initialFolder = m_Settings.GetLastFolder( initialFolderSetting );
 
-	const DWORD bufferSize = 32768;
-	std::vector<WCHAR> buffer( bufferSize );
-	OPENFILENAME ofn = {};
-	ofn.lStructSize = sizeof( OPENFILENAME );
-	ofn.hwndOwner = m_hWnd;
-	ofn.lpstrTitle = title;
-	ofn.lpstrFilter = &filterStr[ 0 ];
-	ofn.nFilterIndex = 1;
-	ofn.Flags = OFN_FILEMUSTEXIST | OFN_ALLOWMULTISELECT | OFN_EXPLORER;
-	ofn.lpstrFile = buffer.data();
-	ofn.nMaxFile = bufferSize;
-	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
-	if ( ( FALSE != GetOpenFileName( &ofn ) ) && ( ofn.nFileOffset > 0 ) ) {
-		std::wstring foldername( ofn.lpstrFile, ofn.nFileOffset - 1 );
-		foldername += L"\\";
-		WCHAR* filenameOffset = ofn.lpstrFile + ofn.nFileOffset;
-		while ( 0 != *filenameOffset ) {
-			const bool addToExisting = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
-			if ( !addToExisting ) {
-				VUPlayer* vuplayer = VUPlayer::Get();
-				if ( nullptr != vuplayer ) {
-					m_Playlist = vuplayer->NewPlaylist();
-				}
+	const std::vector<std::filesystem::path> filenames = ChooseFilesToOpen( m_hWnd, title, filters, initialFolder );
+	for ( const auto& filename : filenames ) {
+		const bool addToExisting = ( m_Playlist && ( ( Playlist::Type::User == m_Playlist->GetType() ) || ( Playlist::Type::All == m_Playlist->GetType() ) || ( Playlist::Type::Favourites == m_Playlist->GetType() ) ) );
+		if ( !addToExisting ) {
+			VUPlayer* vuplayer = VUPlayer::Get();
+			if ( nullptr != vuplayer ) {
+				m_Playlist = vuplayer->NewPlaylist();
 			}
-			const std::wstring filename = foldername + filenameOffset;
-			AddFileToPlaylist( filename );
-			filenameOffset += wcslen( filenameOffset ) + 1;
 		}
-		m_Settings.SetLastFolder( initialFolderSetting, std::wstring( ofn.lpstrFile ).substr( 0, ofn.nFileOffset ) );
+		AddFileToPlaylist( filename.wstring() );
+	}
+	if ( !filenames.empty() ) {
+		m_Settings.SetLastFolder( initialFolderSetting, filenames.front().parent_path().wstring() );
 	}
 }
 

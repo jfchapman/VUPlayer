@@ -10,6 +10,7 @@
 #include "objbase.h"
 #include "uiautomation.h"
 #include <shellapi.h>
+#include <wrl/client.h>
 
 #include <array>
 #include <chrono>
@@ -516,44 +517,134 @@ std::string CalculateHash( const std::string& value, const ALG_ID algorithm, con
 
 std::filesystem::path ChooseArtwork( const HINSTANCE instance, const HWND hwnd, const std::filesystem::path& initialFolder )
 {
-	std::filesystem::path result;
-
 	WCHAR title[ MAX_PATH ] = {};
 	LoadString( instance, IDS_CHOOSEARTWORK_TITLE, title, MAX_PATH );
-	WCHAR filter[ MAX_PATH ] = {};
-	LoadString( instance, IDS_CHOOSEARTWORK_FILTERIMAGES, filter, MAX_PATH );
-	const std::wstring filter1( filter );
-	const std::wstring filter2( L"*.bmp;*.jpg;*.jpeg;*.png;*.gif;*.tiff;*.tif" );
-	LoadString( instance, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
-	const std::wstring filter3( filter );
-	const std::wstring filter4( L"*.*" );
-	std::vector<WCHAR> filterStr;
-	filterStr.reserve( MAX_PATH );
-	filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter3.begin(), filter3.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter4.begin(), filter4.end() );
-	filterStr.push_back( 0 );
-	filterStr.push_back( 0 );
+	WCHAR filterImages[ MAX_PATH ] = {};
+	LoadString( instance, IDS_CHOOSEARTWORK_FILTERIMAGES, filterImages, MAX_PATH );
+	WCHAR filterAll[ MAX_PATH ] = {};
+	LoadString( instance, IDS_CHOOSE_FILTERALL, filterAll, MAX_PATH );
+	const FileFilters filters = {
+		{ filterImages, L"*.bmp;*.jpg;*.jpeg;*.png;*.gif;*.tiff;*.tif" },
+		{ filterAll, L"*.*" }
+	};
+	return ChooseFileToOpen( hwnd, title, filters, initialFolder );
+}
 
-	WCHAR buffer[ MAX_PATH ] = {};
-	OPENFILENAME ofn = {};
-	ofn.lStructSize = sizeof( OPENFILENAME );
-	ofn.hwndOwner = hwnd;
-	ofn.lpstrTitle = title;
-	ofn.lpstrFilter = filterStr.data();
-	ofn.nFilterIndex = 1;
-	ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
-	ofn.lpstrFile = buffer;
-	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
-	if ( FALSE != GetOpenFileName( &ofn ) ) {
-		result = ofn.lpstrFile;
+// Creates a file chooser dialog of type 'T' (IFileOpenDialog or IFileSaveDialog), from the class ID 'clsid'.
+// 'title' - dialog title (or an empty string for the default title).
+// 'filters' - file filters (the first filter is initially selected).
+// 'initialFolder' - initial folder location (or an empty path for the default location).
+// 'options' - additional options to set, in addition to the dialog defaults.
+// Returns the dialog, or nullptr on failure.
+template <typename T>
+static Microsoft::WRL::ComPtr<T> CreateFileDialog( const CLSID& clsid, const std::wstring& title, const FileFilters& filters, const std::filesystem::path& initialFolder, const FILEOPENDIALOGOPTIONS options )
+{
+	Microsoft::WRL::ComPtr<T> dialog;
+	if ( SUCCEEDED( CoCreateInstance( clsid, nullptr /*outer*/, CLSCTX_INPROC_SERVER, IID_PPV_ARGS( &dialog ) ) ) ) {
+		FILEOPENDIALOGOPTIONS currentOptions = 0;
+		if ( SUCCEEDED( dialog->GetOptions( &currentOptions ) ) ) {
+			dialog->SetOptions( currentOptions | FOS_FORCEFILESYSTEM | options );
+		}
+		if ( !title.empty() ) {
+			dialog->SetTitle( title.c_str() );
+		}
+		if ( !filters.empty() ) {
+			std::vector<COMDLG_FILTERSPEC> filterSpecs;
+			filterSpecs.reserve( filters.size() );
+			for ( const auto& [description, patterns] : filters ) {
+				filterSpecs.push_back( { description.c_str(), patterns.c_str() } );
+			}
+			dialog->SetFileTypes( static_cast<UINT>( filterSpecs.size() ), filterSpecs.data() );
+			dialog->SetFileTypeIndex( 1 );
+		}
+		if ( !initialFolder.empty() ) {
+			Microsoft::WRL::ComPtr<IShellItem> initialItem;
+			if ( SUCCEEDED( SHCreateItemFromParsingName( initialFolder.c_str(), nullptr /*bindContext*/, IID_PPV_ARGS( &initialItem ) ) ) ) {
+				dialog->SetFolder( initialItem.Get() );
+			}
+		}
 	}
+	return dialog;
+}
 
+// Returns the file system path of the shell 'item', or an empty path on failure.
+static std::filesystem::path GetShellItemPath( IShellItem* item )
+{
+	std::filesystem::path result;
+	LPWSTR path = nullptr;
+	if ( ( nullptr != item ) && SUCCEEDED( item->GetDisplayName( SIGDN_FILESYSPATH, &path ) ) ) {
+		result = path;
+		CoTaskMemFree( path );
+	}
+	return result;
+}
+
+// Shows the file chooser 'dialog' and returns the chosen item path, or an empty path on failure.
+static std::filesystem::path ShowFileDialog( IFileDialog* dialog, const HWND hwnd )
+{
+	std::filesystem::path result;
+	if ( ( nullptr != dialog ) && SUCCEEDED( dialog->Show( hwnd ) ) ) {
+		Microsoft::WRL::ComPtr<IShellItem> item;
+		if ( SUCCEEDED( dialog->GetResult( &item ) ) ) {
+			result = GetShellItemPath( item.Get() );
+		}
+	}
+	return result;
+}
+
+std::filesystem::path ChooseFolder( const HWND hwnd, const std::wstring& title, const std::filesystem::path& initialFolder )
+{
+	const auto dialog = CreateFileDialog<IFileOpenDialog>( CLSID_FileOpenDialog, title, {} /*filters*/, initialFolder, FOS_PICKFOLDERS | FOS_PATHMUSTEXIST );
+	return ShowFileDialog( dialog.Get(), hwnd );
+}
+
+std::filesystem::path ChooseFileToOpen( const HWND hwnd, const std::wstring& title, const FileFilters& filters, const std::filesystem::path& initialFolder )
+{
+	const auto dialog = CreateFileDialog<IFileOpenDialog>( CLSID_FileOpenDialog, title, filters, initialFolder, FOS_FILEMUSTEXIST );
+	return ShowFileDialog( dialog.Get(), hwnd );
+}
+
+std::vector<std::filesystem::path> ChooseFilesToOpen( const HWND hwnd, const std::wstring& title, const FileFilters& filters, const std::filesystem::path& initialFolder )
+{
+	std::vector<std::filesystem::path> result;
+	const auto dialog = CreateFileDialog<IFileOpenDialog>( CLSID_FileOpenDialog, title, filters, initialFolder, FOS_FILEMUSTEXIST | FOS_ALLOWMULTISELECT );
+	if ( dialog && SUCCEEDED( dialog->Show( hwnd ) ) ) {
+		Microsoft::WRL::ComPtr<IShellItemArray> items;
+		DWORD itemCount = 0;
+		if ( SUCCEEDED( dialog->GetResults( &items ) ) && SUCCEEDED( items->GetCount( &itemCount ) ) ) {
+			result.reserve( itemCount );
+			for ( DWORD itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+				Microsoft::WRL::ComPtr<IShellItem> item;
+				if ( SUCCEEDED( items->GetItemAt( itemIndex, &item ) ) ) {
+					if ( const auto path = GetShellItemPath( item.Get() ); !path.empty() ) {
+						result.push_back( path );
+					}
+				}
+			}
+		}
+	}
+	return result;
+}
+
+std::filesystem::path ChooseFileToSave( const HWND hwnd, const std::wstring& title, const FileFilters& filters, const std::filesystem::path& initialFolder,
+	const std::wstring& initialFilename, const std::wstring& defaultExtension, UINT* selectedFilter )
+{
+	std::filesystem::path result;
+	const auto dialog = CreateFileDialog<IFileSaveDialog>( CLSID_FileSaveDialog, title, filters, initialFolder, FOS_OVERWRITEPROMPT | FOS_PATHMUSTEXIST );
+	if ( dialog ) {
+		if ( !initialFilename.empty() ) {
+			dialog->SetFileName( initialFilename.c_str() );
+		}
+		if ( !defaultExtension.empty() ) {
+			dialog->SetDefaultExtension( defaultExtension.c_str() );
+		}
+		result = ShowFileDialog( dialog.Get(), hwnd );
+		if ( !result.empty() && ( nullptr != selectedFilter ) ) {
+			UINT filterIndex = 1;
+			dialog->GetFileTypeIndex( &filterIndex );
+			*selectedFilter = filterIndex;
+		}
+	}
 	return result;
 }
 

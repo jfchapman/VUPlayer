@@ -1186,50 +1186,30 @@ void WndTree::ImportPlaylist( const std::wstring& filename )
 		WCHAR title[ MAX_PATH ] = {};
 		LoadString( m_hInst, IDS_IMPORTPLAYLIST_TITLE, title, MAX_PATH );
 
-		WCHAR filter[ MAX_PATH ] = {};
-		LoadString( m_hInst, IDS_IMPORTPLAYLIST_FILTERPLAYLISTS, filter, MAX_PATH );
-		const std::wstring filter1( filter );
+		WCHAR filterPlaylists[ MAX_PATH ] = {};
+		LoadString( m_hInst, IDS_IMPORTPLAYLIST_FILTERPLAYLISTS, filterPlaylists, MAX_PATH );
 
 		const std::set<std::wstring> playlistFiletypes = Playlist::GetSupportedPlaylistExtensions();
-		std::wstring filter2;
+		std::wstring playlistPatterns;
 		for ( const auto& iter : playlistFiletypes ) {
-			filter2 += L"*." + iter + L";";
+			playlistPatterns += L"*." + iter + L";";
 		}
-		if ( !filter2.empty() ) {
-			filter2.pop_back();
+		if ( !playlistPatterns.empty() ) {
+			playlistPatterns.pop_back();
 		}
 
-		LoadString( m_hInst, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
-		const std::wstring filter3( filter );
-		const std::wstring filter4( L"*.*" );
-		std::vector<WCHAR> filterStr;
-		filterStr.reserve( MAX_PATH );
-		filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
-		filterStr.push_back( 0 );
-		filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
-		filterStr.push_back( 0 );
-		filterStr.insert( filterStr.end(), filter3.begin(), filter3.end() );
-		filterStr.push_back( 0 );
-		filterStr.insert( filterStr.end(), filter4.begin(), filter4.end() );
-		filterStr.push_back( 0 );
-		filterStr.push_back( 0 );
+		WCHAR filterAll[ MAX_PATH ] = {};
+		LoadString( m_hInst, IDS_CHOOSE_FILTERALL, filterAll, MAX_PATH );
+		const FileFilters filters = {
+			{ filterPlaylists, playlistPatterns },
+			{ filterAll, L"*.*" }
+		};
 
 		const std::wstring initialFolder = m_Settings.GetLastFolder( s_PlaylistFolderSetting );
 
-		WCHAR buffer[ MAX_PATH ] = {};
-		OPENFILENAME ofn = {};
-		ofn.lStructSize = sizeof( OPENFILENAME );
-		ofn.hwndOwner = m_hWnd;
-		ofn.lpstrTitle = title;
-		ofn.lpstrFilter = &filterStr[ 0 ];
-		ofn.nFilterIndex = 1;
-		ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
-		ofn.lpstrFile = buffer;
-		ofn.nMaxFile = MAX_PATH;
-		ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
-		if ( FALSE != GetOpenFileName( &ofn ) ) {
-			playlistFilename = ofn.lpstrFile;
-			m_Settings.SetLastFolder( s_PlaylistFolderSetting, playlistFilename.substr( 0, ofn.nFileOffset ) );
+		if ( const std::filesystem::path chosenFilename = ChooseFileToOpen( m_hWnd, title, filters, initialFolder ); !chosenFilename.empty() ) {
+			playlistFilename = chosenFilename.wstring();
+			m_Settings.SetLastFolder( s_PlaylistFolderSetting, chosenFilename.parent_path().wstring() );
 		}
 	}
 
@@ -1253,24 +1233,14 @@ void WndTree::ExportSelectedPlaylist()
 		WCHAR title[ MAX_PATH ] = {};
 		LoadString( m_hInst, IDS_EXPORTPLAYLIST_TITLE, title, MAX_PATH );
 
-		WCHAR filter[ MAX_PATH ] = {};
-		LoadString( m_hInst, IDS_EXPORTPLAYLIST_FILTERM3U, filter, MAX_PATH );
-		const std::wstring filter1( filter );
-		const std::wstring filter2( L"*.m3u" );
-		LoadString( m_hInst, IDS_EXPORTPLAYLIST_FILTERPLS, filter, MAX_PATH );
-		const std::wstring filter3( filter );
-		const std::wstring filter4( L"*.pls" );
-		std::vector<WCHAR> filterStr;
-		filterStr.reserve( MAX_PATH );
-		filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
-		filterStr.push_back( 0 );
-		filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
-		filterStr.push_back( 0 );
-		filterStr.insert( filterStr.end(), filter3.begin(), filter3.end() );
-		filterStr.push_back( 0 );
-		filterStr.insert( filterStr.end(), filter4.begin(), filter4.end() );
-		filterStr.push_back( 0 );
-		filterStr.push_back( 0 );
+		WCHAR filterM3U[ MAX_PATH ] = {};
+		LoadString( m_hInst, IDS_EXPORTPLAYLIST_FILTERM3U, filterM3U, MAX_PATH );
+		WCHAR filterPLS[ MAX_PATH ] = {};
+		LoadString( m_hInst, IDS_EXPORTPLAYLIST_FILTERPLS, filterPLS, MAX_PATH );
+		const FileFilters filters = {
+			{ filterM3U, L"*.m3u" },
+			{ filterPLS, L"*.pls" }
+		};
 
 		std::wstring playlistName = playlist->GetName();
 		if ( Playlist::Type::Folder == playlist->GetType() ) {
@@ -1280,32 +1250,16 @@ void WndTree::ExportSelectedPlaylist()
 			}
 		}
 
-		WCHAR buffer[ MAX_PATH ] = {};
-		wcscpy_s( buffer, MAX_PATH, playlistName.c_str() );
-		std::set<WCHAR> invalidCharacters = { '\\', '/', ':', '*', '?', '"', '<', '>', '|' };
-		const size_t length = wcslen( buffer );
-		for ( size_t index = 0; index < length; index++ ) {
-			if ( invalidCharacters.end() != invalidCharacters.find( buffer[ index ] ) ) {
-				buffer[ index ] = '_';
-			}
-		}
+		WideStringReplaceInvalidFilenameCharacters( playlistName, L"_", true /*replaceFolderDelimiters*/ );
 
 		const std::wstring initialFolder = m_Settings.GetLastFolder( s_PlaylistFolderSetting );
 
-		OPENFILENAME ofn = {};
-		ofn.lStructSize = sizeof( OPENFILENAME );
-		ofn.hwndOwner = m_hWnd;
-		ofn.lpstrTitle = title;
-		ofn.lpstrFilter = &filterStr[ 0 ];
-		ofn.nFilterIndex = 1;
-		ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER;
-		ofn.lpstrFile = buffer;
-		ofn.nMaxFile = MAX_PATH;
-		ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
-		if ( FALSE != GetSaveFileName( &ofn ) ) {
-			const std::wstring fileExt = ( 2 == ofn.nFilterIndex ) ? L"pls" : L"m3u";
-			std::wstring filename = ofn.lpstrFile;
-			m_Settings.SetLastFolder( s_PlaylistFolderSetting, filename.substr( 0, ofn.nFileOffset ) );
+		UINT selectedFilter = 1;
+		const std::filesystem::path chosenFilename = ChooseFileToSave( m_hWnd, title, filters, initialFolder, playlistName, L"m3u", &selectedFilter );
+		if ( !chosenFilename.empty() ) {
+			const std::wstring fileExt = ( 2 == selectedFilter ) ? L"pls" : L"m3u";
+			std::wstring filename = chosenFilename.wstring();
+			m_Settings.SetLastFolder( s_PlaylistFolderSetting, chosenFilename.parent_path().wstring() );
 			if ( !filename.empty() ) {
 				const size_t delimiter = filename.find_last_of( '.' );
 				if ( std::wstring::npos == delimiter ) {

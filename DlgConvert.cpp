@@ -107,14 +107,6 @@ INT_PTR CALLBACK DlgConvert::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 	return FALSE;
 }
 
-int CALLBACK DlgConvert::BrowseCallbackProc( HWND hwnd, UINT uMsg, LPARAM /*lParam*/, LPARAM lpData )
-{
-	if ( BFFM_INITIALIZED == uMsg ) {
-		SendMessage( hwnd, BFFM_SETSELECTION, TRUE, lpData );
-	}
-	return 0;
-}
-
 DlgConvert::DlgConvert( const HINSTANCE instance, const HWND parent, Settings& settings, Handlers& handlers, const Playlist::Items& tracks, Playlist::Items& selectedTracks ) :
 	m_hInst( instance ),
 	m_hWnd( nullptr ),
@@ -269,31 +261,16 @@ void DlgConvert::ChooseFolder()
 	WCHAR title[ MAX_PATH ] = {};
 	LoadString( m_hInst, IDS_CONVERTFOLDER, title, MAX_PATH );
 
-	WCHAR buffer[ MAX_PATH ] = {};
 	std::wstring extractFolder;
 	std::wstring extractFilename;
 	bool extractToLibrary = false;
 	bool extractJoin = false;
 	m_Settings.GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
-	wcscpy_s( buffer, MAX_PATH, extractFolder.c_str() );
 
-	BROWSEINFO bi = {};
-	bi.hwndOwner = m_hWnd;
-	bi.lpszTitle = title;
-	bi.pszDisplayName = buffer;
-	bi.ulFlags = BIF_NEWDIALOGSTYLE | BIF_NONEWFOLDERBUTTON;
-	bi.lpfn = &BrowseCallbackProc;
-	bi.lParam = reinterpret_cast<LPARAM>( buffer );
-	LPITEMIDLIST idlist = SHBrowseForFolder( &bi );
-	if ( nullptr != idlist ) {
-		const DWORD pathSize = 1024;
-		WCHAR path[ pathSize ] = {};
-		if ( TRUE == SHGetPathFromIDListEx( idlist, path, pathSize, GPFIDL_DEFAULT ) ) {
-			extractFolder = path;
-			m_Settings.SetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
-			UpdateFolderControl();
-		}
-		CoTaskMemFree( idlist );
+	if ( const std::filesystem::path folder = ::ChooseFolder( m_hWnd, title, extractFolder ); !folder.empty() ) {
+		extractFolder = folder.wstring();
+		m_Settings.SetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
+		UpdateFolderControl();
 	}
 }
 
@@ -485,8 +462,6 @@ std::wstring DlgConvert::ChooseJoinFilename() const
 		LoadString( m_hInst, IDS_CONVERT_TRACKS, title, MAX_PATH );
 	}
 
-	WCHAR buffer[ MAX_PATH ] = {};
-
 	std::wstring defExt;
 	if ( m_SelectedEncoder ) {
 		const std::set<std::wstring> extensions = m_SelectedEncoder->GetSupportedFileExtensions();
@@ -498,18 +473,9 @@ std::wstring DlgConvert::ChooseJoinFilename() const
 	const std::string initialFolderSetting = "Join";
 	const std::wstring initialFolder = m_Settings.GetLastFolder( initialFolderSetting );
 
-	OPENFILENAME ofn = {};
-	ofn.lStructSize = sizeof( OPENFILENAME );
-	ofn.hwndOwner = m_hWnd;
-	ofn.lpstrTitle = title;
-	ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER;
-	ofn.lpstrDefExt = defExt.empty() ? nullptr : defExt.c_str();
-	ofn.lpstrFile = buffer;
-	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
-	if ( FALSE != GetSaveFileName( &ofn ) ) {
-		joinFilename = ofn.lpstrFile;
-		m_Settings.SetLastFolder( initialFolderSetting, joinFilename.substr( 0, ofn.nFileOffset ) );
+	if ( const std::filesystem::path filename = ChooseFileToSave( m_hWnd, title, {} /*filters*/, initialFolder, {} /*initialFilename*/, defExt ); !filename.empty() ) {
+		joinFilename = filename.wstring();
+		m_Settings.SetLastFolder( initialFolderSetting, filename.parent_path().wstring() );
 	}
 
 	return joinFilename;

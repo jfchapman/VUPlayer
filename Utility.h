@@ -140,12 +140,58 @@ bool AreRoughlyEqual( const float value1, const float value2, const float tolera
 // Returns a base64 encoded string if 'base64encode' is true, else the hex-encoded hash value.
 std::string CalculateHash( const std::string& value, const ALG_ID algorithm, const bool base64encode );
 
+// File chooser filter.
+struct FileFilter {
+	// Filter description.
+	std::wstring Description;
+	// Semicolon delimited wildcard patterns (e.g. "*.m3u;*.pls").
+	std::wstring Patterns;
+};
+
+// File chooser filters.
+using FileFilters = std::vector<FileFilter>;
+
+// Launches a file chooser for the selection of an existing file.
+// 'hwnd' - parent window handle.
+// 'title' - dialog title (or an empty string for the default title).
+// 'filters' - file filters (the first filter is initially selected).
+// 'initialFolder' - initial folder location (or an empty path for the default location).
+// Returns the file path on success, an empty path on failure.
+std::filesystem::path ChooseFileToOpen( const HWND hwnd, const std::wstring& title, const FileFilters& filters, const std::filesystem::path& initialFolder );
+
+// Launches a file chooser for the selection of one or more existing files.
+// 'hwnd' - parent window handle.
+// 'title' - dialog title (or an empty string for the default title).
+// 'filters' - file filters (the first filter is initially selected).
+// 'initialFolder' - initial folder location (or an empty path for the default location).
+// Returns the file paths on success, an empty list on failure.
+std::vector<std::filesystem::path> ChooseFilesToOpen( const HWND hwnd, const std::wstring& title, const FileFilters& filters, const std::filesystem::path& initialFolder );
+
+// Launches a file chooser for the selection of a file to save.
+// 'hwnd' - parent window handle.
+// 'title' - dialog title (or an empty string for the default title).
+// 'filters' - file filters (the first filter is initially selected).
+// 'initialFolder' - initial folder location (or an empty path for the default location).
+// 'initialFilename' - initial file name (or an empty string for no initial file name).
+// 'defaultExtension' - extension to append if the user does not supply one, without the leading period (or an empty string for none).
+// 'selectedFilter' - out, the one-based index of the selected filter (can be nullptr if not required).
+// Returns the file path on success, an empty path on failure.
+std::filesystem::path ChooseFileToSave( const HWND hwnd, const std::wstring& title, const FileFilters& filters, const std::filesystem::path& initialFolder,
+	const std::wstring& initialFilename, const std::wstring& defaultExtension, UINT* selectedFilter = nullptr );
+
 // Launches a file chooser for the selection of an artwork image.
 // 'instance' - module instance handle.
 // 'hwnd' - parent window handle.
 // 'initialFolder' - initial folder location.
 // Returns the file path on success, an empty path on failure.
 std::filesystem::path ChooseArtwork( const HINSTANCE instance, const HWND hwnd, const std::filesystem::path& initialFolder );
+
+// Launches a file chooser for the selection of a folder.
+// 'hwnd' - parent window handle.
+// 'title' - dialog title (or an empty string for the default title).
+// 'initialFolder' - initial folder location (or an empty path for the default location).
+// Returns the folder path on success, an empty path on failure.
+std::filesystem::path ChooseFolder( const HWND hwnd, const std::wstring& title, const std::filesystem::path& initialFolder );
 
 // Launches a colour chooser dialog.
 // 'hwnd' - parent window handle.

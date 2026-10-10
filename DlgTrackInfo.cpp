@@ -508,27 +508,12 @@ void DlgTrackInfo::OnExportArtwork( HWND hwnd )
 					LoadString( m_hInst, IDS_ARTWORK, buffer, MAX_PATH );
 				}
 			}
-			std::set<WCHAR> invalidCharacters = { '\\', '/', ':', '*', '?', '"', '<', '>', '|' };
-			const size_t length = wcslen( buffer );
-			for ( size_t index = 0; index < length; index++ ) {
-				if ( invalidCharacters.end() != invalidCharacters.find( buffer[ index ] ) ) {
-					buffer[ index ] = '_';
-				}
-			}
+			std::wstring initialFilename( buffer );
+			WideStringReplaceInvalidFilenameCharacters( initialFilename, L"_", true /*replaceFolderDelimiters*/ );
 
 			const std::wstring initialFolder = m_Settings.GetLastFolder( s_ArtworkFolderSetting );
 
-			OPENFILENAME ofn = {};
-			ofn.lStructSize = sizeof( OPENFILENAME );
-			ofn.hwndOwner = hwnd;
-			ofn.lpstrTitle = title;
-			ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_EXPLORER;
-			ofn.lpstrDefExt = fileExt.c_str();
-			ofn.lpstrFile = buffer;
-			ofn.nMaxFile = MAX_PATH;
-			ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
-			if ( FALSE != GetSaveFileName( &ofn ) ) {
-				const std::wstring filename = ofn.lpstrFile;
+			if ( const std::filesystem::path filename = ChooseFileToSave( hwnd, title, {} /*filters*/, initialFolder, initialFilename, fileExt ); !filename.empty() ) {
 				std::ofstream fileStream;
 				fileStream.open( filename, std::ios::binary | std::ios::out | std::ios::trunc );
 				if ( fileStream.is_open() ) {
@@ -536,7 +521,7 @@ void DlgTrackInfo::OnExportArtwork( HWND hwnd )
 					fileStream.write( image, imageSize );
 					fileStream.close();
 				}
-				m_Settings.SetLastFolder( s_ArtworkFolderSetting, filename.substr( 0, ofn.nFileOffset ) );
+				m_Settings.SetLastFolder( s_ArtworkFolderSetting, filename.parent_path().wstring() );
 			}
 		}
 	}

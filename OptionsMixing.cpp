@@ -295,42 +295,21 @@ void OptionsMixing::ChooseSoundFont()
 	WCHAR title[ MAX_PATH ] = {};
 	const HINSTANCE hInst = GetInstanceHandle();
 	LoadString( hInst, IDS_CHOOSESOUNDFONT_TITLE, title, MAX_PATH );
-	WCHAR filter[ MAX_PATH ] = {};
-	LoadString( hInst, IDS_CHOOSESOUNDFONT_FILTER, filter, MAX_PATH );
-	const std::wstring filter1( filter );
-	const std::wstring filter2( L"*.sf2;*.sfz" );
-	LoadString( hInst, IDS_CHOOSE_FILTERALL, filter, MAX_PATH );
-	const std::wstring filter3( filter );
-	const std::wstring filter4( L"*.*" );
-	std::vector<WCHAR> filterStr;
-	filterStr.reserve( MAX_PATH );
-	filterStr.insert( filterStr.end(), filter1.begin(), filter1.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter2.begin(), filter2.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter3.begin(), filter3.end() );
-	filterStr.push_back( 0 );
-	filterStr.insert( filterStr.end(), filter4.begin(), filter4.end() );
-	filterStr.push_back( 0 );
-	filterStr.push_back( 0 );
+	WCHAR filterSoundFont[ MAX_PATH ] = {};
+	LoadString( hInst, IDS_CHOOSESOUNDFONT_FILTER, filterSoundFont, MAX_PATH );
+	WCHAR filterAll[ MAX_PATH ] = {};
+	LoadString( hInst, IDS_CHOOSE_FILTERALL, filterAll, MAX_PATH );
+	const FileFilters filters = {
+		{ filterSoundFont, L"*.sf2;*.sfz" },
+		{ filterAll, L"*.*" }
+	};
 
 	const std::string initialFolderSetting = "SoundFont";
 	const std::wstring initialFolder = GetSettings().GetLastFolder( initialFolderSetting );
 
-	WCHAR buffer[ MAX_PATH ] = {};
-	OPENFILENAME ofn = {};
-	ofn.lStructSize = sizeof( OPENFILENAME );
-	ofn.hwndOwner = m_hWnd;
-	ofn.lpstrTitle = title;
-	ofn.lpstrFilter = &filterStr[ 0 ];
-	ofn.nFilterIndex = 1;
-	ofn.Flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
-	ofn.lpstrFile = buffer;
-	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrInitialDir = initialFolder.empty() ? nullptr : initialFolder.c_str();
-	if ( FALSE != GetOpenFileName( &ofn ) ) {
-		m_SoundFont = ofn.lpstrFile;
-		GetSettings().SetLastFolder( initialFolderSetting, m_SoundFont.substr( 0, ofn.nFileOffset ) );
+	if ( const std::filesystem::path filename = ChooseFileToOpen( m_hWnd, title, filters, initialFolder ); !filename.empty() ) {
+		m_SoundFont = filename.wstring();
+		GetSettings().SetLastFolder( initialFolderSetting, filename.parent_path().wstring() );
 		SetWindowText( GetDlgItem( m_hWnd, IDC_OPTIONS_SOUNDFONT ), m_SoundFont.c_str() );
 	}
 }
