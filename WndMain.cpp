@@ -272,7 +272,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnPaint( ps );
 			} else {
-				FillRect( ps.hdc, &ps.rcPaint, DarkMode::IsActive() ? DarkMode::GetBackgroundBrush() : reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 ) );
+				FillRect( ps.hdc, &ps.rcPaint, DarkMode::GetWindowBackgroundBrush() );
 			}
 			EndPaint( hWnd, &ps );
 			break;

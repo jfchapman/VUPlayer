@@ -343,6 +343,9 @@ private:
 	// Application settings.
 	Settings m_Settings;
 
+	// Whether the dark mode preference changed the initial dark mode state (the preference is applied before any child windows are created).
+	const bool m_DarkModeChangedOnStartup;
+
 	// Output.
 	Output m_Output;
 

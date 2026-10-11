@@ -26,7 +26,7 @@ LRESULT CALLBACK WndSplit::SplitProc( HWND hwnd, UINT message, WPARAM wParam, LP
 			case WM_PAINT: {
 				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
-				FillRect( ps.hdc, &ps.rcPaint, DarkMode::IsActive() ? DarkMode::GetBackgroundBrush() : HBRUSH( COLOR_3DFACE + 1 ) );
+				FillRect( ps.hdc, &ps.rcPaint, DarkMode::GetWindowBackgroundBrush() );
 				EndPaint( hwnd, &ps );
 				break;
 			}

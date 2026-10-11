@@ -1512,6 +1512,11 @@ HBRUSH DarkMode::GetEdgeBrush()
 	return brush.Get();
 }
 
+HBRUSH DarkMode::GetWindowBackgroundBrush()
+{
+	return s_Active ? GetBackgroundBrush() : reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 );
+}
+
 HBRUSH DarkMode::GetGripBrush()
 {
 	static const OwnedBrush brush( GetGripColour() );

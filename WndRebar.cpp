@@ -13,6 +13,9 @@ static const UINT_PTR s_WndRebarID = 1200;
 // Split window class name
 static const wchar_t s_RebarClass[] = L"VURebarClass";
 
+// Size of the border along the bottom of the rebar.
+static constexpr int s_BorderSize = 2;
+
 LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndRebar* wndRebar = reinterpret_cast<WndRebar*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
@@ -60,10 +63,16 @@ LRESULT CALLBACK WndRebar::RebarProc( HWND hwnd, UINT message, WPARAM wParam, LP
 			}
 			case WM_PAINT: {
 				// Note that the rebar background is only visible in the gaps between items (dividers), and along the bottom border.
-				// In dark mode, these use the same colour as the status bar dividers.
+				// In dark mode, the dividers use the same colour as the status bar dividers, and the bottom border uses the background colour (so that it is not visible).
 				PAINTSTRUCT ps = {};
 				BeginPaint( hwnd, &ps );
 				FillRect( ps.hdc, &ps.rcPaint, DarkMode::IsActive() ? DarkMode::GetEdgeBrush() : HBRUSH( COLOR_3DFACE + 1 ) );
+				if ( DarkMode::IsActive() ) {
+					RECT borderRect = {};
+					GetClientRect( hwnd, &borderRect );
+					borderRect.top = borderRect.bottom - s_BorderSize;
+					FillRect( ps.hdc, &borderRect, DarkMode::GetBackgroundBrush() );
+				}
 				EndPaint( hwnd, &ps );
 				break;
 			}
@@ -119,7 +128,6 @@ void WndRebar::AddItem( WndRebarItem* item )
 
 void WndRebar::RearrangeItems()
 {
-	constexpr int borderSize = 2;
 	constexpr int dividerSize = 2;
 	constexpr int minimumItemSize = 160;
 
@@ -136,7 +144,7 @@ void WndRebar::RearrangeItems()
 				}
 			}
 
-			const int rebarHeight = maxItemHeight + borderSize;
+			const int rebarHeight = maxItemHeight + s_BorderSize;
 			SetWindowPos( m_hWnd, nullptr /*insertAfter*/, 0 /*x*/, 0 /*y*/, rebarWidth, rebarHeight, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER );
 
 			const int minimumItemWidth = static_cast<int>( minimumItemSize * GetDPIScaling() );

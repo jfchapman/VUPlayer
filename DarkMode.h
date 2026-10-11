@@ -98,4 +98,8 @@ namespace DarkMode
 	HBRUSH GetPressedBrush();
 	HBRUSH GetEdgeBrush();
 	HBRUSH GetGripBrush();
+
+	// Returns the brush used for the main window background, and the areas between its child windows (e.g. the splitters),
+	// which is the dark mode background brush when dark mode is active, or the COLOR_3DFACE system colour brush otherwise (this should not be deleted).
+	HBRUSH GetWindowBackgroundBrush();
 }

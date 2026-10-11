@@ -105,6 +105,17 @@ void WndListScrollbar::SetActive( const bool active )
 		// Force the scroll information to be refreshed.
 		overlay->ScrollInfo = {};
 	}
+	// While the overlays are active, the list is clipped by them, so that it cannot draw its own scrollbars over the overlays.
+	// (When the list is resized, it draws its own scrollbars at the new location before the window region can be updated).
+	const LONG_PTR style = GetWindowLongPtr( m_hList, GWL_STYLE );
+	if ( m_IsActive && !( WS_CLIPSIBLINGS & style ) ) {
+		SetWindowLongPtr( m_hList, GWL_STYLE, style | WS_CLIPSIBLINGS );
+		m_AddedClipSiblings = true;
+	} else if ( !m_IsActive && m_AddedClipSiblings ) {
+		SetWindowLongPtr( m_hList, GWL_STYLE, style & ~WS_CLIPSIBLINGS );
+		m_AddedClipSiblings = false;
+	}
+
 	if ( m_IsActive ) {
 		Update();
 	} else {

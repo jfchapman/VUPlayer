@@ -363,7 +363,7 @@ void WndVisual::OnPaint( const PAINTSTRUCT& ps )
 		OutputDebugString( debugStr.c_str() );
 #endif
 	} else {
-		FillRect( ps.hdc, &ps.rcPaint, DarkMode::IsActive() ? DarkMode::GetBackgroundBrush() : reinterpret_cast<HBRUSH>( COLOR_3DFACE + 1 ) );
+		FillRect( ps.hdc, &ps.rcPaint, DarkMode::GetWindowBackgroundBrush() );
 	}
 }
 

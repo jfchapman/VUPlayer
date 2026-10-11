@@ -198,9 +198,10 @@ std::optional<LRESULT> WndToolbar::OnCustomDraw( LPNMCUSTOMDRAW nmcd )
 			colour.SetFromCOLORREF( m_BackgroundColour );
 			graphics.Clear( colour );
 			result = CDRF_SKIPDEFAULT;
-		} else if ( DarkMode::IsActive() ) {
-			// In dark mode, the hot & checked button backgrounds are drawn here, as the (light) themed button backgrounds are too bright.
-			// The colours follow the same scheme as the light theme, by blending the button colour into the background colour.
+		} else {
+			// The hot & checked button backgrounds are drawn here (rather than using the themed button backgrounds), so that they follow the button colour.
+			// The colours are a blend of the button colour into the background colour. In light mode, the blend amounts match the light theme,
+			// and in dark mode, larger amounts are used so that the backgrounds are as noticeable as they are in light mode.
 			if ( CDDS_PREPAINT == nmcd->dwDrawStage ) {
 				result = CDRF_NOTIFYITEMDRAW;
 			} else if ( CDDS_ITEMPREPAINT == nmcd->dwDrawStage ) {
@@ -215,8 +216,9 @@ std::optional<LRESULT> WndToolbar::OnCustomDraw( LPNMCUSTOMDRAW nmcd )
 							component( GetGValue( m_BackgroundColour ), GetGValue( m_ButtonColour ) ),
 							component( GetBValue( m_BackgroundColour ), GetBValue( m_ButtonColour ) ) );
 					};
-					const COLORREF fillColour = blend( checked ? 0.2f : 0.1f );
-					const COLORREF borderColour = blend( checked ? 0.4f : 0.2f );
+					const float fillAmount = DarkMode::IsActive() ? ( checked ? 0.3f : 0.15f ) : ( checked ? 0.2f : 0.1f );
+					const COLORREF fillColour = blend( fillAmount );
+					const COLORREF borderColour = blend( 2 * fillAmount );
 					if ( const HBRUSH brush = CreateSolidBrush( fillColour ); nullptr != brush ) {
 						FillRect( nmcd->hdc, &nmcd->rc, brush );
 						DeleteObject( brush );

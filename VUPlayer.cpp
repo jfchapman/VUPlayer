@@ -68,6 +68,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_Library( m_Database, m_Handlers ),
 	m_Maintainer( m_hInst, m_Library, m_Handlers ),
 	m_Settings( m_Database, m_Library ),
+	m_DarkModeChangedOnStartup( DarkMode::SetMode( m_Settings.GetDarkMode() ) ),
 	m_Output( m_hInst, m_hWnd, m_Handlers, m_Settings ),
 	m_GainCalculator( m_Library, m_Handlers ),
 	m_Scrobbler( m_Database, m_Settings ),
@@ -116,18 +117,17 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 {
 	s_VUPlayer = this;
 
+	// The dark mode preference was applied before the child windows were created (so they have loaded the correct colours),
+	// but the main window was created using the initial dark mode state, so update it if the state has changed.
+	// Dark mode is applied to the controls before the main window is shown, otherwise they would be drawn incorrectly until startup completes.
+	if ( m_DarkModeChangedOnStartup ) {
+		DarkMode::ApplyToMainWindow( m_hWnd );
+	}
+	ApplyDarkModeToControls();
+
 	ReadWindowSettings();
 
 	InitialiseRebar();
-
-	// Apply the dark mode preference before the main window is shown.
-	// (Child windows have already loaded their colours using the initial dark mode state, so these need reloading if the state changes).
-	// Note that this must happen after the rebar has been initialised, so that the rebar items are also notified of the change.
-	if ( DarkMode::SetMode( m_Settings.GetDarkMode() ) ) {
-		OnDarkModeChange();
-	} else {
-		ApplyDarkModeToControls();
-	}
 
 	for ( auto& iter : m_CustomColours ) {
 		iter = RGB( 0xff /*red*/, 0xff /*green*/, 0xff /*blue*/ );
@@ -2436,7 +2436,7 @@ void VUPlayer::OnPaint( const PAINTSTRUCT& ps )
 		MapWindowRect( nullptr, m_hWnd, &rect );
 		ExcludeClipRect( ps.hdc, rect.left, rect.top, rect.right, rect.bottom );
 	}
-	FillRect( ps.hdc, &ps.rcPaint, DarkMode::IsActive() ? DarkMode::GetBackgroundBrush() : HBRUSH( COLOR_3DFACE + 1 ) );
+	FillRect( ps.hdc, &ps.rcPaint, DarkMode::GetWindowBackgroundBrush() );
 }
 
 void VUPlayer::OnTaskbarButtonCreated()

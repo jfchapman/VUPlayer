@@ -94,6 +94,9 @@ private:
 	// Indicates whether an update is in progress (to prevent re-entrancy).
 	bool m_IsUpdating = false;
 
+	// Indicates whether the WS_CLIPSIBLINGS style has been added to the list (so that it is only removed if it was not originally set).
+	bool m_AddedClipSiblings = false;
+
 	// The rects (in list window coordinates) which have been excluded from the list's window region (all empty if no region is set).
 	std::array<RECT, 3> m_RegionRects = {};
 };
