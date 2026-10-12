@@ -115,7 +115,8 @@ public:
 	// Called when a 'menu' is about to be shown.
 	void OnInitMenu( const HMENU menu );
 
-	// Called when an 'item' is added to the 'playlist' at a (0-based) 'position'.
+	// Called when an 'item' is added to the 'playlist' at a (0-based) 'position' in the filtered playlist.
+	// 'position' is -1 if the item does not match the playlist filter.
 	void OnPlaylistItemAdded( Playlist* playlist, const Playlist::Item& item, const int position );
 
 	// Called when an 'item' is removed from the 'playlist'.
@@ -123,6 +124,16 @@ public:
 
 	// Called when an 'item' is updated in the 'playlist'.
 	void OnPlaylistItemUpdated( Playlist* playlist, const Playlist::Item& item );
+
+	// Called when an updated 'item' in the 'playlist' has started or stopped matching the playlist filter.
+	// 'position' - the item's (0-based) position in the filtered playlist, or -1 if the item no longer matches the filter.
+	void OnPlaylistItemFilterChanged( Playlist* playlist, const Playlist::Item& item, const int position );
+
+	// Called when the filter has been changed for a 'playlist'.
+	void OnPlaylistFilterChanged( Playlist* playlist );
+
+	// Called when the playlist filter bar has been shown or hidden.
+	void OnFilterBarVisibilityChanged();
 
 	// Called when information in the media database is updated.
 	// 'previousMediaInfo' - the previous media information.

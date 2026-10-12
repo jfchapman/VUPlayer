@@ -14,8 +14,9 @@ public:
 	// 'wndTree' - tree control window handle.
 	// 'wndVisual' - visual control window handle.
 	// 'wndList' - list control window handle.
+	// 'wndFilter' - list filter bar window handle (which is shown above the list control, when visible).
 	// 'settings' - application settings.
-	WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStatus, HWND wndTree, HWND wndVisual, HWND wndList, Settings& settings );
+	WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStatus, HWND wndTree, HWND wndVisual, HWND wndList, HWND wndFilter, Settings& settings );
 
 	virtual ~WndSplit();
 
@@ -71,6 +72,9 @@ private:
 
 	// List control window handle.
 	HWND m_hList;
+
+	// List filter bar window handle.
+	HWND m_hFilter;
 
 	// Split position.
 	int m_SplitPosition;

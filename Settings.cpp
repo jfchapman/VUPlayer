@@ -1659,6 +1659,16 @@ void Settings::SetAlwaysOnTop( const bool alwaysOnTop )
 	WriteSetting( "AlwaysOnTop", alwaysOnTop );
 }
 
+bool Settings::GetShowSearchBar()
+{
+	return ReadSetting<bool>( "ShowSearchBar" ).value_or( false );
+}
+
+void Settings::SetShowSearchBar( const bool show )
+{
+	WriteSetting( "ShowSearchBar", show );
+}
+
 bool Settings::GetRetainStopAtTrackEnd()
 {
 	return ReadSetting<bool>( "RetainStopAtTrackEnd" ).value_or( false );

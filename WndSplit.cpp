@@ -84,7 +84,7 @@ LRESULT CALLBACK WndSplit::SplitProc( HWND hwnd, UINT message, WPARAM wParam, LP
 	return DefWindowProc( hwnd, message, wParam, lParam );
 }
 
-WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStatus, HWND wndTree, HWND wndVisual, HWND wndList, Settings& settings ) :
+WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStatus, HWND wndTree, HWND wndVisual, HWND wndList, HWND wndFilter, Settings& settings ) :
 	m_hInst( instance ),
 	m_hWnd( NULL ),
 	m_hParent( parent ),
@@ -93,6 +93,7 @@ WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStat
 	m_hTree( wndTree ),
 	m_hVisual( wndVisual ),
 	m_hList( wndList ),
+	m_hFilter( wndFilter ),
 	m_SplitPosition( 0 ),
 	m_IsDragging( false ),
 	m_IsTracking( false ),
@@ -255,10 +256,20 @@ void WndSplit::Resize()
 			listRect.top = clientRect.top;
 			listRect.right = clientRect.right;
 			listRect.bottom = clientRect.bottom;
+
+			// The filter bar (when shown) sits above the list control, with the list control taking up the remaining space.
+			if ( ( NULL != m_hFilter ) && ( WS_VISIBLE & GetWindowLongPtr( m_hFilter, GWL_STYLE ) ) ) {
+				RECT filterRect = {};
+				GetWindowRect( m_hFilter, &filterRect );
+				const int filterHeight = static_cast<int>( filterRect.bottom - filterRect.top );
+				MoveWindow( m_hFilter, listRect.left, listRect.top, listRect.right - listRect.left, filterHeight, FALSE /*repaint*/ );
+				listRect.top += filterHeight;
+			}
+
 			const int x = static_cast<int>( listRect.left );
 			const int y = static_cast<int>( listRect.top );
 			const int width = static_cast<int>( listRect.right - listRect.left );
-			const int height = static_cast<int>( listRect.bottom - listRect.top );
+			const int height = std::max( 0, static_cast<int>( listRect.bottom - listRect.top ) );
 			MoveWindow( m_hList, x, y, width, height, FALSE /*repaint*/ );
 		}
 
@@ -266,6 +277,9 @@ void WndSplit::Resize()
 		RedrawWindow( m_hParent, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW );
 		RedrawWindow( m_hTree, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW );
 		RedrawWindow( m_hList, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW );
+		if ( ( NULL != m_hFilter ) && ( WS_VISIBLE & GetWindowLongPtr( m_hFilter, GWL_STYLE ) ) ) {
+			RedrawWindow( m_hFilter, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW );
+		}
 		RedrawWindow( m_hVisual, NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW );
 	}
 }

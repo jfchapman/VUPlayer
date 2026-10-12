@@ -3,6 +3,7 @@
 #include "Utility.h"
 #include "VUPlayer.h"
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
 #include <fstream>
@@ -42,7 +43,12 @@ Playlist::Playlist( Library& library, const std::string& id, const Type& type ) 
 	m_Type( type ),
 	m_MergeDuplicates( false ),
 	m_ShuffledPlaylist(),
-	m_MutexShuffled()
+	m_MutexShuffled(),
+	m_ItemIDPositions(),
+	m_Filter(),
+	m_FilterEnabled( true ),
+	m_FilterTerms(),
+	m_FilteredPositions()
 {
 }
 
@@ -84,6 +90,203 @@ Playlist::Items Playlist::GetItems()
 	return m_Playlist;
 }
 
+Playlist::Items Playlist::GetFilteredItems()
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	if ( m_FilterTerms.empty() ) {
+		return m_Playlist;
+	}
+	Items items;
+	items.reserve( m_FilteredPositions.size() );
+	for ( const auto position : m_FilteredPositions ) {
+		items.push_back( m_Playlist[ position ] );
+	}
+	return items;
+}
+
+bool Playlist::SetFilter( const std::wstring& filter )
+{
+	return UpdateFilter( filter, std::nullopt /*enabled*/ );
+}
+
+bool Playlist::SetFilterEnabled( const bool enabled )
+{
+	return UpdateFilter( std::nullopt /*filter*/, enabled );
+}
+
+bool Playlist::IsFilterEnabled()
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	return m_FilterEnabled;
+}
+
+bool Playlist::UpdateFilter( const std::optional<std::wstring>& filter, const std::optional<bool> enabled )
+{
+	bool changed = false;
+	{
+		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+		if ( filter ) {
+			m_Filter = *filter;
+		}
+		if ( enabled ) {
+			m_FilterEnabled = *enabled;
+		}
+
+		// The filter text is split into whitespace separated terms, which are only applied when the filter is enabled.
+		std::vector<std::wstring> terms;
+		if ( m_FilterEnabled ) {
+			const wchar_t* whitespace = L" \t\r\n";
+			for ( size_t start = m_Filter.find_first_not_of( whitespace ); std::wstring::npos != start; ) {
+				const size_t end = m_Filter.find_first_of( whitespace, start );
+				terms.push_back( m_Filter.substr( start, ( std::wstring::npos == end ) ? std::wstring::npos : ( end - start ) ) );
+				start = m_Filter.find_first_not_of( whitespace, end );
+			}
+		}
+
+		if ( terms != m_FilterTerms ) {
+			const bool wasFiltered = !m_FilterTerms.empty();
+			const auto previousPositions = m_FilteredPositions;
+			m_FilterTerms = terms;
+			UpdatePositionsNoLock();
+			if ( m_FilterTerms.empty() ) {
+				changed = wasFiltered && ( previousPositions.size() != m_Playlist.size() );
+			} else if ( wasFiltered ) {
+				changed = ( previousPositions != m_FilteredPositions );
+			} else {
+				changed = ( m_FilteredPositions.size() != m_Playlist.size() );
+			}
+		}
+	}
+
+	if ( changed ) {
+		// Discard the shuffled playlist, so that it is regenerated from the filtered items.
+		std::lock_guard<std::mutex> shuffleLock( m_MutexShuffled );
+		m_ShuffledPlaylist.clear();
+	}
+	return changed;
+}
+
+std::wstring Playlist::GetFilter()
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	return m_Filter;
+}
+
+bool Playlist::IsFiltered()
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	return !m_FilterTerms.empty();
+}
+
+bool Playlist::MatchesFilter( const Item& item )
+{
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	return MatchesFilter( item, m_FilterTerms );
+}
+
+bool Playlist::MatchesFilter( const Item& item, const std::vector<std::wstring>& terms )
+{
+	if ( terms.empty() ) {
+		return true;
+	}
+
+	const MediaInfo& info = item.Info;
+	const long year = info.GetYear();
+	const std::array<std::wstring, 8> fields = {
+		info.GetTitle( true /*filenameAsTitle*/ ),
+		info.GetArtist(),
+		info.GetAlbum(),
+		info.GetGenre(),
+		info.GetComposer(),
+		info.GetConductor(),
+		info.GetPublisher(),
+		( year > 0 ) ? std::to_wstring( year ) : std::wstring()
+	};
+
+	// Terms are matched case & accent insensitively (e.g. 'beyonce' matches 'Beyoncé'), using the invariant locale so that the matching does not depend on the user's locale
+	// (some locales treat accented characters as separate letters, e.g. 'ö' in Swedish).
+	constexpr DWORD kFindFlags = FIND_FROMSTART | LINGUISTIC_IGNORECASE | LINGUISTIC_IGNOREDIACRITIC;
+	return std::all_of( terms.begin(), terms.end(), [ &fields ] ( const std::wstring& term ) {
+		return std::any_of( fields.begin(), fields.end(), [ &term ] ( const std::wstring& field ) {
+			return !field.empty() && ( FindNLSStringEx( LOCALE_NAME_INVARIANT, kFindFlags, field.c_str(), static_cast<int>( field.size() ),
+				term.c_str(), static_cast<int>( term.size() ), nullptr /*foundLength*/, nullptr /*versionInfo*/, nullptr /*reserved*/, 0 /*sortHandle*/ ) >= 0 );
+			} );
+		} );
+}
+
+size_t Playlist::GetFilteredCountNoLock() const
+{
+	return m_FilterTerms.empty() ? m_Playlist.size() : m_FilteredPositions.size();
+}
+
+int Playlist::FilteredToFullPositionNoLock( const int position ) const
+{
+	if ( ( position < 0 ) || ( static_cast<size_t>( position ) >= GetFilteredCountNoLock() ) ) {
+		return -1;
+	}
+	return m_FilterTerms.empty() ? position : static_cast<int>( m_FilteredPositions[ position ] );
+}
+
+int Playlist::FullToFilteredPositionNoLock( const int position ) const
+{
+	if ( ( position < 0 ) || ( static_cast<size_t>( position ) >= m_Playlist.size() ) ) {
+		return -1;
+	}
+	if ( m_FilterTerms.empty() ) {
+		return position;
+	}
+	const auto it = std::lower_bound( m_FilteredPositions.begin(), m_FilteredPositions.end(), static_cast<size_t>( position ) );
+	return ( ( m_FilteredPositions.end() != it ) && ( *it == static_cast<size_t>( position ) ) ) ? static_cast<int>( std::distance( m_FilteredPositions.begin(), it ) ) : -1;
+}
+
+void Playlist::UpdatePositionsNoLock()
+{
+	m_ItemIDPositions.clear();
+	m_FilteredPositions.clear();
+	for ( size_t position = 0; position < m_Playlist.size(); position++ ) {
+		m_ItemIDPositions[ m_Playlist[ position ].ID ] = position;
+		if ( !m_FilterTerms.empty() && MatchesFilter( m_Playlist[ position ], m_FilterTerms ) ) {
+			m_FilteredPositions.push_back( position );
+		}
+	}
+}
+
+int Playlist::OnItemInsertedNoLock( const size_t position )
+{
+	for ( size_t i = position; i < m_Playlist.size(); i++ ) {
+		m_ItemIDPositions[ m_Playlist[ i ].ID ] = i;
+	}
+	if ( m_FilterTerms.empty() ) {
+		return static_cast<int>( position );
+	}
+	auto filteredPosition = std::lower_bound( m_FilteredPositions.begin(), m_FilteredPositions.end(), position );
+	for ( auto it = filteredPosition; m_FilteredPositions.end() != it; ++it ) {
+		++( *it );
+	}
+	if ( MatchesFilter( m_Playlist[ position ], m_FilterTerms ) ) {
+		filteredPosition = m_FilteredPositions.insert( filteredPosition, position );
+		return static_cast<int>( std::distance( m_FilteredPositions.begin(), filteredPosition ) );
+	}
+	return -1;
+}
+
+void Playlist::OnItemErasedNoLock( const size_t position, const long itemID )
+{
+	m_ItemIDPositions.erase( itemID );
+	for ( size_t i = position; i < m_Playlist.size(); i++ ) {
+		m_ItemIDPositions[ m_Playlist[ i ].ID ] = i;
+	}
+	if ( !m_FilterTerms.empty() ) {
+		auto filteredPosition = std::lower_bound( m_FilteredPositions.begin(), m_FilteredPositions.end(), position );
+		if ( ( m_FilteredPositions.end() != filteredPosition ) && ( *filteredPosition == position ) ) {
+			filteredPosition = m_FilteredPositions.erase( filteredPosition );
+		}
+		for ( auto it = filteredPosition; m_FilteredPositions.end() != it; ++it ) {
+			--( *it );
+		}
+	}
+}
+
 std::list<MediaInfo> Playlist::GetPending()
 {
 	std::lock_guard<std::mutex> lock( m_MutexPending );
@@ -99,17 +302,21 @@ int Playlist::GetPendingCount()
 
 bool Playlist::GetItem( Item& item )
 {
-	int position = 0;
-	const bool success = GetItem( item, position );
-	return success;
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	if ( const int position = GetPositionNoLock( item.ID ); position >= 0 ) {
+		item = m_Playlist[ position ];
+		return true;
+	}
+	return false;
 }
 
 bool Playlist::GetItem( Item& item, int& position )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	position = GetPositionNoLock( item.ID );
+	const int fullPosition = GetPositionNoLock( item.ID );
+	position = FullToFilteredPositionNoLock( fullPosition );
 	if ( position >= 0 ) {
-		item = m_Playlist[ position ];
+		item = m_Playlist[ fullPosition ];
 		return true;
 	}
 	return false;
@@ -118,8 +325,8 @@ bool Playlist::GetItem( Item& item, int& position )
 Playlist::Item Playlist::GetItem( const int position )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	if ( static_cast<size_t>( position ) < m_Playlist.size() ) {
-		return m_Playlist[ position ];
+	if ( const int fullPosition = FilteredToFullPositionNoLock( position ); fullPosition >= 0 ) {
+		return m_Playlist[ fullPosition ];
 	}
 	return {};
 }
@@ -127,8 +334,8 @@ Playlist::Item Playlist::GetItem( const int position )
 long Playlist::GetItemID( const int position )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	if ( static_cast<size_t>( position ) < m_Playlist.size() ) {
-		return m_Playlist[ position ].ID;
+	if ( const int fullPosition = FilteredToFullPositionNoLock( position ); fullPosition >= 0 ) {
+		return m_Playlist[ fullPosition ].ID;
 	}
 	return 0;
 }
@@ -136,7 +343,7 @@ long Playlist::GetItemID( const int position )
 int Playlist::GetItemPosition( const long itemID )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	return GetPositionNoLock( itemID );
+	return FullToFilteredPositionNoLock( GetPositionNoLock( itemID ) );
 }
 
 int Playlist::GetPositionNoLock( const long itemID )
@@ -151,11 +358,15 @@ bool Playlist::GetNextItem( const Item& currentItem, Item& nextItem, const bool 
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	bool success = false;
 	if ( const int currentPosition = GetPositionNoLock( currentItem.ID ); currentPosition >= 0 ) {
-		if ( static_cast<size_t>( 1 + currentPosition ) < m_Playlist.size() ) {
-			nextItem = m_Playlist[ 1 + currentPosition ];
+		const size_t filteredCount = GetFilteredCountNoLock();
+		// Note that the current item might not match the filter (e.g. if it was playing when the filter was set), so find the first filtered item after it.
+		const size_t nextFilteredPosition = m_FilterTerms.empty() ? static_cast<size_t>( 1 + currentPosition ) :
+			std::distance( m_FilteredPositions.begin(), std::upper_bound( m_FilteredPositions.begin(), m_FilteredPositions.end(), static_cast<size_t>( currentPosition ) ) );
+		if ( nextFilteredPosition < filteredCount ) {
+			nextItem = m_Playlist[ FilteredToFullPositionNoLock( static_cast<int>( nextFilteredPosition ) ) ];
 			success = true;
-		} else if ( wrap && !m_Playlist.empty() ) {
-			nextItem = m_Playlist.front();
+		} else if ( wrap && ( filteredCount > 0 ) ) {
+			nextItem = m_Playlist[ FilteredToFullPositionNoLock( 0 ) ];
 			success = true;
 		}
 	}
@@ -167,11 +378,15 @@ bool Playlist::GetPreviousItem( const Item& currentItem, Item& previousItem, con
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	bool success = false;
 	if ( const int currentPosition = GetPositionNoLock( currentItem.ID ); currentPosition >= 0 ) {
-		if ( currentPosition > 0 ) {
-			previousItem = m_Playlist[ currentPosition - 1 ];
+		const size_t filteredCount = GetFilteredCountNoLock();
+		// Note that the current item might not match the filter (e.g. if it was playing when the filter was set), so find the last filtered item before it.
+		const size_t currentFilteredPosition = m_FilterTerms.empty() ? static_cast<size_t>( currentPosition ) :
+			std::distance( m_FilteredPositions.begin(), std::lower_bound( m_FilteredPositions.begin(), m_FilteredPositions.end(), static_cast<size_t>( currentPosition ) ) );
+		if ( currentFilteredPosition > 0 ) {
+			previousItem = m_Playlist[ FilteredToFullPositionNoLock( static_cast<int>( currentFilteredPosition - 1 ) ) ];
 			success = true;
-		} else if ( wrap && !m_Playlist.empty() ) {
-			previousItem = m_Playlist.back();
+		} else if ( wrap && ( filteredCount > 0 ) ) {
+			previousItem = m_Playlist[ FilteredToFullPositionNoLock( static_cast<int>( filteredCount - 1 ) ) ];
 			success = true;
 		}
 	}
@@ -182,8 +397,8 @@ Playlist::Item Playlist::GetFirstItem()
 {
 	Item result = {};
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	if ( !m_Playlist.empty() ) {
-		result = m_Playlist.front();
+	if ( const int position = FilteredToFullPositionNoLock( 0 ); position >= 0 ) {
+		result = m_Playlist[ position ];
 	}
 	return result;
 }
@@ -203,8 +418,7 @@ Playlist::Item Playlist::GetRandomItem( const Item& currentItem )
 	}
 
 	if ( 0 == result.ID ) {
-		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-		std::vector<Item> allItems( m_Playlist.begin(), m_Playlist.end() );
+		std::vector<Item> allItems = GetFilteredItems();
 		std::shuffle( allItems.begin(), allItems.end(), GetRandomEngine() );
 		m_ShuffledPlaylist = { allItems.begin(), allItems.end() };
 		for ( auto item = m_ShuffledPlaylist.begin(); item != m_ShuffledPlaylist.end(); item++ ) {
@@ -254,12 +468,13 @@ Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position, boo
 		}
 	}
 
-	if ( !addedAsDuplicate ) {
+	if ( addedAsDuplicate ) {
+		position = FullToFilteredPositionNoLock( GetPositionNoLock( item.ID ) );
+	} else {
 		item = { ++s_NextItemID, mediaInfo };
 		if ( Column::_Undefined == m_SortColumn ) {
 			position = static_cast<int>( m_Playlist.size() );
 			m_Playlist.push_back( item );
-			m_ItemIDPositions[ item.ID ] = static_cast<int>( m_Playlist.size() - 1 );
 		} else {
 			auto insertIter = m_Playlist.begin();
 			while ( insertIter != m_Playlist.end() ) {
@@ -271,10 +486,8 @@ Playlist::Item Playlist::AddItem( const MediaInfo& mediaInfo, int& position, boo
 				}
 			}
 			m_Playlist.insert( insertIter, item );
-			for ( size_t i = static_cast<size_t>( position ); i < m_Playlist.size(); i++ ) {
-				m_ItemIDPositions[ m_Playlist[ i ].ID ] = i;
-			}
 		}
+		position = OnItemInsertedNoLock( static_cast<size_t>( position ) );
 	}
 	return item;
 }
@@ -395,10 +608,7 @@ bool Playlist::RemoveItem( const Item& item )
 	bool removed = false;
 	if ( const int position = GetPositionNoLock( item.ID ); position >= 0 ) {
 		m_Playlist.erase( m_Playlist.begin() + position );
-		m_ItemIDPositions.erase( item.ID );
-		for ( size_t i = static_cast<size_t>( position ); i < m_Playlist.size(); i++ ) {
-			m_ItemIDPositions[ m_Playlist[ i ].ID ] = i;
-		}
+		OnItemErasedNoLock( static_cast<size_t>( position ), item.ID );
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {
 			vuplayer->OnPlaylistItemRemoved( this, item );
@@ -420,10 +630,7 @@ bool Playlist::RemoveItem( const MediaInfo& mediaInfo )
 				const size_t position = std::distance( m_Playlist.begin(), iter );
 				const Item item = *iter;
 				m_Playlist.erase( iter );
-				m_ItemIDPositions.erase( item.ID );
-				for ( size_t i = position; i < m_Playlist.size(); i++ ) {
-					m_ItemIDPositions[ m_Playlist[ i ].ID ] = i;
-				}
+				OnItemErasedNoLock( position, item.ID );
 				VUPlayer* vuplayer = VUPlayer::Get();
 				if ( nullptr != vuplayer ) {
 					vuplayer->OnPlaylistItemRemoved( this, item );
@@ -462,11 +669,7 @@ bool Playlist::RemoveFiles( const MediaInfo::List& mediaList )
 	}
 	if ( anyItemsRemoved ) {
 		m_Playlist = { tempList.begin(), tempList.end() };
-		m_ItemIDPositions.clear();
-		size_t position = 0;
-		for ( const auto& item : m_Playlist ) {
-			m_ItemIDPositions[ item.ID ] = position++;
-		}
+		UpdatePositionsNoLock();
 	}
 	return anyItemsRemoved;
 }
@@ -474,15 +677,16 @@ bool Playlist::RemoveFiles( const MediaInfo::List& mediaList )
 long Playlist::GetCount()
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	return static_cast<long>( m_Playlist.size() );
+	return static_cast<long>( GetFilteredCountNoLock() );
 }
 
 float Playlist::GetDuration()
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	float duration = 0;
-	for ( const auto& iter : m_Playlist ) {
-		const MediaInfo& mediaInfo = iter.Info;
+	const int count = static_cast<int>( GetFilteredCountNoLock() );
+	for ( int position = 0; position < count; position++ ) {
+		const MediaInfo& mediaInfo = m_Playlist[ FilteredToFullPositionNoLock( position ) ].Info;
 		duration += mediaInfo.GetDuration();
 	}
 	return duration;
@@ -492,8 +696,9 @@ long long Playlist::GetFilesize()
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	long long filesize = 0;
-	for ( const auto& iter : m_Playlist ) {
-		const MediaInfo& mediaInfo = iter.Info;
+	const int count = static_cast<int>( GetFilteredCountNoLock() );
+	for ( int position = 0; position < count; position++ ) {
+		const MediaInfo& mediaInfo = m_Playlist[ FilteredToFullPositionNoLock( position ) ].Info;
 		filesize += mediaInfo.GetFilesize( true /*applyCues*/ );
 	}
 	return filesize;
@@ -519,11 +724,7 @@ void Playlist::Sort( const Column column )
 			{
 				return m_SortAscending ? LessThan( item1, item2, m_SortColumn ) : GreaterThan( item1, item2, m_SortColumn );
 			} );
-		m_ItemIDPositions.clear();
-		size_t position = 0;
-		for ( const auto& item : m_Playlist ) {
-			m_ItemIDPositions[ item.ID ] = position++;
-		}
+		UpdatePositionsNoLock();
 	}
 }
 
@@ -654,14 +855,21 @@ bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 	VUPlayer* vuplayer = VUPlayer::Get();
 	Items itemsToRemove;
 	std::set<MediaInfo> itemsToAdd;
+	std::vector<long> filterChangedIDs;
+	std::vector<std::pair<Item, int /*filteredPosition*/>> filterChangedItems;
 	{
 		std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 		const auto itemToFind = std::tie( mediaInfo.GetFilename(), mediaInfo.GetCueStart(), mediaInfo.GetCueEnd() );
 		for ( auto& item : m_Playlist ) {
 			if ( std::tie( item.Info.GetFilename(), item.Info.GetCueStart(), item.Info.GetCueEnd() ) == itemToFind ) {
 				if ( item.Info != mediaInfo ) {
+					const bool matchedFilter = MatchesFilter( item, m_FilterTerms );
 					item.Info = mediaInfo;
 					updated = true;
+
+					if ( matchedFilter != MatchesFilter( item, m_FilterTerms ) ) {
+						filterChangedIDs.push_back( item.ID );
+					}
 
 					if ( m_MergeDuplicates && !mediaInfo.GetCueStart() ) {
 						// Split out any duplicates from the top level item, and add them back later as new items.
@@ -699,6 +907,23 @@ bool Playlist::OnUpdatedMedia( const MediaInfo& mediaInfo )
 					}
 				}
 			}
+		}
+
+		if ( !filterChangedIDs.empty() ) {
+			UpdatePositionsNoLock();
+			for ( const auto itemID : filterChangedIDs ) {
+				if ( const int position = GetPositionNoLock( itemID ); position >= 0 ) {
+					filterChangedItems.emplace_back( m_Playlist[ position ], FullToFilteredPositionNoLock( position ) );
+				}
+			}
+			// Notify hidden items first, followed by shown items in ascending position order.
+			std::sort( filterChangedItems.begin(), filterChangedItems.end(), [] ( const auto& a, const auto& b ) { return a.second < b.second; } );
+		}
+	}
+
+	if ( nullptr != vuplayer ) {
+		for ( const auto& [ item, position ] : filterChangedItems ) {
+			vuplayer->OnPlaylistItemFilterChanged( this, item, position );
 		}
 	}
 
@@ -740,11 +965,20 @@ bool Playlist::MoveItems( const int position, const std::list<long>& itemIDs )
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
 	std::list<Item> tempList( m_Playlist.begin(), m_Playlist.end() );
 	if ( !itemIDs.empty() ) {
+		// Convert the filtered playlist position to a full playlist position.
+		int fullPosition = position;
+		if ( !m_FilterTerms.empty() && ( position > 0 ) ) {
+			fullPosition = FilteredToFullPositionNoLock( position );
+			if ( fullPosition < 0 ) {
+				fullPosition = static_cast<int>( tempList.size() );
+			}
+		}
+
 		auto insertPosition = tempList.begin();
-		if ( position >= static_cast<int>( tempList.size() ) ) {
+		if ( fullPosition >= static_cast<int>( tempList.size() ) ) {
 			insertPosition = tempList.end();
-		} else if ( position > 0 ) {
-			std::advance( insertPosition, position );
+		} else if ( fullPosition > 0 ) {
+			std::advance( insertPosition, fullPosition );
 		}
 
 		auto itemsToMove = itemIDs;
@@ -770,11 +1004,7 @@ bool Playlist::MoveItems( const int position, const std::list<long>& itemIDs )
 		m_SortColumn = Column::_Undefined;
 		m_SortAscending = false;
 		m_Playlist = { tempList.begin(), tempList.end() };
-		m_ItemIDPositions.clear();
-		size_t i = 0;
-		for ( const auto& item : m_Playlist ) {
-			m_ItemIDPositions[ item.ID ] = i++;
-		}
+		UpdatePositionsNoLock();
 	}
 	return changed;
 }
@@ -855,11 +1085,7 @@ void Playlist::MergeDuplicates()
 			vuplayer->OnPlaylistItemRemoved( this, item );
 		}
 	}
-	m_ItemIDPositions.clear();
-	size_t i = 0;
-	for ( const auto& item : m_Playlist ) {
-		m_ItemIDPositions[ item.ID ] = i++;
-	}
+	UpdatePositionsNoLock();
 }
 
 void Playlist::SplitDuplicates()
@@ -1249,8 +1475,7 @@ bool Playlist::CanConvertAnyItems()
 bool Playlist::ContainsItem( const Item& item )
 {
 	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	const auto foundItem = std::find_if( m_Playlist.begin(), m_Playlist.end(), [ id = item.ID ] ( const Item& item ) { return id == item.ID; } );
-	return m_Playlist.end() != foundItem;
+	return FullToFilteredPositionNoLock( GetPositionNoLock( item.ID ) ) >= 0;
 }
 
 int Playlist::FindItem( const int startIndex, const std::wstring& searchTitle, const bool partial, const bool wrap )
@@ -1259,32 +1484,30 @@ int Playlist::FindItem( const int startIndex, const std::wstring& searchTitle, c
 		return -1;
 	}
 
-	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
-	const int start = ( static_cast<size_t>( startIndex ) < m_Playlist.size() ) ? startIndex : 0;
-	auto foundItem = std::find_if( m_Playlist.begin() + start, m_Playlist.end(), [ &searchTitle, partial ] ( const Item& item ) {
+	const auto matches = [ &searchTitle, partial ] ( const Item& item ) {
 		const auto itemTitle = item.Info.GetTitle( true );
 		if ( partial ) {
 			return 0 == _wcsnicmp( searchTitle.c_str(), itemTitle.c_str(), searchTitle.size() );
 		} else {
 			return ( 0 == _wcsicmp( searchTitle.c_str(), itemTitle.c_str() ) );
 		}
-		} );
+	};
 
-	if ( ( m_Playlist.end() == foundItem ) && wrap ) {
-		foundItem = std::find_if( m_Playlist.begin(), m_Playlist.begin() + start, [ &searchTitle, partial ] ( const Item& item ) {
-			const auto itemTitle = item.Info.GetTitle( true );
-			if ( partial ) {
-				return 0 == _wcsnicmp( searchTitle.c_str(), itemTitle.c_str(), searchTitle.size() );
-			} else {
-				return ( 0 == _wcsicmp( searchTitle.c_str(), itemTitle.c_str() ) );
+	std::lock_guard<std::mutex> lock( m_MutexPlaylist );
+	const int count = static_cast<int>( GetFilteredCountNoLock() );
+	const int start = ( startIndex >= 0 ) && ( startIndex < count ) ? startIndex : 0;
+	for ( int position = start; position < count; position++ ) {
+		if ( matches( m_Playlist[ FilteredToFullPositionNoLock( position ) ] ) ) {
+			return position;
+		}
+	}
+	if ( wrap ) {
+		for ( int position = 0; position < start; position++ ) {
+			if ( matches( m_Playlist[ FilteredToFullPositionNoLock( position ) ] ) ) {
+				return position;
 			}
-			} );
+		}
 	}
-
-	if ( m_Playlist.end() != foundItem ) {
-		return static_cast<int>( std::distance( m_Playlist.begin(), foundItem ) );
-	}
-
 	return -1;
 }
 

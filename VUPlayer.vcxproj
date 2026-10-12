@@ -354,6 +354,7 @@ copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\swresample-6.dll" $(OutDir)swresamp
     <ClInclude Include="WndSplit.h" />
     <ClInclude Include="DarkMode.h" />
     <ClInclude Include="WndListScrollbar.h" />
+    <ClInclude Include="WndFilter.h" />
     <ClInclude Include="WndStatus.h" />
     <ClInclude Include="WndTaskbar.h" />
     <ClInclude Include="WndToolbar.h" />
@@ -531,6 +532,7 @@ copy "$(ProjectDir)libs\ffmpeg-8.1.2\bin\x64\swresample-6.dll" $(OutDir)swresamp
     <ClCompile Include="WndSplit.cpp" />
     <ClCompile Include="DarkMode.cpp" />
     <ClCompile Include="WndListScrollbar.cpp" />
+    <ClCompile Include="WndFilter.cpp" />
     <ClCompile Include="WndStatus.cpp" />
     <ClCompile Include="WndTaskbar.cpp" />
     <ClCompile Include="WndToolbar.cpp" />

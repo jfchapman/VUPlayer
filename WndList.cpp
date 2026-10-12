@@ -247,7 +247,17 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	m_IconMap(),
 	m_IconStatus( { -1, Output::State::Stopped } ),
 	m_EnableStatusIcon( false ),
-	m_IsHighContrast( IsHighContrastActive() )
+	m_IsHighContrast( IsHighContrastActive() ),
+	m_Filter( instance, parent,
+		[ this ] ( const std::wstring& filter ) { SetPlaylistFilter( filter ); },
+		[ this ] () { SetFocus( m_hWnd ); },
+		[] () {
+			if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
+				vuplayer->OnFilterBarVisibilityChanged();
+			}
+		} ),
+	m_FilterPlaylistID(),
+	m_FilteredPlaylists()
 {
 	const DWORD exStyle = WS_EX_ACCEPTFILES;
 	LPCTSTR className = WC_LISTVIEW;
@@ -273,6 +283,9 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	ListView_InsertColumn( m_hWnd, 0 /*iCol*/, &lvc );
 
 	ApplySettings();
+
+	// Note that the parent window layout includes the search bar (if shown) when it is first calculated, so there is no need to notify the parent here.
+	m_Filter.SetShown( m_Settings.GetShowSearchBar() );
 }
 
 WndList::~WndList()
@@ -747,6 +760,8 @@ void WndList::OnContextMenu( const POINT& position )
 			const UINT enableRemoveFiles = allowRemoveFiles ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | enableRemoveFiles );
 
+			CheckMenuItem( listmenu, ID_VIEW_SEARCHPLAYLIST, MF_BYCOMMAND | ( IsSearchShown() ? MF_CHECKED : MF_UNCHECKED ) );
+
 			const UINT enableGainCalculator = hasSelectedItems ? MF_ENABLED : MF_DISABLED;
 			EnableMenuItem( listmenu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | enableGainCalculator );
 
@@ -986,11 +1001,17 @@ void WndList::SetPlaylist( const Playlist::Ptr playlist, const bool initSelectio
 	if ( m_Playlist != playlist ) {
 		m_Playlist = playlist;
 	}
+	if ( const std::string playlistID = m_Playlist ? m_Playlist->GetID() : std::string(); playlistID != m_FilterPlaylistID ) {
+		// Each playlist has its own filter, so show the filter for the new playlist (which hides the filter bar if the new playlist is not filtered).
+		// Note that the playlist ID is checked, rather than whether the playlist has changed above, as the current playlist can be replaced elsewhere (e.g. when dropping files).
+		m_FilterPlaylistID = playlistID;
+		m_Filter.SetFilter( m_Playlist ? m_Playlist->GetFilter() : std::wstring() );
+	}
 	DeselectAllItems();
 	RefreshPlaylist();
 	if ( m_Playlist ) {
 		int selectedIndex = -1;
-		const Playlist::Items playlistItems = m_Playlist->GetItems();
+		const Playlist::Items playlistItems = m_Playlist->GetFilteredItems();
 		for ( auto item = playlistItems.begin(); playlistItems.end() != item; item++ ) {
 			if ( auto filename = m_FilenameToIDs.insert( FilenameToIDs::value_type( std::tie( item->Info.GetFilename(), item->Info.GetCueStart(), item->Info.GetCueEnd() ), {} ) ).first; m_FilenameToIDs.end() != filename ) {
 				filename->second.insert( item->ID );
@@ -1096,6 +1117,11 @@ void WndList::AddFileHandler( const AddedItem* addedItem )
 {
 	if ( nullptr != addedItem ) {
 		if ( addedItem->Playlist == m_Playlist.get() ) {
+			if ( addedItem->Position < 0 ) {
+				// The item does not match the playlist filter, so is not shown.
+				return;
+			}
+
 			InsertListViewItem( addedItem->Item, addedItem->Position );
 
 			int selectedIndex = ListView_GetNextItem( m_hWnd, -1, LVNI_SELECTED );
@@ -1161,6 +1187,84 @@ void WndList::SortPlaylist( const Playlist::Column column )
 		m_Playlist->Sort( column );
 		SetPlaylist( m_Playlist, true, std::nullopt, selectedItem.ID );
 	}
+}
+
+void WndList::SetPlaylistFilter( const std::wstring& filter )
+{
+	if ( m_Playlist ) {
+		const auto selectedItem = GetCurrentSelectedItem();
+		if ( !filter.empty() ) {
+			m_FilteredPlaylists.remove_if( [ this ] ( const std::weak_ptr<Playlist>& playlist ) { return playlist.expired() || ( playlist.lock() == m_Playlist ); } );
+			m_FilteredPlaylists.push_back( m_Playlist );
+		}
+		if ( m_Playlist->SetFilter( filter ) ) {
+			SetPlaylist( m_Playlist, true, std::nullopt, selectedItem.ID );
+			if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
+				vuplayer->OnPlaylistFilterChanged( m_Playlist.get() );
+			}
+		}
+	}
+}
+
+void WndList::ActivateSearch()
+{
+	if ( !m_Filter.IsShown() ) {
+		m_Settings.SetShowSearchBar( true );
+		SetFiltersEnabled( true );
+	}
+	m_Filter.Activate();
+}
+
+void WndList::ToggleSearch()
+{
+	if ( m_Filter.IsShown() ) {
+		HideSearch();
+	} else {
+		ActivateSearch();
+	}
+}
+
+void WndList::HideSearch()
+{
+	SetFiltersEnabled( false );
+	m_Filter.SetShown( false );
+	m_Settings.SetShowSearchBar( false );
+}
+
+void WndList::SetFiltersEnabled( const bool enabled )
+{
+	// The other playlists are not displayed, so do not need refreshing, but the current playlist is refreshed if its filtered items have changed.
+	const auto selectedItem = GetCurrentSelectedItem();
+	bool currentPlaylistChanged = false;
+	m_FilteredPlaylists.remove_if( [] ( const std::weak_ptr<Playlist>& playlist ) { return playlist.expired(); } );
+	for ( const auto& filteredPlaylist : m_FilteredPlaylists ) {
+		if ( const auto playlist = filteredPlaylist.lock(); playlist ) {
+			if ( playlist->SetFilterEnabled( enabled ) && ( playlist == m_Playlist ) ) {
+				currentPlaylistChanged = true;
+			}
+		}
+	}
+	if ( currentPlaylistChanged ) {
+		SetPlaylist( m_Playlist, true, std::nullopt, selectedItem.ID );
+		if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
+			vuplayer->OnPlaylistFilterChanged( m_Playlist.get() );
+		}
+	}
+}
+
+bool WndList::IsSearchShown() const
+{
+	return m_Filter.IsShown();
+}
+
+HWND WndList::GetFilterWindowHandle() const
+{
+	return m_Filter.GetWindowHandle();
+}
+
+bool WndList::IsFilterFocused() const
+{
+	return m_Filter.HasFocus();
 }
 
 COLORREF WndList::GetFontColour() const
@@ -1699,7 +1803,9 @@ int WndList::GetCount() const
 
 void WndList::OnSelectAll()
 {
-	if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr != editControl ) {
+	if ( m_Filter.HasFocus() ) {
+		Edit_SetSel( m_Filter.GetEditHandle(), 0, -1 );
+	} else if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr != editControl ) {
 		Edit_SetSel( editControl, 0, -1 );
 	} else {
 		if ( const int itemCount = ListView_GetItemCount( m_hWnd ); itemCount > 0 ) {
@@ -1806,6 +1912,11 @@ void WndList::OnCommandAddStream()
 
 void WndList::OnCutCopy( const bool cut )
 {
+	if ( m_Filter.HasFocus() ) {
+		SendMessage( m_Filter.GetEditHandle(), cut ? WM_CUT : WM_COPY, 0, 0 );
+		return;
+	}
+
 	std::wstring clipboardText;
 	bool haveClipboardText = false;
 	if ( const HWND editControl = ListView_GetEditControl( m_hWnd ); nullptr != editControl ) {
@@ -1858,6 +1969,11 @@ void WndList::OnCutCopy( const bool cut )
 
 void WndList::OnPaste()
 {
+	if ( m_Filter.HasFocus() ) {
+		SendMessage( m_Filter.GetEditHandle(), WM_PASTE, 0, 0 );
+		return;
+	}
+
 	if ( OpenClipboard( m_hWnd ) ) {
 		bool clipboardHasText = false;
 		std::wstring clipboardText;
@@ -2075,6 +2191,7 @@ void WndList::OnSysColorChange( const bool isHighContrast )
 	m_IsHighContrast = isHighContrast;
 	CreateImageList();
 	SetColours();
+	m_Filter.OnSysColorChange();
 }
 
 void WndList::LoadColours()
@@ -2087,6 +2204,7 @@ void WndList::ApplyDarkMode()
 	if ( m_DarkModeScrollbar ) {
 		m_DarkModeScrollbar->SetActive( DarkMode::IsActive() );
 	}
+	m_Filter.ApplyDarkMode();
 }
 
 void WndList::UpdateDarkModeScrollbar()

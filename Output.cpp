@@ -305,10 +305,7 @@ void Output::Play( const long playlistID, const double seek )
 
 	Playlist::Item item( { playlistID, MediaInfo() } );
 	if ( ( 0 == item.ID ) && m_Playlist ) {
-		const Playlist::Items items = m_Playlist->GetItems();
-		if ( !items.empty() ) {
-			item.ID = items.front().ID;
-		}
+		item.ID = m_Playlist->GetFirstItem().ID;
 	}
 
 	if ( m_Playlist && m_Playlist->GetItem( item ) ) {

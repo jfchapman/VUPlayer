@@ -1298,6 +1298,21 @@ void DarkMode::ApplyToHeader( const HWND hwnd )
 	ApplyControlTheme( hwnd, L"ItemsView", nullptr /*lightTheme*/ );
 }
 
+void DarkMode::ApplyToEdit( const HWND hwnd )
+{
+	ApplyControlTheme( hwnd, L"DarkMode_CFD", nullptr /*lightTheme*/ );
+}
+
+COLORREF DarkMode::GetEditBackgroundColour()
+{
+	return s_ControlBackgroundColour;
+}
+
+HBRUSH DarkMode::GetEditBackgroundBrush()
+{
+	return GetControlBackgroundBrush();
+}
+
 void DarkMode::ApplyToChildTooltips( const HWND hwnd )
 {
 	if ( nullptr != hwnd ) {

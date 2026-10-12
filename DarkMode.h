@@ -44,6 +44,11 @@ namespace DarkMode
 	// The control is left in its default state unless dark mode is (or has been) active.
 	void ApplyToHeader( const HWND hwnd );
 
+	// Applies the current dark mode state to the (single line) edit control 'hwnd', which is not part of a dialog.
+	// Note that the parent window also needs to handle WM_CTLCOLOREDIT, using GetTextColour & GetEditBackgroundColour/Brush, when dark mode is active.
+	// The control is left in its default state unless dark mode is (or has been) active.
+	void ApplyToEdit( const HWND hwnd );
+
 	// Applies the current dark mode state to the tooltips which belong to the child controls of the window 'hwnd' (e.g. toolbars, trackbars, list & tree views).
 	// The tooltips are left in their default state unless dark mode is (or has been) active.
 	void ApplyToChildTooltips( const HWND hwnd );
@@ -79,6 +84,10 @@ namespace DarkMode
 	// Default dark mode list colours (the main window list colours can be customised, but dialog lists always use these colours).
 	COLORREF GetListTextColour();
 	COLORREF GetListBackgroundColour();
+
+	// Dark mode edit control background colour & brush (the brush is owned by the DarkMode module, and should not be deleted).
+	COLORREF GetEditBackgroundColour();
+	HBRUSH GetEditBackgroundBrush();
 
 	// Default dark mode accent colour, used for highlights, icons, toolbar buttons & the counter font.
 	COLORREF GetAccentColour();

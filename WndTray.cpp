@@ -351,7 +351,7 @@ void WndTray::ShowContextMenu()
 HMENU WndTray::CreatePlaylistMenu( const Playlist::Ptr playlist )
 {
 	HMENU playlistMenu = NULL;
-	if ( playlist && !playlist->GetItems().empty() ) {
+	if ( playlist && ( playlist->GetCount() > 0 ) ) {
 		playlistMenu = CreatePopupMenu();
 		if ( nullptr != playlistMenu ) {
 			// Playlist menus use a single column (dark mode menus do not support multiple columns, so a single column is used in both modes, for consistency).
@@ -400,7 +400,7 @@ void WndTray::FillPlaylistMenu( const HMENU playlistMenu, const Playlist::Ptr pl
 	if ( ( nullptr == playlistMenu ) || !playlist ) {
 		return;
 	}
-	const Playlist::Items playlistItems = playlist->GetItems();
+	const Playlist::Items playlistItems = playlist->GetFilteredItems();
 	int playlistItemMenuIndex = 0;
 	auto playlistItemIter = playlistItems.begin();
 

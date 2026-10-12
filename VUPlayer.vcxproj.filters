@@ -84,6 +84,9 @@
     <ClInclude Include="WndListScrollbar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="WndFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="WndStatus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -429,6 +432,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WndListScrollbar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="WndFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WndStatus.cpp">

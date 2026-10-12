@@ -626,6 +626,12 @@ public:
 	// Sets whether the application windows is always on top.
 	void SetAlwaysOnTop( const bool alwaysOnTop );
 
+	// Returns whether the playlist search bar is shown.
+	bool GetShowSearchBar();
+
+	// Sets whether the playlist search bar is shown.
+	void SetShowSearchBar( const bool show );
+
 	// Returns whether the 'stop at track end' setting should be retained on startup.
 	bool GetRetainStopAtTrackEnd();
 

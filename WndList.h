@@ -7,6 +7,7 @@
 #include "Output.h"
 #include "Playlist.h"
 #include "Settings.h"
+#include "WndFilter.h"
 #include "WndListScrollbar.h"
 
 #include <memory>
@@ -57,6 +58,24 @@ public:
 
 	// Sorts the playlist by 'column' type.
 	void SortPlaylist( const Playlist::Column column );
+
+	// Sets the current playlist 'filter', refreshing the list if the filtered items have changed.
+	void SetPlaylistFilter( const std::wstring& filter );
+
+	// Shows the search (filter) bar, and moves the focus to it.
+	void ActivateSearch();
+
+	// Shows or hides the search bar (hiding the search bar suspends the filters for all playlists, and showing it reapplies them).
+	void ToggleSearch();
+
+	// Returns whether the search bar is shown.
+	bool IsSearchShown() const;
+
+	// Gets the search bar window handle.
+	HWND GetFilterWindowHandle() const;
+
+	// Returns whether the search bar edit control has the focus.
+	bool IsFilterFocused() const;
 
 	// Sets the current 'playlist'.
 	// 'initSelection' - whether to select the first playlist item (or the currently playing item if it's in the list).
@@ -192,7 +211,7 @@ public:
 	// OnSysColorChange should be called afterwards to apply the colours.
 	void LoadColours();
 
-	// Applies the current dark mode state to the list control's scrollbar.
+	// Applies the current dark mode state to the list control's scrollbar, and the filter bar.
 	void ApplyDarkMode();
 
 	// Synchronises the dark mode scrollbar with the list control's own scrollbar.
@@ -233,6 +252,12 @@ private:
 
 	// Edit control window procedure
 	static LRESULT CALLBACK EditControlProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
+
+	// Hides the search bar, suspending (but not clearing) the filters for all playlists.
+	void HideSearch();
+
+	// Sets whether the filters for all playlists are 'enabled' (refreshing the list if the current playlist's filtered items have changed).
+	void SetFiltersEnabled( const bool enabled );
 
 	// Maps a column type to the column format.
 	using ColumnFormats = std::map<Playlist::Column, ColumnFormat>;
@@ -402,4 +427,13 @@ private:
 
 	// Dark mode scrollbar overlay.
 	std::unique_ptr<WndListScrollbar> m_DarkModeScrollbar;
+
+	// Filter bar.
+	WndFilter m_Filter;
+
+	// The ID of the playlist whose filter is shown in the filter bar.
+	std::string m_FilterPlaylistID;
+
+	// Playlists which have had a filter set (so that the filters can be suspended & reapplied when the search bar is hidden & shown).
+	std::list<std::weak_ptr<Playlist>> m_FilteredPlaylists;
 };

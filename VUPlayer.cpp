@@ -95,7 +95,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_ToolbarVolume( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
 	m_ToolbarLoudness( m_hInst, m_Rebar.GetWindowHandle(), m_Settings ),
 	m_Counter( m_hInst, m_Rebar.GetWindowHandle(), m_Settings, m_Output ),
-	m_Splitter( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Tree.GetWindowHandle(), m_Visual.GetWindowHandle(), m_List.GetWindowHandle(), m_Settings ),
+	m_Splitter( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Tree.GetWindowHandle(), m_Visual.GetWindowHandle(), m_List.GetWindowHandle(), m_List.GetFilterWindowHandle(), m_Settings ),
 	m_Tray( m_hInst, m_hWnd, m_Library, m_Settings, m_Output, m_Tree, m_List ),
 	m_Taskbar( m_hInst, m_hWnd ),
 	m_EQ( m_hInst, m_List.GetWindowHandle(), m_Settings, m_Output ),
@@ -673,6 +673,26 @@ void VUPlayer::OnPlaylistItemUpdated( Playlist* playlist, const Playlist::Item& 
 	m_List.OnItemUpdated( playlist, item );
 }
 
+void VUPlayer::OnPlaylistItemFilterChanged( Playlist* playlist, const Playlist::Item& item, const int position )
+{
+	if ( position >= 0 ) {
+		m_List.OnFileAdded( playlist, item, position );
+	} else {
+		m_List.OnFileRemoved( playlist, item );
+	}
+	m_Status.Update( playlist );
+}
+
+void VUPlayer::OnPlaylistFilterChanged( Playlist* playlist )
+{
+	m_Status.Update( playlist );
+}
+
+void VUPlayer::OnFilterBarVisibilityChanged()
+{
+	m_Splitter.Resize();
+}
+
 void VUPlayer::OnDestroy()
 {
 	KillTimer( m_hWnd, s_TimerID );
@@ -1023,6 +1043,15 @@ void VUPlayer::OnCommand( const int commandID )
 			SetFocus( m_List.GetWindowHandle() );
 			break;
 		}
+		case ID_VIEW_SEARCHPLAYLIST: {
+			m_List.ToggleSearch();
+			break;
+		}
+		case ID_VIEW_SEARCHPLAYLIST_ACTIVATE: {
+			// The keyboard shortcut always shows the search bar & moves the focus to it (rather than toggling the search bar, as the menu item does).
+			m_List.ActivateSearch();
+			break;
+		}
 		case ID_FILE_ADDTOFAVOURITES: {
 			OnAddToFavourites();
 			break;
@@ -1358,6 +1387,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
 
 		// View menu
+		CheckMenuItem( menu, ID_VIEW_SEARCHPLAYLIST, MF_BYCOMMAND | ( m_List.IsSearchShown() ? MF_CHECKED : MF_UNCHECKED ) );
 		const DarkMode::Mode darkMode = m_Settings.GetDarkMode();
 		const UINT darkModeEnabled = DarkMode::IsSupported() ? MF_ENABLED : MF_DISABLED;
 		CheckMenuItem( menu, ID_VIEW_DARKMODE_SYSTEM, MF_BYCOMMAND | ( ( DarkMode::Mode::System == darkMode ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -2093,7 +2123,7 @@ void VUPlayer::OnMusicBrainzResult( const MusicBrainz::Result& result, const boo
 				}
 			}
 
-			if ( ( Playlist::Type::User == playlist->GetType() ) && ( !album.Title.empty() && ( playlist->GetName() != album.Title ) && ( static_cast<size_t>( playlist->GetCount() ) == album.Tracks.size() ) ) ) {
+			if ( ( Playlist::Type::User == playlist->GetType() ) && ( !album.Title.empty() && ( playlist->GetName() != album.Title ) && ( items.size() == album.Tracks.size() ) ) ) {
 				playlist->SetName( album.Title );
 				m_Tree.RefreshUserPlaylistLabel( playlist );
 			}
@@ -2115,7 +2145,8 @@ bool VUPlayer::IsMusicBrainzEnabled()
 
 HACCEL VUPlayer::GetAcceleratorTable() const
 {
-	return m_IsEditingLabel ? m_hAccelEditLabel : m_hAccel;
+	// Use the modified accelerator table when text is being edited, so that keys such as space are passed to the edit control.
+	return ( m_IsEditingLabel || m_List.IsFilterFocused() ) ? m_hAccelEditLabel : m_hAccel;
 }
 
 void VUPlayer::OnRemoveFromLibrary( const MediaInfo::List& mediaList )
@@ -2424,6 +2455,7 @@ void VUPlayer::OnPaint( const PAINTSTRUCT& ps )
 {
 	const std::array clipChildren = {
 		m_List.GetWindowHandle(),
+		m_List.GetFilterWindowHandle(),
 		m_Tree.GetWindowHandle(),
 		m_Rebar.GetWindowHandle(),
 		m_Status.GetWindowHandle(),
@@ -2431,6 +2463,9 @@ void VUPlayer::OnPaint( const PAINTSTRUCT& ps )
 		m_Visual.GetWindowHandle()
 	};
 	for ( const auto hwnd : clipChildren ) {
+		if ( !( WS_VISIBLE & GetWindowLongPtr( hwnd, GWL_STYLE ) ) ) {
+			continue;
+		}
 		RECT rect = {};
 		GetWindowRect( hwnd, &rect );
 		MapWindowRect( nullptr, m_hWnd, &rect );
