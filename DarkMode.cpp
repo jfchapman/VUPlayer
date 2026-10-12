@@ -472,14 +472,17 @@ namespace
 		}
 	}
 
-	// Handles custom draw notifications for dark mode radio buttons in dialogs.
-	// The dark mode theme does not define a text colour for radio buttons (unlike check boxes), so the radio buttons are drawn here.
+	// Handles custom draw notifications for dark mode check boxes & radio buttons in dialogs.
+	// The dark mode theme does not define a text colour for radio buttons, nor for check boxes on Windows 10 (only Windows 11 does), so these buttons are drawn here.
 	// Returns the custom draw result, or nullopt if the default drawing should be used.
-	std::optional<LRESULT> OnRadioButtonCustomDraw( LPNMCUSTOMDRAW nmcd )
+	std::optional<LRESULT> OnCheckBoxOrRadioButtonCustomDraw( LPNMCUSTOMDRAW nmcd )
 	{
 		const HWND button = nmcd->hdr.hwndFrom;
-		const LONG_PTR buttonType = BS_TYPEMASK & GetWindowLongPtr( button, GWL_STYLE );
-		if ( ( ( BS_RADIOBUTTON != buttonType ) && ( BS_AUTORADIOBUTTON != buttonType ) ) || ( CDDS_PREPAINT != nmcd->dwDrawStage ) ) {
+		const LONG_PTR style = GetWindowLongPtr( button, GWL_STYLE );
+		const LONG_PTR buttonType = BS_TYPEMASK & style;
+		const bool isRadioButton = ( BS_RADIOBUTTON == buttonType ) || ( BS_AUTORADIOBUTTON == buttonType );
+		const bool isCheckBox = !( BS_PUSHLIKE & style ) && ( ( BS_CHECKBOX == buttonType ) || ( BS_AUTOCHECKBOX == buttonType ) || ( BS_3STATE == buttonType ) || ( BS_AUTO3STATE == buttonType ) );
+		if ( ( !isRadioButton && !isCheckBox ) || ( CDDS_PREPAINT != nmcd->dwDrawStage ) ) {
 			return std::nullopt;
 		}
 		const HTHEME theme = OpenThemeData( button, VSCLASS_BUTTON );
@@ -491,9 +494,9 @@ namespace
 		const RECT& rect = nmcd->rc;
 		FillRect( dc, &rect, DarkMode::GetBackgroundBrush() );
 
-		// Radio button glyph.
+		// Glyph (the check box & radio button states share the same layout).
 		const bool enabled = IsWindowEnabled( button );
-		const bool checked = ( BST_CHECKED == Button_GetCheck( button ) );
+		const LRESULT checkState = Button_GetCheck( button );
 		int state = RBS_UNCHECKEDNORMAL;
 		if ( !enabled ) {
 			state = RBS_UNCHECKEDDISABLED;
@@ -502,14 +505,17 @@ namespace
 		} else if ( CDIS_HOT & nmcd->uItemState ) {
 			state = RBS_UNCHECKEDHOT;
 		}
-		if ( checked ) {
+		if ( BST_CHECKED == checkState ) {
 			state += ( RBS_CHECKEDNORMAL - RBS_UNCHECKEDNORMAL );
+		} else if ( isCheckBox && ( BST_INDETERMINATE == checkState ) ) {
+			state += ( CBS_MIXEDNORMAL - CBS_UNCHECKEDNORMAL );
 		}
+		const int part = isCheckBox ? BP_CHECKBOX : BP_RADIOBUTTON;
 		SIZE glyphSize = {};
-		GetThemePartSize( theme, dc, BP_RADIOBUTTON, state, nullptr /*rect*/, TS_DRAW, &glyphSize );
+		GetThemePartSize( theme, dc, part, state, nullptr /*rect*/, TS_DRAW, &glyphSize );
 		RECT glyphRect = { rect.left, rect.top + ( rect.bottom - rect.top - glyphSize.cy ) / 2, rect.left + glyphSize.cx, 0 };
 		glyphRect.bottom = glyphRect.top + glyphSize.cy;
-		DrawThemeBackground( theme, dc, BP_RADIOBUTTON, state, &glyphRect, nullptr /*clipRect*/ );
+		DrawThemeBackground( theme, dc, part, state, &glyphRect, nullptr /*clipRect*/ );
 		CloseThemeData( theme );
 
 		// Label.
@@ -974,7 +980,7 @@ namespace
 					} else if ( 0 == _wcsicmp( className, TRACKBAR_CLASS ) ) {
 						return OnTrackbarCustomDraw( reinterpret_cast<LPNMCUSTOMDRAW>( lParam ) );
 					} else if ( 0 == _wcsicmp( className, WC_BUTTON ) ) {
-						if ( const auto result = OnRadioButtonCustomDraw( reinterpret_cast<LPNMCUSTOMDRAW>( lParam ) ); result.has_value() ) {
+						if ( const auto result = OnCheckBoxOrRadioButtonCustomDraw( reinterpret_cast<LPNMCUSTOMDRAW>( lParam ) ); result.has_value() ) {
 							return result.value();
 						}
 					}
