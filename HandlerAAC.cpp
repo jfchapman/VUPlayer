@@ -68,6 +68,7 @@ INT_PTR CALLBACK HandlerAAC::DialogProc( HWND hwnd, UINT message, WPARAM wParam,
 				SetWindowLongPtr( hwnd, DWLP_USER, reinterpret_cast<LPARAM>( config ) );
 				config->m_Handler->OnConfigureInit( hwnd, config->m_Settings );
 				DarkMode::ApplyToDialog( hwnd );
+				LayoutDialogTextControls( hwnd );
 			}
 			break;
 		}

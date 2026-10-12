@@ -3,6 +3,7 @@
 #include "resource.h"
 
 #include "Gdiplusimaging.h"
+#include "windowsx.h"
 
 #include <initguid.h> 
 #include <Uxtheme.h>
@@ -447,6 +448,284 @@ void CentreDialog( const HWND dialog )
 				SetWindowPos( dialog, HWND_TOP, x, y, 0 /*cx*/, 0 /*cy*/, SWP_NOSIZE );
 			}
 		}
+	}
+}
+
+// Subclass ID for vertically centred edit controls.
+static const UINT_PTR s_CentredEditSubclassID = 1;
+
+// Subclass procedure for single line edit controls, which vertically centres the text by reducing the client area to the height of the text.
+static LRESULT CALLBACK CentredEditSubclassProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR subclassID, DWORD_PTR /*refData*/ )
+{
+	switch ( message ) {
+		case WM_NCCALCSIZE: {
+			const LRESULT result = DefSubclassProc( hwnd, message, wParam, lParam );
+			RECT* clientRect = reinterpret_cast<RECT*>( lParam );
+			int textHeight = 0;
+			if ( const HDC dc = GetDC( hwnd ); nullptr != dc ) {
+				const HGDIOBJ previousFont = SelectObject( dc, reinterpret_cast<HFONT>( SendMessage( hwnd, WM_GETFONT, 0, 0 ) ) );
+				TEXTMETRIC textMetric = {};
+				if ( GetTextMetrics( dc, &textMetric ) ) {
+					// Allow for the single pixel inset a bordered edit control applies around the text.
+					const bool bordered = ( WS_BORDER & GetWindowLongPtr( hwnd, GWL_STYLE ) ) || ( WS_EX_CLIENTEDGE & GetWindowLongPtr( hwnd, GWL_EXSTYLE ) );
+					textHeight = textMetric.tmHeight + ( bordered ? 2 : 0 );
+				}
+				SelectObject( dc, previousFont );
+				ReleaseDC( hwnd, dc );
+			}
+			const int clientHeight = clientRect->bottom - clientRect->top;
+			if ( ( textHeight > 0 ) && ( clientHeight > textHeight ) ) {
+				clientRect->top += ( clientHeight - textHeight ) / 2;
+				clientRect->bottom = clientRect->top + textHeight;
+			}
+			return result;
+		}
+		case WM_NCPAINT: {
+			const LRESULT result = DefSubclassProc( hwnd, message, wParam, lParam );
+			// Fill the areas between the border and the (reduced) client area, using the brush the control uses for its background.
+			RECT windowRect = {};
+			GetWindowRect( hwnd, &windowRect );
+			RECT clientRect = {};
+			GetClientRect( hwnd, &clientRect );
+			MapWindowRect( hwnd, NULL /*hwndTo*/, &clientRect );
+			OffsetRect( &clientRect, -windowRect.left, -windowRect.top );
+			OffsetRect( &windowRect, -windowRect.left, -windowRect.top );
+			const int border = clientRect.left;
+			const RECT topRect = { clientRect.left, border, clientRect.right, clientRect.top };
+			const RECT bottomRect = { clientRect.left, clientRect.bottom, clientRect.right, windowRect.bottom - border };
+			if ( const HDC dc = GetWindowDC( hwnd ); nullptr != dc ) {
+				const bool useStaticColour = !IsWindowEnabled( hwnd ) || ( ES_READONLY & GetWindowLongPtr( hwnd, GWL_STYLE ) );
+				const HBRUSH brush = reinterpret_cast<HBRUSH>( SendMessage( GetParent( hwnd ), useStaticColour ? WM_CTLCOLORSTATIC : WM_CTLCOLOREDIT, reinterpret_cast<WPARAM>( dc ), reinterpret_cast<LPARAM>( hwnd ) ) );
+				if ( nullptr != brush ) {
+					FillRect( dc, &topRect, brush );
+					FillRect( dc, &bottomRect, brush );
+				}
+				ReleaseDC( hwnd, dc );
+			}
+			return result;
+		}
+		case WM_NCHITTEST: {
+			// Treat the areas above and below the text as part of the client area, so that clicking there sets the focus and shows the text cursor.
+			const LRESULT result = DefSubclassProc( hwnd, message, wParam, lParam );
+			if ( HTCLIENT != result ) {
+				RECT windowRect = {};
+				GetWindowRect( hwnd, &windowRect );
+				const POINT pt = { GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ) };
+				if ( PtInRect( &windowRect, pt ) ) {
+					return HTCLIENT;
+				}
+			}
+			return result;
+		}
+		case WM_ENABLE: {
+			const LRESULT result = DefSubclassProc( hwnd, message, wParam, lParam );
+			RedrawWindow( hwnd, NULL /*rect*/, NULL /*region*/, RDW_FRAME | RDW_INVALIDATE );
+			return result;
+		}
+		case WM_NCDESTROY: {
+			RemoveWindowSubclass( hwnd, CentredEditSubclassProc, subclassID );
+			break;
+		}
+		default: {
+			break;
+		}
+	}
+	return DefSubclassProc( hwnd, message, wParam, lParam );
+}
+
+// Returns whether 'hwnd' is a single line edit control.
+static bool IsSingleLineEdit( const HWND hwnd )
+{
+	WCHAR className[ 64 ] = {};
+	GetClassName( hwnd, className, static_cast<int>( std::size( className ) ) );
+	return ( 0 == _wcsicmp( className, WC_EDIT ) ) && !( ES_MULTILINE & GetWindowLongPtr( hwnd, GWL_STYLE ) );
+}
+
+// Vertically centres the text of the 'hwnd' control, if it is a single line edit control.
+static BOOL CALLBACK CentreEditText( HWND hwnd, LPARAM /*param*/ )
+{
+	if ( IsSingleLineEdit( hwnd ) ) {
+		SetWindowSubclass( hwnd, CentredEditSubclassProc, s_CentredEditSubclassID, 0 /*refData*/ );
+		SetWindowPos( hwnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED );
+	}
+	return TRUE;
+}
+
+// Returns the area, in 'dialog' coordinates, in which the 'control' text is displayed, or nullopt if the control is not a single line edit control or combo box.
+static std::optional<RECT> GetControlTextRect( const HWND dialog, const HWND control )
+{
+	RECT textRect = {};
+	if ( COMBOBOXINFO comboBoxInfo = { sizeof( COMBOBOXINFO ) }; GetComboBoxInfo( control, &comboBoxInfo ) ) {
+		if ( ( nullptr != comboBoxInfo.hwndItem ) && ( comboBoxInfo.hwndItem != comboBoxInfo.hwndCombo ) ) {
+			GetClientRect( comboBoxInfo.hwndItem, &textRect );
+			MapWindowRect( comboBoxInfo.hwndItem, dialog, &textRect );
+		} else {
+			textRect = comboBoxInfo.rcItem;
+			MapWindowRect( control, dialog, &textRect );
+		}
+		return textRect;
+	}
+	if ( IsSingleLineEdit( control ) ) {
+		GetClientRect( control, &textRect );
+		MapWindowRect( control, dialog, &textRect );
+		return textRect;
+	}
+	return std::nullopt;
+}
+
+int GetDialogComboBoxHeight( const HWND dialog )
+{
+	int comboHeight = 0;
+	if ( const HWND combo = CreateWindowEx( 0, WC_COMBOBOX, L"", WS_CHILD | CBS_DROPDOWNLIST, 0, 0, 100, 100, dialog, nullptr, GetModuleHandle( nullptr ), nullptr ); nullptr != combo ) {
+		SendMessage( combo, WM_SETFONT, SendMessage( dialog, WM_GETFONT, 0, 0 ), FALSE /*redraw*/ );
+		RECT comboRect = {};
+		GetWindowRect( combo, &comboRect );
+		comboHeight = comboRect.bottom - comboRect.top;
+		DestroyWindow( combo );
+	}
+	return comboHeight;
+}
+
+int GetPushButtonInset()
+{
+	// Themed push buttons (light & dark) leave a one pixel margin between the window edge and the button frame, at all display scaling levels.
+	return 1;
+}
+
+int GetDialogButtonHeight( const HWND dialog )
+{
+	// The visible button frame is midway between the combo box height and a standard (14 dialog unit) button,
+	// with any extra height split evenly above & below, so that buttons can be centred on adjacent controls.
+	const int comboHeight = GetDialogComboBoxHeight( dialog );
+	const int inset = GetPushButtonInset();
+	RECT standardRect = { 0, 0, 0, 14 };
+	MapDialogRect( dialog, &standardRect );
+	const int standardHeight = standardRect.bottom - standardRect.top - 2 * inset;
+	const int extra = std::max( 0, static_cast<int>( std::lround( ( standardHeight - comboHeight ) / 4.0 ) ) );
+	return comboHeight + 2 * extra + 2 * inset;
+}
+
+// Returns whether 'hwnd' is a push button (or a check box with a push button appearance).
+static bool IsPushButton( const HWND hwnd )
+{
+	WCHAR className[ 64 ] = {};
+	GetClassName( hwnd, className, static_cast<int>( std::size( className ) ) );
+	if ( 0 != _wcsicmp( className, WC_BUTTON ) ) {
+		return false;
+	}
+	const LONG_PTR style = GetWindowLongPtr( hwnd, GWL_STYLE );
+	const LONG_PTR type = BS_TYPEMASK & style;
+	return ( BS_PUSHBUTTON == type ) || ( BS_DEFPUSHBUTTON == type ) || ( ( BS_PUSHLIKE & style ) && ( ( BS_CHECKBOX == type ) || ( BS_AUTOCHECKBOX == type ) ) );
+}
+
+void LayoutDialogTextControls( const HWND dialog )
+{
+	if ( nullptr == dialog ) {
+		return;
+	}
+
+	// Match the edit control & button heights to the natural height of a combo box using the dialog font.
+	// (Combo boxes do not vertically centre their text if they are made taller, so the other controls are adjusted instead.)
+	const int comboHeight = GetDialogComboBoxHeight( dialog );
+	if ( comboHeight > 0 ) {
+		// Edit controls and combo boxes are both vertically centred within a standard (13 dialog unit) row, starting at the top of the control in the dialog template.
+		RECT rowRect = { 0, 0, 0, 13 };
+		MapDialogRect( dialog, &rowRect );
+		const int rowHeight = rowRect.bottom - rowRect.top;
+		for ( HWND control = GetWindow( dialog, GW_CHILD ); nullptr != control; control = GetWindow( control, GW_HWNDNEXT ) ) {
+			WCHAR className[ 64 ] = {};
+			GetClassName( control, className, static_cast<int>( std::size( className ) ) );
+			if ( 0 == _wcsicmp( className, WC_COMBOBOX ) ) {
+				RECT comboRect = {};
+				GetWindowRect( control, &comboRect );
+				MapWindowRect( NULL /*hwndFrom*/, dialog, &comboRect );
+				if ( const int offset = ( rowHeight - ( comboRect.bottom - comboRect.top ) ) / 2; offset > 0 ) {
+					SetWindowPos( control, NULL, comboRect.left, comboRect.top + offset, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE );
+				}
+			} else if ( IsSingleLineEdit( control ) ) {
+				RECT editRect = {};
+				GetWindowRect( control, &editRect );
+				MapWindowRect( NULL /*hwndFrom*/, dialog, &editRect );
+				const int editHeight = editRect.bottom - editRect.top;
+				if ( editHeight != comboHeight ) {
+					// Keep the edit control vertically centred on its original position.
+					const int top = editRect.top + ( editHeight - comboHeight ) / 2;
+					SetWindowPos( control, NULL, editRect.left, top, editRect.right - editRect.left, comboHeight, SWP_NOZORDER | SWP_NOACTIVATE );
+				}
+			}
+		}
+
+		// Buttons are centred on an edit control or combo box on the same row, otherwise they are kept vertically centred on their original position.
+		const int newButtonHeight = GetDialogButtonHeight( dialog );
+		const int buttonOffset = ( newButtonHeight - comboHeight ) / 2;
+		for ( HWND button = GetWindow( dialog, GW_CHILD ); nullptr != button; button = GetWindow( button, GW_HWNDNEXT ) ) {
+			if ( !IsPushButton( button ) ) {
+				continue;
+			}
+			RECT buttonRect = {};
+			GetWindowRect( button, &buttonRect );
+			MapWindowRect( NULL /*hwndFrom*/, dialog, &buttonRect );
+			const int buttonHeight = buttonRect.bottom - buttonRect.top;
+			int top = buttonRect.top + ( buttonHeight - newButtonHeight ) / 2;
+			for ( HWND control = GetWindow( dialog, GW_CHILD ); nullptr != control; control = GetWindow( control, GW_HWNDNEXT ) ) {
+				WCHAR className[ 64 ] = {};
+				GetClassName( control, className, static_cast<int>( std::size( className ) ) );
+				if ( ( WS_VISIBLE & GetWindowLongPtr( control, GWL_STYLE ) ) && ( IsSingleLineEdit( control ) || ( 0 == _wcsicmp( className, WC_COMBOBOX ) ) ) ) {
+					RECT controlRect = {};
+					GetWindowRect( control, &controlRect );
+					MapWindowRect( NULL /*hwndFrom*/, dialog, &controlRect );
+					const int buttonCentre = ( buttonRect.top + buttonRect.bottom ) / 2;
+					if ( ( buttonCentre > controlRect.top ) && ( buttonCentre < controlRect.bottom ) ) {
+						top = controlRect.top - buttonOffset;
+						break;
+					}
+				}
+			}
+			if ( ( top != buttonRect.top ) || ( newButtonHeight != buttonHeight ) ) {
+				SetWindowPos( button, NULL, buttonRect.left, top, buttonRect.right - buttonRect.left, newButtonHeight, SWP_NOZORDER | SWP_NOACTIVATE );
+			}
+		}
+	}
+
+	// Vertically centre the edit control text (including the edit part of combo boxes).
+	EnumChildWindows( dialog, CentreEditText, 0 /*param*/ );
+
+	// Align the labels with the text of the control which follows them.
+	for ( HWND label = GetWindow( dialog, GW_CHILD ); nullptr != label; label = GetWindow( label, GW_HWNDNEXT ) ) {
+		WCHAR className[ 64 ] = {};
+		GetClassName( label, className, static_cast<int>( std::size( className ) ) );
+		const LONG_PTR style = GetWindowLongPtr( label, GWL_STYLE );
+		const LONG_PTR type = SS_TYPEMASK & style;
+		if ( ( 0 != _wcsicmp( className, WC_STATIC ) ) || !( WS_VISIBLE & style ) ||
+				( ( SS_LEFT != type ) && ( SS_RIGHT != type ) && ( SS_CENTER != type ) && ( SS_LEFTNOWORDWRAP != type ) ) ) {
+			continue;
+		}
+		// Note that the dialog is not yet visible, so the control style is checked (rather than using IsWindowVisible).
+		const HWND control = GetWindow( label, GW_HWNDNEXT );
+		if ( ( nullptr == control ) || !( WS_VISIBLE & GetWindowLongPtr( control, GWL_STYLE ) ) ) {
+			continue;
+		}
+		const auto textRect = GetControlTextRect( dialog, control );
+		if ( !textRect.has_value() ) {
+			continue;
+		}
+
+		// Only align single line labels which are on the same row as the control.
+		RECT labelRect = {};
+		GetWindowRect( label, &labelRect );
+		MapWindowRect( NULL /*hwndFrom*/, dialog, &labelRect );
+		RECT controlRect = {};
+		GetWindowRect( control, &controlRect );
+		MapWindowRect( NULL /*hwndFrom*/, dialog, &controlRect );
+		const int labelHeight = labelRect.bottom - labelRect.top;
+		const int controlHeight = controlRect.bottom - controlRect.top;
+		const bool sameRow = ( labelRect.top < controlRect.bottom ) && ( labelRect.bottom > controlRect.top );
+		if ( !sameRow || ( labelHeight > controlHeight * 3 / 2 ) ) {
+			continue;
+		}
+
+		SetWindowLongPtr( label, GWL_STYLE, style | SS_CENTERIMAGE );
+		SetWindowPos( label, NULL, labelRect.left, textRect->top, labelRect.right - labelRect.left, textRect->bottom - textRect->top, SWP_NOZORDER | SWP_NOACTIVATE );
 	}
 }
 

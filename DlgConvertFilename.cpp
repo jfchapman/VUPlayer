@@ -14,6 +14,7 @@ INT_PTR CALLBACK DlgConvertFilename::DialogProc( HWND hwnd, UINT message, WPARAM
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
 				DarkMode::ApplyToDialog( hwnd );
+				LayoutDialogTextControls( hwnd );
 				return TRUE;
 			}
 			break;

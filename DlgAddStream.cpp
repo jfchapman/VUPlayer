@@ -56,6 +56,7 @@ void DlgAddStream::OnInitDialog( const HWND hwnd )
 {
 	m_hWnd = hwnd;
 	DarkMode::ApplyToDialog( m_hWnd );
+	LayoutDialogTextControls( m_hWnd );
 	CentreDialog( m_hWnd );
 }
 

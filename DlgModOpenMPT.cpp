@@ -15,6 +15,7 @@ INT_PTR CALLBACK DlgModOpenMPT::DialogProc( HWND hwnd, UINT message, WPARAM wPar
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
 				DarkMode::ApplyToDialog( hwnd );
+				LayoutDialogTextControls( hwnd );
 				return TRUE;
 			}
 			break;

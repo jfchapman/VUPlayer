@@ -22,6 +22,7 @@ INT_PTR CALLBACK DlgEQ::DialogProc( HWND hwnd, UINT message, WPARAM wParam, LPAR
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
 				DarkMode::ApplyToDialog( hwnd );
+				LayoutDialogTextControls( hwnd );
 				return TRUE;
 			}
 			break;

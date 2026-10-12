@@ -32,6 +32,9 @@ INT_PTR CALLBACK DlgTrackInfo::DialogProc( HWND hwnd, UINT message, WPARAM wPara
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
 				DarkMode::ApplyToDialog( hwnd );
+				LayoutDialogTextControls( hwnd );
+				dialog->ResizeArtwork( hwnd );
+				CentreDialog( hwnd );
 				return TRUE;
 			}
 			break;
@@ -210,7 +213,6 @@ DlgTrackInfo::~DlgTrackInfo()
 
 void DlgTrackInfo::OnInitDialog( HWND hwnd )
 {
-	CentreDialog( hwnd );
 	HWND genreWnd = GetDlgItem( hwnd, IDC_TRACKINFO_GENRE );
 	if ( nullptr != genreWnd ) {
 		for ( const auto& genre : kID3Genres ) {
@@ -816,6 +818,42 @@ void DlgTrackInfo::ShowProgress( HWND hwnd )
 	MoveWindow( hwndCancel, x, y, width, height, TRUE /*repaint*/ );
 	EnableWindow( hwndCancel, TRUE );
 	ShowWindow( hwndCancel, SW_SHOW );
+}
+
+void DlgTrackInfo::ResizeArtwork( HWND hwnd )
+{
+	// The artwork spans from the top of the title control to the bottom of the comment control.
+	RECT titleRect = {};
+	GetWindowRect( GetDlgItem( hwnd, IDC_TRACKINFO_TITLE ), &titleRect );
+	MapWindowRect( NULL /*hwndFrom*/, hwnd, &titleRect );
+	RECT commentRect = {};
+	GetWindowRect( GetDlgItem( hwnd, IDC_TRACKINFO_COMMENT ), &commentRect );
+	MapWindowRect( NULL /*hwndFrom*/, hwnd, &commentRect );
+	const HWND hwndArtwork = GetDlgItem( hwnd, IDC_TRACKINFO_ARTWORK );
+	RECT artworkRect = {};
+	GetWindowRect( hwndArtwork, &artworkRect );
+	MapWindowRect( NULL /*hwndFrom*/, hwnd, &artworkRect );
+	const int size = commentRect.bottom - titleRect.top;
+	SetWindowPos( hwndArtwork, NULL, artworkRect.left, titleRect.top, size, size, SWP_NOZORDER | SWP_NOACTIVATE );
+	const int delta = size - ( artworkRect.right - artworkRect.left );
+	if ( 0 == delta ) {
+		return;
+	}
+
+	const HWND hwndFilename = GetDlgItem( hwnd, IDC_TRACKINFO_FILENAME );
+	RECT rect = {};
+	GetWindowRect( hwndFilename, &rect );
+	SetWindowPos( hwndFilename, NULL, 0, 0, rect.right - rect.left + delta, rect.bottom - rect.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE );
+
+	for ( const int id : { IDOK, IDCANCEL } ) {
+		const HWND hwndButton = GetDlgItem( hwnd, id );
+		GetWindowRect( hwndButton, &rect );
+		MapWindowRect( NULL /*hwndFrom*/, hwnd, &rect );
+		SetWindowPos( hwndButton, NULL, rect.left + delta, rect.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE );
+	}
+
+	GetWindowRect( hwnd, &rect );
+	SetWindowPos( hwnd, NULL, 0, 0, rect.right - rect.left + delta, rect.bottom - rect.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE );
 }
 
 void DlgTrackInfo::SaveThreadHandler( HWND hwnd )

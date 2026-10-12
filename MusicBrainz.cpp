@@ -85,6 +85,7 @@ INT_PTR CALLBACK MusicBrainz::MatchDialogProc( HWND hwnd, UINT message, WPARAM w
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				musicBrainz->OnInitMatchDialog( hwnd, matchInfo->m_Result );
 				DarkMode::ApplyToDialog( hwnd );
+				LayoutDialogTextControls( hwnd );
 			}
 			return TRUE;
 		}
@@ -270,6 +271,20 @@ void MusicBrainz::OnInitMatchDialog( const HWND hwnd, const Result& result )
 	const HWND hwndAlbums = GetDlgItem( hwnd, IDC_MUSICBRAINZ_MATCHES );
 	const HWND hwndTracks = GetDlgItem( hwnd, IDC_MUSICBRAINZ_TRACKS );
 	if ( ( nullptr != hwndAlbums ) && ( nullptr != hwndTracks ) ) {
+		// Returns a column width for the 'list' which fits the widest of the 'texts' (using the list font), including the cell padding.
+		const auto columnWidth = [] ( const HWND list, std::initializer_list<std::wstring> texts ) {
+			int width = 0;
+			for ( const auto& text : texts ) {
+				width = std::max( width, ListView_GetStringWidth( list, text.c_str() ) );
+			}
+			return width + static_cast<int>( 16 * GetDPIScaling() );
+		};
+		const auto loadString = [ this ] ( const UINT id ) {
+			WCHAR buffer[ 32 ] = {};
+			LoadString( m_hInst, id, buffer, static_cast<int>( std::size( buffer ) ) );
+			return std::wstring( buffer );
+		};
+
 		// Set up the matches list control.
 		{
 			ListView_SetExtendedListViewStyle( hwndAlbums, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER );
@@ -286,7 +301,7 @@ void MusicBrainz::OnInitMatchDialog( const HWND hwnd, const Result& result )
 			lvc.pszText = buffer;
 
 			int totalWidth = rect.right - rect.left - static_cast<int>( 20 * GetDPIScaling() /*scrollbar*/ );
-			const int yearWidth = static_cast<int>( 48 * GetDPIScaling() );
+			const int yearWidth = columnWidth( hwndAlbums, { L"0000", loadString( IDS_COLUMN_YEAR ) } );
 			totalWidth -= yearWidth;
 			const int titleWidth = totalWidth / 2;
 			const int artistWidth = titleWidth;
@@ -324,9 +339,9 @@ void MusicBrainz::OnInitMatchDialog( const HWND hwnd, const Result& result )
 			lvc.pszText = buffer;
 
 			int totalWidth = rect.right - rect.left - static_cast<int>( 20 * GetDPIScaling() /*scrollbar*/ );
-			const int trackWidth = static_cast<int>( 24 * GetDPIScaling() );
+			const int trackWidth = columnWidth( hwndTracks, { L"99" } );
 			totalWidth -= trackWidth;
-			const int yearWidth = static_cast<int>( 48 * GetDPIScaling() );
+			const int yearWidth = columnWidth( hwndTracks, { L"0000", loadString( IDS_COLUMN_YEAR ) } );
 			totalWidth -= yearWidth;
 			const int titleWidth = totalWidth / 2;
 			const int artistWidth = titleWidth;

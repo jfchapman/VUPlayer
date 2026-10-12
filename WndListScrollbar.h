@@ -73,6 +73,9 @@ private:
 	// Hides the overlays & removes the list's window region.
 	void Hide();
 
+	// Moves the list above any overlapping group boxes in the z-order, so that the list is not clipped by them.
+	void RaiseAboveGroupBoxes();
+
 	// Paints the corner window (between the vertical & horizontal scrollbars).
 	void OnPaintCorner();
 

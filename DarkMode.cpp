@@ -147,6 +147,7 @@ namespace
 	constexpr UINT_PTR s_ListViewSubclassID = 1;
 	constexpr UINT_PTR s_EditSubclassID = 1;
 	constexpr UINT_PTR s_ProgressBarSubclassID = 1;
+	constexpr UINT_PTR s_StaticSubclassID = 1;
 
 	// Dark mode tab control state.
 	struct TabState {
@@ -808,6 +809,10 @@ namespace
 			TEXTMETRIC textMetric = {};
 			GetTextMetrics( dc, &textMetric );
 
+			// Clear the strip containing the text (which may be left over from previous, longer, text).
+			const RECT textStripRect = { clientRect.left, clientRect.top, clientRect.right, clientRect.top + textMetric.tmHeight };
+			FillRect( dc, &textStripRect, DarkMode::GetBackgroundBrush() );
+
 			// Frame, which is vertically centred on the text.
 			RECT frameRect = clientRect;
 			frameRect.top += textMetric.tmHeight / 2;
@@ -835,6 +840,69 @@ namespace
 		}
 	}
 
+	// Paints the disabled dark mode static text control 'hwnd'.
+	void PaintDisabledStatic( const HWND hwnd )
+	{
+		PAINTSTRUCT ps = {};
+		if ( const HDC dc = BeginPaint( hwnd, &ps ); nullptr != dc ) {
+			RECT clientRect = {};
+			GetClientRect( hwnd, &clientRect );
+			const HBRUSH brush = reinterpret_cast<HBRUSH>( SendMessage( GetParent( hwnd ), WM_CTLCOLORSTATIC, reinterpret_cast<WPARAM>( dc ), reinterpret_cast<LPARAM>( hwnd ) ) );
+			FillRect( dc, &clientRect, ( nullptr != brush ) ? brush : DarkMode::GetBackgroundBrush() );
+
+			WCHAR text[ 256 ] = {};
+			if ( const int length = GetWindowText( hwnd, text, static_cast<int>( std::size( text ) ) ); length > 0 ) {
+				const LONG_PTR style = GetWindowLongPtr( hwnd, GWL_STYLE );
+				const LONG_PTR type = SS_TYPEMASK & style;
+				UINT format = DT_EXPANDTABS | ( ( SS_RIGHT == type ) ? DT_RIGHT : ( ( SS_CENTER == type ) ? DT_CENTER : DT_LEFT ) );
+				if ( SS_CENTERIMAGE & style ) {
+					format |= DT_SINGLELINE | DT_VCENTER;
+				} else if ( SS_LEFTNOWORDWRAP != type ) {
+					format |= DT_WORDBREAK;
+				}
+				if ( SS_NOPREFIX & style ) {
+					format |= DT_NOPREFIX;
+				}
+				const HFONT font = reinterpret_cast<HFONT>( SendMessage( hwnd, WM_GETFONT, 0, 0 ) );
+				const HGDIOBJ previousFont = ( nullptr != font ) ? SelectObject( dc, font ) : nullptr;
+				SetBkMode( dc, TRANSPARENT );
+				SetTextColor( dc, DarkMode::GetDisabledTextColour() );
+				DrawText( dc, text, length, &clientRect, format );
+				if ( nullptr != previousFont ) {
+					SelectObject( dc, previousFont );
+				}
+			}
+			EndPaint( hwnd, &ps );
+		}
+	}
+
+	// Subclass procedure for dark mode static text controls.
+	// When disabled, static controls draw embossed text (which is too bright on a dark background), so disabled text is painted here in the disabled text colour.
+	LRESULT CALLBACK StaticSubclassProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR subclassID, DWORD_PTR /*refData*/ )
+	{
+		switch ( message ) {
+			case WM_PAINT: {
+				if ( !IsWindowEnabled( hwnd ) ) {
+					PaintDisabledStatic( hwnd );
+					return 0;
+				}
+				break;
+			}
+			case WM_ENABLE: {
+				InvalidateRect( hwnd, nullptr /*rect*/, TRUE /*erase*/ );
+				break;
+			}
+			case WM_NCDESTROY: {
+				RemoveWindowSubclass( hwnd, StaticSubclassProc, subclassID );
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+		return DefSubclassProc( hwnd, message, wParam, lParam );
+	}
+
 	// Subclass procedure for dark mode group boxes (there is no dark mode group box theme, so these are painted here).
 	LRESULT CALLBACK GroupBoxSubclassProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR subclassID, DWORD_PTR /*refData*/ )
 	{
@@ -846,6 +914,20 @@ namespace
 			case WM_ENABLE: {
 				InvalidateRect( hwnd, nullptr /*rect*/, FALSE /*erase*/ );
 				break;
+			}
+			case WM_SETTEXT: {
+				// The group box draws its new text immediately (rather than via WM_PAINT), so prevent that, and repaint it here instead.
+				// (Note that re-enabling redrawing would also show a hidden window, so this only applies to visible group boxes).
+				const bool visible = ( WS_VISIBLE & GetWindowLongPtr( hwnd, GWL_STYLE ) );
+				if ( visible ) {
+					SendMessage( hwnd, WM_SETREDRAW, FALSE, 0 );
+				}
+				const LRESULT result = DefSubclassProc( hwnd, message, wParam, lParam );
+				if ( visible ) {
+					SendMessage( hwnd, WM_SETREDRAW, TRUE, 0 );
+					InvalidateRect( hwnd, nullptr /*rect*/, FALSE /*erase*/ );
+				}
+				return result;
 			}
 			case WM_NCDESTROY: {
 				RemoveWindowSubclass( hwnd, GroupBoxSubclassProc, subclassID );
@@ -973,9 +1055,15 @@ namespace
 			s_AllowDarkModeForWindow( control, true );
 			SetWindowTheme( control, L"DarkMode_CFD", nullptr );
 			// The drop down list uses the 'DarkMode_Explorer' theme, for a dark scrollbar.
-			if ( COMBOBOXINFO comboBoxInfo = { sizeof( COMBOBOXINFO ) }; GetComboBoxInfo( control, &comboBoxInfo ) && ( nullptr != comboBoxInfo.hwndList ) ) {
-				s_AllowDarkModeForWindow( comboBoxInfo.hwndList, true );
-				SetWindowTheme( comboBoxInfo.hwndList, L"DarkMode_Explorer", nullptr );
+			if ( COMBOBOXINFO comboBoxInfo = { sizeof( COMBOBOXINFO ) }; GetComboBoxInfo( control, &comboBoxInfo ) ) {
+				if ( nullptr != comboBoxInfo.hwndList ) {
+					s_AllowDarkModeForWindow( comboBoxInfo.hwndList, true );
+					SetWindowTheme( comboBoxInfo.hwndList, L"DarkMode_Explorer", nullptr );
+				}
+				// Changing the theme selects the text in the edit part of a drop down combo box, so clear the selection (unless the edit control has the focus).
+				if ( ( nullptr != comboBoxInfo.hwndItem ) && ( comboBoxInfo.hwndItem != comboBoxInfo.hwndCombo ) && ( GetFocus() != comboBoxInfo.hwndItem ) ) {
+					SendMessage( comboBoxInfo.hwndItem, EM_SETSEL, 0, 0 );
+				}
 			}
 		} else if ( 0 == _wcsicmp( className, WC_LISTVIEW ) ) {
 			if ( nullptr == GetListViewState( control ) ) {
@@ -1002,6 +1090,10 @@ namespace
 			SetWindowSubclass( control, LinkSubclassProc, s_LinkSubclassID, 0 /*refData*/ );
 		} else if ( 0 == _wcsicmp( className, PROGRESS_CLASS ) ) {
 			SetWindowSubclass( control, ProgressBarSubclassProc, s_ProgressBarSubclassID, 0 /*refData*/ );
+		} else if ( 0 == _wcsicmp( className, WC_STATIC ) ) {
+			if ( const LONG_PTR type = SS_TYPEMASK & GetWindowLongPtr( control, GWL_STYLE ); ( SS_LEFT == type ) || ( SS_RIGHT == type ) || ( SS_CENTER == type ) || ( SS_LEFTNOWORDWRAP == type ) ) {
+				SetWindowSubclass( control, StaticSubclassProc, s_StaticSubclassID, 0 /*refData*/ );
+			}
 		} else if ( 0 == _wcsicmp( className, WC_TABCONTROL ) ) {
 			// Note that the tab state is owned by the subclass, which deletes it when the control is destroyed.
 			if ( DWORD_PTR existingState = 0; !GetWindowSubclass( control, TabSubclassProc, s_TabSubclassID, &existingState ) ) {

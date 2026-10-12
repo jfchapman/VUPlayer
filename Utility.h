@@ -121,6 +121,23 @@ void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const s
 // Centres a 'dialog' with respect to its parent window, or the desktop window if the parent is not visible.
 void CentreDialog( const HWND dialog );
 
+// Returns the natural height of a combo box, using the 'dialog' font.
+int GetDialogComboBoxHeight( const HWND dialog );
+
+// Returns the vertical inset, in pixels, between the window edge and the visible frame of a themed push button.
+int GetPushButtonInset();
+
+// Returns the push button height to use in a 'dialog' (this is slightly taller than a combo box, by an even number of pixels).
+int GetDialogButtonHeight( const HWND dialog );
+
+// Lays out the text controls of a 'dialog', so that they are consistent across all dialogs:
+// - single line edit controls are given the same height as a combo box (keeping their vertical centre);
+// - push buttons are given the same height as a combo box, and aligned with an edit control or combo box on the same row (otherwise keeping their vertical centre);
+// - single line edit controls have their text vertically centred;
+// - labels which precede an edit control or combo box (on the same row) are vertically aligned with the control text.
+// This should be called after dark mode has been applied to the dialog.
+void LayoutDialogTextControls( const HWND dialog );
+
 // Returns the 'filename' extension in lowercase.
 std::wstring GetFileExtension( const std::wstring& filename );
 

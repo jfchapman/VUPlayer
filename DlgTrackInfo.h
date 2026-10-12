@@ -77,6 +77,10 @@ private:
 	// 'hwnd' - dialog window handle.
 	void ShowProgress( HWND hwnd );
 
+	// Makes the artwork control square, adjusting the dialog width and the right-aligned controls to suit.
+	// 'hwnd' - dialog window handle.
+	void ResizeArtwork( HWND hwnd );
+
 	// Called when the Cancel control is chosen when saving media information.
 	void OnCancelSave();
 

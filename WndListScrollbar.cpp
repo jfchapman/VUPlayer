@@ -111,6 +111,7 @@ void WndListScrollbar::SetActive( const bool active )
 	if ( m_IsActive && !( WS_CLIPSIBLINGS & style ) ) {
 		SetWindowLongPtr( m_hList, GWL_STYLE, style | WS_CLIPSIBLINGS );
 		m_AddedClipSiblings = true;
+		RaiseAboveGroupBoxes();
 	} else if ( !m_IsActive && m_AddedClipSiblings ) {
 		SetWindowLongPtr( m_hList, GWL_STYLE, style & ~WS_CLIPSIBLINGS );
 		m_AddedClipSiblings = false;
@@ -120,6 +121,27 @@ void WndListScrollbar::SetActive( const bool active )
 		Update();
 	} else {
 		Hide();
+	}
+}
+
+void WndListScrollbar::RaiseAboveGroupBoxes()
+{
+	// A clipped list would be entirely hidden by an enclosing group box which is above it in the z-order (as is the case for a dialog template in which the group box precedes the list).
+	// Group boxes are not tab stops, so moving the list above them does not affect the tab order.
+	RECT listRect = {};
+	GetWindowRect( m_hList, &listRect );
+	HWND sibling = GetWindow( m_hList, GW_HWNDPREV );
+	while ( nullptr != sibling ) {
+		const HWND previous = GetWindow( sibling, GW_HWNDPREV );
+		WCHAR className[ 64 ] = {};
+		GetClassName( sibling, className, static_cast<int>( std::size( className ) ) );
+		RECT siblingRect = {};
+		RECT intersection = {};
+		if ( ( 0 == _wcsicmp( className, WC_BUTTON ) ) && ( BS_GROUPBOX == ( BS_TYPEMASK & GetWindowLongPtr( sibling, GWL_STYLE ) ) ) &&
+				GetWindowRect( sibling, &siblingRect ) && IntersectRect( &intersection, &listRect, &siblingRect ) ) {
+			SetWindowPos( m_hList, ( nullptr != previous ) ? previous : HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE );
+		}
+		sibling = previous;
 	}
 }
 

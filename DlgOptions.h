@@ -18,6 +18,14 @@ private:
 	// Options dialog procedure.
 	static INT_PTR CALLBACK OptionsProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
 
+	// Applies the page font to the property sheet frame (tab control & buttons), and adjusts the sheet layout to suit.
+	// 'sheet' - property sheet window handle.
+	// 'page' - initial property page window handle.
+	static void LayoutPropertySheet( const HWND sheet, const HWND page );
+
+	// Moves a property 'page' to the top of the display area of the 'sheet' tab control.
+	static void MovePropertySheetPage( const HWND sheet, const HWND page );
+
 	// Indicates whether the dialog has been centred.
 	static bool s_IsCentred;
 

@@ -137,6 +137,21 @@ void OptionsGeneral::OnInit( const HWND hwnd )
 		ShowWindow( hwndScrobblerAuthorise, SW_HIDE );
 	}
 
+	// Position the authorise link immediately after the scrobbler check box text (as the text width does not scale exactly with the dialog units).
+	if ( SIZE idealSize = {}; ( nullptr != hwndScrobblerEnable ) && ( nullptr != hwndScrobblerAuthorise ) && Button_GetIdealSize( hwndScrobblerEnable, &idealSize ) ) {
+		RECT checkRect = {};
+		GetWindowRect( hwndScrobblerEnable, &checkRect );
+		MapWindowRect( NULL /*hwndFrom*/, hwnd, &checkRect );
+		RECT linkRect = {};
+		GetWindowRect( hwndScrobblerAuthorise, &linkRect );
+		MapWindowRect( NULL /*hwndFrom*/, hwnd, &linkRect );
+		SetWindowPos( hwndScrobblerEnable, NULL, 0, 0, idealSize.cx, checkRect.bottom - checkRect.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE );
+		RECT gapRect = { 0, 0, 2, 0 };
+		MapDialogRect( hwnd, &gapRect );
+		const int linkLeft = checkRect.left + idealSize.cx + gapRect.right;
+		SetWindowPos( hwndScrobblerAuthorise, NULL, linkLeft, linkRect.top, linkRect.right - linkLeft, linkRect.bottom - linkRect.top, SWP_NOZORDER | SWP_NOACTIVATE );
+	}
+
 	// Tagging settings
 	const bool writeFileTags = GetSettings().GetWriteFileTags();
 	if ( const HWND hwndWriteFileTags = GetDlgItem( hwnd, IDC_OPTIONS_GENERAL_WRITETAGS ); nullptr != hwndWriteFileTags ) {

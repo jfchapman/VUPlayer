@@ -485,6 +485,7 @@ INT_PTR CALLBACK About( HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam )
 				SetDlgItemText( hDlg, IDC_ABOUT_BASSVERSION, bassVersion.c_str() );
 			}
 			DarkMode::ApplyToDialog( hDlg );
+			LayoutDialogTextControls( hDlg );
 			return (INT_PTR)TRUE;
 		}
 		case WM_NOTIFY: {

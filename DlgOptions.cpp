@@ -27,11 +27,16 @@ INT_PTR CALLBACK DlgOptions::OptionsProc( HWND hwnd, UINT message, WPARAM wParam
 				}
 			}
 			DarkMode::ApplyToDialog( hwnd );
+			LayoutDialogTextControls( hwnd );
 			if ( !s_IsCentred ) {
 				s_IsCentred = true;
 				// Apply dark mode to the property sheet itself (title bar, tabs & buttons) when the first page is initialised.
 				DarkMode::ApplyToDialog( GetParent( hwnd ) );
+				LayoutPropertySheet( GetParent( hwnd ), hwnd );
 				CentreDialog( GetParent( hwnd ) );
+			} else {
+				// Pages which are subsequently created need to be positioned below the (enlarged) tabs.
+				MovePropertySheetPage( GetParent( hwnd ), hwnd );
 			}
 			return TRUE;
 		}
@@ -157,4 +162,72 @@ DlgOptions::DlgOptions( HINSTANCE instance, HWND parent, Settings& settings, Out
 DlgOptions::~DlgOptions()
 {
 	s_IsCentred = false;
+}
+
+void DlgOptions::LayoutPropertySheet( const HWND sheet, const HWND page )
+{
+	// The property sheet frame (tab control & buttons) is created from a system dialog template, so it does not use the font of the pages.
+	// Apply the page font to the frame controls, give the buttons the standard (14 dialog unit) height, and enlarge the sheet to suit.
+	const HFONT font = reinterpret_cast<HFONT>( SendMessage( page, WM_GETFONT, 0, 0 ) );
+	const HWND tabWnd = PropSheet_GetTabControl( sheet );
+	const HWND okWnd = GetDlgItem( sheet, IDOK );
+	const HWND cancelWnd = GetDlgItem( sheet, IDCANCEL );
+	if ( ( nullptr == font ) || ( nullptr == tabWnd ) || ( nullptr == okWnd ) || ( nullptr == cancelWnd ) ) {
+		return;
+	}
+
+	RECT itemRect = {};
+	TabCtrl_GetItemRect( tabWnd, 0, &itemRect );
+	const int previousTabHeight = itemRect.bottom - itemRect.top;
+	SendMessage( tabWnd, WM_SETFONT, reinterpret_cast<WPARAM>( font ), TRUE /*redraw*/ );
+	TabCtrl_GetItemRect( tabWnd, 0, &itemRect );
+	const int tabDelta = ( itemRect.bottom - itemRect.top ) - previousTabHeight;
+
+	// Buttons have the same height as a combo box, and the standard (6 dialog unit) spacing.
+	const int buttonHeight = GetDialogButtonHeight( page );
+	RECT buttonRect = {};
+	GetWindowRect( okWnd, &buttonRect );
+	const int buttonDelta = buttonHeight - ( buttonRect.bottom - buttonRect.top );
+	RECT gapRect = { 0, 0, 6, 0 };
+	MapDialogRect( page, &gapRect );
+	const int buttonGap = gapRect.right;
+
+	// Grow the tab control (so that the page area is unchanged), and move the pages down.
+	RECT rect = {};
+	GetWindowRect( tabWnd, &rect );
+	MapWindowRect( NULL /*hwndFrom*/, sheet, &rect );
+	SetWindowPos( tabWnd, NULL, 0, 0, rect.right - rect.left, rect.bottom - rect.top + tabDelta, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE );
+	MovePropertySheetPage( sheet, page );
+
+	// Move the buttons down, resize them, and space the OK button from the Cancel button.
+	RECT cancelRect = {};
+	GetWindowRect( cancelWnd, &cancelRect );
+	MapWindowRect( NULL /*hwndFrom*/, sheet, &cancelRect );
+	for ( const HWND button : { okWnd, cancelWnd } ) {
+		SendMessage( button, WM_SETFONT, reinterpret_cast<WPARAM>( font ), TRUE /*redraw*/ );
+		GetWindowRect( button, &rect );
+		MapWindowRect( NULL /*hwndFrom*/, sheet, &rect );
+		const int width = rect.right - rect.left;
+		const int left = ( okWnd == button ) ? ( cancelRect.left - buttonGap - width ) : rect.left;
+		SetWindowPos( button, NULL, left, rect.top + tabDelta, width, buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE );
+	}
+
+	GetWindowRect( sheet, &rect );
+	SetWindowPos( sheet, NULL, 0, 0, rect.right - rect.left, rect.bottom - rect.top + tabDelta + buttonDelta, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE );
+}
+
+void DlgOptions::MovePropertySheetPage( const HWND sheet, const HWND page )
+{
+	// Position the page within the display area of the tab control.
+	const HWND tabWnd = PropSheet_GetTabControl( sheet );
+	if ( ( nullptr != tabWnd ) && ( nullptr != page ) ) {
+		RECT rect = {};
+		GetWindowRect( tabWnd, &rect );
+		MapWindowRect( NULL /*hwndFrom*/, sheet, &rect );
+		TabCtrl_AdjustRect( tabWnd, FALSE /*larger*/, &rect );
+		RECT pageRect = {};
+		GetWindowRect( page, &pageRect );
+		MapWindowRect( NULL /*hwndFrom*/, sheet, &pageRect );
+		SetWindowPos( page, NULL, pageRect.left, rect.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE );
+	}
 }

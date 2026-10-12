@@ -42,6 +42,9 @@ static constexpr float s_CrossSize = 8.0f;
 // Dark mode cue banner (placeholder) text colour, which is lighter than the themed cue banner colour (3.8:1 contrast against the edit control background).
 static constexpr COLORREF s_DarkModeCueBannerColour = RGB( 0x80 /*red*/, 0x80 /*green*/, 0x80 /*blue*/ );
 
+// Dark mode border colour, when the edit control does not have the focus (which is more subdued than the themed border colour).
+static constexpr COLORREF s_DarkModeBorderColour = RGB( 0x5c /*red*/, 0x5c /*green*/, 0x5c /*blue*/ );
+
 // Returns the dark mode edit control background colour, which matches the default dark mode list background (rather than the other dark mode edit controls).
 static COLORREF GetDarkModeBackgroundColour()
 {
@@ -203,6 +206,19 @@ LRESULT CALLBACK WndFilter::EditProc( HWND hwnd, UINT message, WPARAM wParam, LP
 		case WM_LBUTTONUP:
 		case WM_CAPTURECHANGED: {
 			if ( wndFilter->OnEditMouseMessage( message, lParam ) ) {
+				return 0;
+			}
+			// In dark mode, the themed edit control redraws itself when the mouse enters or leaves it (to show a hover state), which causes flicker.
+			// The hover state is not used (to match light mode), so the edit control is not passed mouse movement unless a mouse button is held (e.g. to select text).
+			if ( DarkMode::IsActive() && ( ( WM_MOUSELEAVE == message ) || ( ( WM_MOUSEMOVE == message ) && !( MK_LBUTTON & wParam ) && ( GetCapture() != hwnd ) ) ) ) {
+				return 0;
+			}
+			break;
+		}
+		case WM_NCMOUSEMOVE:
+		case WM_NCMOUSELEAVE: {
+			// See above (the themed edit control also tracks the mouse over its border).
+			if ( DarkMode::IsActive() ) {
 				return 0;
 			}
 			break;
@@ -491,6 +507,15 @@ void WndFilter::DrawDarkModeInnerBorder()
 	if ( const HBRUSH brush = CreateSolidBrush( GetDarkModeBackgroundColour() ); nullptr != brush ) {
 		FillRect( dc, &innerRect, brush );
 		DeleteObject( brush );
+	}
+
+	// The themed border is too bright against the main window, so it is subdued unless the edit control has the focus (in which case the themed border is kept).
+	// The border is not highlighted when the mouse is over the edit control, to match the light mode behaviour.
+	if ( GetFocus() != m_hEdit ) {
+		if ( const HBRUSH brush = CreateSolidBrush( s_DarkModeBorderColour ); nullptr != brush ) {
+			FrameRect( dc, &windowRect, brush );
+			DeleteObject( brush );
+		}
 	}
 
 	ReleaseDC( m_hEdit, dc );

@@ -44,6 +44,7 @@ INT_PTR CALLBACK CDDAExtract::DialogProc( HWND hwnd, UINT message, WPARAM wParam
 				SetWindowLongPtr( hwnd, DWLP_USER, lParam );
 				dialog->OnInitDialog( hwnd );
 				DarkMode::ApplyToDialog( hwnd );
+				LayoutDialogTextControls( hwnd );
 				return TRUE;
 			}
 			break;
