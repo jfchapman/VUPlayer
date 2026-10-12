@@ -54,8 +54,8 @@ static int Scale( const int value )
 	return static_cast<int>( std::lround( value * GetDPIScaling() ) );
 }
 
-// Returns the margin above, below & to the right of the edit control (there is no left margin, so that the edit control aligns with the playlist).
-// This matches the splitter width, so that the edit control appears to have the same border as the other main window panes.
+// Returns the margin below & to the right of the edit control. This matches the splitter width, so that the edit control appears to have the same border as the other main window panes.
+// There is no left margin, so that the edit control aligns with the playlist, and no top margin, so that the edit control sits directly below the toolbar.
 static int GetMargin()
 {
 	return GetSystemMetrics( SM_CXSIZEFRAME );
@@ -279,7 +279,7 @@ WndFilter::WndFilter( HINSTANCE instance, HWND parent, FilterChangedCallback onF
 	m_EditHeight = fontHeight + Scale( s_EditPadding );
 
 	// Only the height of the filter bar is significant here, the position & width are set by the parent window layout.
-	SetWindowPos( m_hWnd, nullptr, 0, 0, 0, m_EditHeight + 2 * GetMargin(), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE );
+	SetWindowPos( m_hWnd, nullptr, 0, 0, 0, m_EditHeight + GetMargin(), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE );
 
 	ApplyDarkMode();
 }
@@ -380,7 +380,7 @@ void WndFilter::Layout()
 	GetClientRect( m_hWnd, &clientRect );
 	const int margin = GetMargin();
 	const int editWidth = std::max( 0, static_cast<int>( clientRect.right ) - margin );
-	MoveWindow( m_hEdit, 0 /*x*/, margin /*y*/, editWidth, m_EditHeight, TRUE /*repaint*/ );
+	MoveWindow( m_hEdit, 0 /*x*/, 0 /*y*/, editWidth, m_EditHeight, TRUE /*repaint*/ );
 	SetEditMargins();
 }
 
