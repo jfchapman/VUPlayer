@@ -113,7 +113,7 @@ void OptionsArtwork::OnDrawArtwork( DRAWITEMSTRUCT* drawItemStruct )
 		const int clientHeight = drawItemStruct->rcItem.bottom - drawItemStruct->rcItem.top;
 		Gdiplus::Rect clientRect( 0, 0, clientWidth, clientHeight );
 		Gdiplus::Graphics graphics( drawItemStruct->hDC );
-		if ( DarkMode::IsActive() ) {
+		if ( DarkMode::UseDarkColours() ) {
 			Gdiplus::Color backgroundColour;
 			backgroundColour.SetFromCOLORREF( DarkMode::GetBackgroundColour() );
 			graphics.Clear( backgroundColour );

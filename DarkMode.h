@@ -23,6 +23,10 @@ namespace DarkMode
 	// Returns whether dark mode is currently active.
 	bool IsActive();
 
+	// Returns whether the dark mode colour settings should be used, which is the case when dark mode is active, or when a dark high contrast theme is active.
+	// (Most controls use the system colours in high contrast mode, but the visuals & placeholder artwork follow the high contrast theme's brightness).
+	bool UseDarkColours();
+
 	// Sets the dark mode preference.
 	// Returns true if the active state changed (in which case ApplyToMainWindow should be called & all windows redrawn).
 	bool SetMode( const Mode mode );

@@ -1334,6 +1334,20 @@ bool DarkMode::IsActive()
 	return s_Active;
 }
 
+bool DarkMode::UseDarkColours()
+{
+	if ( s_Active ) {
+		return true;
+	}
+	if ( IsHighContrastActive() ) {
+		// Treat the high contrast theme as dark if its window background colour is dark.
+		const COLORREF background = GetSysColor( COLOR_WINDOW );
+		const int luminance = ( 299 * GetRValue( background ) + 587 * GetGValue( background ) + 114 * GetBValue( background ) ) / 1000;
+		return luminance < 128;
+	}
+	return false;
+}
+
 bool DarkMode::SetMode( const Mode mode )
 {
 	s_Mode = mode;

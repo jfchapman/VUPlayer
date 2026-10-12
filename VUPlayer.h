@@ -477,6 +477,9 @@ private:
 	// Whether high contrast mode is active.
 	bool m_IsHighContrast;
 
+	// Whether the dark mode colour settings were in use when the colours were last loaded.
+	bool m_UseDarkColours;
+
 	// Whether a tree item label is being edited.
 	bool m_IsTreeLabelEdit;
 

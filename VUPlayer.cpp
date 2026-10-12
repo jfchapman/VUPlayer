@@ -109,6 +109,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_TitlebarText(),
 	m_IdleText(),
 	m_IsHighContrast( IsHighContrastActive() ),
+	m_UseDarkColours( DarkMode::UseDarkColours() ),
 	m_IsTreeLabelEdit( false ),
 	m_IsFirstTimeStartup( true ),
 	m_IsEditingLabel( false ),
@@ -1396,7 +1397,20 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_VIEW_DARKMODE_SYSTEM, MF_BYCOMMAND | darkModeEnabled );
 		EnableMenuItem( menu, ID_VIEW_DARKMODE_LIGHT, MF_BYCOMMAND | darkModeEnabled );
 		EnableMenuItem( menu, ID_VIEW_DARKMODE_DARK, MF_BYCOMMAND | darkModeEnabled );
-		EnableMenuItem( menu, ID_VIEW_RESETCOLOURS, MF_BYCOMMAND | ( IsHighContrastActive() ? MF_DISABLED : MF_ENABLED ) );
+
+		// Disable the whole Theme sub menu when high contrast is active (the sub menu item has no ID, so find it by its contents).
+		const UINT themeEnabled = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;
+		const int menuCount = GetMenuItemCount( menu );
+		for ( int menuIndex = 0; menuIndex < menuCount; menuIndex++ ) {
+			if ( const HMENU subMenu = GetSubMenu( menu, menuIndex ); nullptr != subMenu ) {
+				const int itemCount = GetMenuItemCount( subMenu );
+				for ( int itemIndex = 0; itemIndex < itemCount; itemIndex++ ) {
+					if ( const HMENU themeMenu = GetSubMenu( subMenu, itemIndex ); ( nullptr != themeMenu ) && ( static_cast<UINT>( -1 ) != GetMenuState( themeMenu, ID_VIEW_RESETCOLOURS, MF_BYCOMMAND ) ) ) {
+						EnableMenuItem( subMenu, itemIndex, MF_BYPOSITION | themeEnabled );
+					}
+				}
+			}
+		}
 
 		CheckMenuItem( menu, ID_TREEMENU_FAVOURITES, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_FAVOURITES ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_STREAMS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_STREAMS ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1737,7 +1751,7 @@ std::unique_ptr<Gdiplus::Bitmap> VUPlayer::GetPlaceholderImage( const bool useSe
 {
 	std::unique_ptr<Gdiplus::Bitmap> bitmap = useSettings ? LoadDefaultArtwork() : nullptr;
 	if ( !bitmap ) {
-		bitmap = LoadResourcePNG( DarkMode::IsActive() ? IDB_PLACEHOLDER_DARK : IDB_PLACEHOLDER );
+		bitmap = LoadResourcePNG( DarkMode::UseDarkColours() ? IDB_PLACEHOLDER_DARK : IDB_PLACEHOLDER );
 	}
 	return bitmap;
 }
@@ -2395,6 +2409,13 @@ void VUPlayer::ShowVolumeControlContextMenu( const POINT& position )
 void VUPlayer::OnSysColorChange()
 {
 	m_IsHighContrast = IsHighContrastActive();
+
+	// The visual colours & placeholder artwork follow the brightness of a high contrast theme, so reload them if high contrast mode, or its theme, has changed this.
+	if ( DarkMode::UseDarkColours() != m_UseDarkColours ) {
+		m_UseDarkColours = DarkMode::UseDarkColours();
+		m_Visual.ReloadColours();
+	}
+
 	m_Tree.OnSysColorChange( m_IsHighContrast );
 	m_List.OnSysColorChange( m_IsHighContrast );
 	m_Rebar.OnSysColorChange( m_IsHighContrast, IsClassicThemeActive() );
@@ -2420,6 +2441,7 @@ void VUPlayer::OnDarkModeChange()
 
 void VUPlayer::ReloadColours()
 {
+	m_UseDarkColours = DarkMode::UseDarkColours();
 	m_List.LoadColours();
 	m_Tree.LoadColours();
 	m_Counter.LoadColours();

@@ -117,12 +117,12 @@ Settings::~Settings()
 
 std::string Settings::ColourSettingName( const std::string& name )
 {
-	return DarkMode::IsActive() ? ( name + "Dark" ) : name;
+	return DarkMode::UseDarkColours() ? ( name + "Dark" ) : name;
 }
 
 COLORREF Settings::DefaultColour( const COLORREF lightColour, const COLORREF darkColour )
 {
-	return DarkMode::IsActive() ? darkColour : lightColour;
+	return DarkMode::UseDarkColours() ? darkColour : lightColour;
 }
 
 void Settings::UpdateDatabase()
