@@ -22,9 +22,7 @@
 Handlers::Handlers() :
 	m_HandlerBASS( new HandlerBass() ),
 	m_HandlerFFmpeg( new HandlerFFmpeg() ),
-#ifndef _DEBUG
 	m_HandlerOpenMPT( new HandlerOpenMPT() ),
-#endif
 	m_Handlers( {
 		Handler::Ptr( new HandlerFlac() ),
 		Handler::Ptr( new HandlerOpus() ),
@@ -34,9 +32,7 @@ Handlers::Handlers() :
 		Handler::Ptr( new HandlerAAC() ),
 		Handler::Ptr( new HandlerALAC() ),
 		Handler::Ptr( m_HandlerBASS ),
-#ifndef _DEBUG
 		Handler::Ptr( m_HandlerOpenMPT ),
-#endif
 		Handler::Ptr( m_HandlerFFmpeg )
 		} ),
 	m_Decoders(),

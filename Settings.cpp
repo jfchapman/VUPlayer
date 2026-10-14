@@ -1641,7 +1641,7 @@ void Settings::SetToolbarColours( const COLORREF buttonColour, const COLORREF ba
 
 bool Settings::GetHardwareAccelerationEnabled()
 {
-	return ReadSetting<bool>( "VisualHardwareAcceleration" ).value_or( true );
+	return ReadSetting<bool>( "VisualHardwareAcceleration" ).value_or( false );
 }
 
 void Settings::SetHardwareAccelerationEnabled( const bool enabled )
@@ -1781,11 +1781,7 @@ void Settings::SetPreserveLastModifiedTime( const bool preserve )
 
 Settings::MODDecoder Settings::GetMODDecoder()
 {
-#ifndef _DEBUG
 	return std::clamp<MODDecoder>( ReadSetting<MODDecoder>( "MODDecoder" ).value_or( MODDecoder::OpenMPT ), MODDecoder::BASS, MODDecoder::OpenMPT );
-#else
-	return MODDecoder::BASS;
-#endif
 }
 
 void Settings::SetMODDecoder( const MODDecoder decoder )

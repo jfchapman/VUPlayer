@@ -269,3 +269,7 @@ ModelManifest.xml
 !libs/*/lib/x86/Release/*
 !libs/*/lib/x86_64/Release
 !libs/*/lib/x86_64/Release/*
+!libs/*/lib/x86/Debug
+!libs/*/lib/x86/Debug/*
+!libs/*/lib/x86_64/Debug
+!libs/*/lib/x86_64/Debug/*

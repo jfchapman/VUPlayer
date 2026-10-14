@@ -67,16 +67,10 @@ void OptionsMixing::OnInit( const HWND hwnd )
 		}
 	}
 
-#ifndef _DEBUG
 	const std::vector<std::pair<Settings::MODDecoder, std::wstring>>modDecoders = {
 		std::make_pair( Settings::MODDecoder::BASS, GetOutput().GetHandlers().GetBassVersion() ),
 		std::make_pair( Settings::MODDecoder::OpenMPT, GetOutput().GetHandlers().GetOpenMPTVersion() )
 	};
-#else
-	const std::vector<std::pair<Settings::MODDecoder, std::wstring>>modDecoders = {
-		std::make_pair( Settings::MODDecoder::BASS, GetOutput().GetHandlers().GetBassVersion() )
-	};
-#endif
 
 	const auto preferredDecoder = GetSettings().GetMODDecoder();
 

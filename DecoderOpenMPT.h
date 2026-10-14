@@ -1,8 +1,5 @@
 #pragma once
 
-// Due to GitHub file size limits, exclude libopenmpt from debug builds.
-#ifndef _DEBUG
-
 #include "Decoder.h"
 
 #include "libopenmpt.hpp"
@@ -61,5 +58,3 @@ private:
 	// Indicates whether to fade out looped songs.
 	bool m_fadeout = false;
 };
-
-#endif // _NDEBUG

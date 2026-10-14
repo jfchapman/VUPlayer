@@ -1,6 +1,3 @@
-// Due to GitHub file size limits, exclude libopenmpt from debug builds.
-#ifndef _DEBUG
-
 #include "DecoderOpenMPT.h"
 
 #include "Utility.h"
@@ -167,5 +164,3 @@ void DecoderOpenMPT::CalculateIsLooped()
 	} catch ( const std::exception& ) {
 	}
 }
-
-#endif // _NDEBUG

@@ -3,6 +3,9 @@
 #include "Utility.h"
 #include "VUPlayer.h"
 
+// Video file extensions, which are excluded from library scans (although the audio from these files can still be played).
+static const std::set<std::wstring> s_ExcludedFileExtensions = { L"asf", L"avi", L"mkv", L"mov", L"mp4", L"mpeg", L"mpg", L"webm" };
+
 DWORD WINAPI LibraryMaintainer::MaintainerThreadProc( LPVOID lpParam )
 {
 	LibraryMaintainer* maintainer = static_cast<LibraryMaintainer*>( lpParam );
@@ -36,7 +39,9 @@ LibraryMaintainer::LibraryMaintainer( const HINSTANCE instance, Library& library
 
 	const auto filetypes = handlers.GetAllSupportedFileExtensions();
 	for ( const auto& filetype : filetypes ) {
-		m_SupportedFileExtensions.insert( WideStringToLower( filetype ) );
+		if ( const std::wstring extension = WideStringToLower( filetype ); s_ExcludedFileExtensions.end() == s_ExcludedFileExtensions.find( extension ) ) {
+			m_SupportedFileExtensions.insert( extension );
+		}
 	}
 }
 

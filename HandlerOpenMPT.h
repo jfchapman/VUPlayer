@@ -1,8 +1,5 @@
 #pragma once
 
-// Due to GitHub file size limits, exclude libopenmpt from debug builds.
-#ifndef _DEBUG
-
 #include "Handler.h"
 
 class HandlerOpenMPT : public Handler
@@ -49,5 +46,3 @@ public:
 	// Called when the application 'settings' have changed.
 	void SettingsChanged( Settings& settings ) override;
 };
-
-#endif // _NDEBUG
