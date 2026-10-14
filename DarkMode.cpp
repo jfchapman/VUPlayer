@@ -1061,9 +1061,9 @@ namespace
 			s_AllowDarkModeForWindow( control, true );
 			SetWindowTheme( control, L"DarkMode_CFD", nullptr );
 			// The drop down list uses the 'DarkMode_Explorer' theme, for a dark scrollbar.
+			// Dark mode is deliberately not allowed for the list, otherwise the selected item is highlighted in white (rather than the edit control's selection colour).
 			if ( COMBOBOXINFO comboBoxInfo = { sizeof( COMBOBOXINFO ) }; GetComboBoxInfo( control, &comboBoxInfo ) ) {
 				if ( nullptr != comboBoxInfo.hwndList ) {
-					s_AllowDarkModeForWindow( comboBoxInfo.hwndList, true );
 					SetWindowTheme( comboBoxInfo.hwndList, L"DarkMode_Explorer", nullptr );
 				}
 				// Changing the theme selects the text in the edit part of a drop down combo box, so clear the selection (unless the edit control has the focus).
