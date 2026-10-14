@@ -41,6 +41,7 @@
     <LibOggDir>libs\libogg-1.3.6</LibOggDir>
     <LibOpenMptDir>libs\libopenmpt-0.8.9</LibOpenMptDir>
     <LibOpusEncDir>libs\libopusenc-0.3</LibOpusEncDir>
+    <LibWebPDir>libs\libwebp-1.6.0</LibWebPDir>
     <OpusDir>libs\opus-1.6.1</OpusDir>
     <OpusFileDir>libs\opusfile-0.12</OpusFileDir>
     <ScrobblerDir>libs\scrobbler</ScrobblerDir>
@@ -113,7 +114,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(BassDir)\c;$(SqliteDir);$(LibOggDir)\include;$(FlacDir)\include;$(WavPackDir)\include;$(OpusDir)\include;$(OpusFileDir)\include;$(LibOpusEncDir)\include;$(JsonDir);$(FFmpegDir)\include;$(LibOpenMptDir)\include;$(LameDir)\include;$(BassMidiDir)\c;$(BassDsdDir)\c;$(ScrobblerDir)\include;$(LibEbur128Dir);$(LibEbur128Dir)\queue;$(BassWasapiDir)\c;$(BassMixDir)\c;$(BassAsioDir)\c;$(BassHlsDir)\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(BassDir)\c;$(SqliteDir);$(LibOggDir)\include;$(FlacDir)\include;$(WavPackDir)\include;$(OpusDir)\include;$(OpusFileDir)\include;$(LibOpusEncDir)\include;$(JsonDir);$(FFmpegDir)\include;$(LibOpenMptDir)\include;$(LameDir)\include;$(BassMidiDir)\c;$(BassDsdDir)\c;$(ScrobblerDir)\include;$(LibEbur128Dir);$(LibEbur128Dir)\queue;$(BassWasapiDir)\c;$(BassMixDir)\c;$(BassAsioDir)\c;$(BassHlsDir)\c;$(LibWebPDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
@@ -123,7 +124,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;$(BassDir)\c\bass.lib;$(WavPackDir)\x86\libwavpack.lib;$(OpusDir)\x86\opus.lib;$(OpusFileDir)\x86\opusfile.lib;$(LibOpusEncDir)\x86\opusenc.lib;$(LameDir)\x86\libmp3lame-static.lib;$(BassMidiDir)\c\bassmidi.lib;$(BassDsdDir)\c\bassdsd.lib;$(BassWasapiDir)\c\basswasapi.lib;$(BassMixDir)\c\bassmix.lib;$(BassAsioDir)\c\bassasio.lib;$(BassHlsDir)\c\basshls.lib;$(FFmpegDir)\lib\x86\avcodec.lib;$(FFmpegDir)\lib\x86\avformat.lib;$(FFmpegDir)\lib\x86\avutil.lib;$(FFmpegDir)\lib\x86\swresample.lib;$(FlacDir)\x86\debug\FLAC.lib;$(FlacDir)\x86\debug\FLAC++.lib;$(LibOggDir)\x86\libogg.lib;$(LibOpenMptDir)\lib\x86\Debug\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;$(BassDir)\c\bass.lib;$(WavPackDir)\x86\libwavpack.lib;$(OpusDir)\x86\opus.lib;$(OpusFileDir)\x86\opusfile.lib;$(LibOpusEncDir)\x86\opusenc.lib;$(LameDir)\x86\libmp3lame-static.lib;$(BassMidiDir)\c\bassmidi.lib;$(BassDsdDir)\c\bassdsd.lib;$(BassWasapiDir)\c\basswasapi.lib;$(BassMixDir)\c\bassmix.lib;$(BassAsioDir)\c\bassasio.lib;$(BassHlsDir)\c\basshls.lib;$(FFmpegDir)\lib\x86\avcodec.lib;$(FFmpegDir)\lib\x86\avformat.lib;$(FFmpegDir)\lib\x86\avutil.lib;$(FFmpegDir)\lib\x86\swresample.lib;$(FlacDir)\x86\debug\FLAC.lib;$(FlacDir)\x86\debug\FLAC++.lib;$(LibOggDir)\x86\libogg.lib;$(LibWebPDir)\x86\libwebpdecoder.lib;$(LibWebPDir)\x86\libwebpdemux.lib;$(LibOpenMptDir)\lib\x86\Debug\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)$(BassDir)\bass.dll" "$(OutDir)bass.dll"
@@ -153,7 +154,7 @@ copy "$(ProjectDir)$(FFmpegDir)\bin\x86\swresample-7.dll" $(OutDir)swresample-7.
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(BassDir)\c;$(SqliteDir);$(LibOggDir)\include;$(FlacDir)\include;$(WavPackDir)\include;$(OpusDir)\include;$(OpusFileDir)\include;$(LibOpusEncDir)\include;$(JsonDir);$(FFmpegDir)\include;$(LibOpenMptDir)\include;$(LameDir)\include;$(BassMidiDir)\c;$(BassDsdDir)\c;$(ScrobblerDir)\include;$(LibEbur128Dir);$(LibEbur128Dir)\queue;$(BassWasapiDir)\c;$(BassMixDir)\c;$(BassAsioDir)\c;$(BassHlsDir)\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(BassDir)\c;$(SqliteDir);$(LibOggDir)\include;$(FlacDir)\include;$(WavPackDir)\include;$(OpusDir)\include;$(OpusFileDir)\include;$(LibOpusEncDir)\include;$(JsonDir);$(FFmpegDir)\include;$(LibOpenMptDir)\include;$(LameDir)\include;$(BassMidiDir)\c;$(BassDsdDir)\c;$(ScrobblerDir)\include;$(LibEbur128Dir);$(LibEbur128Dir)\queue;$(BassWasapiDir)\c;$(BassMixDir)\c;$(BassAsioDir)\c;$(BassHlsDir)\c;$(LibWebPDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
@@ -163,7 +164,7 @@ copy "$(ProjectDir)$(FFmpegDir)\bin\x86\swresample-7.dll" $(OutDir)swresample-7.
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;$(BassDir)\c\x64\bass.lib;$(WavPackDir)\x64\libwavpack.lib;$(OpusDir)\x64\opus.lib;$(OpusFileDir)\x64\opusfile.lib;$(LibOpusEncDir)\x64\opusenc.lib;$(LameDir)\x64\libmp3lame-static.lib;$(BassMidiDir)\c\x64\bassmidi.lib;$(BassDsdDir)\c\x64\bassdsd.lib;$(BassWasapiDir)\c\x64\basswasapi.lib;$(BassMixDir)\c\x64\bassmix.lib;$(BassAsioDir)\c\x64\bassasio.lib;$(BassHlsDir)\c\x64\basshls.lib;$(FFmpegDir)\lib\x64\avcodec.lib;$(FFmpegDir)\lib\x64\avformat.lib;$(FFmpegDir)\lib\x64\avutil.lib;$(FFmpegDir)\lib\x64\swresample.lib;$(FlacDir)\x64\debug\FLAC.lib;$(FlacDir)\x64\debug\FLAC++.lib;$(LibOggDir)\x64\libogg.lib;$(LibOpenMptDir)\lib\x86_64\Debug\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;$(BassDir)\c\x64\bass.lib;$(WavPackDir)\x64\libwavpack.lib;$(OpusDir)\x64\opus.lib;$(OpusFileDir)\x64\opusfile.lib;$(LibOpusEncDir)\x64\opusenc.lib;$(LameDir)\x64\libmp3lame-static.lib;$(BassMidiDir)\c\x64\bassmidi.lib;$(BassDsdDir)\c\x64\bassdsd.lib;$(BassWasapiDir)\c\x64\basswasapi.lib;$(BassMixDir)\c\x64\bassmix.lib;$(BassAsioDir)\c\x64\bassasio.lib;$(BassHlsDir)\c\x64\basshls.lib;$(FFmpegDir)\lib\x64\avcodec.lib;$(FFmpegDir)\lib\x64\avformat.lib;$(FFmpegDir)\lib\x64\avutil.lib;$(FFmpegDir)\lib\x64\swresample.lib;$(FlacDir)\x64\debug\FLAC.lib;$(FlacDir)\x64\debug\FLAC++.lib;$(LibOggDir)\x64\libogg.lib;$(LibWebPDir)\x64\libwebpdecoder.lib;$(LibWebPDir)\x64\libwebpdemux.lib;$(LibOpenMptDir)\lib\x86_64\Debug\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)$(BassDir)\x64\bass.dll" "$(OutDir)bass.dll"
@@ -195,7 +196,7 @@ copy "$(ProjectDir)$(FFmpegDir)\bin\x64\swresample-7.dll" $(OutDir)swresample-7.
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(BassDir)\c;$(SqliteDir);$(LibOggDir)\include;$(FlacDir)\include;$(WavPackDir)\include;$(OpusDir)\include;$(OpusFileDir)\include;$(LibOpusEncDir)\include;$(JsonDir);$(FFmpegDir)\include;$(LibOpenMptDir)\include;$(LameDir)\include;$(BassMidiDir)\c;$(BassDsdDir)\c;$(ScrobblerDir)\include;$(LibEbur128Dir);$(LibEbur128Dir)\queue;$(BassWasapiDir)\c;$(BassMixDir)\c;$(BassAsioDir)\c;$(BassHlsDir)\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(BassDir)\c;$(SqliteDir);$(LibOggDir)\include;$(FlacDir)\include;$(WavPackDir)\include;$(OpusDir)\include;$(OpusFileDir)\include;$(LibOpusEncDir)\include;$(JsonDir);$(FFmpegDir)\include;$(LibOpenMptDir)\include;$(LameDir)\include;$(BassMidiDir)\c;$(BassDsdDir)\c;$(ScrobblerDir)\include;$(LibEbur128Dir);$(LibEbur128Dir)\queue;$(BassWasapiDir)\c;$(BassMixDir)\c;$(BassAsioDir)\c;$(BassHlsDir)\c;$(LibWebPDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
@@ -209,7 +210,7 @@ copy "$(ProjectDir)$(FFmpegDir)\bin\x64\swresample-7.dll" $(OutDir)swresample-7.
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;$(BassDir)\c\bass.lib;$(WavPackDir)\x86\libwavpack.lib;$(OpusDir)\x86\opus.lib;$(OpusFileDir)\x86\opusfile.lib;$(LibOpusEncDir)\x86\opusenc.lib;$(LameDir)\x86\libmp3lame-static.lib;$(BassMidiDir)\c\bassmidi.lib;$(BassDsdDir)\c\bassdsd.lib;$(BassWasapiDir)\c\basswasapi.lib;$(BassMixDir)\c\bassmix.lib;$(BassAsioDir)\c\bassasio.lib;$(BassHlsDir)\c\basshls.lib;$(FFmpegDir)\lib\x86\avcodec.lib;$(FFmpegDir)\lib\x86\avformat.lib;$(FFmpegDir)\lib\x86\avutil.lib;$(FFmpegDir)\lib\x86\swresample.lib;$(FlacDir)\x86\release\FLAC.lib;$(FlacDir)\x86\release\FLAC++.lib;$(LibOggDir)\x86\libogg.lib;$(LibOpenMptDir)\lib\x86\Release\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;$(BassDir)\c\bass.lib;$(WavPackDir)\x86\libwavpack.lib;$(OpusDir)\x86\opus.lib;$(OpusFileDir)\x86\opusfile.lib;$(LibOpusEncDir)\x86\opusenc.lib;$(LameDir)\x86\libmp3lame-static.lib;$(BassMidiDir)\c\bassmidi.lib;$(BassDsdDir)\c\bassdsd.lib;$(BassWasapiDir)\c\basswasapi.lib;$(BassMixDir)\c\bassmix.lib;$(BassAsioDir)\c\bassasio.lib;$(BassHlsDir)\c\basshls.lib;$(FFmpegDir)\lib\x86\avcodec.lib;$(FFmpegDir)\lib\x86\avformat.lib;$(FFmpegDir)\lib\x86\avutil.lib;$(FFmpegDir)\lib\x86\swresample.lib;$(FlacDir)\x86\release\FLAC.lib;$(FlacDir)\x86\release\FLAC++.lib;$(LibOggDir)\x86\libogg.lib;$(LibWebPDir)\x86\libwebpdecoder.lib;$(LibWebPDir)\x86\libwebpdemux.lib;$(LibOpenMptDir)\lib\x86\Release\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)$(BassDir)\bass.dll" "$(OutDir)bass.dll"
@@ -241,7 +242,7 @@ copy "$(ProjectDir)$(FFmpegDir)\bin\x86\swresample-7.dll" $(OutDir)swresample-7.
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(BassDir)\c;$(SqliteDir);$(LibOggDir)\include;$(FlacDir)\include;$(WavPackDir)\include;$(OpusDir)\include;$(OpusFileDir)\include;$(LibOpusEncDir)\include;$(JsonDir);$(FFmpegDir)\include;$(LibOpenMptDir)\include;$(LameDir)\include;$(BassMidiDir)\c;$(BassDsdDir)\c;$(ScrobblerDir)\include;$(LibEbur128Dir);$(LibEbur128Dir)\queue;$(BassWasapiDir)\c;$(BassMixDir)\c;$(BassAsioDir)\c;$(BassHlsDir)\c;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(BassDir)\c;$(SqliteDir);$(LibOggDir)\include;$(FlacDir)\include;$(WavPackDir)\include;$(OpusDir)\include;$(OpusFileDir)\include;$(LibOpusEncDir)\include;$(JsonDir);$(FFmpegDir)\include;$(LibOpenMptDir)\include;$(LameDir)\include;$(BassMidiDir)\c;$(BassDsdDir)\c;$(ScrobblerDir)\include;$(LibEbur128Dir);$(LibEbur128Dir)\queue;$(BassWasapiDir)\c;$(BassMixDir)\c;$(BassAsioDir)\c;$(BassHlsDir)\c;$(LibWebPDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4458</DisableSpecificWarnings>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <EnableEnhancedInstructionSet>
@@ -255,7 +256,7 @@ copy "$(ProjectDir)$(FFmpegDir)\bin\x86\swresample-7.dll" $(OutDir)swresample-7.
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;$(BassDir)\c\x64\bass.lib;$(WavPackDir)\x64\libwavpack.lib;$(OpusDir)\x64\opus.lib;$(OpusFileDir)\x64\opusfile.lib;$(LibOpusEncDir)\x64\opusenc.lib;$(LameDir)\x64\libmp3lame-static.lib;$(BassMidiDir)\c\x64\bassmidi.lib;$(BassDsdDir)\c\x64\bassdsd.lib;$(BassWasapiDir)\c\x64\basswasapi.lib;$(BassMixDir)\c\x64\bassmix.lib;$(BassAsioDir)\c\x64\bassasio.lib;$(BassHlsDir)\c\x64\basshls.lib;$(FFmpegDir)\lib\x64\avcodec.lib;$(FFmpegDir)\lib\x64\avformat.lib;$(FFmpegDir)\lib\x64\avutil.lib;$(FFmpegDir)\lib\x64\swresample.lib;$(FlacDir)\x64\release\FLAC.lib;$(FlacDir)\x64\release\FLAC++.lib;$(LibOggDir)\x64\libogg.lib;$(LibOpenMptDir)\lib\x86_64\Release\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Comctl32.lib;Rpcrt4.lib;D2d1.lib;D3D11.lib;Crypt32.lib;Gdiplus.lib;Shlwapi.lib;Pathcch.lib;UxTheme.lib;Mpr.lib;Wininet.lib;Dwmapi.lib;$(BassDir)\c\x64\bass.lib;$(WavPackDir)\x64\libwavpack.lib;$(OpusDir)\x64\opus.lib;$(OpusFileDir)\x64\opusfile.lib;$(LibOpusEncDir)\x64\opusenc.lib;$(LameDir)\x64\libmp3lame-static.lib;$(BassMidiDir)\c\x64\bassmidi.lib;$(BassDsdDir)\c\x64\bassdsd.lib;$(BassWasapiDir)\c\x64\basswasapi.lib;$(BassMixDir)\c\x64\bassmix.lib;$(BassAsioDir)\c\x64\bassasio.lib;$(BassHlsDir)\c\x64\basshls.lib;$(FFmpegDir)\lib\x64\avcodec.lib;$(FFmpegDir)\lib\x64\avformat.lib;$(FFmpegDir)\lib\x64\avutil.lib;$(FFmpegDir)\lib\x64\swresample.lib;$(FlacDir)\x64\release\FLAC.lib;$(FlacDir)\x64\release\FLAC++.lib;$(LibOggDir)\x64\libogg.lib;$(LibWebPDir)\x64\libwebpdecoder.lib;$(LibWebPDir)\x64\libwebpdemux.lib;$(LibOpenMptDir)\lib\x86_64\Release\libopenmpt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)$(BassDir)\x64\bass.dll" "$(OutDir)bass.dll"

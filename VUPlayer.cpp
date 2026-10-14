@@ -1705,13 +1705,8 @@ COLORREF* VUPlayer::GetCustomColours()
 std::unique_ptr<Gdiplus::Bitmap> VUPlayer::LoadDefaultArtwork()
 {
 	std::unique_ptr<Gdiplus::Bitmap> bitmap;
-	if ( const auto artworkPath = m_Settings.GetDefaultArtwork(); std::filesystem::exists( artworkPath ) ) {
-		try {
-			bitmap = std::make_unique<Gdiplus::Bitmap>( artworkPath.c_str() );
-		} catch ( ... ) {}
-	}
-	if ( bitmap && ( ( bitmap->GetWidth() == 0 ) || ( bitmap->GetHeight() == 0 ) ) ) {
-		bitmap.reset();
+	if ( const auto artworkPath = m_Settings.GetDefaultArtwork(); !artworkPath.empty() ) {
+		bitmap = CreateBitmapFromFile( artworkPath );
 	}
 	return bitmap;
 }

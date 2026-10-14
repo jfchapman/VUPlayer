@@ -1,5 +1,6 @@
 #include "Artwork.h"
 
+#include "DarkMode.h"
 #include "VUPlayer.h"
 #include "Utility.h"
 
@@ -53,6 +54,10 @@ void Artwork::OnPaint()
 
 		LoadArtwork( mediaInfo, deviceContext );
 
+		// Fill using the window background colour, which shows through any transparent areas of the artwork.
+		const COLORREF backgroundColour = DarkMode::IsActive() ? DarkMode::GetBackgroundColour() : GetSysColor( COLOR_3DFACE );
+		deviceContext->Clear( D2D1::ColorF( GetRValue( backgroundColour ) / 255.0f, GetGValue( backgroundColour ) / 255.0f, GetBValue( backgroundColour ) / 255.0f ) );
+
 		if ( m_Bitmap ) {
 			const D2D1_SIZE_F targetSize = deviceContext->GetSize();
 			const D2D1_SIZE_F bitmapSize = m_Bitmap->GetSize();
@@ -90,11 +95,12 @@ void Artwork::LoadArtwork( const MediaInfo& mediaInfo, ID2D1DeviceContext* devic
 		if ( bitmap ) {
 			Gdiplus::Rect rect( 0 /*x*/, 0 /*y*/, bitmap->GetWidth(), bitmap->GetHeight() );
 			Gdiplus::BitmapData bitmapData = {};
-			if ( Gdiplus::Ok == bitmap->LockBits( &rect, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bitmapData ) ) {
+			// Direct2D requires premultiplied alpha for transparent bitmaps (GDI+ performs the conversion).
+			if ( Gdiplus::Ok == bitmap->LockBits( &rect, Gdiplus::ImageLockModeRead, PixelFormat32bppPARGB, &bitmapData ) ) {
 				const D2D1_SIZE_U bitmapSize = D2D1::SizeU( bitmap->GetWidth(), bitmap->GetHeight() );
 				D2D1_BITMAP_PROPERTIES bitmapProperties = {};
-				bitmapProperties.pixelFormat = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE };
-				const UINT pitch = bitmapSize.width * 4;
+				bitmapProperties.pixelFormat = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED };
+				const UINT pitch = static_cast<UINT>( bitmapData.Stride );
 				deviceContext->CreateBitmap( bitmapSize, bitmapData.Scan0, pitch, bitmapProperties, &m_Bitmap );
 				bitmap->UnlockBits( &bitmapData );
 				m_ArtworkID = artworkID;
@@ -111,29 +117,13 @@ void Artwork::FreeResources()
 
 std::unique_ptr<Gdiplus::Bitmap> Artwork::GetArtworkBitmap( const MediaInfo& mediaInfo )
 {
-	std::unique_ptr<Gdiplus::Bitmap> bitmap;
 	Library& library = GetLibrary();
-	const std::vector<BYTE> imageBytes = library.GetMediaArtwork( mediaInfo );
-	if ( !imageBytes.empty() ) {
-		IStream* stream = nullptr;
-		if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
-			if ( SUCCEEDED( stream->Write( &imageBytes[ 0 ], static_cast<ULONG>( imageBytes.size() ), NULL /*bytesWritten*/ ) ) ) {
-				try {
-					bitmap = std::make_unique<Gdiplus::Bitmap>( stream );
-				} catch ( ... ) {
-				}
-			}
-			stream->Release();
-		}
-	}
+	std::unique_ptr<Gdiplus::Bitmap> bitmap = CreateBitmapFromImage( library.GetMediaArtwork( mediaInfo ) );
 
-	if ( !bitmap || ( bitmap->GetWidth() == 0 ) || ( bitmap->GetHeight() == 0 ) ) {
+	if ( !bitmap ) {
 		const std::wstring artworkID = mediaInfo.GetArtworkID( true /*checkFolder*/ );
 		if ( !artworkID.empty() && ( artworkID != mediaInfo.GetArtworkID( false /*checkFolder*/ ) ) ) {
-			try {
-				bitmap = std::make_unique<Gdiplus::Bitmap>( artworkID.c_str() );
-			} catch ( ... ) {
-			}
+			bitmap = CreateBitmapFromFile( artworkID );
 		}
 	}
 

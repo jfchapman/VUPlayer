@@ -13,8 +13,14 @@
 #include <shellapi.h>
 #include <wrl/client.h>
 
+#ifndef _CONSOLE
+#include "webp/decode.h"
+#include "webp/demux.h"
+#endif
+
 #include <array>
 #include <chrono>
+#include <fstream>
 #include <iomanip>
 #include <locale>
 #include <set>
@@ -22,6 +28,9 @@
 
 // Maximum size when converting images.
 static const int sMaxConvertImageBytes = 0x1000000;
+
+// Maximum size when loading image files.
+static const uintmax_t sMaxImageFileBytes = 0x10000000;
 
 // Random number engine.
 static std::default_random_engine sRandomEngine{ std::random_device {} ( ) };
@@ -803,7 +812,7 @@ std::filesystem::path ChooseArtwork( const HINSTANCE instance, const HWND hwnd, 
 	WCHAR filterAll[ MAX_PATH ] = {};
 	LoadString( instance, IDS_CHOOSE_FILTERALL, filterAll, MAX_PATH );
 	const FileFilters filters = {
-		{ filterImages, L"*.bmp;*.jpg;*.jpeg;*.png;*.gif;*.tiff;*.tif" },
+		{ filterImages, L"*.bmp;*.jpg;*.jpeg;*.png;*.gif;*.tiff;*.tif;*.webp" },
 		{ filterAll, L"*.*" }
 	};
 	return ChooseFileToOpen( hwnd, title, filters, initialFolder );
@@ -1074,6 +1083,86 @@ bool DeleteFiles( const std::set<std::filesystem::path> files, const HWND hwnd )
 	return false;
 }
 
+// Encodes 'bitmap' in an image 'format' (e.g. Gdiplus::ImageFormatPNG), using optional encoder 'parameters'.
+// Returns the encoded image, or an empty vector if the bitmap could not be encoded.
+static std::vector<BYTE> EncodeImage( Gdiplus::Bitmap& bitmap, const GUID& format, const Gdiplus::EncoderParameters* parameters = nullptr )
+{
+	std::vector<BYTE> image;
+	CLSID encoderClsid = {};
+	UINT numEncoders = 0;
+	UINT bufferSize = 0;
+	if ( ( Gdiplus::Ok == Gdiplus::GetImageEncodersSize( &numEncoders, &bufferSize ) ) && ( bufferSize > 0 ) ) {
+		std::vector<char> buffer( bufferSize, 0 );
+		Gdiplus::ImageCodecInfo* imageCodecInfo = reinterpret_cast<Gdiplus::ImageCodecInfo*>( buffer.data() );
+		if ( Gdiplus::Ok == Gdiplus::GetImageEncoders( numEncoders, bufferSize, imageCodecInfo ) ) {
+			for ( UINT index = 0; index < numEncoders; index++ ) {
+				if ( format == imageCodecInfo[ index ].FormatID ) {
+					encoderClsid = imageCodecInfo[ index ].Clsid;
+					break;
+				}
+			}
+		}
+	}
+	IStream* encoderStream = nullptr;
+	if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &encoderStream ) ) ) {
+		if ( Gdiplus::Ok == bitmap.Save( encoderStream, &encoderClsid, parameters ) ) {
+			STATSTG stats = {};
+			if ( SUCCEEDED( encoderStream->Stat( &stats, STATFLAG_NONAME ) ) && ( stats.cbSize.QuadPart > 0 ) && ( stats.cbSize.QuadPart < sMaxConvertImageBytes ) ) {
+				if ( SUCCEEDED( encoderStream->Seek( { 0 }, STREAM_SEEK_SET, NULL /*newPosition*/ ) ) ) {
+					const ULONG encoderBufferSize = static_cast<ULONG>( stats.cbSize.QuadPart );
+					std::vector<BYTE> encoderBuffer( encoderBufferSize );
+					ULONG bytesRead = 0;
+					if ( SUCCEEDED( encoderStream->Read( &encoderBuffer[ 0 ], encoderBufferSize, &bytesRead ) ) && ( bytesRead == encoderBufferSize ) ) {
+						image = std::move( encoderBuffer );
+					}
+				}
+			}
+		}
+		encoderStream->Release();
+	}
+	return image;
+}
+
+// Decodes the WebP 'image' to a 32bpp ARGB bitmap (using the first frame of an animated image).
+// Returns the bitmap, or nullptr if the image could not be decoded.
+static std::unique_ptr<Gdiplus::Bitmap> DecodeWebPImage( const std::vector<BYTE>& image )
+{
+	std::unique_ptr<Gdiplus::Bitmap> bitmap;
+	WebPAnimDecoderOptions options = {};
+	if ( WebPAnimDecoderOptionsInit( &options ) ) {
+		// Non-premultiplied BGRA has the same memory layout as GDI+ 32bpp ARGB.
+		options.color_mode = MODE_BGRA;
+		const WebPData data = { image.data(), image.size() };
+		if ( WebPAnimDecoder* decoder = WebPAnimDecoderNew( &data, &options ); nullptr != decoder ) {
+			WebPAnimInfo info = {};
+			uint8_t* frame = nullptr;
+			int timestamp = 0;
+			if ( WebPAnimDecoderGetInfo( decoder, &info ) && ( info.canvas_width > 0 ) && ( info.canvas_height > 0 ) && WebPAnimDecoderGetNext( decoder, &frame, &timestamp ) && ( nullptr != frame ) ) {
+				try {
+					const INT width = static_cast<INT>( info.canvas_width );
+					const INT height = static_cast<INT>( info.canvas_height );
+					bitmap = std::make_unique<Gdiplus::Bitmap>( width, height, PixelFormat32bppARGB );
+					Gdiplus::Rect rect( 0 /*x*/, 0 /*y*/, width, height );
+					Gdiplus::BitmapData bitmapData = {};
+					if ( ( Gdiplus::Ok == bitmap->GetLastStatus() ) && ( Gdiplus::Ok == bitmap->LockBits( &rect, Gdiplus::ImageLockModeWrite, PixelFormat32bppARGB, &bitmapData ) ) ) {
+						const size_t frameStride = static_cast<size_t>( width ) * 4;
+						for ( INT row = 0; row < height; row++ ) {
+							memcpy( static_cast<BYTE*>( bitmapData.Scan0 ) + static_cast<ptrdiff_t>( row ) * bitmapData.Stride, frame + row * frameStride, frameStride );
+						}
+						bitmap->UnlockBits( &bitmapData );
+					} else {
+						bitmap.reset();
+					}
+				} catch ( ... ) {
+					bitmap.reset();
+				}
+			}
+			WebPAnimDecoderDelete( decoder );
+		}
+	}
+	return bitmap;
+}
+
 void GetImageInformation( const std::string& image, std::string& mimeType, int& width, int& height, int& depth, int& colours )
 {
 	mimeType.clear();
@@ -1082,6 +1171,15 @@ void GetImageInformation( const std::string& image, std::string& mimeType, int& 
 	depth = 0;
 	colours = 0;
 	std::vector<BYTE> imageBytes = Base64Decode( image );
+	if ( IsWebPImage( imageBytes ) ) {
+		if ( WebPBitstreamFeatures features = {}; VP8_STATUS_OK == WebPGetFeatures( imageBytes.data(), imageBytes.size(), &features ) ) {
+			mimeType = "image/webp";
+			width = features.width;
+			height = features.height;
+			depth = features.has_alpha ? 32 : 24;
+		}
+		return;
+	}
 	const ULONG imageSize = static_cast<ULONG>( imageBytes.size() );
 	if ( imageSize > 0 ) {
 		IStream* stream = nullptr;
@@ -1173,6 +1271,13 @@ void GetImageInformation( const std::string& image, std::string& mimeType, int& 
 std::string ConvertImage( const std::vector<BYTE>& imageBytes )
 {
 	std::string encodedImage;
+	if ( IsWebPImage( imageBytes ) ) {
+		// GDI+ does not support WebP, so just check that the image can be decoded, and keep it in its original format.
+		if ( WebPGetInfo( imageBytes.data(), imageBytes.size(), nullptr /*width*/, nullptr /*height*/ ) ) {
+			encodedImage = Base64Encode( imageBytes.data(), static_cast<int>( imageBytes.size() ) );
+		}
+		return encodedImage;
+	}
 	const ULONG imageSize = static_cast<ULONG>( imageBytes.size() );
 	if ( imageSize > 0 ) {
 		IStream* stream = nullptr;
@@ -1184,39 +1289,8 @@ std::string ConvertImage( const std::vector<BYTE>& imageBytes )
 					if ( Gdiplus::Ok == bitmap.GetRawFormat( &format ) ) {
 						if ( ( Gdiplus::ImageFormatPNG == format ) || ( Gdiplus::ImageFormatJPEG == format ) || ( Gdiplus::ImageFormatGIF == format ) ) {
 							encodedImage = Base64Encode( &imageBytes[ 0 ], static_cast<int>( imageSize ) );
-						} else {
-							CLSID encoderClsid = {};
-							UINT numEncoders = 0;
-							UINT bufferSize = 0;
-							if ( ( Gdiplus::Ok == Gdiplus::GetImageEncodersSize( &numEncoders, &bufferSize ) ) && ( bufferSize > 0 ) ) {
-								std::vector<char> buffer( bufferSize, 0 );
-								Gdiplus::ImageCodecInfo* imageCodecInfo = reinterpret_cast<Gdiplus::ImageCodecInfo*>( buffer.data() );
-								if ( Gdiplus::Ok == Gdiplus::GetImageEncoders( numEncoders, bufferSize, imageCodecInfo ) ) {
-									for ( UINT index = 0; index < numEncoders; index++ ) {
-										if ( Gdiplus::ImageFormatPNG == imageCodecInfo[ index ].FormatID ) {
-											encoderClsid = imageCodecInfo[ index ].Clsid;
-											break;
-										}
-									}
-								}
-							}
-							IStream* encoderStream = nullptr;
-							if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &encoderStream ) ) ) {
-								if ( Gdiplus::Ok == bitmap.Save( encoderStream, &encoderClsid ) ) {
-									STATSTG stats = {};
-									if ( SUCCEEDED( encoderStream->Stat( &stats, STATFLAG_NONAME ) ) && ( stats.cbSize.QuadPart > 0 ) && ( stats.cbSize.QuadPart < sMaxConvertImageBytes ) ) {
-										if ( SUCCEEDED( encoderStream->Seek( { 0 }, STREAM_SEEK_SET, NULL /*newPosition*/ ) ) ) {
-											const ULONG encoderBufferSize = static_cast<ULONG>( stats.cbSize.QuadPart );
-											std::vector<BYTE> encoderBuffer( encoderBufferSize );
-											ULONG bytesRead = 0;
-											if ( SUCCEEDED( encoderStream->Read( &encoderBuffer[ 0 ], encoderBufferSize, &bytesRead ) ) && ( bytesRead == encoderBufferSize ) ) {
-												encodedImage = Base64Encode( &encoderBuffer[ 0 ], static_cast<int>( encoderBufferSize ) );
-											}
-										}
-									}
-								}
-								encoderStream->Release();
-							}
+						} else if ( const std::vector<BYTE> png = EncodeImage( bitmap, Gdiplus::ImageFormatPNG ); !png.empty() ) {
+							encodedImage = Base64Encode( png.data(), static_cast<int>( png.size() ) );
 						}
 					}
 				} catch ( ... ) {
@@ -1226,5 +1300,89 @@ std::string ConvertImage( const std::vector<BYTE>& imageBytes )
 		}
 	}
 	return encodedImage;
+}
+
+bool IsWebPImage( const std::vector<BYTE>& image )
+{
+	// RIFF container, with a WebP form type.
+	return ( image.size() >= 12 ) && ( 0 == memcmp( image.data(), "RIFF", 4 ) ) && ( 0 == memcmp( image.data() + 8, "WEBP", 4 ) );
+}
+
+std::unique_ptr<Gdiplus::Bitmap> CreateBitmapFromImage( const std::vector<BYTE>& image )
+{
+	std::unique_ptr<Gdiplus::Bitmap> bitmap;
+	if ( IsWebPImage( image ) ) {
+		bitmap = DecodeWebPImage( image );
+	} else if ( !image.empty() ) {
+		IStream* stream = nullptr;
+		if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
+			if ( SUCCEEDED( stream->Write( image.data(), static_cast<ULONG>( image.size() ), NULL /*bytesWritten*/ ) ) ) {
+				try {
+					bitmap = std::make_unique<Gdiplus::Bitmap>( stream );
+				} catch ( ... ) {
+				}
+			}
+			stream->Release();
+		}
+	}
+	if ( bitmap && ( ( Gdiplus::Ok != bitmap->GetLastStatus() ) || ( bitmap->GetWidth() == 0 ) || ( bitmap->GetHeight() == 0 ) ) ) {
+		bitmap.reset();
+	}
+	return bitmap;
+}
+
+std::unique_ptr<Gdiplus::Bitmap> CreateBitmapFromFile( const std::filesystem::path& filename )
+{
+	std::unique_ptr<Gdiplus::Bitmap> bitmap;
+	std::error_code ec;
+	if ( const auto fileSize = std::filesystem::file_size( filename, ec ); !ec && ( fileSize > 0 ) && ( fileSize < sMaxImageFileBytes ) ) {
+		std::ifstream stream( filename, std::ios::binary | std::ios::in );
+		if ( stream.is_open() ) {
+			std::vector<BYTE> image( static_cast<size_t>( fileSize ) );
+			if ( stream.read( reinterpret_cast<char*>( image.data() ), static_cast<std::streamsize>( image.size() ) ) ) {
+				bitmap = CreateBitmapFromImage( image );
+			}
+		}
+	}
+	return bitmap;
+}
+
+std::vector<BYTE> ConvertImageToJPEG( const std::vector<BYTE>& image, const ULONG quality )
+{
+	std::vector<BYTE> jpeg;
+	if ( const auto bitmap = CreateBitmapFromImage( image ); bitmap ) {
+		try {
+			// JPEG does not support transparency, so draw the image over a white background.
+			const INT width = static_cast<INT>( bitmap->GetWidth() );
+			const INT height = static_cast<INT>( bitmap->GetHeight() );
+			Gdiplus::Bitmap flattened( width, height, PixelFormat24bppRGB );
+			if ( Gdiplus::Ok == flattened.GetLastStatus() ) {
+				{
+					Gdiplus::Graphics graphics( &flattened );
+					graphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::White ) );
+					// Draw at the original size, without any resampling.
+					graphics.SetInterpolationMode( Gdiplus::InterpolationModeNearestNeighbor );
+					graphics.SetPixelOffsetMode( Gdiplus::PixelOffsetModeHalf );
+					graphics.DrawImage( bitmap.get(), Gdiplus::Rect( 0, 0, width, height ) );
+				}
+				ULONG encoderQuality = quality;
+				Gdiplus::EncoderParameters parameters = {};
+				parameters.Count = 1;
+				parameters.Parameter[ 0 ].Guid = Gdiplus::EncoderQuality;
+				parameters.Parameter[ 0 ].Type = Gdiplus::EncoderParameterValueTypeLong;
+				parameters.Parameter[ 0 ].NumberOfValues = 1;
+				parameters.Parameter[ 0 ].Value = &encoderQuality;
+				jpeg = EncodeImage( flattened, Gdiplus::ImageFormatJPEG, &parameters );
+			}
+		} catch ( ... ) {
+		}
+	}
+	return jpeg;
+}
+
+bool IsJPEGImage( const std::vector<BYTE>& image )
+{
+	// JPEG start of image marker, followed by the start of another marker.
+	return ( image.size() >= 3 ) && ( 0xff == image[ 0 ] ) && ( 0xd8 == image[ 1 ] ) && ( 0xff == image[ 2 ] );
 }
 #endif // !_CONSOLE

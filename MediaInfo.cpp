@@ -348,7 +348,7 @@ void MediaInfo::SetBitrate( const std::optional<float> bitrate )
 std::wstring MediaInfo::GetArtworkID( const bool checkFolder ) const
 {
 	if ( checkFolder && m_ArtworkID.empty() && !GetFilename().empty() && ( Source::File == GetSource() ) ) {
-		const std::set<std::wstring> kImageFileExtensions = { L".jpg", L".jpeg", L".png", L".bmp", L".gif", L".tif", L".tiff" };
+		const std::set<std::wstring> kImageFileExtensions = { L".jpg", L".jpeg", L".png", L".bmp", L".gif", L".tif", L".tiff", L".webp" };
 		const std::set<std::wstring> kPreferredFilenames = { L"cover", L"folder" };
 		std::error_code ec;
 		std::wstring imageFilename;

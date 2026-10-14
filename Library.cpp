@@ -82,9 +82,8 @@ Library::~Library()
 	for ( const auto& filename : m_PendingTags ) {
 		if ( MediaInfo mediaInfo( filename ); GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ ) ) {
 			if ( m_Handlers.SetTags( mediaInfo, *this ) ) {
-				if ( GetDecoderInfo( mediaInfo, false /*getTags*/ ) ) {
-					UpdateMediaLibrary( mediaInfo );
-				}
+				GetDecoderInfo( mediaInfo, false /*getTags*/ );
+				UpdateMediaLibrary( mediaInfo );
 			}
 		}
 	}
@@ -416,14 +415,14 @@ bool Library::GetDecoderInfo( MediaInfo& mediaInfo, const bool getTags )
 			mediaInfo.SetComment( m_LastCueFileInfo->GetComment() );
 		success = true;
 	} else {
-		Decoder::Ptr stream = m_Handlers.OpenDecoder( mediaInfo, Decoder::Context::Temporary, false /*applyCues*/ );
-		if ( stream ) {
-			long long filetime = 0;
-			long long filesize = 0;
-			GetFileInfo( mediaInfo.GetFilename(), filetime, filesize );
+		// Get the file information first, so that it is up to date even if a decoder cannot be opened (e.g. if the file is temporarily locked after writing tags).
+		if ( long long filetime = 0, filesize = 0; GetFileInfo( mediaInfo.GetFilename(), filetime, filesize ) ) {
 			mediaInfo.SetFiletime( filetime );
 			mediaInfo.SetFilesize( filesize );
+		}
 
+		Decoder::Ptr stream = m_Handlers.OpenDecoder( mediaInfo, Decoder::Context::Temporary, false /*applyCues*/ );
+		if ( stream ) {
 			mediaInfo.SetBitsPerSample( stream->GetBPS() );
 			mediaInfo.SetChannels( stream->GetChannels() );
 			mediaInfo.SetDuration( stream->GetDuration() );

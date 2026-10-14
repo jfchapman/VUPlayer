@@ -360,7 +360,26 @@ T StripQuotes( const T& str )
 // 'colours' - out, number of colours (for palette indexed images).
 void GetImageInformation( const std::string& image, std::string& mimeType, int& width, int& height, int& depth, int& colours );
 
-// Converts 'image' to a base64 encoded form, converting non-PNG/JPG/GIF images to PNG format.
+// Converts 'image' to a base64 encoded form, converting non-PNG/JPG/GIF/WebP images to PNG format.
 std::string ConvertImage( const std::vector<BYTE>& image );
+
+// Returns whether 'image' is in WebP format.
+bool IsWebPImage( const std::vector<BYTE>& image );
+
+// Creates a bitmap from 'image', which can be in any format supported by GDI+, or WebP format.
+// Returns the bitmap, or nullptr if the image could not be decoded.
+std::unique_ptr<Gdiplus::Bitmap> CreateBitmapFromImage( const std::vector<BYTE>& image );
+
+// Creates a bitmap from the image file 'filename', which can be in any format supported by GDI+, or WebP format.
+// Returns the bitmap, or nullptr if the image could not be loaded.
+std::unique_ptr<Gdiplus::Bitmap> CreateBitmapFromFile( const std::filesystem::path& filename );
+
+// Converts 'image' to JPEG format, with an encoder 'quality' from 0 to 100.
+// Any transparent areas of the image are drawn over a white background.
+// Returns the JPEG image, or an empty vector if the image could not be converted.
+std::vector<BYTE> ConvertImageToJPEG( const std::vector<BYTE>& image, const ULONG quality );
+
+// Returns whether 'image' is in JPEG format.
+bool IsJPEGImage( const std::vector<BYTE>& image );
 
 #endif // !_CONSOLE

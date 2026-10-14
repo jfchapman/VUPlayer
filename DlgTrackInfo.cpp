@@ -356,21 +356,9 @@ std::unique_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const MediaInfo& medi
 	std::unique_ptr<Gdiplus::Bitmap> bitmap;
 	const std::wstring& artworkID = mediaInfo.GetArtworkID();
 	if ( !artworkID.empty() ) {
-		std::vector<BYTE> artwork = m_Library.GetMediaArtwork( mediaInfo );
-		if ( !artwork.empty() ) {
-			IStream* stream = nullptr;
-			if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
-				if ( SUCCEEDED( stream->Write( &artwork[ 0 ], static_cast<ULONG>( artwork.size() ), NULL /*bytesWritten*/ ) ) ) {
-					try {
-						bitmap = std::make_unique<Gdiplus::Bitmap>( stream );
-					} catch ( ... ) {
-					}
-				}
-				stream->Release();
-			}
-		}
+		bitmap = CreateBitmapFromImage( m_Library.GetMediaArtwork( mediaInfo ) );
 	}
-	if ( !bitmap || ( bitmap->GetWidth() == 0 ) || ( bitmap->GetHeight() == 0 ) ) {
+	if ( !bitmap ) {
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {
 			bitmap = vuplayer->GetPlaceholderImage();
@@ -381,21 +369,8 @@ std::unique_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const MediaInfo& medi
 
 std::unique_ptr<Gdiplus::Bitmap> DlgTrackInfo::GetArtwork( const std::vector<BYTE>& image )
 {
-	std::unique_ptr<Gdiplus::Bitmap> bitmap;
-	const ULONG imageSize = static_cast<ULONG>( image.size() );
-	if ( imageSize > 0 ) {
-		IStream* stream = nullptr;
-		if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
-			if ( SUCCEEDED( stream->Write( &image[ 0 ], imageSize, NULL /*bytesWritten*/ ) ) ) {
-				try {
-					bitmap = std::make_unique<Gdiplus::Bitmap>( stream );
-				} catch ( ... ) {
-				}
-			}
-			stream->Release();
-		}
-	}
-	if ( !bitmap || ( bitmap->GetWidth() == 0 ) || ( bitmap->GetHeight() == 0 ) ) {
+	std::unique_ptr<Gdiplus::Bitmap> bitmap = CreateBitmapFromImage( image );
+	if ( !bitmap ) {
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {
 			bitmap = vuplayer->GetPlaceholderImage();
@@ -497,6 +472,8 @@ void DlgTrackInfo::OnExportArtwork( HWND hwnd )
 				fileExt = L"gif";
 			} else if ( "image/tiff" == mimeType ) {
 				fileExt = L"tiff";
+			} else if ( "image/webp" == mimeType ) {
+				fileExt = L"webp";
 			}
 
 			WCHAR title[ MAX_PATH ] = {};

@@ -159,7 +159,7 @@ bool Handlers::SetTags( const MediaInfo& mediaInfo, Library& library ) const
 			success = handler ? handler->SetTags( filename, tagsToWrite ) : false;
 			if ( !success && m_HandlerFFmpeg && ( handler != m_HandlerFFmpeg ) ) {
 				// Try the FFmpeg handler as a catch all.
-				m_HandlerFFmpeg->SetTags( filename, tagsToWrite );
+				success = m_HandlerFFmpeg->SetTags( filename, tagsToWrite );
 			}
 			if ( success && m_PreserveLastModifiedTime ) {
 				SetLastModifiedTime( filename, lastModified );

@@ -89,14 +89,10 @@ void OptionsArtwork::LoadArtwork( const HWND hwnd )
 		const int pathSize = MAX_PATH;
 		WCHAR path[ pathSize ] = {};
 		GetDlgItemText( hwnd, IDC_OPTIONS_ARTWORK_PATH, path, pathSize );
-		if ( std::filesystem::exists( path ) ) {
-			try {
-				m_Artwork = std::make_unique<Gdiplus::Bitmap>( path );
-			} catch ( ... ) {}
-		}
+		m_Artwork = CreateBitmapFromFile( path );
 	}
 
-	if ( !m_Artwork || ( m_Artwork->GetWidth() == 0 ) || ( m_Artwork->GetHeight() == 0 ) ) {
+	if ( !m_Artwork ) {
 		VUPlayer* vuplayer = VUPlayer::Get();
 		if ( nullptr != vuplayer ) {
 			m_Artwork = vuplayer->GetPlaceholderImage( false /*useSetting*/ );

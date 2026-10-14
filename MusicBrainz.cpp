@@ -422,18 +422,7 @@ void MusicBrainz::UpdateDialogArtwork( const HWND hwnd, const Result& result )
 	if ( const HWND hwndAlbums = GetDlgItem( hwnd, IDC_MUSICBRAINZ_MATCHES ); nullptr != hwndAlbums ) {
 		if ( const size_t selectedItem = static_cast<size_t>( ListView_GetNextItem( hwndAlbums, -1, LVNI_SELECTED ) ); selectedItem < result.Albums.size() ) {
 			const auto& artwork = result.Albums[ selectedItem ].Artwork;
-			if ( !artwork.empty() ) {
-				IStream* stream = nullptr;
-				if ( SUCCEEDED( CreateStreamOnHGlobal( NULL /*hGlobal*/, TRUE /*deleteOnRelease*/, &stream ) ) ) {
-					if ( SUCCEEDED( stream->Write( &artwork[ 0 ], static_cast<ULONG>( artwork.size() ), NULL /*bytesWritten*/ ) ) ) {
-						try {
-							m_Artwork = std::make_unique<Gdiplus::Bitmap>( stream );
-						} catch ( ... ) {
-						}
-					}
-					stream->Release();
-				}
-			}
+			m_Artwork = CreateBitmapFromImage( artwork );
 		}
 	}
 
@@ -551,7 +540,7 @@ std::vector<unsigned char> MusicBrainz::LookupCoverArt( const std::string& relea
 	std::vector<unsigned char> response;
 	if ( ( nullptr != m_InternetConnectionCoverArtArchive ) && !releaseID.empty() ) {
 		static const bool stubs = false;
-		const char* acceptTypes[] = { "image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff", nullptr };
+		const char* acceptTypes[] = { "image/jpeg", "image/png", "image/bmp", "image/gif", "image/tiff", "image/webp", nullptr };
 		const DWORD flags = INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE;
 		std::stringstream objectName;
 		objectName << s_CoverArtArchiveAPI;
