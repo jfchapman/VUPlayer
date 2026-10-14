@@ -60,8 +60,13 @@ private:
 	// 'tags' - out, tag information.
 	static void ReadOggTags( const char* oggTags, Tags& tags );
 
-	// Writes Ogg 'tags' to 'filename', returning true if the tags were written.
-	// 'tags' - out, tag information.
+	// Reads Ogg Vorbis 'tags' (including artwork) from 'filename', returning true if the tags were read.
+	static bool ReadOggComment( const std::wstring& filename, Tags& tags );
+
+	// Adds the Ogg comment 'field' & 'value' to 'tags', if the field is supported.
+	static void AddOggTag( const std::string& field, const std::string& value, Tags& tags );
+
+	// Writes Ogg Vorbis 'tags' (including artwork) to 'filename', returning true if the tags were written.
 	static bool WriteOggTags( const std::wstring& filename, const Tags& tags );
 
 	// Reads RIFF tags.
@@ -74,9 +79,6 @@ private:
 	// 'tags' - out, tag information.
 	// Returns whether any tags were read.
 	static bool ReadDSDTag( const std::wstring& filename, Tags& tags );
-
-	// Returns a temporary file name.
-	static std::wstring GetTemporaryFilename();
 
 	// BASS midi plugin.
 	HPLUGIN m_BassMidi;

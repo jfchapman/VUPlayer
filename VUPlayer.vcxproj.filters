@@ -276,10 +276,7 @@
     <ClInclude Include="Tag.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="OggPage.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="OpusComment.h">
+    <ClInclude Include="OggComment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GainCalculator.h">
@@ -358,12 +355,6 @@
       <Filter>Third Party</Filter>
     </ClInclude>
     <ClInclude Include="$(SqliteDir)\sqlite3.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
-    <ClInclude Include="$(VorbisToolsDir)\vorbiscomment\i18n.h">
-      <Filter>Third Party</Filter>
-    </ClInclude>
-    <ClInclude Include="$(VorbisToolsDir)\vorbiscomment\vcedit.h">
       <Filter>Third Party</Filter>
     </ClInclude>
     <ClInclude Include="EncoderAAC.h">
@@ -617,10 +608,7 @@
     <ClCompile Include="EncoderOpus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="OggPage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="OpusComment.cpp">
+    <ClCompile Include="OggComment.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GainCalculator.cpp">
@@ -696,9 +684,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="$(SqliteDir)\sqlite3.c">
-      <Filter>Third Party</Filter>
-    </ClCompile>
-    <ClCompile Include="$(VorbisToolsDir)\vorbiscomment\vcedit.c">
       <Filter>Third Party</Filter>
     </ClCompile>
     <ClCompile Include="EncoderAAC.cpp">

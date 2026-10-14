@@ -4,13 +4,29 @@
 #include "Settings.h"
 #include "Utility.h"
 
-#include "vcedit.h"
+#include "OggComment.h"
 #include "TagReader.h"
 
 #include <list>
 #include <sstream>
 #include <regex>
 #include <fstream>
+
+// Supported tags and their Vorbis comment field names.
+static const std::map<Tag, std::string> s_SupportedOggTags = {
+	{ Tag::Album,      "ALBUM" },
+	{ Tag::Artist,     "ARTIST" },
+	{ Tag::Comment,    "COMMENT" },
+	{ Tag::GainAlbum,  "REPLAYGAIN_ALBUM_GAIN" },
+	{ Tag::GainTrack,  "REPLAYGAIN_TRACK_GAIN" },
+	{ Tag::Genre,      "GENRE" },
+	{ Tag::Title,      "TITLE" },
+	{ Tag::Track,      "TRACKNUMBER" },
+	{ Tag::Year,       "DATE" },
+	{ Tag::Composer,   "COMPOSER" },
+	{ Tag::Conductor,  "CONDUCTOR" },
+	{ Tag::Publisher,  "PUBLISHER" }
+};
 
 HandlerBass::HandlerBass() :
 	Handler(),
@@ -87,10 +103,14 @@ bool HandlerBass::GetTags( const std::wstring& filename, Tags& tags ) const
 			BASS_CHANNELINFO info = {};
 			BASS_ChannelGetInfo( stream, &info );
 			if ( BASS_CTYPE_STREAM_OGG == info.ctype ) {
-				const char* oggTags = BASS_ChannelGetTags( stream, BASS_TAG_OGG );
-				if ( nullptr != oggTags ) {
-					ReadOggTags( oggTags, tags );
-					success = true;
+				success = ReadOggComment( filename, tags );
+				if ( !success ) {
+					// Fall back to the tags read by BASS.
+					const char* oggTags = BASS_ChannelGetTags( stream, BASS_TAG_OGG );
+					if ( nullptr != oggTags ) {
+						ReadOggTags( oggTags, tags );
+						success = true;
+					}
 				}
 			} else if ( BASS_CTYPE_STREAM_MIDI == info.ctype ) {
 				const char* midiTags = BASS_ChannelGetTags( stream, BASS_TAG_MIDI_TRACK );
@@ -216,204 +236,96 @@ void HandlerBass::ReadOggTags( const char* oggTags, Tags& tags )
 			const std::string tag = currentTag;
 			const size_t pos = tag.find( '=' );
 			if ( std::string::npos != pos ) {
-				const std::string field = tag.substr( 0 /*offset*/, pos );
-				const std::string value = tag.substr( 1 + pos /*offset*/ );
-				if ( !field.empty() && !value.empty() ) {
-					if ( 0 == _stricmp( field.c_str(), "ARTIST" ) ) {
-						tags.insert( Tags::value_type( Tag::Artist, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "TITLE" ) ) {
-						tags.insert( Tags::value_type( Tag::Title, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "ALBUM" ) ) {
-						tags.insert( Tags::value_type( Tag::Album, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "GENRE" ) ) {
-						tags.insert( Tags::value_type( Tag::Genre, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "YEAR" ) ) {
-						tags.insert( Tags::value_type( Tag::Year, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "DATE" ) ) {
-						// Prefer 'date' over 'year' (both map to the same tag type).
-						tags[ Tag::Year ] = value;
-					} else if ( 0 == _stricmp( field.c_str(), "COMMENT" ) ) {
-						tags.insert( Tags::value_type( Tag::Comment, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "TRACK" ) ) {
-						tags.insert( Tags::value_type( Tag::Track, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) {
-						// Prefer 'tracknumber' over 'track' (both map to the same tag type).
-						tags[ Tag::Track ] = value;
-					} else if ( 0 == _stricmp( field.c_str(), "REPLAYGAIN_TRACK_GAIN" ) ) {
-						tags.insert( Tags::value_type( Tag::GainTrack, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "REPLAYGAIN_ALBUM_GAIN" ) ) {
-						tags.insert( Tags::value_type( Tag::GainAlbum, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "COMPOSER" ) ) {
-						tags.insert( Tags::value_type( Tag::Composer, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "CONDUCTOR" ) ) {
-						tags.insert( Tags::value_type( Tag::Conductor, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "LABEL" ) ) {
-						tags.insert( Tags::value_type( Tag::Publisher, value ) );
-					} else if ( 0 == _stricmp( field.c_str(), "PUBLISHER" ) ) {
-						// Prefer 'publisher' over 'label' (both map to the same tag type).
-						tags[ Tag::Publisher ] = value;
-					}
-				}
+				AddOggTag( tag.substr( 0 /*offset*/, pos ), tag.substr( 1 + pos /*offset*/ ), tags );
 			}
 			currentTag += 1 + tagLength;
 		}
 	}
 }
 
+bool HandlerBass::ReadOggComment( const std::wstring& filename, Tags& tags )
+{
+	bool success = false;
+	try {
+		const OggComment oggComment( filename, OggComment::Type::Vorbis );
+		for ( const auto& [ field, value ] : oggComment.GetUserComments() ) {
+			AddOggTag( field, value, tags );
+		}
+		if ( const std::string artwork = oggComment.GetArtwork(); !artwork.empty() ) {
+			tags.insert( Tags::value_type( Tag::Artwork, artwork ) );
+		}
+		success = true;
+	} catch ( const std::runtime_error& ) {
+	}
+	return success;
+}
+
+void HandlerBass::AddOggTag( const std::string& field, const std::string& value, Tags& tags )
+{
+	if ( !field.empty() && !value.empty() ) {
+		if ( 0 == _stricmp( field.c_str(), "ARTIST" ) ) {
+			tags.insert( Tags::value_type( Tag::Artist, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "TITLE" ) ) {
+			tags.insert( Tags::value_type( Tag::Title, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "ALBUM" ) ) {
+			tags.insert( Tags::value_type( Tag::Album, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "GENRE" ) ) {
+			tags.insert( Tags::value_type( Tag::Genre, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "YEAR" ) ) {
+			tags.insert( Tags::value_type( Tag::Year, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "DATE" ) ) {
+			// Prefer 'date' over 'year' (both map to the same tag type).
+			tags[ Tag::Year ] = value;
+		} else if ( 0 == _stricmp( field.c_str(), "COMMENT" ) ) {
+			tags.insert( Tags::value_type( Tag::Comment, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "TRACK" ) ) {
+			tags.insert( Tags::value_type( Tag::Track, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "TRACKNUMBER" ) ) {
+			// Prefer 'tracknumber' over 'track' (both map to the same tag type).
+			tags[ Tag::Track ] = value;
+		} else if ( 0 == _stricmp( field.c_str(), "REPLAYGAIN_TRACK_GAIN" ) ) {
+			tags.insert( Tags::value_type( Tag::GainTrack, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "REPLAYGAIN_ALBUM_GAIN" ) ) {
+			tags.insert( Tags::value_type( Tag::GainAlbum, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "COMPOSER" ) ) {
+			tags.insert( Tags::value_type( Tag::Composer, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "CONDUCTOR" ) ) {
+			tags.insert( Tags::value_type( Tag::Conductor, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "LABEL" ) ) {
+			tags.insert( Tags::value_type( Tag::Publisher, value ) );
+		} else if ( 0 == _stricmp( field.c_str(), "PUBLISHER" ) ) {
+			// Prefer 'publisher' over 'label' (both map to the same tag type).
+			tags[ Tag::Publisher ] = value;
+		}
+	}
+}
+
 bool HandlerBass::WriteOggTags( const std::wstring& filename, const Tags& tags )
 {
-	bool handled = true;
-
-	// Check if there are any supported tags.
-	for ( auto iter = tags.begin(); handled && ( iter != tags.end() ); iter++ ) {
-		const Tag tag = iter->first;
-		switch ( tag ) {
-			case Tag::Album:
-			case Tag::Artist:
-			case Tag::Comment:
-			case Tag::GainAlbum:
-			case Tag::GainTrack:
-			case Tag::Genre:
-			case Tag::Title:
-			case Tag::Track:
-			case Tag::Year:
-			case Tag::Composer:
-			case Tag::Conductor:
-			case Tag::Publisher: {
-				handled = false;
-				break;
-			}
-			default: {
-				break;
-			}
-		}
-	}
-
-	if ( !handled ) {
-		const std::wstring tempFilename = GetTemporaryFilename();
-		FILE* inputStream = nullptr;
-		if ( 0 == _wfopen_s( &inputStream, filename.c_str(), L"rb" ) ) {
-			FILE* outputStream = nullptr;
-			if ( 0 == _wfopen_s( &outputStream, tempFilename.c_str(), L"wb" ) ) {
-				vcedit_state* state = vcedit_new_state();
-				if ( 0 == vcedit_open( state, inputStream ) ) {
-					vorbis_comment* originalComments = vcedit_comments( state );
-					if ( nullptr != originalComments ) {
-						vorbis_comment modifiedComments = {};
-						vorbis_comment_init( &modifiedComments );
-						const std::string vendor = originalComments->vendor;
-
-						std::set<int> originalCommentsToDrop;
-
-						for ( const auto& tagIter : tags ) {
-							const Tag tag = tagIter.first;
-							const std::string& tagValue = tagIter.second;
-							std::string tagField;
-							switch ( tag ) {
-								case Tag::Album: {
-									tagField = "ALBUM";
-									break;
-								}
-								case Tag::Artist: {
-									tagField = "ARTIST";
-									break;
-								}
-								case Tag::Comment: {
-									tagField = "COMMENT";
-									break;
-								}
-								case Tag::Genre: {
-									tagField = "GENRE";
-									break;
-								}
-								case Tag::Title: {
-									tagField = "TITLE";
-									break;
-								}
-								case Tag::Track: {
-									tagField = "TRACKNUMBER";
-									break;
-								}
-								case Tag::Year: {
-									tagField = "DATE";
-									break;
-								}
-								case Tag::GainAlbum: {
-									tagField = "REPLAYGAIN_ALBUM_GAIN";
-									break;
-								}
-								case Tag::GainTrack: {
-									tagField = "REPLAYGAIN_TRACK_GAIN";
-									break;
-								}
-								case Tag::Composer: {
-									tagField = "COMPOSER";
-									break;
-								}
-								case Tag::Conductor: {
-									tagField = "CONDUCTOR";
-									break;
-								}
-								case Tag::Publisher: {
-									tagField = "PUBLISHER";
-									break;
-								}
-								default: {
-									break;
-								}
-							}
-							if ( !tagField.empty() ) {
-								for ( int index = 0; index < originalComments->comments; ++index ) {
-									const std::string comment = originalComments->user_comments[ index ];
-									const size_t delimiter = comment.find( '=' );
-									if ( ( std::string::npos != delimiter ) && ( delimiter > 0 ) ) {
-										const std::string field = StringToUpper( comment.substr( 0 /*offset*/, delimiter /*count*/ ) );
-										if ( tagField == field ) {
-											originalCommentsToDrop.insert( index );
-										}
-									}
-								}
-								const std::string comment = tagField + '=' + tagValue;
-								vorbis_comment_add( &modifiedComments, comment.c_str() );
-							}
-						}
-
-						for ( int index = 0; index < originalComments->comments; ++index ) {
-							if ( originalCommentsToDrop.end() == originalCommentsToDrop.find( index ) ) {
-								vorbis_comment_add( &modifiedComments, originalComments->user_comments[ index ] );
-							}
-						}
-
-						vorbis_comment_clear( originalComments );
-						vorbis_comment_init( originalComments );
-						for ( int index = 0; index < modifiedComments.comments; ++index ) {
-							vorbis_comment_add( originalComments, modifiedComments.user_comments[ index ] );
-						}
-						originalComments->vendor = const_cast<char*>( vendor.c_str() );
-
-						if ( 0 == vcedit_write( state, outputStream ) ) {
-							handled = true;
-						}
-
-						originalComments->vendor = nullptr;
-						vorbis_comment_clear( originalComments );
-						vorbis_comment_clear( &modifiedComments );
+	// Only modify the file if there are any supported tags.
+	const bool hasSupportedTags = std::any_of( tags.begin(), tags.end(), [] ( const auto& tag ) {
+		return ( Tag::Artwork == tag.first ) || ( s_SupportedOggTags.end() != s_SupportedOggTags.find( tag.first ) );
+	} );
+	bool success = !hasSupportedTags;
+	if ( hasSupportedTags ) {
+		try {
+			OggComment oggComment( filename, OggComment::Type::Vorbis, false /*readonly*/ );
+			for ( const auto& [ tag, value ] : tags ) {
+				if ( const auto match = s_SupportedOggTags.find( tag ); s_SupportedOggTags.end() != match ) {
+					const std::string& field = match->second;
+					oggComment.RemoveUserComment( field );
+					if ( !value.empty() ) {
+						oggComment.AddUserComment( field, value );
 					}
+				} else if ( Tag::Artwork == tag ) {
+					oggComment.SetArtwork( value );
 				}
-				vcedit_clear( state );
-				fclose( outputStream );
 			}
-			fclose( inputStream );
-		}
-
-		if ( handled ) {
-			if ( 0 == MoveFileEx( tempFilename.c_str(), filename.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED | MOVEFILE_WRITE_THROUGH ) ) {
-				DeleteFile( tempFilename.c_str() );
-				handled = false;
-			}
+			success = oggComment.WriteComments();
+		} catch ( const std::runtime_error& ) {
 		}
 	}
-	return handled;
+	return success;
 }
 
 void HandlerBass::ReadRIFFTags( const char* riffTags, Tags& tags )
@@ -484,16 +396,6 @@ bool HandlerBass::ReadDSDTag( const std::wstring& filename, Tags& tags )
 		}
 	}
 	return false;
-}
-
-std::wstring HandlerBass::GetTemporaryFilename()
-{
-	std::wstring filename;
-	WCHAR pathName[ MAX_PATH ];
-	if ( 0 != GetTempPath( MAX_PATH, pathName ) ) {
-		filename = pathName + UTF8ToWideString( GenerateGUIDString() );
-	}
-	return filename;
 }
 
 void HandlerBass::SettingsChanged( Settings& settings )

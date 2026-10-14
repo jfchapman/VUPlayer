@@ -3,7 +3,7 @@
 #include "DecoderOpus.h"
 #include "EncoderOpus.h"
 
-#include "OpusComment.h"
+#include "OggComment.h"
 
 #include "Opusfile.h"
 
@@ -58,11 +58,11 @@ bool HandlerOpus::GetTags( const std::wstring& filename, Tags& tags ) const
 {
 	bool success = true;
 	try {
-		OpusComment opusComment( filename );
-		if ( !opusComment.GetVendor().empty() ) {
-			tags.insert( Tags::value_type( Tag::Version, opusComment.GetVendor() ) );
+		const OggComment oggComment( filename, OggComment::Type::Opus );
+		if ( !oggComment.GetVendor().empty() ) {
+			tags.insert( Tags::value_type( Tag::Version, oggComment.GetVendor() ) );
 		}
-		const auto& comments = opusComment.GetUserComments();
+		const auto& comments = oggComment.GetUserComments();
 		for ( const auto& comment : comments ) {
 			const std::string& field = comment.first;
 			const std::string& value = comment.second;
@@ -106,22 +106,11 @@ bool HandlerOpus::GetTags( const std::wstring& filename, Tags& tags ) const
 					if ( !gain.empty() ) {
 						tags.insert( Tags::value_type( Tag::GainTrack, gain ) );
 					}
-				} else if ( 0 == _stricmp( field.c_str(), "METADATA_BLOCK_PICTURE" ) ) {
-					std::string mimeType;
-					std::string description;
-					uint32_t width = 0;
-					uint32_t height = 0;
-					uint32_t depth = 0;
-					uint32_t colours = 0;
-					std::vector<uint8_t> picture;
-					if ( opusComment.GetPicture( 3, mimeType, description, width, height, depth, colours, picture ) ) {
-						const std::string encodedImage = Base64Encode( &picture[ 0 ], static_cast<int>( picture.size() ) );
-						if ( !encodedImage.empty() ) {
-							tags.insert( Tags::value_type( Tag::Artwork, encodedImage ) );
-						}
-					}
 				}
 			}
+		}
+		if ( const std::string artwork = oggComment.GetArtwork(); !artwork.empty() ) {
+			tags.insert( Tags::value_type( Tag::Artwork, artwork ) );
 		}
 	} catch ( const std::runtime_error& ) {
 		success = false;
@@ -133,37 +122,21 @@ bool HandlerOpus::SetTags( const std::wstring& filename, const Tags& tags ) cons
 {
 	bool success = false;
 	try {
-		OpusComment opusComment( filename, false /*readonly*/ );
+		OggComment oggComment( filename, OggComment::Type::Opus, false /*readonly*/ );
 		for ( const auto& tag : tags ) {
 			const auto match = s_SupportedTags.find( tag.first );
 			if ( s_SupportedTags.end() != match ) {
 				const std::string& field = match->second;
 				const std::string value = ( ( Tag::GainAlbum == tag.first ) || ( Tag::GainTrack == tag.first ) ) ? GainToR128( tag.second ) : tag.second;
-				opusComment.RemoveUserComment( field );
+				oggComment.RemoveUserComment( field );
 				if ( !value.empty() ) {
-					opusComment.AddUserComment( field, value );
+					oggComment.AddUserComment( field, value );
 				}
 			} else if ( Tag::Artwork == tag.first ) {
-				const uint32_t pictureType = 3;
-				opusComment.RemovePicture( pictureType );
-				const std::string& encodedImage = tag.second;
-				if ( !encodedImage.empty() ) {
-					const std::vector<uint8_t> imageBytes = Base64Decode( encodedImage );
-					const size_t imageSize = imageBytes.size();
-					if ( imageSize > 0 ) {
-						std::string mimeType;
-						std::string description;
-						int width = 0;
-						int height = 0;
-						int depth = 0;
-						int colours = 0;
-						GetImageInformation( encodedImage, mimeType, width, height, depth, colours );
-						opusComment.AddPicture( pictureType, mimeType, description, width, height, depth, colours, imageBytes );
-					}
-				}
+				oggComment.SetArtwork( tag.second );
 			}
 		}
-		success = opusComment.WriteComments();
+		success = oggComment.WriteComments();
 	} catch ( const std::runtime_error& ) {
 	}
 	return success;
