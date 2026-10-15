@@ -1998,6 +1998,7 @@ void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList, const bool libra
 	const Playlist::Ptr selectedPlaylist = GetSelectedPlaylist();
 	const bool updateAllTracks = ( selectedPlaylist != GetPlaylistAll() );
 	const bool updateStreams = m_PlaylistStreams && ( selectedPlaylist != m_PlaylistStreams );
+	std::optional<Playlists> userPlaylists;
 
 	for ( const auto& previousMediaInfo : mediaList ) {
 		Playlist::Set updatedPlaylists;
@@ -2014,8 +2015,22 @@ void WndTree::OnRemovedMedia( const MediaInfo::List& mediaList, const bool libra
 		if ( updateAllTracks && !libraryMaintenance ) {
 			GetPlaylistAll()->RemoveItem( previousMediaInfo );
 		}
-		if ( updateStreams && IsURL( previousMediaInfo.GetFilename() ) ) {
-			m_PlaylistStreams->RemoveItem( previousMediaInfo );
+		if ( IsURL( previousMediaInfo.GetFilename() ) ) {
+			if ( updateStreams ) {
+				m_PlaylistStreams->RemoveItem( previousMediaInfo );
+			}
+			if ( !userPlaylists ) {
+				userPlaylists = GetUserPlaylists();
+				if ( m_PlaylistFavourites ) {
+					userPlaylists->push_back( m_PlaylistFavourites );
+				}
+			}
+			for ( const auto& playlist : *userPlaylists ) {
+				if ( playlist ) {
+					// Remove all instances of the stream, as user playlists can contain duplicate entries.
+					while ( playlist->RemoveItem( previousMediaInfo ) ) {}
+				}
+			}
 		}
 	}
 	if ( libraryMaintenance ) {

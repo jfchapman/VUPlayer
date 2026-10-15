@@ -975,6 +975,7 @@ void WndList::DeleteSelectedItems()
 		if ( nullptr != vuplayer ) {
 			switch ( playlistType ) {
 				case Playlist::Type::All:
+				case Playlist::Type::Streams:
 				case Playlist::Type::Artist:
 				case Playlist::Type::Publisher:
 				case Playlist::Type::Composer:
