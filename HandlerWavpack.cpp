@@ -45,6 +45,67 @@ static const std::map<Tag, std::string> kSupportedTagsByType = {
 	{ Tag::Publisher,           "PUBLISHER" }
 };
 
+// APE binary tag item containing the front cover artwork.
+// The item value is a null terminated description (typically a filename), followed by the image data.
+constexpr char kFrontCoverItem[] = "Cover Art (Front)";
+
+// APE binary tag item containing other artwork (only read if there is no front cover).
+constexpr char kOtherCoverItem[] = "Cover Art (Other)";
+
+// Returns the base64 encoded artwork from the WavPack 'context', or an empty string if there is no artwork.
+static std::string ReadArtwork( WavpackContext* context )
+{
+	for ( const char* item : { kFrontCoverItem, kOtherCoverItem } ) {
+		if ( const int valueSize = WavpackGetBinaryTagItem( context, item, nullptr /*value*/, 0 /*size*/ ); valueSize > 0 ) {
+			std::vector<char> value( valueSize );
+			if ( valueSize == WavpackGetBinaryTagItem( context, item, value.data(), valueSize ) ) {
+				// Skip the description
+				if ( const auto description = std::find( value.begin(), value.end(), 0 ); value.end() != description ) {
+					if ( const std::vector<BYTE> imageBytes( description + 1, value.end() ); !imageBytes.empty() ) {
+						if ( const std::string encodedImage = ConvertImage( imageBytes ); !encodedImage.empty() ) {
+							return encodedImage;
+						}
+					}
+				}
+			}
+		}
+	}
+	return {};
+}
+
+// Writes the base64 'encodedImage' as the front cover artwork to the WavPack 'context' (or removes any artwork if the image is empty).
+// Returns whether the tags were modified.
+static bool WriteArtwork( WavpackContext* context, const std::string& encodedImage )
+{
+	if ( encodedImage.empty() ) {
+		const bool frontCoverDeleted = ( 0 != WavpackDeleteTagItem( context, kFrontCoverItem ) );
+		const bool otherCoverDeleted = ( 0 != WavpackDeleteTagItem( context, kOtherCoverItem ) );
+		return frontCoverDeleted || otherCoverDeleted;
+	}
+
+	const std::vector<BYTE> imageBytes = Base64Decode( encodedImage );
+	if ( imageBytes.empty() )
+		return false;
+
+	// Use a description with a file extension corresponding to the image type, e.g. "Cover Art (Front).jpg" (as written by other taggers).
+	std::string mimeType;
+	int width = 0;
+	int height = 0;
+	int depth = 0;
+	int colours = 0;
+	GetImageInformation( encodedImage, mimeType, width, height, depth, colours );
+	std::string description = kFrontCoverItem;
+	if ( const size_t separator = mimeType.find( '/' ); std::string::npos != separator ) {
+		const std::string subtype = mimeType.substr( 1 + separator );
+		description += "." + ( ( "jpeg" == subtype ) ? std::string( "jpg" ) : subtype );
+	}
+
+	std::vector<char> value( description.begin(), description.end() );
+	value.push_back( 0 );
+	value.insert( value.end(), imageBytes.begin(), imageBytes.end() );
+	return 0 != WavpackAppendBinaryTagItem( context, kFrontCoverItem, value.data(), static_cast<int>( value.size() ) );
+}
+
 HandlerWavpack::HandlerWavpack()
 {
 }
@@ -100,6 +161,10 @@ bool HandlerWavpack::GetTags( const std::wstring& filename, Tags& tags ) const
 						}
 					}
 				}
+			}
+
+			if ( const std::string artwork = ReadArtwork( context ); !artwork.empty() ) {
+				tags.insert( { Tag::Artwork, artwork } );
 			}
 
 			const unsigned char format = WavpackGetFileFormat( context );
@@ -165,6 +230,10 @@ bool HandlerWavpack::SetTags( const std::wstring& filename, const Tags& tags ) c
 					writeTags = true;
 				} else {
 					WavpackAppendTagItem( context, fieldName.c_str(), value.c_str(), static_cast<int>( value.size() ) );
+					writeTags = true;
+				}
+			} else if ( Tag::Artwork == tagField ) {
+				if ( WriteArtwork( context, tagIter.second ) ) {
 					writeTags = true;
 				}
 			}
