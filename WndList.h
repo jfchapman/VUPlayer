@@ -211,6 +211,9 @@ public:
 	// OnSysColorChange should be called afterwards to apply the colours.
 	void LoadColours();
 
+	// Resets the list control font to its default.
+	void ResetFont();
+
 	// Applies the current dark mode state to the list control's scrollbar, and the filter bar.
 	void ApplyDarkMode();
 
@@ -385,6 +388,9 @@ private:
 
 	// The font resulting from the font selection dialog.
 	HFONT m_ChosenFont;
+
+	// The default list control font (before any font was applied from the application settings).
+	LOGFONT m_DefaultFont;
 
 	// Indicates the item index being edited.
 	int m_EditItem;

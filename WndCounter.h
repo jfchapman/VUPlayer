@@ -77,6 +77,9 @@ public:
 	// OnSysColorChange should be called afterwards to apply the colour.
 	void LoadColours();
 
+	// Resets the counter font to its default.
+	void ResetFont();
+
 private:
 	// Window procedure
 	static LRESULT CALLBACK CounterProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );

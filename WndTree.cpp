@@ -274,6 +274,7 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	m_PlaylistFavourites( nullptr ),
 	m_PlaylistStreams( nullptr ),
 	m_ChosenFont( NULL ),
+	m_DefaultFont( {} ),
 	m_ColourFont( GetSysColor( COLOR_WINDOWTEXT ) ),
 	m_ColourBackground( GetSysColor( COLOR_WINDOW ) ),
 	m_ColourHighlight( GetSysColor( COLOR_HIGHLIGHT ) ),
@@ -324,6 +325,7 @@ WndTree::WndTree( HINSTANCE instance, HWND parent, Library& library, Settings& s
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 	m_DefaultWndProc = reinterpret_cast<WNDPROC>( SetWindowLongPtr( m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>( TreeProc ) ) );
 	SetWindowAccessibleName( instance, m_hWnd, IDS_ACCNAME_TREEVIEW );
+	m_DefaultFont = GetFont();
 	ApplySettings();
 	m_LoadAllTracksThread = CreateThread( NULL /*attributes*/, 0 /*stackSize*/, LoadAllTracksProc, this /*param*/, 0 /*flags*/, NULL /*threadId*/ );
 }
@@ -579,6 +581,10 @@ void WndTree::OnCommand( const UINT command )
 		}
 		case ID_TREEMENU_FONTSTYLE: {
 			OnSelectFont();
+			break;
+		}
+		case ID_TREEMENU_RESETFONTSTYLE: {
+			ResetFont();
 			break;
 		}
 		case ID_TREEMENU_FONTCOLOUR:
@@ -4206,6 +4212,11 @@ void WndTree::OnSysColorChange( const bool isHighContrast )
 void WndTree::LoadColours()
 {
 	m_Settings.GetTreeColours( m_ColourFont, m_ColourBackground, m_ColourHighlight, m_ColourIcon );
+}
+
+void WndTree::ResetFont()
+{
+	SetFont( m_DefaultFont );
 }
 
 void WndTree::UpdateOutputIcon()

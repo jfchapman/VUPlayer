@@ -1114,6 +1114,10 @@ void VUPlayer::OnCommand( const int commandID )
 			m_Counter.OnSelectFont();
 			break;
 		}
+		case ID_VIEW_COUNTER_RESETFONTSTYLE: {
+			m_Counter.ResetFont();
+			break;
+		}
 		case ID_VIEW_COUNTER_FONTCOLOUR: {
 			m_Counter.OnSelectColour();
 			break;
@@ -1219,6 +1223,10 @@ void VUPlayer::OnCommand( const int commandID )
 			m_List.OnSelectFont();
 			break;
 		}
+		case ID_LISTMENU_RESETFONTSTYLE: {
+			m_List.ResetFont();
+			break;
+		}
 		case ID_LISTMENU_FONTCOLOUR:
 		case ID_LISTMENU_BACKGROUNDCOLOUR:
 		case ID_LISTMENU_HIGHLIGHTCOLOUR:
@@ -1228,6 +1236,10 @@ void VUPlayer::OnCommand( const int commandID )
 		}
 		case ID_TREEMENU_FONTSTYLE: {
 			m_Tree.OnSelectFont();
+			break;
+		}
+		case ID_TREEMENU_RESETFONTSTYLE: {
+			m_Tree.ResetFont();
 			break;
 		}
 		case ID_TREEMENU_FONTCOLOUR:

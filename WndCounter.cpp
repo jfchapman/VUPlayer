@@ -18,6 +18,20 @@ static const std::map<Settings::ToolbarSize, int> s_CounterWidths = {
 	{ Settings::ToolbarSize::Large, 185 }
 };
 
+// Returns the default counter font.
+static LOGFONT GetDefaultCounterFont()
+{
+	LOGFONT font = {};
+	NONCLIENTMETRICS metrics = {};
+	metrics.cbSize = sizeof( NONCLIENTMETRICS );
+	if ( FALSE != SystemParametersInfo( SPI_GETNONCLIENTMETRICS, metrics.cbSize, &metrics, 0 /*winIni*/ ) ) {
+		font = metrics.lfStatusFont;
+		font.lfHeight *= 2;
+		font.lfWeight = FW_BOLD;
+	}
+	return font;
+}
+
 LRESULT CALLBACK WndCounter::CounterProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndCounter* wndCounter = reinterpret_cast<WndCounter*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
@@ -88,14 +102,7 @@ WndCounter::WndCounter( HINSTANCE instance, HWND parent, Settings& settings, Out
 	m_hWnd = CreateWindowEx( 0, s_CounterClass, NULL, style, x, y, width, 0 /*height*/, parent, reinterpret_cast<HMENU>( s_WndCounterID ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 
-	LOGFONT font;
-	NONCLIENTMETRICS metrics = {};
-	metrics.cbSize = sizeof( NONCLIENTMETRICS );
-	if ( FALSE != SystemParametersInfo( SPI_GETNONCLIENTMETRICS, metrics.cbSize, &metrics, 0 /*winIni*/ ) ) {
-		font = metrics.lfStatusFont;
-		font.lfHeight *= 2;
-		font.lfWeight = FW_BOLD;
-	}
+	LOGFONT font = GetDefaultCounterFont();
 	m_Settings.GetCounterSettings( font, m_FontColour, m_ShowRemaining );
 	COLORREF unusedColour = {};
 	m_Settings.GetToolbarColours( unusedColour, m_BackgroundColour );
@@ -252,6 +259,10 @@ void WndCounter::OnCommand( const UINT command )
 			OnSelectFont();
 			break;
 		}
+		case ID_VIEW_COUNTER_RESETFONTSTYLE: {
+			ResetFont();
+			break;
+		}
 		case ID_VIEW_COUNTER_FONTCOLOUR: {
 			OnSelectColour();
 			break;
@@ -294,6 +305,11 @@ void WndCounter::OnSelectColour()
 void WndCounter::LoadColours()
 {
 	m_FontColour = m_Settings.GetCounterFontColour();
+}
+
+void WndCounter::ResetFont()
+{
+	SetCounterFont( GetDefaultCounterFont() );
 }
 
 bool WndCounter::GetTrackRemaining() const

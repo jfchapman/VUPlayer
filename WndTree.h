@@ -209,6 +209,9 @@ public:
 	// OnSysColorChange should be called afterwards to apply the colours.
 	void LoadColours();
 
+	// Resets the tree control font to its default.
+	void ResetFont();
+
 	// Called when the current output playlist changes.
 	// 'playlist' - playlist pointer (used for identification only, not for dereferencing).
 	// 'playlistType' - playlist type.
@@ -731,6 +734,9 @@ private:
 
 	// The font resulting from the font selection dialog.
 	HFONT m_ChosenFont;
+
+	// The default tree control font (before any font was applied from the application settings).
+	LOGFONT m_DefaultFont;
 
 	// Font colour.
 	COLORREF m_ColourFont;

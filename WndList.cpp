@@ -237,6 +237,7 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	m_ColourHighlight( GetSysColor( COLOR_HIGHLIGHT ) ),
 	m_ColourStatusIcon( DEFAULT_ICONCOLOUR ),
 	m_ChosenFont( NULL ),
+	m_DefaultFont( {} ),
 	m_EditItem( -1 ),
 	m_EditSubItem( -1 ),
 	m_EditControlWndProc( NULL ),
@@ -282,6 +283,7 @@ WndList::WndList( HINSTANCE instance, HWND parent, Settings& settings, Output& o
 	lvc.fmt = LVCFMT_FIXED_WIDTH;
 	ListView_InsertColumn( m_hWnd, 0 /*iCol*/, &lvc );
 
+	m_DefaultFont = GetFont();
 	ApplySettings();
 
 	// Note that the parent window layout includes the search bar (if shown) when it is first calculated, so there is no need to notify the parent here.
@@ -842,6 +844,10 @@ void WndList::OnCommand( const UINT command )
 		}
 		case ID_LISTMENU_FONTSTYLE: {
 			OnSelectFont();
+			break;
+		}
+		case ID_LISTMENU_RESETFONTSTYLE: {
+			ResetFont();
 			break;
 		}
 		case ID_LISTMENU_FONTCOLOUR:
@@ -2197,6 +2203,11 @@ void WndList::OnSysColorChange( const bool isHighContrast )
 void WndList::LoadColours()
 {
 	m_Settings.GetPlaylistColours( m_ColourFont, m_ColourBackground, m_ColourHighlight, m_ColourStatusIcon );
+}
+
+void WndList::ResetFont()
+{
+	SetFont( m_DefaultFont );
 }
 
 void WndList::ApplyDarkMode()
