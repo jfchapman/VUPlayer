@@ -45,7 +45,7 @@
     <OpusDir>libs\opus-1.6.1</OpusDir>
     <OpusFileDir>libs\opusfile-0.12</OpusFileDir>
     <ScrobblerDir>libs\scrobbler</ScrobblerDir>
-    <SqliteDir>libs\sqlite-3.53.0</SqliteDir>
+    <SqliteDir>libs\sqlite-3.54.0</SqliteDir>
     <WavPackDir>libs\WavPack-5.9.0</WavPackDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
