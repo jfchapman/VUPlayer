@@ -537,8 +537,8 @@ void DlgTrackInfo::OnArtworkContextMenu( HWND hwnd, const POINT& position )
 		HMENU artworkmenu = GetSubMenu( menu, 0 /*pos*/ );
 		if ( NULL != artworkmenu ) {
 
-			const UINT enableCutCopy = ( m_ClosingInfo.GetArtworkID().empty() && m_ChosenArtworkImage.empty() ) ? MF_DISABLED : MF_ENABLED;
-			const UINT enablePaste = IsClipboardFormatAvailable( CF_BITMAP ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableCutCopy = ( m_ClosingInfo.GetArtworkID().empty() && m_ChosenArtworkImage.empty() ) ? MF_GRAYED : MF_ENABLED;
+			const UINT enablePaste = IsClipboardFormatAvailable( CF_BITMAP ) ? MF_ENABLED : MF_GRAYED;
 
 			EnableMenuItem( artworkmenu, ID_TRACKINFOMENU_CUT, MF_BYCOMMAND | enableCutCopy );
 			EnableMenuItem( artworkmenu, ID_TRACKINFOMENU_COPY, MF_BYCOMMAND | enableCutCopy );

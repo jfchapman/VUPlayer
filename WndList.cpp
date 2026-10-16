@@ -712,7 +712,7 @@ void WndList::OnContextMenu( const POINT& position )
 
 			if ( ( 1 == shownColumns.size() ) && ( *shownColumns.begin() == ID_SHOWCOLUMNS_FILEPATH ) ) {
 				// If the only visible column is the file path column, disable the option to hide it.
-				EnableMenuItem( listmenu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_DISABLED );
+				EnableMenuItem( listmenu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_GRAYED );
 			} else {
 				EnableMenuItem( listmenu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_ENABLED );
 			}
@@ -727,27 +727,27 @@ void WndList::OnContextMenu( const POINT& position )
 			const bool allowAddToFavourites = hasSelectedItems && ( Playlist::Type::Favourites != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
 			const bool allowRemoveFiles = hasSelectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType );
 
-			const UINT enablePaste = ( allowPaste && ( IsClipboardFormatAvailable( CF_TEXT ) || IsClipboardFormatAvailable( CF_UNICODETEXT ) || IsClipboardFormatAvailable( CF_HDROP ) ) ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enablePaste = ( allowPaste && ( IsClipboardFormatAvailable( CF_TEXT ) || IsClipboardFormatAvailable( CF_UNICODETEXT ) || IsClipboardFormatAvailable( CF_HDROP ) ) ) ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_PASTE, MF_BYCOMMAND | enablePaste );
 
-			const UINT enableCut = allowCut ? MF_ENABLED : MF_DISABLED;
+			const UINT enableCut = allowCut ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_CUT, MF_BYCOMMAND | enableCut );
 
-			const UINT enableCopy = allowCopy ? MF_ENABLED : MF_DISABLED;
+			const UINT enableCopy = allowCopy ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_COPY, MF_BYCOMMAND | enableCopy );
 
-			const UINT enableSelectAll = hasItems ? MF_ENABLED : MF_DISABLED;
+			const UINT enableSelectAll = hasItems ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_SELECTALL, MF_BYCOMMAND | enableSelectAll );
 
-			const UINT enableTrackInfo = hasSelectedItems ? MF_ENABLED : MF_DISABLED;
+			const UINT enableTrackInfo = hasSelectedItems ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_VIEW_TRACKINFORMATION, MF_BYCOMMAND | enableTrackInfo );
 
-			const UINT enableAddFiles = allowPaste ? MF_ENABLED : MF_DISABLED;
+			const UINT enableAddFiles = allowPaste ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDFOLDER, MF_BYCOMMAND | enableAddFiles );
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | enableAddFiles );
-			const UINT enableAddStream = allowAddStream ? MF_ENABLED : MF_DISABLED;
+			const UINT enableAddStream = allowAddStream ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTADDSTREAM, MF_BYCOMMAND | enableAddStream );
-			const UINT enableAddToFavourites = allowAddToFavourites ? MF_ENABLED : MF_DISABLED;
+			const UINT enableAddToFavourites = allowAddToFavourites ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | enableAddToFavourites );
 
 			if ( Playlist::Type::CDDA == playlistType ) {
@@ -756,22 +756,22 @@ void WndList::OnContextMenu( const POINT& position )
 				LoadString( m_hInst, IDS_EXTRACT_TRACKS, buffer, bufferSize );
 				ModifyMenu( menu, ID_FILE_CONVERT, MF_BYCOMMAND | MF_STRING, ID_FILE_CONVERT, buffer );
 			}
-			const UINT enableExtract = ( m_Playlist && m_Playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableExtract = ( m_Playlist && m_Playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
-			const UINT enableRemoveFiles = allowRemoveFiles ? MF_ENABLED : MF_DISABLED;
+			const UINT enableRemoveFiles = allowRemoveFiles ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | enableRemoveFiles );
 
 			CheckMenuItem( listmenu, ID_VIEW_SEARCHPLAYLIST, MF_BYCOMMAND | ( IsSearchShown() ? MF_CHECKED : MF_UNCHECKED ) );
 
-			const UINT enableGainCalculator = hasSelectedItems ? MF_ENABLED : MF_DISABLED;
+			const UINT enableGainCalculator = hasSelectedItems ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | enableGainCalculator );
 
 			VUPlayer* vuplayer = VUPlayer::Get();
-			const UINT musicbrainzEnabled = ( m_Playlist && m_Playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT musicbrainzEnabled = ( m_Playlist && m_Playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( listmenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
-			const UINT enableColourChoice = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;
+			const UINT enableColourChoice = IsHighContrastActive() ? MF_GRAYED : MF_ENABLED;
 			EnableMenuItem( menu, ID_LISTMENU_FONTCOLOUR, MF_BYCOMMAND | enableColourChoice );
 			EnableMenuItem( menu, ID_LISTMENU_BACKGROUNDCOLOUR, MF_BYCOMMAND | enableColourChoice );
 			EnableMenuItem( menu, ID_LISTMENU_HIGHLIGHTCOLOUR, MF_BYCOMMAND | enableColourChoice );

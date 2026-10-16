@@ -246,7 +246,7 @@ void WndTray::ShowContextMenu()
 							InsertMenu( traymenu, itemIndex, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>( currentPlaylistMenu ), buffer );
 						}
 						if ( disableCurrentPlaylist ) {
-							EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_DISABLED );
+							EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_GRAYED );
 						}
 						break;
 					}
@@ -270,7 +270,7 @@ void WndTray::ShowContextMenu()
 							InsertMenu( traymenu, itemIndex, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>( favouritesMenu ), buffer );
 						}
 						if ( disableFavourites ) {
-							EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_DISABLED );
+							EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_GRAYED );
 						}
 						break;
 					}
@@ -294,7 +294,7 @@ void WndTray::ShowContextMenu()
 							InsertMenu( traymenu, itemIndex, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>( streamsMenu ), buffer );
 						}
 						if ( disableStreams ) {
-							EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_DISABLED );
+							EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_GRAYED );
 						}
 						break;
 					}
@@ -308,7 +308,7 @@ void WndTray::ShowContextMenu()
 				if ( ( nullptr != playlistsMenu ) && ( ID_TRAYMENU_PLAYLISTS == GetMenuItemID( playlistsMenu, 0 /*itemIndex*/ ) ) ) {
 					const Playlists playlists = m_Tree.GetUserPlaylists();
 					if ( playlists.empty() ) {
-						EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_DISABLED );
+						EnableMenuItem( traymenu, itemIndex, MF_BYPOSITION | MF_GRAYED );
 					} else {
 						int playlistMenuCount = 0;
 						for ( auto playlistIter = playlists.begin(); ( playlistMenuCount < sMaxPlaylists ) && ( playlistIter != playlists.end() ); playlistIter++ ) {

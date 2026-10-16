@@ -234,10 +234,10 @@ bool WndCounter::ShowContextMenu( const POINT& position )
 		if ( NULL != countermenu ) {
 			CheckMenuItem( countermenu, m_ShowRemaining ? ID_VIEW_COUNTER_TRACKREMAINING : ID_VIEW_COUNTER_TRACKELAPSED, MF_BYCOMMAND | MF_CHECKED );
 
-			UINT enableColourChoice = m_IsHighContrast ? MF_DISABLED : MF_ENABLED;
+			UINT enableColourChoice = m_IsHighContrast ? MF_GRAYED : MF_ENABLED;
 			EnableMenuItem( menu, ID_VIEW_COUNTER_FONTCOLOUR, MF_BYCOMMAND | enableColourChoice );
 
-			enableColourChoice = ( m_IsHighContrast || m_IsClassicTheme ) ? MF_DISABLED : MF_ENABLED;
+			enableColourChoice = ( m_IsHighContrast || m_IsClassicTheme ) ? MF_GRAYED : MF_ENABLED;
 			EnableMenuItem( menu, ID_TOOLBAR_COLOUR_BACKGROUND, MF_BYCOMMAND | enableColourChoice );
 
 			TrackPopupMenu( countermenu, TPM_RIGHTBUTTON, position.x, position.y, 0 /*reserved*/, m_hWnd, NULL /*rect*/ );

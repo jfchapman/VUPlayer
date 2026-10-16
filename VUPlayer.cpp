@@ -1365,22 +1365,22 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const auto playlistType = playlist ? playlist->GetType() : Playlist::Type::_Undefined;
 
 		const bool selectedItems = ( m_List.GetSelectedCount() > 0 );
-		const UINT deletePlaylistEnabled = m_Tree.IsPlaylistDeleteEnabled() ? MF_ENABLED : MF_DISABLED;
+		const UINT deletePlaylistEnabled = m_Tree.IsPlaylistDeleteEnabled() ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_FILE_DELETEPLAYLIST, MF_BYCOMMAND | deletePlaylistEnabled );
-		const UINT renamePlaylistEnabled = m_Tree.IsPlaylistRenameEnabled() ? MF_ENABLED : MF_DISABLED;
+		const UINT renamePlaylistEnabled = m_Tree.IsPlaylistRenameEnabled() ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_FILE_RENAMEPLAYLIST, MF_BYCOMMAND | renamePlaylistEnabled );
-		const UINT exportPlaylistEnabled = m_Tree.IsPlaylistExportEnabled() ? MF_ENABLED : MF_DISABLED;
+		const UINT exportPlaylistEnabled = m_Tree.IsPlaylistExportEnabled() ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_FILE_EXPORTPLAYLIST, MF_BYCOMMAND | exportPlaylistEnabled );
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDFOLDER, MF_BYCOMMAND | MF_ENABLED );
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDFILES, MF_BYCOMMAND | MF_ENABLED );
 		EnableMenuItem( menu, ID_FILE_PLAYLISTADDSTREAM, MF_BYCOMMAND | MF_ENABLED );
-		const UINT addToFavouritesEnabled = ( ( Playlist::Type::Favourites != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) && selectedItems ) ? MF_ENABLED : MF_DISABLED;
+		const UINT addToFavouritesEnabled = ( ( Playlist::Type::Favourites != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) && selectedItems ) ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_FILE_ADDTOFAVOURITES, MF_BYCOMMAND | addToFavouritesEnabled );
-		const UINT gainCalculatorEnabled = selectedItems ? MF_ENABLED : MF_DISABLED;
+		const UINT gainCalculatorEnabled = selectedItems ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_FILE_CALCULATEGAIN, MF_BYCOMMAND | gainCalculatorEnabled );
-		const UINT refreshLibraryEnabled = m_Maintainer.IsActive() ? MF_DISABLED : MF_ENABLED;
+		const UINT refreshLibraryEnabled = m_Maintainer.IsActive() ? MF_GRAYED : MF_ENABLED;
 		EnableMenuItem( menu, ID_FILE_REFRESHMEDIALIBRARY, MF_BYCOMMAND | refreshLibraryEnabled );
-		const UINT musicbrainzEnabled = ( playlist && playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_DISABLED;
+		const UINT musicbrainzEnabled = ( playlist && playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
 		const int bufferSize = 256;
@@ -1393,16 +1393,18 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 			const std::wstring convertMenuStr = ( std::wstring::npos == accelDelimiter ) ? buffer : ( buffer + originalMenuStr.substr( accelDelimiter ) );
 			ModifyMenu( menu, ID_FILE_CONVERT, MF_BYCOMMAND | MF_STRING, ID_FILE_CONVERT, convertMenuStr.c_str() );
 		}
-		const UINT convertEnabled = ( playlist && playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
+		const UINT convertEnabled = ( playlist && playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_FILE_CONVERT, MF_BYCOMMAND | convertEnabled );
 
-		const UINT removeFilesEnabled = ( selectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) ) ? MF_ENABLED : MF_DISABLED;
+		const UINT removeFilesEnabled = ( selectedItems && ( Playlist::Type::Folder != playlistType ) && ( Playlist::Type::CDDA != playlistType ) && ( Playlist::Type::_Undefined != playlistType ) ) ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_FILE_PLAYLISTREMOVEFILES, MF_BYCOMMAND | removeFilesEnabled );
 
 		// View menu
 		CheckMenuItem( menu, ID_VIEW_SEARCHPLAYLIST, MF_BYCOMMAND | ( m_List.IsSearchShown() ? MF_CHECKED : MF_UNCHECKED ) );
-		const DarkMode::Mode darkMode = m_Settings.GetDarkMode();
-		const UINT darkModeEnabled = DarkMode::IsSupported() ? MF_ENABLED : MF_DISABLED;
+		// When dark mode isn't supported, show Follow System Mode as checked (whatever the setting), as the system mode is always light.
+		const bool darkModeSupported = DarkMode::IsSupported();
+		const DarkMode::Mode darkMode = darkModeSupported ? m_Settings.GetDarkMode() : DarkMode::Mode::System;
+		const UINT darkModeEnabled = darkModeSupported ? MF_ENABLED : MF_GRAYED;
 		CheckMenuItem( menu, ID_VIEW_DARKMODE_SYSTEM, MF_BYCOMMAND | ( ( DarkMode::Mode::System == darkMode ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_VIEW_DARKMODE_LIGHT, MF_BYCOMMAND | ( ( DarkMode::Mode::Light == darkMode ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_VIEW_DARKMODE_DARK, MF_BYCOMMAND | ( ( DarkMode::Mode::Dark == darkMode ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -1411,7 +1413,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		EnableMenuItem( menu, ID_VIEW_DARKMODE_DARK, MF_BYCOMMAND | darkModeEnabled );
 
 		// Disable the whole Theme sub menu when high contrast is active (the sub menu item has no ID, so find it by its contents).
-		const UINT themeEnabled = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;
+		const UINT themeEnabled = IsHighContrastActive() ? MF_GRAYED : MF_ENABLED;
 		const int menuCount = GetMenuItemCount( menu );
 		for ( int menuIndex = 0; menuIndex < menuCount; menuIndex++ ) {
 			if ( const HMENU subMenu = GetSubMenu( menu, menuIndex ); nullptr != subMenu ) {
@@ -1436,7 +1438,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		CheckMenuItem( menu, ID_TREEMENU_YEARS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_YEARS ) ? MF_CHECKED : MF_UNCHECKED ) );
 		CheckMenuItem( menu, ID_TREEMENU_HIDDENFOLDERS, MF_BYCOMMAND | ( m_Tree.IsShown( ID_TREEMENU_HIDDENFOLDERS ) ? MF_CHECKED : MF_UNCHECKED ) );
 
-		const UINT trackInfoEnabled = ( m_List.GetCurrentSelectedIndex() >= 0 ) ? MF_ENABLED : MF_DISABLED;
+		const UINT trackInfoEnabled = ( m_List.GetCurrentSelectedIndex() >= 0 ) ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_VIEW_TRACKINFORMATION, MF_BYCOMMAND | trackInfoEnabled );
 		const bool trackRemaining = m_Counter.GetTrackRemaining();
 		CheckMenuItem( menu, ID_VIEW_COUNTER_TRACKREMAINING, trackRemaining ? ( MF_BYCOMMAND | MF_CHECKED ) : ( MF_BYCOMMAND | MF_UNCHECKED ) );
@@ -1476,7 +1478,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 
 		if ( ( 1 == shownColumns.size() ) && ( *shownColumns.begin() == ID_SHOWCOLUMNS_FILEPATH ) ) {
 			// If the only visible column is the file path column, disable the option to hide it.
-			EnableMenuItem( menu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_DISABLED );
+			EnableMenuItem( menu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_GRAYED );
 		} else {
 			EnableMenuItem( menu, ID_SHOWCOLUMNS_FILEPATH, MF_BYCOMMAND | MF_ENABLED );
 		}
@@ -1524,17 +1526,17 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		LoadString( m_hInst, ( Output::State::Playing == outputState ) ? IDS_CONTROL_PAUSEMENU : IDS_CONTROL_PLAYMENU, buffer, bufferSize );
 		ModifyMenu( menu, ID_CONTROL_PLAY, MF_BYCOMMAND | MF_STRING, ID_CONTROL_PLAY, buffer );
 
-		const UINT playEnabled = m_ToolbarPlayback.IsButtonEnabled( ID_CONTROL_PLAY ) ? MF_ENABLED : MF_DISABLED;
-		const UINT stopEnabled = m_ToolbarPlayback.IsButtonEnabled( ID_CONTROL_STOP ) ? MF_ENABLED : MF_DISABLED;
-		const UINT previousEnabled = m_ToolbarPlayback.IsButtonEnabled( ID_CONTROL_PREVIOUSTRACK ) ? MF_ENABLED : MF_DISABLED;
-		const UINT nextEnabled = m_ToolbarPlayback.IsButtonEnabled( ID_CONTROL_NEXTTRACK ) ? MF_ENABLED : MF_DISABLED;
+		const UINT playEnabled = m_ToolbarPlayback.IsButtonEnabled( ID_CONTROL_PLAY ) ? MF_ENABLED : MF_GRAYED;
+		const UINT stopEnabled = m_ToolbarPlayback.IsButtonEnabled( ID_CONTROL_STOP ) ? MF_ENABLED : MF_GRAYED;
+		const UINT previousEnabled = m_ToolbarPlayback.IsButtonEnabled( ID_CONTROL_PREVIOUSTRACK ) ? MF_ENABLED : MF_GRAYED;
+		const UINT nextEnabled = m_ToolbarPlayback.IsButtonEnabled( ID_CONTROL_NEXTTRACK ) ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_CONTROL_PLAY, MF_BYCOMMAND | playEnabled );
 		EnableMenuItem( menu, ID_CONTROL_STOP, MF_BYCOMMAND | stopEnabled );
 		EnableMenuItem( menu, ID_CONTROL_PREVIOUSTRACK, MF_BYCOMMAND | previousEnabled );
 		EnableMenuItem( menu, ID_CONTROL_NEXTTRACK, MF_BYCOMMAND | nextEnabled );
 
-		EnableMenuItem( menu, ID_CONTROL_PITCHRESET, ( ( m_Output.GetPitch() != 1.0f ) ? MF_ENABLED : MF_DISABLED ) );
-		EnableMenuItem( menu, ID_CONTROL_BALANCERESET, ( ( m_Output.GetBalance() != 0 ) ? MF_ENABLED : MF_DISABLED ) );
+		EnableMenuItem( menu, ID_CONTROL_PITCHRESET, ( ( m_Output.GetPitch() != 1.0f ) ? MF_ENABLED : MF_GRAYED ) );
+		EnableMenuItem( menu, ID_CONTROL_BALANCERESET, ( ( m_Output.GetBalance() != 0 ) ? MF_ENABLED : MF_GRAYED ) );
 		const Settings::PitchRange pitchRange = m_Settings.GetPitchRange();
 		CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_SMALL, ( Settings::PitchRange::Small == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
 		CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_MEDIUM, ( Settings::PitchRange::Medium == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
@@ -1548,10 +1550,10 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		const bool isCrossfade = m_Output.GetCrossfade();
 		const bool isStream = IsURL( m_Output.GetCurrentPlaying().PlaylistItem.Info.GetFilename() );
 
-		const UINT enableStopAtTrackEnd = ( isFadeOut || isFadeToNext ) ? MF_DISABLED : MF_ENABLED;
-		const UINT enableFollowTrackSelection = ( isFadeOut || isFadeToNext || isStopAtTrackEnd ) ? MF_DISABLED : MF_ENABLED;
-		const UINT enableFadeOut = ( !isFadeToNext && ( Output::State::Playing == outputState ) ) ? MF_ENABLED : MF_DISABLED;
-		const UINT enableFadeToNext = ( !isFadeOut && !isStream && ( Output::State::Playing == outputState ) ) ? MF_ENABLED : MF_DISABLED;
+		const UINT enableStopAtTrackEnd = ( isFadeOut || isFadeToNext ) ? MF_GRAYED : MF_ENABLED;
+		const UINT enableFollowTrackSelection = ( isFadeOut || isFadeToNext || isStopAtTrackEnd ) ? MF_GRAYED : MF_ENABLED;
+		const UINT enableFadeOut = ( !isFadeToNext && ( Output::State::Playing == outputState ) ) ? MF_ENABLED : MF_GRAYED;
+		const UINT enableFadeToNext = ( !isFadeOut && !isStream && ( Output::State::Playing == outputState ) ) ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_CONTROL_FOLLOWSELECTION, MF_BYCOMMAND | enableFollowTrackSelection );
 		EnableMenuItem( menu, ID_CONTROL_STOPTRACKEND, MF_BYCOMMAND | enableStopAtTrackEnd );
 		EnableMenuItem( menu, ID_CONTROL_FADEOUT, MF_BYCOMMAND | enableFadeOut );
@@ -1573,7 +1575,7 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		CheckMenuItem( menu, ID_CONTROL_CROSSFADE, MF_BYCOMMAND | checkCrossfade );
 		CheckMenuItem( menu, ID_CONTROL_LOUDNESS, MF_BYCOMMAND | checkLoudness );
 
-		const UINT enableSkip = ( Output::State::Stopped != outputState ) ? MF_ENABLED : MF_DISABLED;
+		const UINT enableSkip = ( Output::State::Stopped != outputState ) ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem( menu, ID_CONTROL_SKIPBACKWARDS, MF_BYCOMMAND | enableSkip );
 		EnableMenuItem( menu, ID_CONTROL_SKIPFORWARDS, MF_BYCOMMAND | enableSkip );
 
@@ -1584,10 +1586,10 @@ void VUPlayer::OnInitMenu( const HMENU menu )
 		CheckMenuItem( menu, ID_CONTROL_REPEATTRACK, MF_BYCOMMAND | repeatTrack );
 		CheckMenuItem( menu, ID_CONTROL_REPEATPLAYLIST, MF_BYCOMMAND | repeatPlaylist );
 
-		UINT enableColourChoice = ( IsHighContrastActive() || IsClassicThemeActive() ) ? MF_DISABLED : MF_ENABLED;
+		UINT enableColourChoice = ( IsHighContrastActive() || IsClassicThemeActive() ) ? MF_GRAYED : MF_ENABLED;
 		EnableMenuItem( menu, ID_TOOLBAR_COLOUR_BACKGROUND, MF_BYCOMMAND | enableColourChoice );
 
-		enableColourChoice = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;
+		enableColourChoice = IsHighContrastActive() ? MF_GRAYED : MF_ENABLED;
 		EnableMenuItem( menu, ID_VIEW_COUNTER_FONTCOLOUR, MF_BYCOMMAND | enableColourChoice );
 		EnableMenuItem( menu, ID_TOOLBAR_COLOUR_BUTTON, MF_BYCOMMAND | enableColourChoice );
 		EnableMenuItem( menu, ID_TREEMENU_FONTCOLOUR, MF_BYCOMMAND | enableColourChoice );
@@ -1939,7 +1941,7 @@ void VUPlayer::InsertAddToPlaylists( const HMENU menu, const UINT insertAfterIte
 				WCHAR buffer[ buffersize ] = {};
 				LoadString( m_hInst, ( addPrefix ? IDS_ADDTOPLAYLISTPREFIXED : IDS_ADDTOPLAYLIST ), buffer, buffersize );
 				InsertMenu( menu, itemIndex, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>( playlistMenu ), buffer );
-				EnableMenuItem( menu, itemIndex, MF_BYPOSITION | ( enableMenu ? MF_ENABLED : MF_DISABLED ) );
+				EnableMenuItem( menu, itemIndex, MF_BYPOSITION | ( enableMenu ? MF_ENABLED : MF_GRAYED ) );
 			}
 			break;
 		}

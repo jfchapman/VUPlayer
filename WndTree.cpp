@@ -658,9 +658,9 @@ void WndTree::OnContextMenu( const POINT& position )
 	if ( NULL != menu ) {
 		HMENU treemenu = GetSubMenu( menu, 0 /*pos*/ );
 		if ( NULL != treemenu ) {
-			EnableMenuItem( treemenu, ID_FILE_DELETEPLAYLIST, MF_BYCOMMAND | ( IsPlaylistDeleteEnabled() ? MF_ENABLED : MF_DISABLED ) );
-			EnableMenuItem( treemenu, ID_FILE_EXPORTPLAYLIST, MF_BYCOMMAND | ( IsPlaylistExportEnabled() ? MF_ENABLED : MF_DISABLED ) );
-			EnableMenuItem( treemenu, ID_FILE_RENAMEPLAYLIST, MF_BYCOMMAND | ( IsPlaylistRenameEnabled() ? MF_ENABLED : MF_DISABLED ) );
+			EnableMenuItem( treemenu, ID_FILE_DELETEPLAYLIST, MF_BYCOMMAND | ( IsPlaylistDeleteEnabled() ? MF_ENABLED : MF_GRAYED ) );
+			EnableMenuItem( treemenu, ID_FILE_EXPORTPLAYLIST, MF_BYCOMMAND | ( IsPlaylistExportEnabled() ? MF_ENABLED : MF_GRAYED ) );
+			EnableMenuItem( treemenu, ID_FILE_RENAMEPLAYLIST, MF_BYCOMMAND | ( IsPlaylistRenameEnabled() ? MF_ENABLED : MF_GRAYED ) );
 
 			CheckMenuItem( treemenu, ID_TREEMENU_FAVOURITES, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_FAVOURITES ) ? MF_CHECKED : MF_UNCHECKED ) );
 			CheckMenuItem( treemenu, ID_TREEMENU_STREAMS, MF_BYCOMMAND | ( IsShown( ID_TREEMENU_STREAMS ) ? MF_CHECKED : MF_UNCHECKED ) );
@@ -684,13 +684,13 @@ void WndTree::OnContextMenu( const POINT& position )
 				ModifyMenu( menu, ID_FILE_CONVERT, MF_BYCOMMAND | MF_STRING, ID_FILE_CONVERT, buffer );
 			}
 
-			const UINT enableExtract = ( playlist && playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT enableExtract = ( playlist && playlist->CanConvertAnyItems() ) ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( treemenu, ID_FILE_CONVERT, MF_BYCOMMAND | enableExtract );
 
-			const UINT musicbrainzEnabled = ( playlist && playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_DISABLED;
+			const UINT musicbrainzEnabled = ( playlist && playlist->AllowMusicBrainzQueries() ) ? MF_ENABLED : MF_GRAYED;
 			EnableMenuItem( treemenu, ID_FILE_MUSICBRAINZ_QUERY, MF_BYCOMMAND | musicbrainzEnabled );
 
-			const UINT enableColourChoice = IsHighContrastActive() ? MF_DISABLED : MF_ENABLED;
+			const UINT enableColourChoice = IsHighContrastActive() ? MF_GRAYED : MF_ENABLED;
 			EnableMenuItem( menu, ID_TREEMENU_FONTCOLOUR, MF_BYCOMMAND | enableColourChoice );
 			EnableMenuItem( menu, ID_TREEMENU_BACKGROUNDCOLOUR, MF_BYCOMMAND | enableColourChoice );
 			EnableMenuItem( menu, ID_TREEMENU_HIGHLIGHTCOLOUR, MF_BYCOMMAND | enableColourChoice );
@@ -4462,7 +4462,7 @@ void WndTree::InsertAddToPlaylists( const HMENU menu, const UINT insertAfterItem
 					for ( const auto& playlist : playlists ) {
 						if ( playlist ) {
 							m_AddToPlaylistMenuMap.insert( PlaylistMenuMap::value_type( commandID, playlist ) );
-							AppendMenu( playlistMenu, ( playlist == currentPlaylist ) ? MF_DISABLED : MF_ENABLED, commandID, playlist->GetName().c_str() );
+							AppendMenu( playlistMenu, ( playlist == currentPlaylist ) ? MF_GRAYED : MF_ENABLED, commandID, playlist->GetName().c_str() );
 							if ( ++commandID > MSG_TREEMENU_ADDTOPLAYLIST_END ) {
 								break;
 							}
@@ -4476,7 +4476,7 @@ void WndTree::InsertAddToPlaylists( const HMENU menu, const UINT insertAfterItem
 				WCHAR buffer[ buffersize ] = {};
 				LoadString( m_hInst, IDS_ADDTOPLAYLIST, buffer, buffersize );
 				InsertMenu( menu, itemIndex, MF_BYPOSITION | MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>( playlistMenu ), buffer );
-				EnableMenuItem( menu, itemIndex, MF_BYPOSITION | ( enableMenu ? MF_ENABLED : MF_DISABLED ) );
+				EnableMenuItem( menu, itemIndex, MF_BYPOSITION | ( enableMenu ? MF_ENABLED : MF_GRAYED ) );
 			}
 			break;
 		}

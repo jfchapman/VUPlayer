@@ -243,10 +243,10 @@ void WndRebar::OnContextMenu( const HWND hwnd, const POINT& position )
 				CheckMenuItem( menu, ID_TOOLBARSIZE_MEDIUM, ( Settings::ToolbarSize::Medium == toolbarSize ) ? MF_CHECKED : MF_UNCHECKED );
 				CheckMenuItem( menu, ID_TOOLBARSIZE_LARGE, ( Settings::ToolbarSize::Large == toolbarSize ) ? MF_CHECKED : MF_UNCHECKED );
 
-				UINT enableColourChoice = m_IsHighContrast ? MF_DISABLED : MF_ENABLED;
+				UINT enableColourChoice = m_IsHighContrast ? MF_GRAYED : MF_ENABLED;
 				EnableMenuItem( menu, ID_TOOLBAR_COLOUR_BUTTON, MF_BYCOMMAND | enableColourChoice );
 
-				enableColourChoice = ( m_IsHighContrast || m_IsClassicTheme ) ? MF_DISABLED : MF_ENABLED;
+				enableColourChoice = ( m_IsHighContrast || m_IsClassicTheme ) ? MF_GRAYED : MF_ENABLED;
 				EnableMenuItem( menu, ID_TOOLBAR_COLOUR_BACKGROUND, MF_BYCOMMAND | enableColourChoice );
 
 				TrackPopupMenu( toolbarmenu, TPM_RIGHTBUTTON, position.x, position.y, 0 /*reserved*/, m_hWnd, NULL /*rect*/ );

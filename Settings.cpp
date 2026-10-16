@@ -139,6 +139,15 @@ void Settings::UpdateSettingsTable()
 {
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
+		// Check whether the settings table already exists (i.e. this is an existing database).
+		bool existingSettings = false;
+		const std::string tableExistsQuery = "SELECT 1 FROM sqlite_master WHERE type='table' AND name='Settings';";
+		sqlite3_stmt* existsStmt = nullptr;
+		if ( SQLITE_OK == sqlite3_prepare_v2( database, tableExistsQuery.c_str(), -1 /*nByte*/, &existsStmt, nullptr /*tail*/ ) ) {
+			existingSettings = ( SQLITE_ROW == sqlite3_step( existsStmt ) );
+			sqlite3_finalize( existsStmt );
+		}
+
 		// Create the settings table (if necessary).
 		const std::string settingsTableQuery = "CREATE TABLE IF NOT EXISTS Settings(Setting, Value, PRIMARY KEY(Setting));";
 		sqlite3_exec( database, settingsTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
@@ -169,6 +178,12 @@ void Settings::UpdateSettingsTable()
 				sqlite3_exec( database, dropTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 				sqlite3_exec( database, settingsTableQuery.c_str(), NULL /*callback*/, NULL /*arg*/, NULL /*errMsg*/ );
 			}
+		}
+
+		// Existing users (from a version without dark mode support) keep the light theme, while new users follow the system mode.
+		// The mode is always written, so that a new database is not treated as an existing one the next time.
+		if ( !ReadSetting<int>( "DarkMode" ) ) {
+			SetDarkMode( existingSettings ? DarkMode::Mode::Light : DarkMode::Mode::System );
 		}
 	}
 }

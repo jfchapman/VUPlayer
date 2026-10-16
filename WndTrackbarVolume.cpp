@@ -246,8 +246,8 @@ bool WndTrackbarVolume::ShowContextMenu( const POINT& position )
 			CheckMenuItem( trackbarMenu, ID_VIEW_TRACKBAR_VOLUME, ( Type::Volume == type ) ? MF_CHECKED : MF_UNCHECKED );
 			CheckMenuItem( trackbarMenu, ID_VIEW_TRACKBAR_PITCH, ( Type::Pitch == type ) ? MF_CHECKED : MF_UNCHECKED );
 			CheckMenuItem( trackbarMenu, ID_VIEW_TRACKBAR_BALANCE, ( Type::Balance == type ) ? MF_CHECKED : MF_UNCHECKED );
-			EnableMenuItem( trackbarMenu, ID_CONTROL_PITCHRESET, ( GetOutput().GetPitch() != 1.0f ) ? MF_ENABLED : MF_DISABLED );
-			EnableMenuItem( trackbarMenu, ID_CONTROL_BALANCERESET, ( GetOutput().GetBalance() != 0 ) ? MF_ENABLED : MF_DISABLED );
+			EnableMenuItem( trackbarMenu, ID_CONTROL_PITCHRESET, ( GetOutput().GetPitch() != 1.0f ) ? MF_ENABLED : MF_GRAYED );
+			EnableMenuItem( trackbarMenu, ID_CONTROL_BALANCERESET, ( GetOutput().GetBalance() != 0 ) ? MF_ENABLED : MF_GRAYED );
 
 			const Settings::PitchRange pitchRange = GetSettings().GetPitchRange();
 			CheckMenuItem( menu, ID_CONTROL_PITCHRANGE_SMALL, ( Settings::PitchRange::Small == pitchRange ) ? MF_CHECKED : MF_UNCHECKED );
