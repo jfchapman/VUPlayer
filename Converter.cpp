@@ -320,6 +320,10 @@ bool Converter::JoinTracksHandler( const bool addToLibrary )
 
 	// Decode each track and feed it to the encoder.
 	ebur128_state* r128State = ebur128_init( static_cast<unsigned int>( joinChannels ), static_cast<unsigned int>( joinSampleRate ), EBUR128_MODE_I );
+	if ( ( nullptr != r128State ) && ( 1 == joinChannels ) ) {
+		// Measure mono as dual mono, as it is played on both speakers.
+		ebur128_set_channel( r128State, 0, EBUR128_DUAL_MONO );
+	}
 	long currentTrack = 1;
 	bool conversionOK = true;
 	for ( auto track = m_Tracks.begin(); conversionOK && !Cancelled() && ( m_Tracks.end() != track ); track++, currentTrack++ ) {
@@ -422,6 +426,18 @@ bool Converter::EncodeTracksHandler( const bool addToLibrary )
 		usedFilenames.insert( std::filesystem::path( filename ).replace_extension() );
 	}
 
+	// Generate unique output filenames for all tracks, which are also distinct from any input filenames.
+	MediaInfo::List mediaList;
+	for ( const auto& track : m_Tracks ) {
+		mediaList.push_back( track.Info );
+	}
+	const auto filenames = m_Settings.GetOutputFilenames( mediaList, m_hInst, usedFilenames );
+	std::map<long /*trackID*/, std::wstring> outputFilenames;
+	auto filename = filenames.begin();
+	for ( const auto& track : m_Tracks ) {
+		outputFilenames.insert( { track.ID, *filename++ } );
+	}
+
 	// If all tracks in a folder have the same (non-empty) album name, encode these tracks in a single batch, so that album gain can be calculated.
 	Playlist::Items nonAlbumTracks;
 	nonAlbumTracks.reserve( m_Tracks.size() );
@@ -438,16 +454,15 @@ bool Converter::EncodeTracksHandler( const bool addToLibrary )
 	}
 	groups.emplace( std::filesystem::path(), nonAlbumTracks );
 
-	// Generate unique output filenames, which are also distinct from any input filenames.
+	// Pair each track with its output filename.
 	using Album = std::vector<std::pair<Playlist::Item, std::wstring /*outputFilename*/>>;
 	std::map<int, Album> albums;
 	int albumID = 0;
 	for ( auto group = groups.begin(); groups.end() != group; group++, albumID++ ) {
 		Album album;
 		for ( const auto& track : group->second ) {
-			const auto outputFilename = GetOutputFilename( track, usedFilenames );
-			if ( outputFilename ) {
-				album.push_back( std::make_pair( track, *outputFilename ) );
+			if ( const auto outputFilename = outputFilenames.find( track.ID ); ( outputFilenames.end() != outputFilename ) && !outputFilename->second.empty() ) {
+				album.push_back( std::make_pair( track, outputFilename->second ) );
 			}
 		}
 		albums.emplace( albumID, album );
@@ -506,6 +521,7 @@ bool Converter::EncodeTracksHandler( const bool addToLibrary )
 							item.Info = mediaInfo;
 						}
 
+						ebur128_state* r128State = nullptr;
 						if ( !outputFilename.empty() ) {
 							try {
 								const Decoder::Ptr decoder = OpenDecoder( item );
@@ -516,6 +532,7 @@ bool Converter::EncodeTracksHandler( const bool addToLibrary )
 								const auto bps = decoder->GetBPS();
 								const long long trackSamplesTotal = static_cast<long long>( item.Info.GetDuration() * sampleRate );
 
+								std::filesystem::create_directories( std::filesystem::path( outputFilename ).parent_path(), ec );
 								auto encoder = m_EncoderHandler->OpenEncoder();
 								if ( encoder && encoder->Open( outputFilename, sampleRate, channels, bps, trackSamplesTotal, m_EncoderSettings, m_Library.GetTags( mediaInfo ) ) ) {
 									long long trackSamplesRead = 0;
@@ -523,10 +540,10 @@ bool Converter::EncodeTracksHandler( const bool addToLibrary )
 									const long sampleCount = 65536;
 									std::vector<float> sampleBuffer( sampleCount * channels );
 
-									ebur128_state* r128State = ebur128_init( static_cast<unsigned int>( channels ), static_cast<unsigned int>( sampleRate ), EBUR128_MODE_I );
-									if ( calculateAlbumGain ) {
-										std::lock_guard<std::mutex> r128lock( r128Mutex );
-										r128States.push_back( r128State );
+									r128State = ebur128_init( static_cast<unsigned int>( channels ), static_cast<unsigned int>( sampleRate ), EBUR128_MODE_I );
+									if ( ( nullptr != r128State ) && ( 1 == channels ) ) {
+										// Measure mono as dual mono, as it is played on both speakers.
+										ebur128_set_channel( r128State, 0, EBUR128_DUAL_MONO );
 									}
 
 									int r128Error = EBUR128_SUCCESS;
@@ -566,21 +583,29 @@ bool Converter::EncodeTracksHandler( const bool addToLibrary )
 										}
 
 										mediaInfo.SetFilename( outputFilename );
-										encodedMediaList.push_back( mediaInfo );
+										{
+											std::lock_guard<std::mutex> encodedMediaLock( encodedMediaMutex );
+											encodedMediaList.push_back( mediaInfo );
+										}
 
 										WriteTrackTags( outputFilename, mediaInfo );
 										if ( addToLibrary || m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/ ) ) {
 											MediaInfo extractedMediaInfo( outputFilename );
 											m_Library.GetMediaInfo( extractedMediaInfo );
 										}
-									}
-									if ( !calculateAlbumGain && ( nullptr != r128State ) ) {
-										ebur128_destroy( &r128State );
-										r128State = nullptr;
+
+										if ( calculateAlbumGain && ( nullptr != r128State ) ) {
+											std::lock_guard<std::mutex> r128lock( r128Mutex );
+											r128States.push_back( r128State );
+											r128State = nullptr;
+										}
 									}
 								}
 							} catch ( const std::runtime_error& ) {
 							}
+						}
+						if ( nullptr != r128State ) {
+							ebur128_destroy( &r128State );
 						}
 						m_StatusTrack.store( ++currentTrack );
 
@@ -629,24 +654,6 @@ bool Converter::EncodeTracksHandler( const bool addToLibrary )
 	}
 
 	return conversionOK;
-}
-
-std::optional<std::wstring> Converter::GetOutputFilename( const Playlist::Item& track, std::set<std::wstring>& usedFilenames )
-{
-	const std::wstring originalFilename = m_Settings.GetOutputFilename( track.Info, m_hInst );
-	std::wstring filename = originalFilename;
-	std::wstring filenameLowerCase = WideStringToLower( filename );
-	constexpr int kMaxRenameAttempts = 100;
-	int index = 1;
-	do {
-		if ( const auto found = usedFilenames.find( filenameLowerCase ); usedFilenames.end() == found ) {
-			usedFilenames.insert( filenameLowerCase );
-			return filename;
-		}
-		filename = originalFilename + L" (" + std::to_wstring( index ) + L")";
-		filenameLowerCase = WideStringToLower( filename );
-	} while ( ++index < kMaxRenameAttempts );
-	return std::nullopt;
 }
 
 void Converter::EncodeHandler()

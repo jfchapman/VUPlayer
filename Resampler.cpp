@@ -6,7 +6,6 @@
 extern "C"
 {
 #include <libswresample/swresample.h>
-#include <libavutil/opt.h>
 }
 
 static AVChannelLayout GetChannelLayout( const uint32_t channels )
@@ -42,7 +41,6 @@ Resampler::Resampler( Decoder::Ptr decoder, const long id, const uint32_t output
 	constexpr AVSampleFormat kSampleFormat = AV_SAMPLE_FMT_FLT;
 	int result = swr_alloc_set_opts2( &m_Context, &dstLayout, kSampleFormat, static_cast<int>( m_OutputSampleRate ), &srcLayout, kSampleFormat, static_cast<int>( m_InputSampleRate ), 0, nullptr );
 	if ( 0 == result ) {
-		result = av_opt_set( m_Context, "filter_type", "kaiser", 0 );
 		result = swr_init( m_Context );
 		if ( result < 0 )
 			swr_free( &m_Context );
@@ -61,6 +59,9 @@ Resampler::~Resampler()
 
 long Resampler::Read( float* outputBuffer, const long outputSampleCount )
 {
+	if ( outputSampleCount <= 0 )
+		return 0;
+
 	long inputSampleCount = std::max( 1l, static_cast<long>( outputSampleCount * static_cast<float>( m_InputSampleRate ) / m_OutputSampleRate ) );
 	m_InputBuffer.resize( inputSampleCount * m_InputChannels );
 
@@ -97,6 +98,7 @@ uint32_t Resampler::Convert( const float* const inputBuffer, const uint32_t inpu
 {
 	const uint8_t* const inBuffer = reinterpret_cast<const uint8_t* const>( inputBuffer );
 	uint8_t* const outBuffer = reinterpret_cast<uint8_t* const>( outputBuffer );
-	const int samplesConverted = swr_convert( m_Context, &outBuffer, static_cast<int>( outputSamples ), &inBuffer, static_cast<int>( inputSamples ) );
+	// When there is no more input, pass a null input buffer to flush the remaining samples from the resampler.
+	const int samplesConverted = swr_convert( m_Context, &outBuffer, static_cast<int>( outputSamples ), ( inputSamples > 0 ) ? &inBuffer : nullptr, static_cast<int>( inputSamples ) );
 	return ( samplesConverted < 0 ) ? 0 : static_cast<uint32_t>( samplesConverted );
 }

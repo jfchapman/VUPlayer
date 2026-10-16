@@ -114,14 +114,11 @@ protected:
 	// Callback function for when the output decoder has finished pre-buffering.
 	PreBufferFinishedCallback m_PreBufferFinishedCallback = nullptr;
 
-	// Pre-buffered sample data.
-	std::vector<std::vector<float>> m_BufferSlots;
-
 	// Read buffer queue.
-	std::queue<std::vector<float>*> m_ReadQueue;
+	std::queue<std::vector<float>> m_ReadQueue;
 
 	// Current read buffer.
-	std::vector<float>* m_ReadBuffer = nullptr;
+	std::vector<float> m_ReadBuffer;
 
 	// Current read buffer offset.
 	long m_ReadBufferOffset = 0;

@@ -87,6 +87,10 @@ std::optional<float> Decoder::CalculateTrackGain( CanContinue canContinue, const
 
 		ebur128_state* r128State = ebur128_init( static_cast<unsigned int>( m_Channels ), static_cast<unsigned int>( m_SampleRate ), EBUR128_MODE_I );
 		if ( nullptr != r128State ) {
+			if ( 1 == m_Channels ) {
+				// Measure mono as dual mono, as it is played on both speakers.
+				ebur128_set_channel( r128State, 0, EBUR128_DUAL_MONO );
+			}
 			const long sampleSize = 4096;
 			std::vector<float> buffer( sampleSize * m_Channels );
 			long samplesRead = ReadSamples( buffer.data(), sampleSize );

@@ -5,6 +5,7 @@
 #include "VUPlayer.h"
 
 #include <array>
+#include <map>
 #include <type_traits>
 
 // Pitch ranges
@@ -1881,39 +1882,100 @@ void Settings::SetFollowTrackSelection( const bool enabled )
 	WriteSetting( "FollowTrackSelection", enabled );
 }
 
-std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINSTANCE instance )
+// Output names to use for empty fields when formatting output filenames.
+struct EmptyFieldNames {
+	std::wstring Artist;
+	std::wstring Album;
+	std::wstring Publisher;
+	std::wstring Composer;
+	std::wstring Conductor;
+};
+
+// An output path relative to the extract folder, split into folder names and a filename.
+struct OutputPath {
+	std::vector<std::wstring> Folders;
+	std::wstring Filename;
+};
+
+// Truncates a folder or file 'name' to at most 'length' characters, without splitting a surrogate pair.
+// If the name was truncated, any trailing whitespace or periods are also removed.
+static void TruncateOutputName( std::wstring& name, const size_t length )
+{
+	if ( name.size() > length ) {
+		name.resize( length );
+		if ( !name.empty() && IS_HIGH_SURROGATE( name.back() ) ) {
+			name.pop_back();
+		}
+		if ( const auto p = name.find_last_not_of( L". \t" ); std::wstring::npos != p ) {
+			name.resize( 1 + p );
+		} else {
+			name.clear();
+		}
+	}
+}
+
+// Shortens the longest 'folders' names, so that the total length of the folder names (each with a trailing delimiter) is at most 'maxLength'.
+// If this is not possible, 'folders' is cleared.
+static void ShortenOutputFolders( std::vector<std::wstring>& folders, const size_t maxLength )
+{
+	const auto getLength = [ &folders ] ( const size_t nameLimit ) {
+		size_t length = 0;
+		for ( const auto& folder : folders ) {
+			length += 1 + std::min( folder.size(), nameLimit );
+		}
+		return length;
+	};
+
+	size_t nameLimit = 0;
+	for ( const auto& folder : folders ) {
+		nameLimit = std::max( nameLimit, folder.size() );
+	}
+	if ( getLength( nameLimit ) <= maxLength ) {
+		return;
+	}
+
+	while ( ( nameLimit > 0 ) && ( getLength( nameLimit ) > maxLength ) ) {
+		--nameLimit;
+	}
+	if ( 0 == nameLimit ) {
+		folders.clear();
+		return;
+	}
+
+	for ( auto folder = folders.begin(); folders.end() != folder; ) {
+		TruncateOutputName( *folder, nameLimit );
+		if ( folder->empty() ) {
+			folder = folders.erase( folder );
+		} else {
+			++folder;
+		}
+	}
+}
+
+// Returns the (untrimmed) output path for 'mediaInfo', relative to the extract folder.
+// 'extractFilename' - output filename format.
+// 'mediaInfo' - source media information.
+// 'emptyFields' - output names to use for empty fields.
+static OutputPath FormatOutputPath( const std::wstring& extractFilename, const MediaInfo& mediaInfo, const EmptyFieldNames& emptyFields )
 {
 	std::wstring outputFilename;
-
-	std::wstring extractFolder;
-	std::wstring extractFilename;
-	bool extractToLibrary = false;
-	bool extractJoin = false;
-	GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
-
-	WCHAR buffer[ 64 ] = {};
-	const std::wstring emptyArtist = LoadString( instance, IDS_EMPTYARTIST, buffer, 64 ) ? buffer : std::wstring();
-	const std::wstring emptyAlbum = LoadString( instance, IDS_EMPTYALBUM, buffer, 64 ) ? buffer : std::wstring();
-	const std::wstring emptyPublisher = LoadString( instance, IDS_EMPTY_PUBLISHER, buffer, 64 ) ? buffer : std::wstring();
-	const std::wstring emptyComposer = LoadString( instance, IDS_EMPTY_COMPOSER, buffer, 64 ) ? buffer : std::wstring();
-	const std::wstring emptyConductor = LoadString( instance, IDS_EMPTY_CONDUCTOR, buffer, 64 ) ? buffer : std::wstring();
 
 	std::wstring title = mediaInfo.GetTitle( true /*filenameAsTitle*/ );
 	WideStringReplaceInvalidFilenameCharacters( title, L"_", true /*replaceFolderDelimiters*/ );
 
-	std::wstring artist = mediaInfo.GetArtist().empty() ? emptyArtist : mediaInfo.GetArtist();
+	std::wstring artist = mediaInfo.GetArtist().empty() ? emptyFields.Artist : mediaInfo.GetArtist();
 	WideStringReplaceInvalidFilenameCharacters( artist, L"_", true /*replaceFolderDelimiters*/ );
 
-	std::wstring album = mediaInfo.GetAlbum().empty() ? emptyAlbum : mediaInfo.GetAlbum();
+	std::wstring album = mediaInfo.GetAlbum().empty() ? emptyFields.Album : mediaInfo.GetAlbum();
 	WideStringReplaceInvalidFilenameCharacters( album, L"_", true /*replaceFolderDelimiters*/ );
 
-	std::wstring publisher = mediaInfo.GetPublisher().empty() ? emptyPublisher : mediaInfo.GetPublisher();
+	std::wstring publisher = mediaInfo.GetPublisher().empty() ? emptyFields.Publisher : mediaInfo.GetPublisher();
 	WideStringReplaceInvalidFilenameCharacters( publisher, L"_", true /*replaceFolderDelimiters*/ );
 
-	std::wstring composer = mediaInfo.GetComposer().empty() ? emptyComposer : mediaInfo.GetComposer();
+	std::wstring composer = mediaInfo.GetComposer().empty() ? emptyFields.Composer : mediaInfo.GetComposer();
 	WideStringReplaceInvalidFilenameCharacters( composer, L"_", true /*replaceFolderDelimiters*/ );
 
-	std::wstring conductor = mediaInfo.GetConductor().empty() ? emptyConductor : mediaInfo.GetConductor();
+	std::wstring conductor = mediaInfo.GetConductor().empty() ? emptyFields.Conductor : mediaInfo.GetConductor();
 	WideStringReplaceInvalidFilenameCharacters( conductor, L"_", true /*replaceFolderDelimiters*/ );
 
 	std::wstring sourceFilename = mediaInfo.GetFilenameWithCues( false /*fullPath*/, true /*removeExtension*/ );
@@ -1997,15 +2059,12 @@ std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINS
 	}
 
 	// Sanitise folder and file names.
-	if ( !extractFolder.empty() && ( extractFolder.back() != '\\' ) ) {
-		extractFolder += '\\';
-	}
 	WideStringReplaceInvalidFilenameCharacters( outputFilename, L"_", false /*replaceFolderDelimiters*/ );
 	WideStringReplace( outputFilename, L"/", L"\\" );
 	const size_t firstPos = outputFilename.find_first_not_of( L"\\ \t" );
 	const size_t lastPos = outputFilename.find_last_not_of( L"\\ \t" );
 	if ( ( std::wstring::npos != firstPos ) && ( std::wstring::npos != lastPos ) ) {
-		outputFilename = outputFilename.substr( firstPos, 1 + lastPos );
+		outputFilename = outputFilename.substr( firstPos, 1 + lastPos - firstPos );
 	} else {
 		outputFilename.clear();
 	}
@@ -2013,36 +2072,126 @@ std::wstring Settings::GetOutputFilename( const MediaInfo& mediaInfo, const HINS
 		outputFilename = sourceFilename;
 	}
 
-	// Restrict filename length, for maximum compatibility.
-	constexpr size_t kFileExtensionLength = 10;	
-	if ( const auto checkPath = std::filesystem::path( extractFolder ) / outputFilename; checkPath.native().size() + kFileExtensionLength >= MAX_PATH ) {
-		outputFilename = sourceFilename;
-	}
-
-	// Create the output folder, if necessary.
+	// Split into folder names and a filename.
+	OutputPath outputPath;
 	size_t pos = outputFilename.find( '\\', 0 );
 	while ( std::wstring::npos != pos ) {
 		std::wstring folder = outputFilename.substr( 0, pos );
 		outputFilename = outputFilename.substr( 1 + pos );
 
-		// Folder names cannot have leading whitespace or trailing whitespace/periods.
+		// Folder names cannot have leading whitespace or trailing whitespace/periods (which also discards any relative folder names).
 		if ( const auto p = folder.find_last_not_of( L". \t" ); std::wstring::npos != p ) {
 			folder = folder.substr( 0, 1 + p );
+		} else {
+			folder.clear();
 		}
 		if ( const auto p = folder.find_first_not_of( L" \t" ); std::wstring::npos != p ) {
 			folder = folder.substr( p );
 		}
 
 		if ( !folder.empty() ) {
-			extractFolder += folder;
-			CreateDirectory( extractFolder.c_str(), NULL /*attributes*/ );
-			extractFolder += L"\\";
+			outputPath.Folders.push_back( folder );
 		}
 		pos = outputFilename.find( '\\', 0 );
 	};
-	outputFilename = extractFolder + outputFilename;
+	outputPath.Filename = outputFilename;
 
-	return outputFilename;
+	return outputPath;
+}
+
+std::vector<std::wstring> Settings::GetOutputFilenames( const MediaInfo::List& mediaList, const HINSTANCE instance, std::set<std::wstring>& usedFilenames )
+{
+	std::wstring extractFolder;
+	std::wstring extractFilename;
+	bool extractToLibrary = false;
+	bool extractJoin = false;
+	GetExtractSettings( extractFolder, extractFilename, extractToLibrary, extractJoin );
+	if ( !extractFolder.empty() && ( extractFolder.back() != '\\' ) ) {
+		extractFolder += '\\';
+	}
+
+	WCHAR buffer[ 64 ] = {};
+	EmptyFieldNames emptyFields;
+	emptyFields.Artist = LoadString( instance, IDS_EMPTYARTIST, buffer, 64 ) ? buffer : std::wstring();
+	emptyFields.Album = LoadString( instance, IDS_EMPTYALBUM, buffer, 64 ) ? buffer : std::wstring();
+	emptyFields.Publisher = LoadString( instance, IDS_EMPTY_PUBLISHER, buffer, 64 ) ? buffer : std::wstring();
+	emptyFields.Composer = LoadString( instance, IDS_EMPTY_COMPOSER, buffer, 64 ) ? buffer : std::wstring();
+	emptyFields.Conductor = LoadString( instance, IDS_EMPTY_CONDUCTOR, buffer, 64 ) ? buffer : std::wstring();
+
+	// Generate the full output paths, grouped by (case insensitive) output folder.
+	std::vector<OutputPath> outputPaths;
+	outputPaths.reserve( mediaList.size() );
+	std::map<std::wstring, std::vector<size_t>> folderGroups;
+	for ( const auto& mediaInfo : mediaList ) {
+		OutputPath outputPath = FormatOutputPath( extractFilename, mediaInfo, emptyFields );
+		std::wstring folderKey;
+		for ( const auto& folder : outputPath.Folders ) {
+			folderKey += WideStringToLower( folder ) + L"\\";
+		}
+		folderGroups[ folderKey ].push_back( outputPaths.size() );
+		outputPaths.push_back( std::move( outputPath ) );
+	}
+
+	// Restrict path lengths, for maximum compatibility.
+	// Folder names are shortened (identically for each file in the folder) just enough to fit the longest filename, up to a limit, then filenames are shortened to fit.
+	constexpr size_t kFileExtensionLength = 10;
+	constexpr size_t kMaxFilenameReserve = 64;
+	const size_t maxPathLength = MAX_PATH - 1 - kFileExtensionLength;
+	const size_t maxRelativeLength = ( maxPathLength > extractFolder.size() ) ? ( maxPathLength - extractFolder.size() ) : 0;
+
+	std::vector<std::wstring> outputFolders( outputPaths.size() );
+	std::vector<size_t> filenameLimits( outputPaths.size(), 0 );
+	for ( const auto& [ folderKey, indices ] : folderGroups ) {
+		size_t longestFilename = 0;
+		for ( const auto index : indices ) {
+			longestFilename = std::max( longestFilename, outputPaths[ index ].Filename.size() );
+		}
+		const size_t filenameReserve = std::min( longestFilename, kMaxFilenameReserve );
+
+		std::vector<std::wstring> folders = outputPaths[ indices.front() ].Folders;
+		ShortenOutputFolders( folders, ( maxRelativeLength > filenameReserve ) ? ( maxRelativeLength - filenameReserve ) : 0 );
+
+		std::wstring outputFolder = extractFolder;
+		for ( const auto& folder : folders ) {
+			outputFolder += folder + L"\\";
+		}
+		const size_t foldersLength = outputFolder.size() - extractFolder.size();
+		const size_t filenameLimit = ( maxRelativeLength > foldersLength ) ? ( maxRelativeLength - foldersLength ) : 0;
+		for ( const auto index : indices ) {
+			outputFolders[ index ] = outputFolder;
+			filenameLimits[ index ] = filenameLimit;
+		}
+	}
+
+	// Generate unique output filenames, in the original order.
+	std::vector<std::wstring> outputFilenames( outputPaths.size() );
+	constexpr int kMaxRenameAttempts = 100;
+	for ( size_t index = 0; index < outputPaths.size(); index++ ) {
+		const size_t filenameLimit = filenameLimits[ index ];
+		std::wstring filename = outputPaths[ index ].Filename;
+		TruncateOutputName( filename, filenameLimit );
+		if ( filename.empty() ) {
+			continue;
+		}
+		for ( int attempt = 0; attempt < kMaxRenameAttempts; attempt++ ) {
+			std::wstring candidate = filename;
+			if ( attempt > 0 ) {
+				const std::wstring suffix = L" (" + std::to_wstring( attempt ) + L")";
+				if ( suffix.size() >= filenameLimit ) {
+					break;
+				}
+				TruncateOutputName( candidate, filenameLimit - suffix.size() );
+				candidate += suffix;
+			}
+			candidate = outputFolders[ index ] + candidate;
+			if ( usedFilenames.insert( WideStringToLower( candidate ) ).second ) {
+				outputFilenames[ index ] = candidate;
+				break;
+			}
+		}
+	}
+
+	return outputFilenames;
 }
 
 bool Settings::GetResamplerSettings( uint32_t& samplerate, uint32_t& channels )

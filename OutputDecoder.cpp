@@ -32,10 +32,10 @@ long OutputDecoder::Read( float* buffer, const long sampleCount )
 	long samplesRead = 0;
 	if ( m_UsePreBuffer ) {
 		while ( ( samplesRead < sampleCount ) && !m_DecoderFinished ) {
-			const long readBufferSize = ( nullptr != m_ReadBuffer ) ? static_cast<long>( m_ReadBuffer->size() ) : 0;
+			const long readBufferSize = static_cast<long>( m_ReadBuffer.size() );
 			if ( m_ReadBufferOffset < readBufferSize ) {
 				const long samplesToRead = std::min<long>( sampleCount - samplesRead, ( readBufferSize - m_ReadBufferOffset ) / m_DecoderChannels );
-				const auto first = m_ReadBuffer->begin() + m_ReadBufferOffset;
+				const auto first = m_ReadBuffer.begin() + m_ReadBufferOffset;
 				const auto last = first + samplesToRead * m_DecoderChannels;
 				const auto dest = buffer + samplesRead * m_DecoderChannels;
 				std::copy( first, last, dest );
@@ -47,7 +47,7 @@ long OutputDecoder::Read( float* buffer, const long sampleCount )
 				if ( m_ReadQueue.empty() ) {
 					m_DecoderFinished = true;
 				} else {
-					m_ReadBuffer = m_ReadQueue.front();
+					m_ReadBuffer = std::move( m_ReadQueue.front() );
 					m_ReadBufferOffset = 0;
 					m_ReadQueue.pop();
 				}
@@ -132,26 +132,15 @@ void OutputDecoder::StartPreBufferThread()
 	m_StopPreBuffering = false;
 	m_DecoderFinished = false;
 	m_ReadQueue = {};
-	m_ReadBuffer = nullptr;
+	m_ReadBuffer = {};
 	m_ReadBufferOffset = 0;
 
 	m_BufferThread = std::thread( [ this ] ()
 		{
-			// Create a 'circular' buffer containing a fixed number of write slots, which the read queue will point to.
-			// This buffer needs to be two slots wider than the read queue because:
-			// 1. When the writer wraps around, it will (re)acquire the initial read slot, before being held.
-			// 2. When the writer is then released, it will immediately acquire the next read slot, before being held.
-			constexpr size_t kSlotCount = 2 + kQueueSize;
-			m_BufferSlots.resize( kSlotCount );
-			size_t slotIndex = 0;
-
 			const long bufferSamples = static_cast<long>( m_Decoder->GetSampleRate() * kSecondsPerSlot * GetPreBufferSizeFactor() );
 			bool finished = false;
 			while ( !finished ) {
-				auto& buffer = m_BufferSlots[ slotIndex ];
-				slotIndex = ( 1 + slotIndex ) % kSlotCount;
-
-				buffer.resize( bufferSamples * m_DecoderChannels );
+				std::vector<float> buffer( bufferSamples * m_DecoderChannels );
 				const long samplesRead = Decode( buffer.data(), bufferSamples );
 				buffer.resize( samplesRead * m_DecoderChannels );
 
@@ -166,7 +155,7 @@ void OutputDecoder::StartPreBufferThread()
 						m_PreBufferFinishedCallback( m_ID );
 					}
 				} else {
-					m_ReadQueue.push( &buffer );
+					m_ReadQueue.push( std::move( buffer ) );
 				}
 				ReleaseSemaphore( m_SemaphoreOutput, 1, nullptr );
 			}

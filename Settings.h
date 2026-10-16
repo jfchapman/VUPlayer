@@ -4,6 +4,8 @@
 #include <list>
 #include <optional>
 #include <array>
+#include <set>
+#include <vector>
 
 #include "DarkMode.h"
 #include "Database.h"
@@ -737,10 +739,14 @@ public:
 	// Sets whether playback should follow the current track selection.
 	void SetFollowTrackSelection( const bool enabled );
 
-	// Returns the output filename when converting files or extracting CD audio.
-	// 'mediaInfo' - source media information.
+	// Returns the output filenames (without file extensions) when converting files or extracting CD audio, in the same order as the 'mediaList'.
+	// Filenames are shortened where necessary to stay within MAX_PATH, and files which share an output folder are kept together in the same (possibly shortened) folder.
+	// Output folders are not created.
+	// 'mediaList' - source media information.
 	// 'instance' - module instance handle.
-	std::wstring GetOutputFilename( const MediaInfo& mediaInfo, const HINSTANCE instance );
+	// 'usedFilenames' - lowercase filenames (without file extensions) which must not be used, updated with the returned filenames.
+	// An empty string is returned for any file where an output filename could not be created.
+	std::vector<std::wstring> GetOutputFilenames( const MediaInfo::List& mediaList, const HINSTANCE instance, std::set<std::wstring>& usedFilenames );
 
 	// Returns whether resampling is enabled, and the samplerate & channel settings if so.
 	bool GetResamplerSettings( uint32_t& samplerate, uint32_t& channels );

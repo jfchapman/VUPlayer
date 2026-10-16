@@ -36,7 +36,7 @@ long DecoderWavpack::Read( float* buffer, const long sampleCount )
 		const long bufferSize = samplesRead * GetChannels();
 		const int bitsPerSample = WavpackGetBytesPerSample( m_Context ) * 8;
 		for ( long index = 0; index < bufferSize; index++ ) {
-			buffer[ index ] = static_cast<float>( nativeBuffer[ index ] ) / ( 1 << ( bitsPerSample - 1 ) );
+			buffer[ index ] = static_cast<float>( nativeBuffer[ index ] ) / ( 1ul << ( bitsPerSample - 1 ) );
 		}
 	}
 	return samplesRead;

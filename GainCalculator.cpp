@@ -150,6 +150,10 @@ void GainCalculator::Handler()
 								const unsigned long samplerate = static_cast<unsigned long>( decoder->GetSampleRate() );
 								ebur128_state* r128State = ebur128_init( channels, samplerate, EBUR128_MODE_I );
 								if ( nullptr != r128State ) {
+									if ( 1 == channels ) {
+										// Measure mono as dual mono, as it is played on both speakers.
+										ebur128_set_channel( r128State, 0, EBUR128_DUAL_MONO );
+									}
 									bool destroyState = true;
 
 									const long sampleSize = 4096;

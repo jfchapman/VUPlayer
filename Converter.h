@@ -74,9 +74,6 @@ private:
 	// Returns a decoder for the 'item', or nullptr if a decoder could not be opened.
 	Decoder::Ptr OpenDecoder( const Playlist::Item& item ) const;
 
-	// Returns a unique output filename for the encoded 'track', using (and updating) the set of 'usedFilenames'. Returns nullopt if a filename could not be created.
-	std::optional<std::wstring> GetOutputFilename( const Playlist::Item& track, std::set<std::wstring>& usedFilenames );
-
 	// Module instance handle.
 	HINSTANCE m_hInst;
 
