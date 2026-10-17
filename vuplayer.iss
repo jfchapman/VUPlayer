@@ -33,7 +33,6 @@ OutputBaseFilename=VUPlayerSetup
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible
-;MinVersion=10.0
  
 #ifdef EnableSigning
 SignTool=signtool
