@@ -216,6 +216,9 @@
     <ClInclude Include="CDDAMedia.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CDTextReader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="DecoderCDDA.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -552,6 +555,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CDDAMedia.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CDTextReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DecoderCDDA.cpp">

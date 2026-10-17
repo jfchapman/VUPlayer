@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 
+#include "CDTextReader.h"
 #include "MusicBrainz.h"
 #include "Playlist.h"
 
@@ -95,18 +96,6 @@ public:
 	static std::optional<std::tuple<std::string /*discid*/, std::string /*toc*/, std::set<long> /*startCues*/, std::wstring /*backingFile*/>> GetMusicBrainzPlaylistID( Playlist* const playlist );
 
 private:
-	// A string pair.
-	using StringPair = std::pair<std::wstring, std::wstring>;
-
-	// Maps a track number to an artist/title pair.
-	using StringPairMap = std::map<long, StringPair>;
-
-	// Maps a block number to a string map.
-	using BlockMap = std::map<long, StringPairMap>;
-
-	// Maps a track number to a string.
-	using StringMap = std::map<long, std::wstring>;
-
 	// Reads the table of contents, returning whether there are any audio tracks available.
 	bool ReadTOC();
 
@@ -119,11 +108,8 @@ private:
 	// Generates a playlist for the CD 'drive', returning whether the playlist was generated successfully.
 	bool GeneratePlaylist( const wchar_t drive );
 
-	// Reads CD-Text into 'blocks', returning whether any information was read.
-	bool ReadCDText( BlockMap& blocks ) const;
-
-	// Sets the 'text' and any 'extraTitles' using the CD-Text 'data' at the 'descriptorIndex'.
-	void GetDataBlockText( const CDROM_TOC_CD_TEXT_DATA& data, const int descriptorIndex, std::wstring& text, StringMap& extraTitles ) const;
+	// Returns the CD-Text artist/title information for each block.
+	CDTextReader::Blocks ReadCDText() const;
 
 	// Returns the MusicBrainz ID for the 'toc'.
 	static std::pair<std::string /*discid*/, std::string /*toc*/> GetMusicBrainzID( const CDROM_TOC& toc );

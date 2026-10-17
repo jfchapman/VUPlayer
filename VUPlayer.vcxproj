@@ -288,6 +288,7 @@ copy "$(ProjectDir)$(FFmpegDir)\bin\x64\swresample-7.dll" $(OutDir)swresample-7.
     <ClInclude Include="DecoderOpenMPT.h" />
     <ClInclude Include="DiscManager.h" />
     <ClInclude Include="CDDAMedia.h" />
+    <ClInclude Include="CDTextReader.h" />
     <ClInclude Include="Converter.h" />
     <ClInclude Include="Database.h" />
     <ClInclude Include="DecoderCDDA.h" />
@@ -410,6 +411,7 @@ copy "$(ProjectDir)$(FFmpegDir)\bin\x64\swresample-7.dll" $(OutDir)swresample-7.
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4458; 4815</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4458; 4815</DisableSpecificWarnings>
     </ClCompile>
+    <ClCompile Include="CDTextReader.cpp" />
     <ClCompile Include="Converter.cpp" />
     <ClCompile Include="Database.cpp" />
     <ClCompile Include="Decoder.cpp" />

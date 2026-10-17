@@ -52,6 +52,9 @@ DecoderFFmpeg::DecoderFFmpeg( const std::wstring& filename, const Context contex
 										const auto srcFormat = m_DecoderContext->sample_fmt;
 										const AVChannelLayout dstLayout = srcLayout;
 										const AVSampleFormat dstFormat = AV_SAMPLE_FMT_FLT;
+										m_InputChannels = srcLayout.nb_channels;
+										m_InputFormat = srcFormat;
+										m_InputSampleRate = codecParams->sample_rate;
 										result = swr_alloc_set_opts2( &m_ResamplerContext, &dstLayout, dstFormat, codecParams->sample_rate, &srcLayout, srcFormat, codecParams->sample_rate, 0, nullptr );
 										if ( result >= 0 ) {
 											result = swr_init( m_ResamplerContext );
@@ -99,27 +102,32 @@ void DecoderFFmpeg::FreeContexts()
 	}
 }
 
-void DecoderFFmpeg::ConvertSampleData( const AVFrame* frame )
+bool DecoderFFmpeg::ConvertSampleData( const AVFrame* frame )
 {
 	if ( nullptr == frame )
-		return;
+		return true;
+
+	// The decoded format can change mid-stream (e.g. the channel count of an AAC stream), which the resampler would not handle safely.
+	if ( ( frame->ch_layout.nb_channels != m_InputChannels ) || ( frame->format != m_InputFormat ) || ( frame->sample_rate != m_InputSampleRate ) )
+		return false;
 
 	const size_t previousBufferSize = m_Buffer.size();
 	m_Buffer.resize( previousBufferSize + frame->nb_samples * GetChannels() );
 	uint8_t* buffer = reinterpret_cast<uint8_t*>( m_Buffer.data() + previousBufferSize );
-	const int samples = swr_convert( m_ResamplerContext, &buffer, frame->nb_samples, frame->data, frame->nb_samples );
+	const int samples = swr_convert( m_ResamplerContext, &buffer, frame->nb_samples, frame->extended_data, frame->nb_samples );
 	if ( samples > 0 ) {
 		m_Buffer.resize( previousBufferSize + samples * GetChannels() );
 	} else {
 		m_Buffer.resize( previousBufferSize );
 	}
+	return true;
 }
 
 bool DecoderFFmpeg::Decode()
 {
 	m_Buffer.clear();
 	m_BufferPosition = 0;
-	while ( ( nullptr != m_Packet ) && m_Buffer.empty() ) {
+	while ( !m_InputChanged && ( nullptr != m_Packet ) && m_Buffer.empty() ) {
 		if ( av_read_frame( m_FormatContext, m_Packet ) < 0 ) {
 			// Flush the decoder.
 			av_packet_free( &m_Packet );
@@ -130,8 +138,11 @@ bool DecoderFFmpeg::Decode()
 			while ( result >= 0 ) {
 				result = avcodec_receive_frame( m_DecoderContext, m_Frame );
 				if ( result >= 0 ) {
-					ConvertSampleData( m_Frame );
+					m_InputChanged = !ConvertSampleData( m_Frame );
 					av_frame_unref( m_Frame );
+					if ( m_InputChanged ) {
+						break;
+					}
 				}
 			}
 		}
@@ -163,6 +174,7 @@ double DecoderFFmpeg::Seek( const double position )
 {
 	m_Buffer.clear();
 	m_BufferPosition = 0;
+	m_InputChanged = false;
 	const int64_t ts( position * AV_TIME_BASE );
 	return ( avformat_seek_file( m_FormatContext, -1, INT64_MIN, ts, ts, 0 ) < 0 ) ? 0 : position;
 }

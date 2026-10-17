@@ -235,20 +235,15 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 		bool isNewMedia = false;
 
 		// Read CD-Text and just keep the first block.
-		BlockMap cdTextBlocks;
-		ReadCDText( cdTextBlocks );
+		const CDTextReader::Blocks cdTextBlocks = ReadCDText();
+		const CDTextReader::Tracks cdTextTracks = !cdTextBlocks.empty() ? cdTextBlocks.begin()->second : CDTextReader::Tracks();
+		const auto cdTextDiscIter = cdTextTracks.find( 0 );
+		const CDTextReader::Track cdTextDisc = ( cdTextTracks.end() != cdTextDiscIter ) ? cdTextDiscIter->second : CDTextReader::Track();
 
-		const StringPairMap& cdTextStrings = !cdTextBlocks.empty() ? cdTextBlocks.begin()->second : StringPairMap();
-		std::wstring cdTextDiscArtist;
-		auto cdTextIter = cdTextStrings.find( 0 );
-		if ( cdTextStrings.end() != cdTextIter ) {
-			cdTextDiscArtist = cdTextIter->second.first;
-		}
-		std::wstring cdTextDiscTitle;
-		cdTextIter = cdTextStrings.find( 0 );
-		if ( cdTextStrings.end() != cdTextIter ) {
-			cdTextDiscTitle = cdTextIter->second.second;
-		}
+		// Returns the track value if available, otherwise the disc value.
+		const auto trackOrDisc = [] ( const std::wstring& trackValue, const std::wstring& discValue ) {
+			return trackValue.empty() ? discValue : trackValue;
+		};
 
 		unsigned char track = HasHiddenTrack( m_TOC ) ? 0 : m_TOC.FirstTrack;
 		for ( ; track <= m_TOC.LastTrack; track++ ) {
@@ -265,22 +260,15 @@ bool CDDAMedia::GeneratePlaylist( const wchar_t drive )
 				mediaInfo.SetFilename( ToMediaFilepath( drive, track ) );
 
 				if ( !m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ ) ) {
-					mediaInfo.SetArtist( cdTextDiscArtist );
-					mediaInfo.SetAlbum( cdTextDiscTitle );
-					cdTextIter = cdTextStrings.find( track );
-					if ( cdTextStrings.end() != cdTextIter ) {
-						const std::wstring& artist = cdTextIter->second.first;
-						if ( !artist.empty() ) {
-							mediaInfo.SetArtist( artist );
-						}
-					}
-					cdTextIter = cdTextStrings.find( track );
-					if ( cdTextStrings.end() != cdTextIter ) {
-						const std::wstring& title = cdTextIter->second.second;
-						if ( !title.empty() ) {
-							mediaInfo.SetTitle( title );
-						}
-					}
+					const auto cdTextTrackIter = cdTextTracks.find( track );
+					const CDTextReader::Track cdTextTrack = ( cdTextTracks.end() != cdTextTrackIter ) ? cdTextTrackIter->second : CDTextReader::Track();
+					mediaInfo.SetAlbum( cdTextDisc.Title );
+					mediaInfo.SetTitle( cdTextTrack.Title );
+					mediaInfo.SetArtist( trackOrDisc( cdTextTrack.Performer, cdTextDisc.Performer ) );
+					// Use the songwriter if there is no composer.
+					mediaInfo.SetComposer( trackOrDisc( trackOrDisc( cdTextTrack.Composer, cdTextTrack.Songwriter ), trackOrDisc( cdTextDisc.Composer, cdTextDisc.Songwriter ) ) );
+					mediaInfo.SetComment( cdTextTrack.Message );
+					mediaInfo.SetGenre( cdTextDisc.Genre );
 
 					m_Library.UpdateMediaTags( previousMediaInfo, mediaInfo );
 
@@ -397,103 +385,32 @@ bool CDDAMedia::Read( const HANDLE handle, const long sectorStart, const long se
 	return success;
 }
 
-bool CDDAMedia::ReadCDText( BlockMap& blocks ) const
+CDTextReader::Blocks CDDAMedia::ReadCDText() const
 {
-	bool success = false;
-	const HANDLE handle = Open();
-	if ( nullptr != handle ) {
+	CDTextReader::Blocks blocks;
+	if ( const HANDLE handle = Open(); nullptr != handle ) {
 		CDROM_READ_TOC_EX toc = {};
 		toc.Format = CDROM_READ_TOC_EX_FORMAT_CDTEXT;
-		CDROM_TOC_CD_TEXT_DATA textData;
-		DWORD result = 0;
-		if ( DeviceIoControl( handle, IOCTL_CDROM_READ_TOC_EX, &toc, sizeof( CDROM_READ_TOC_EX ), &textData, sizeof( CDROM_TOC_CD_TEXT_DATA ), &result, 0 ) ) {
-			const int textSize = ( static_cast<int>( textData.Length[ 0 ] ) << 8 ) + textData.Length[ 1 ];
-			const int blockSize = sizeof( CDROM_TOC_CD_TEXT_DATA_BLOCK );
-			if ( ( textSize > 0 ) && ( 2 == ( textSize % blockSize ) ) ) {
-				std::vector<unsigned char> textbuffer( textSize, 0 );
-				PCDROM_TOC_CD_TEXT_DATA cdText = reinterpret_cast<PCDROM_TOC_CD_TEXT_DATA>( textbuffer.data() );
-				if ( DeviceIoControl( handle, IOCTL_CDROM_READ_TOC_EX, &toc, sizeof( CDROM_READ_TOC_EX ), cdText, textSize, &result, 0 ) ) {
-					const int descriptorCount = textSize / blockSize;
-					for ( int descriptorIndex = 0; descriptorIndex < descriptorCount; descriptorIndex++ ) {
-						const CDROM_TOC_CD_TEXT_DATA_BLOCK& dataBlock = cdText->Descriptors[ descriptorIndex ];
-						switch ( dataBlock.PackType ) {
-							case CDROM_CD_TEXT_PACK_ALBUM_NAME: {
-								auto blockIter = blocks.insert( BlockMap::value_type( dataBlock.BlockNumber, StringPairMap() ) ).first;
-								if ( blocks.end() != blockIter ) {
-									auto& block = blockIter->second;
-									auto trackIter = block.insert( StringPairMap::value_type( dataBlock.TrackNumber, StringPair() ) ).first;
-									if ( block.end() != trackIter ) {
-										std::wstring& title = trackIter->second.second;
-										StringMap extraTitles;
-										GetDataBlockText( *cdText, descriptorIndex, title, extraTitles );
-										for ( const auto& extra : extraTitles ) {
-											trackIter = block.insert( StringPairMap::value_type( extra.first, StringPair() ) ).first;
-											if ( block.end() != trackIter ) {
-												trackIter->second.second = extra.second;
-											}
-										}
-									}
-								}
-								break;
-							}
-							case CDROM_CD_TEXT_PACK_PERFORMER: {
-								auto blockIter = blocks.insert( BlockMap::value_type( dataBlock.BlockNumber, StringPairMap() ) ).first;
-								if ( blocks.end() != blockIter ) {
-									auto& block = blockIter->second;
-									auto trackIter = block.insert( StringPairMap::value_type( dataBlock.TrackNumber, StringPair() ) ).first;
-									if ( block.end() != trackIter ) {
-										std::wstring& artist = trackIter->second.first;
-										StringMap extraTitles;
-										GetDataBlockText( *cdText, descriptorIndex, artist, extraTitles );
-										for ( const auto& extra : extraTitles ) {
-											trackIter = block.insert( StringPairMap::value_type( extra.first, StringPair() ) ).first;
-											if ( block.end() != trackIter ) {
-												trackIter->second.first = extra.second;
-											}
-										}
-									}
-								}
-								break;
-							}
-							default: {
-								break;
-							}
-						}
+		// The data header consists of a two byte (big endian) data length, followed by two reserved bytes.
+		UCHAR header[ sizeof( CDROM_TOC_CD_TEXT_DATA ) ] = {};
+		DWORD bytesReturned = 0;
+		if ( DeviceIoControl( handle, IOCTL_CDROM_READ_TOC_EX, &toc, sizeof( CDROM_READ_TOC_EX ), header, sizeof( header ), &bytesReturned, 0 ) ) {
+			// Note that the data length excludes the length field itself.
+			const size_t dataSize = 2 + ( ( static_cast<size_t>( header[ 0 ] ) << 8 ) | header[ 1 ] );
+			if ( dataSize > sizeof( CDROM_TOC_CD_TEXT_DATA ) ) {
+				std::vector<unsigned char> data( dataSize, 0 );
+				if ( DeviceIoControl( handle, IOCTL_CDROM_READ_TOC_EX, &toc, sizeof( CDROM_READ_TOC_EX ), data.data(), static_cast<DWORD>( dataSize ), &bytesReturned, 0 ) ) {
+					const size_t packsSize = std::min<size_t>( bytesReturned, dataSize );
+					if ( packsSize > sizeof( CDROM_TOC_CD_TEXT_DATA ) ) {
+						const std::vector<unsigned char> packs( data.begin() + sizeof( CDROM_TOC_CD_TEXT_DATA ), data.begin() + packsSize );
+						blocks = CDTextReader( packs ).GetBlocks();
 					}
 				}
 			}
 		}
 		Close( handle );
 	}
-	return success;
-}
-
-void CDDAMedia::GetDataBlockText( const CDROM_TOC_CD_TEXT_DATA& data, const int descriptorIndex, std::wstring& text, StringMap& extraTitles ) const
-{
-	const CDROM_TOC_CD_TEXT_DATA_BLOCK& currentBlock = data.Descriptors[ descriptorIndex ];
-	if ( ( currentBlock.CharacterPosition > 0 ) && ( currentBlock.CharacterPosition <= ( currentBlock.Unicode ? 6 : 12 ) ) && ( descriptorIndex > 0 ) ) {
-		const CDROM_TOC_CD_TEXT_DATA_BLOCK& previousBlock = data.Descriptors[ descriptorIndex - 1 ];
-		if ( ( previousBlock.PackType == currentBlock.PackType ) && ( previousBlock.Unicode == currentBlock.Unicode ) ) {
-			text = currentBlock.Unicode ? std::wstring( previousBlock.WText + 6 - currentBlock.CharacterPosition, currentBlock.CharacterPosition ) :
-				CodePageToWideString( std::string( reinterpret_cast<const char*>( previousBlock.Text + 12 - currentBlock.CharacterPosition ), currentBlock.CharacterPosition ), 1252 );
-		}
-	}
-	text += currentBlock.Unicode ? std::wstring( currentBlock.WText, 6 ) : CodePageToWideString( std::string( reinterpret_cast<const char*>( currentBlock.Text ), 12 ), 1252 );
-
-	if ( descriptorIndex > 0 ) {
-		const CDROM_TOC_CD_TEXT_DATA_BLOCK& previousBlock = data.Descriptors[ descriptorIndex - 1 ];
-		if ( ( ( currentBlock.TrackNumber - previousBlock.TrackNumber ) > 1 ) && !previousBlock.Unicode ) {
-			// Deal with any null terminated strings that began and ended within the previous block.
-			char buffer[ 14 ] = {};
-			memcpy( buffer, previousBlock.Text, 12 );
-			char* str = buffer + strlen( buffer ) + 1;
-			long currentTrack = previousBlock.TrackNumber + 1;
-			while ( ( 0 != *str ) && ( currentTrack < currentBlock.TrackNumber ) ) {
-				extraTitles.insert( StringMap::value_type( currentTrack++, CodePageToWideString( str, 1252 ) ) );
-				str += strlen( str ) + 1;
-			}
-		}
-	}
+	return blocks;
 }
 
 std::pair<std::string /*discid*/, std::string /*toc*/> CDDAMedia::GetMusicBrainzDiscID() const

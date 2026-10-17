@@ -350,18 +350,20 @@ std::wstring MediaInfo::GetArtworkID( const bool checkFolder ) const
 	if ( checkFolder && m_ArtworkID.empty() && !GetFilename().empty() && ( Source::File == GetSource() ) ) {
 		const std::set<std::wstring> kImageFileExtensions = { L".jpg", L".jpeg", L".png", L".bmp", L".gif", L".tif", L".tiff", L".webp" };
 		const std::set<std::wstring> kPreferredFilenames = { L"cover", L"folder" };
-		std::error_code ec;
 		std::wstring imageFilename;
-		for ( const auto& entry : std::filesystem::directory_iterator( std::filesystem::path( GetFilename() ).parent_path(), ec ) ) {
-			if ( !entry.is_directory( ec ) && kImageFileExtensions.contains( WideStringToLower( entry.path().extension() ) ) ) {
-				if ( kPreferredFilenames.contains( WideStringToLower( entry.path().stem() ) ) )
-					return entry.path();
+		try {
+			for ( const auto& entry : std::filesystem::directory_iterator( std::filesystem::path( GetFilename() ).parent_path() ) ) {
+				if ( !entry.is_directory() && kImageFileExtensions.contains( WideStringToLower( entry.path().extension() ) ) ) {
+					if ( kPreferredFilenames.contains( WideStringToLower( entry.path().stem() ) ) )
+						return entry.path();
 
-				// Use any image file if it's the only one in the folder.
-				if ( !imageFilename.empty() )
-					return {};
-				imageFilename = entry.path();
+					// Use any image file if it's the only one in the folder.
+					if ( !imageFilename.empty() )
+						return {};
+					imageFilename = entry.path();
+				}
 			}
+		} catch ( const std::filesystem::filesystem_error& ) {
 		}
 		return imageFilename;
 	}

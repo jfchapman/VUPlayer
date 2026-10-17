@@ -264,6 +264,9 @@ void SetLastModifiedTime( const std::filesystem::path& filepath, const FILETIME 
 // Returns whether the delete file operation proceeded.
 bool DeleteFiles( const std::set<std::filesystem::path> files, const HWND hwnd );
 
+// Returns all the files in the 'folder' and its subfolders (any subfolders which cannot be accessed are skipped).
+std::set<std::filesystem::path> GetFolderFiles( const std::filesystem::path& folder );
+
 // Converts a floating point sample 'value' to 24-bit (clamping any value outside the range -1.0 to +1.0).
 inline int32_t FloatTo24( const float value )
 {

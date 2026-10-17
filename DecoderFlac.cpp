@@ -162,6 +162,11 @@ bool DecoderFlac::eof_callback()
 
 FLAC__StreamDecoderWriteStatus DecoderFlac::write_callback( const FLAC__Frame * frame, const FLAC__int32 *const buffer[] )
 {
+	// The channel count of a frame is not guaranteed to match the stream information (on which the output buffer size is based), so treat a mismatch as the end of the stream.
+	if ( static_cast<long>( frame->header.channels ) != GetChannels() ) {
+		return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
+	}
+
 	m_FLACFrame = *frame;
 	m_FrameBuffer.resize( m_FLACFrame.header.blocksize * m_FLACFrame.header.channels );
 	uint32_t offset = 0;

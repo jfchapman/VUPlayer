@@ -4541,14 +4541,7 @@ void WndTree::OnAddToPlaylist( const UINT command )
 					break;
 				}
 				case Playlist::Type::Folder: {
-					std::set<std::filesystem::path> filepaths;
-					std::error_code ec;
-					for ( const auto& entry : std::filesystem::recursive_directory_iterator( sourcePlaylist->GetName(), ec ) ) {
-						if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
-							filepaths.insert( entry.path() );
-						}
-					}
-					for ( const auto& filepath : filepaths ) {
+					for ( const auto& filepath : GetFolderFiles( sourcePlaylist->GetName() ) ) {
 						targetPlaylist->AddPending( MediaInfo( filepath ) );
 					}
 					break;

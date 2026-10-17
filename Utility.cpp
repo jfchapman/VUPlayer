@@ -1083,6 +1083,21 @@ bool DeleteFiles( const std::set<std::filesystem::path> files, const HWND hwnd )
 	return false;
 }
 
+std::set<std::filesystem::path> GetFolderFiles( const std::filesystem::path& folder )
+{
+	std::set<std::filesystem::path> files;
+	try {
+		for ( const auto& entry : std::filesystem::recursive_directory_iterator( folder, std::filesystem::directory_options::skip_permission_denied ) ) {
+			if ( entry.is_regular_file() ) {
+				files.insert( entry.path() );
+			}
+		}
+	} catch ( const std::filesystem::filesystem_error& ) {
+		// Any other error ends the iteration, returning the files found so far.
+	}
+	return files;
+}
+
 // Encodes 'bitmap' in an image 'format' (e.g. Gdiplus::ImageFormatPNG), using optional encoder 'parameters'.
 // Returns the encoded image, or an empty vector if the bitmap could not be encoded.
 static std::vector<BYTE> EncodeImage( Gdiplus::Bitmap& bitmap, const GUID& format, const Gdiplus::EncoderParameters* parameters = nullptr )

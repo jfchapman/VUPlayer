@@ -41,7 +41,15 @@ long DecoderOpus::Read( float* buffer, const long sampleCount )
 		while ( samplesRead < sampleCount ) {
 			const int samplesToRead = sampleCount - samplesRead;
 			const int bufSize = samplesToRead * channels;
-			const int result = op_read_float( m_OpusFile, buffer + samplesRead * channels, bufSize, nullptr /*link*/ );
+			int link = 0;
+			const int result = op_read_float( m_OpusFile, buffer + samplesRead * channels, bufSize, &link );
+
+			// The links in a chained stream can have different channel counts, which is not supported (the decoder channel count is fixed), so treat this as the end of the stream.
+			// Note that the result is the number of samples per channel for the current link, so must not be used if the channel count differs.
+			if ( const OpusHead* head = op_head( m_OpusFile, link ); ( nullptr == head ) || ( head->channel_count != channels ) ) {
+				break;
+			}
+
 			if ( result > 0 ) {
 				// For multi-channel streams, change from Opus to BASS channel ordering.
 				switch ( channels ) {

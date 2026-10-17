@@ -1163,16 +1163,15 @@ bool Playlist::AddVPL( const std::wstring& filename )
 	std::ifstream stream;
 	stream.open( filename, std::ios::binary | std::ios::in );
 	if ( stream.is_open() ) {
-		do {
-			std::string line;
-			std::getline( stream, line );
+		std::string line;
+		while ( std::getline( stream, line ) ) {
 			const size_t delimiter = line.find_first_of( 0x01 );
 			if ( std::string::npos != delimiter ) {
 				const std::string name = line.substr( 0 /*offset*/, delimiter /*count*/ );
 				AddPending( AnsiCodePageToWideString( name ), false /*startPendingThread*/ );
 				added = true;
 			}
-		} while ( !stream.eof() );
+		}
 		stream.close();
 	}
 	return added;
@@ -1186,9 +1185,8 @@ bool Playlist::AddM3U( const std::wstring& filename )
 	if ( stream.good() ) {
 		std::filesystem::path playlistPath( filename );
 		playlistPath = playlistPath.parent_path();
-		do {
-			std::string line;
-			std::getline( stream, line );
+		std::string line;
+		while ( std::getline( stream, line ) ) {
 			if ( !line.empty() ) {
 				const std::wstring filenameEntry = UTF8ToWideString( line );
 				if ( ( filenameEntry.size() > 0 ) && ( '#' != filenameEntry.front() ) ) {
@@ -1200,14 +1198,14 @@ bool Playlist::AddM3U( const std::wstring& filename )
 						if ( filePath.is_relative() ) {
 							filePath = playlistPath / filePath;
 						}
-						if ( std::filesystem::exists( filePath ) ) {
+						if ( std::error_code ec; std::filesystem::exists( filePath, ec ) ) {
 							AddPending( MediaInfo( filePath ), false /*startPendingThread*/ );
 							added = true;
 						}
 					}
 				}
 			}
-		} while ( !stream.eof() );
+		}
 	}
 	return added;
 }
@@ -1220,9 +1218,8 @@ bool Playlist::AddPLS( const std::wstring& filename )
 	if ( stream.good() ) {
 		std::filesystem::path playlistPath( filename );
 		playlistPath = playlistPath.parent_path();
-		do {
-			std::string line;
-			std::getline( stream, line );
+		std::string line;
+		while ( std::getline( stream, line ) ) {
 			const size_t fileEntry = line.find( "File" );
 			const size_t delimiter = line.find_first_of( '=' );
 			if ( ( 0 == fileEntry ) && ( std::string::npos != delimiter ) ) {
@@ -1237,14 +1234,14 @@ bool Playlist::AddPLS( const std::wstring& filename )
 						if ( filePath.is_relative() ) {
 							filePath = playlistPath / filePath;
 						}
-						if ( std::filesystem::exists( filePath ) ) {
+						if ( std::error_code ec; std::filesystem::exists( filePath, ec ) ) {
 							AddPending( MediaInfo( filePath ), false /*startPendingThread*/ );
 							added = true;
 						}
 					}
 				}
 			}
-		} while ( !stream.eof() );
+		}
 	}
 	return added;
 }
@@ -1252,13 +1249,17 @@ bool Playlist::AddPLS( const std::wstring& filename )
 static std::vector<std::wstring> GetMatches( const std::string& line, const std::regex& regex )
 {
 	std::smatch match;
-	if ( std::regex_match( line, match, regex ) ) {
-		std::vector<std::wstring> matches;
-		matches.reserve( match.size() );
-		for ( size_t i = 1; i < match.size(); i++ ) {
-			matches.emplace_back( UTF8ToWideString( StripQuotes( match.str( i ) ) ) );
+	try {
+		if ( std::regex_match( line, match, regex ) ) {
+			std::vector<std::wstring> matches;
+			matches.reserve( match.size() );
+			for ( size_t i = 1; i < match.size(); i++ ) {
+				matches.emplace_back( UTF8ToWideString( StripQuotes( match.str( i ) ) ) );
+			}
+			return matches;
 		}
-		return matches;
+	} catch ( const std::regex_error& ) {
+		// Matching can fail on malformed input (e.g. if the complexity limit is exceeded).
 	}
 	return {};
 }
@@ -1267,8 +1268,8 @@ static bool SetCueStart( const std::string& line, MediaInfo& mediaInfo )
 {
 	const std::regex kIndex( R"(INDEX\s+(\d+)\s+(\d+):(\d{2}):(\d{2}))" );
 	std::smatch match;
-	if ( std::regex_match( line, match, kIndex ) && ( 5 == match.size() ) ) {
-		try {
+	try {
+		if ( std::regex_match( line, match, kIndex ) && ( 5 == match.size() ) ) {
 			if ( const long index = std::stol( match[ 1 ] ); index == 1 ) {
 				const long minutes = std::stol( match[ 2 ] );
 				const long seconds = std::stol( match[ 3 ] );
@@ -1276,7 +1277,9 @@ static bool SetCueStart( const std::string& line, MediaInfo& mediaInfo )
 				mediaInfo.SetCueStart( minutes * 60 * 75 + seconds * 75 + frames );
 				return true;
 			}
-		} catch ( const std::logic_error& ) {}
+		}
+	} catch ( const std::logic_error& ) {
+	} catch ( const std::regex_error& ) {
 	}
 	return false;
 }
@@ -1294,7 +1297,8 @@ static std::map<long /*trackNumber*/, std::pair<bool /*isAudio*/, MediaInfo>> Ge
 		const std::regex kGenre( R"(REM\s+GENRE\s+(.+))" );
 		const std::regex kComment( R"(REM\s+COMMENT\s+(.+))" );
 		const std::regex kDate( R"(REM\s+DATE\s+(.+))" );
-		const std::regex kFile( R"-(FILE\s*"(.+)"\s*(.+))-" );
+		// Note that the filename excludes double quotes, to prevent excessive backtracking.
+		const std::regex kFile( R"-(FILE\s*"([^"]+)"\s*(.+))-" );
 		const std::regex kTrack( R"(TRACK\s+(\d+)\s+(.+))" );
 
 		std::wstring albumArtist;
@@ -1309,9 +1313,8 @@ static std::map<long /*trackNumber*/, std::pair<bool /*isAudio*/, MediaInfo>> Ge
 		auto currentTrack = tracks.end();
 
 		std::vector<std::wstring> matches;
-		do {
-			std::string line;
-			std::getline( stream, line );
+		std::string line;
+		while ( std::getline( stream, line ) ) {
 			line = StripWhitespace( line );
 
 			if ( tracks.empty() ) {
@@ -1336,7 +1339,8 @@ static std::map<long /*trackNumber*/, std::pair<bool /*isAudio*/, MediaInfo>> Ge
 					currentFileExists = false;
 				} else {
 					currentFile = playlistPath / matches.front();
-					currentFileExists = std::filesystem::exists( currentFile );
+					std::error_code ec;
+					currentFileExists = std::filesystem::exists( currentFile, ec );
 				}
 			}
 
@@ -1371,7 +1375,7 @@ static std::map<long /*trackNumber*/, std::pair<bool /*isAudio*/, MediaInfo>> Ge
 					}
 				}
 			}
-		} while ( !stream.eof() );
+		}
 
 		// Strip out any tracks without cues.
 		for ( auto track = tracks.begin(); track != tracks.end(); ) {

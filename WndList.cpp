@@ -478,13 +478,7 @@ void WndList::AddFileToPlaylist( const std::wstring& filename )
 
 void WndList::AddFolderToPlaylist( const std::wstring& folder )
 {
-	std::set<std::filesystem::path> filepaths;
-	std::error_code ec;
-	for ( const auto& entry : std::filesystem::recursive_directory_iterator( folder, ec ) ) {
-		if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
-			filepaths.insert( entry.path() );
-		}
-	}
+	std::set<std::filesystem::path> filepaths = GetFolderFiles( folder );
 
 	// Strip out any files that are referenced by CUE files (to prevent duplicate entries).
 	if ( const auto cueFiles = Playlist::ExtractCueFiles( filepaths ) ) {

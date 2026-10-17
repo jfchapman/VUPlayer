@@ -35,7 +35,8 @@ private:
 	bool Decode();
 
 	// Converts data from the 'frame' into the sample buffer.
-	void ConvertSampleData( const AVFrame* frame );
+	// Returns false if the frame format does not match the resampler input format (in which case nothing is converted).
+	bool ConvertSampleData( const AVFrame* frame );
 
 	// Frees all FFmpeg contexts.
 	void FreeContexts();
@@ -63,4 +64,12 @@ private:
 
 	// Current buffer position.
 	size_t m_BufferPosition = 0;
+
+	// Resampler input channel count, sample format & sample rate.
+	int m_InputChannels = 0;
+	int m_InputFormat = 0;
+	int m_InputSampleRate = 0;
+
+	// Whether the decoded format has changed from the resampler input format (which is treated as the end of the stream).
+	bool m_InputChanged = false;
 };

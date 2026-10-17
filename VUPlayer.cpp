@@ -2225,13 +2225,7 @@ bool VUPlayer::OnCommandLineFiles( const std::list<std::wstring>& filenames )
 							std::error_code ec;
 							if ( std::filesystem::is_directory( filename, ec ) ) {
 								// Create a scratch list for the folder.
-								std::set<std::filesystem::path> filepaths;
-								for ( const auto& entry : std::filesystem::recursive_directory_iterator( filename, ec ) ) {
-									if ( entry.is_regular_file( ec ) && !entry.is_directory( ec ) ) {
-										filepaths.insert( entry.path() );
-									}
-								}
-								for ( const auto& filepath : filepaths ) {
+								for ( const auto& filepath : GetFolderFiles( filename ) ) {
 									MediaInfo mediaInfo( filepath );
 									m_Library.GetMediaInfo( mediaInfo, false /*scanMedia*/, false /*sendNotification*/ );
 									mediaList.push_back( mediaInfo );
