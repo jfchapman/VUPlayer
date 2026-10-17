@@ -243,6 +243,9 @@ ModelManifest.xml
 /RCa23204
 /CppProperties.json
 
+# Scrobbler API key & secret (see libs/scrobbler/src/scrobbler_keys.template.h)
+libs/scrobbler/src/scrobbler_keys.h
+
 # Exemptions
 !libs/bass*/*
 !libs/bass*/c

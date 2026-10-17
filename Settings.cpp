@@ -1524,9 +1524,9 @@ std::string Settings::GetScrobblerKey()
 	if ( const std::string key = ReadSetting<std::string>( "ScrobblerKey" ).value_or( std::string() ); !key.empty() ) {
 		// Decrypt key from storage.
 		std::vector<BYTE> bytes = Base64Decode( key );
-		DATA_BLOB dataIn = { static_cast<DWORD>( bytes.size() ), &bytes[ 0 ] };
+		DATA_BLOB dataIn = { static_cast<DWORD>( bytes.size() ), bytes.data() };
 		DATA_BLOB dataOut = {};
-		if ( CryptUnprotectData( &dataIn, nullptr /*dataDesc*/, nullptr /*entropy*/, nullptr /*reserved*/, nullptr /*prompt*/, 0 /*flags*/, &dataOut ) ) {
+		if ( !bytes.empty() && CryptUnprotectData( &dataIn, nullptr /*dataDesc*/, nullptr /*entropy*/, nullptr /*reserved*/, nullptr /*prompt*/, 0 /*flags*/, &dataOut ) ) {
 			decryptedKey = std::string( reinterpret_cast<char*>( dataOut.pbData ), static_cast<size_t>( dataOut.cbData ) );
 			LocalFree( dataOut.pbData );
 		}

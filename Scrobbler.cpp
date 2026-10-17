@@ -25,6 +25,7 @@ Scrobbler::Scrobbler( Database& database, Settings& settings ) :
 	m_PendingScrobbles(),
 	m_Mutex(),
 	m_ScrobblerThread( nullptr ),
+	m_AuthoriseRequested( false ),
 	m_Token(),
 	m_SessionKey(),
 	m_StopEvent( CreateEvent( NULL /*attributes*/, TRUE /*manualReset*/, FALSE /*initialState*/, L"" /*name*/ ) ),
@@ -58,7 +59,10 @@ Scrobbler::~Scrobbler()
 	if ( nullptr != m_ScrobblerThread ) {
 		SetEvent( m_StopEvent );
 		WaitForSingleObject( m_ScrobblerThread, INFINITE );
+		CloseHandle( m_ScrobblerThread );
 		m_ScrobblerThread = nullptr;
+	}
+	if ( m_Initialised ) {
 		m_Close();
 	}
 	CloseHandle( m_StopEvent );
@@ -74,7 +78,12 @@ DWORD WINAPI Scrobbler::ScrobblerThreadProc( LPVOID lParam )
 {
 	Scrobbler* scrobbler = static_cast<Scrobbler*>( lParam );
 	if ( nullptr != scrobbler ) {
+		// COM is initialised for the shell execute call, when authorising.
+		const HRESULT hr = CoInitializeEx( NULL /*reserved*/, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE );
 		scrobbler->ScrobblerHandler();
+		if ( SUCCEEDED( hr ) ) {
+			CoUninitialize();
+		}
 	}
 	return 0;
 }
@@ -93,12 +102,10 @@ bool Scrobbler::IsEnabled() const
 void Scrobbler::Authorise()
 {
 	if ( IsAvailable() ) {
-		const int32_t tokenSize = 256;
-		char token[ tokenSize ] = {};
-		if ( scrobbler_success == m_GetToken( token, tokenSize ) ) {
-			SetToken( token );
-			m_Authorize( token );
-		}
+		// The authorisation token is requested on the scrobbler thread, so that the UI is not blocked.
+		std::lock_guard<std::mutex> lock( m_Mutex );
+		m_AuthoriseRequested = true;
+		SetEvent( m_WakeEvent );
 	}
 }
 
@@ -180,9 +187,28 @@ void Scrobbler::ScrobblerHandler()
 	ReadCachedScrobbles();
 	HANDLE eventHandles[ 2 ] = { m_StopEvent, m_WakeEvent };
 	while ( WaitForMultipleObjects( 2, eventHandles, FALSE /*waitAll*/, INFINITE ) != WAIT_OBJECT_0 ) {
-		// Get the session key, if possible.
+		// Reset the wake event before processing, so that any wake up requested while processing is not lost.
+		ResetEvent( m_WakeEvent );
+
+		// Get an authorisation token, and launch a web browser so that the user can authorise VUPlayer, if requested.
+		bool authoriseRequested = false;
+		{
+			std::lock_guard<std::mutex> lock( m_Mutex );
+			authoriseRequested = m_AuthoriseRequested;
+			m_AuthoriseRequested = false;
+		}
+		if ( authoriseRequested ) {
+			const int32_t tokenSize = 256;
+			char token[ tokenSize ] = {};
+			if ( scrobbler_success == m_GetToken( token, tokenSize ) ) {
+				SetToken( token );
+				m_Authorize( token );
+			}
+		}
+
+		// Get the session key, if possible (but not when the user has only just been asked to authorise VUPlayer).
 		std::string sk = GetSessionKey();
-		if ( sk.empty() ) {
+		if ( sk.empty() && !authoriseRequested ) {
 			std::string token = GetToken();
 			if ( !token.empty() ) {
 				const int32_t skBufferSize = 256;
@@ -271,7 +297,6 @@ void Scrobbler::ScrobblerHandler()
 				}
 			}
 		}
-		ResetEvent( m_WakeEvent );
 	}
 	SaveCachedScrobbles();
 }

@@ -156,6 +156,9 @@ private:
 	// Scrobbler thread handle.
 	HANDLE m_ScrobblerThread;
 
+	// Indicates whether the user has requested to authorise VUPlayer for scrobbling.
+	bool m_AuthoriseRequested;
+
 	// Event handle with which to stop the scrobbler thread.
 	HANDLE m_StopEvent;
 
