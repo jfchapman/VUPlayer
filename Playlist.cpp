@@ -10,7 +10,7 @@
 #include <regex>
 
 // Next available playlist item ID.
-long Playlist::s_NextItemID = 0;
+std::atomic<long> Playlist::s_NextItemID = 0;
 
 // Supported playlist file extensions.
 constexpr std::array s_SupportedExtensions{ L"vpl", L"m3u", L"m3u8", L"pls", L"cue" };

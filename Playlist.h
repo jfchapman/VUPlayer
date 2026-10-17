@@ -304,8 +304,8 @@ private:
 	// Returns true if 'item1' is greater than 'item2' when comparing by 'column' type.
 	static bool GreaterThan( const Item& item1, const Item& item2, const Column column );
 
-	// Next available playlist item ID.
-	static long s_NextItemID;
+	// Next available playlist item ID (shared by all playlists, which can add items concurrently).
+	static std::atomic<long> s_NextItemID;
 
 	// Thread handler for processing the list of pending files.
 	void OnPendingThreadHandler();

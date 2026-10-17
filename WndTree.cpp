@@ -1079,12 +1079,6 @@ void WndTree::OnDestroy()
 		m_Settings.SavePlaylist( *m_PlaylistFavourites );
 	}
 
-	if ( m_PlaylistStreams ) {
-		m_PlaylistStreams->StopPendingThread();
-	}
-
-	GetPlaylistAll()->StopPendingThread();
-
 	for ( const auto& iter : m_ArtistMap ) {
 		if ( iter.second ) {
 			iter.second->StopPendingThread();
@@ -1133,12 +1127,22 @@ void WndTree::OnDestroy()
 		}
 	}
 
-	std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
-	for ( const auto& iter : m_FolderPlaylistMap ) {
-		if ( iter.second ) {
-			iter.second->StopPendingThread();
+	{
+		std::lock_guard<std::mutex> lock( m_FolderPlaylistMapMutex );
+		for ( const auto& iter : m_FolderPlaylistMap ) {
+			if ( iter.second ) {
+				iter.second->StopPendingThread();
+			}
 		}
 	}
+
+	// The pending threads of other playlists can add files to (and restart the pending threads of) the Streams & All Tracks playlists,
+	// so stop these last, and in this order (as the Streams playlist can also add files to All Tracks).
+	if ( m_PlaylistStreams ) {
+		m_PlaylistStreams->StopPendingThread();
+	}
+
+	GetPlaylistAll()->StopPendingThread();
 
 	SaveSettings();
 }
