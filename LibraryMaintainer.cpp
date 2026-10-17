@@ -109,37 +109,62 @@ void LibraryMaintainer::Handler()
 	}
 
 	if ( WAIT_OBJECT_0 != WaitForSingleObject( m_StopEvent, 0 ) ) {
-		// Make a note of existing library files (excluding streams), and merge in any that were not found in the folder scan.
-		std::set<std::filesystem::path> existingFiles;
+		// Make a note of existing library entries (excluding streams), and merge in any files that were not found in the folder scan.
+		// Cue entries are handled separately, as they reference a backing file with an additional cue start & end.
+		std::map<std::filesystem::path, MediaInfo> existingFiles;
+		MediaInfo::List existingCues;
 		const auto allMedia = m_Library.GetAllMedia();
 		for ( const auto& mediaInfo : allMedia ) {
 			if ( const auto& filename = mediaInfo.GetFilename(); !IsURL( filename ) ) {
-				existingFiles.insert( mediaInfo.GetFilename() );
-				allFiles.insert( filename );
+				if ( mediaInfo.GetCueStart() ) {
+					existingCues.push_back( mediaInfo );
+				} else {
+					existingFiles.insert( { filename, mediaInfo } );
+					allFiles.insert( filename );
+				}
 			}
 		}
 
 		// Make a note of all files that are removed from the library.
 		MediaInfo::List removedFiles;
 
-		// Refresh library information for all the files.
+		// Removes an existing library entry, if its file can no longer be found (an existing file that cannot currently be opened is retained).
+		const auto removeIfMissing = [ this, &removedFiles ] ( const MediaInfo& existingInfo ) {
+			if ( std::error_code ec; !std::filesystem::exists( existingInfo.GetFilename(), ec ) ) {
+				if ( m_Library.RemoveFromLibrary( existingInfo ) ) {
+					removedFiles.push_back( existingInfo );
+				}
+			}
+		};
+
+		// Refresh library information for all the files & cues.
 		if ( WAIT_OBJECT_0 != WaitForSingleObject( m_StopEvent, 0 ) ) {
 			size_t current = 0;
-			size_t total = allFiles.size();
-			for ( auto path = allFiles.begin(); ( WAIT_OBJECT_0 != WaitForSingleObject( m_StopEvent, 0 ) ) && ( allFiles.end() != path ); ++path ) {
+			const size_t total = allFiles.size() + existingCues.size();
+			const auto updateStatus = [ this, &current, total ] ( const std::filesystem::path& path ) {
 				std::wstring status = m_StatusUpdatingLibrary;
 				WideStringReplace( status, L"%1", std::to_wstring( ++current ) );
 				WideStringReplace( status, L"%2", std::to_wstring( total ) );
-				status += L" - " + TruncatePath( *path );
+				status += L" - " + TruncatePath( path );
 				SetStatus( status );
+			};
 
-				MediaInfo mediaInfo( *path );
-				if ( m_Library.GetMediaInfo( mediaInfo, true /*scanMedia*/, true /*sendNotification*/, true /*removeMissing*/ ) ) {
-					if ( ( nullptr != m_FileAddedCallback ) && ( existingFiles.end() == existingFiles.find( *path ) ) ) {
+			for ( auto path = allFiles.begin(); ( WAIT_OBJECT_0 != WaitForSingleObject( m_StopEvent, 0 ) ) && ( allFiles.end() != path ); ++path ) {
+				updateStatus( *path );
+				const auto existingFile = existingFiles.find( *path );
+				if ( MediaInfo mediaInfo( *path ); m_Library.GetMediaInfo( mediaInfo, true /*scanMedia*/, true /*sendNotification*/ ) ) {
+					if ( ( nullptr != m_FileAddedCallback ) && ( existingFiles.end() == existingFile ) ) {
 						m_FileAddedCallback( *path );
 					}
-				} else {
-					removedFiles.push_back( mediaInfo );
+				} else if ( existingFiles.end() != existingFile ) {
+					removeIfMissing( existingFile->second );
+				}
+			}
+
+			for ( auto cue = existingCues.begin(); ( WAIT_OBJECT_0 != WaitForSingleObject( m_StopEvent, 0 ) ) && ( existingCues.end() != cue ); ++cue ) {
+				updateStatus( cue->GetFilename() );
+				if ( MediaInfo mediaInfo( *cue ); !m_Library.GetMediaInfo( mediaInfo, true /*scanMedia*/, true /*sendNotification*/ ) ) {
+					removeIfMissing( *cue );
 				}
 			}
 			if ( nullptr != m_FinishedCallback ) {

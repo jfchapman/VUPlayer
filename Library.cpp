@@ -274,12 +274,13 @@ void Library::CreateIndices()
 	}
 }
 
-bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool scanMedia, const bool sendNotification, const bool removeMissing )
+bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool scanMedia, const bool sendNotification )
 {
 	bool success = false;
 	sqlite3* database = m_Database.GetDatabase();
 	if ( nullptr != database ) {
 		MediaInfo info( mediaInfo );
+		MediaInfo previousInfo( mediaInfo );
 		std::string query;
 		if ( MediaInfo::Source::CDDA == info.GetSource() ) {
 			query = "SELECT * FROM CDDA WHERE CDDB=?1 AND Track=?2;";
@@ -309,24 +310,23 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool scanMedia, const bo
 				success = ( SQLITE_ROW == result );
 				if ( success ) {
 					const bool missingData = !ExtractMediaInfo( stmt, info );
+					previousInfo = info;
 					if ( scanMedia && ( MediaInfo::Source::File == info.GetSource() ) ) {
 						if ( missingData ) {
 							if ( GetDecoderInfo( info, true /*getTags*/ ) ) {
 								UpdateMediaLibrary( info );
 								if ( sendNotification ) {
 									if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
-										vuplayer->OnMediaUpdated( mediaInfo /*previousInfo*/, info /*updatedInfo*/ );
+										vuplayer->OnMediaUpdated( previousInfo, info /*updatedInfo*/ );
 									}
 								}
 							}
 						} else {
+							// If the file has changed, the existing library entry is retained and refreshed from the file (only fields with a matching file tag are replaced).
 							long long filetime = 0;
 							long long filesize = 0;
 							GetFileInfo( info.GetFilename(), filetime, filesize );
 							success = ( info.GetFiletime() == filetime ) && ( info.GetFilesize() == filesize );
-							if ( !success ) {
-								info = mediaInfo;
-							}
 						}
 					}
 				}
@@ -337,11 +337,9 @@ bool Library::GetMediaInfo( MediaInfo& mediaInfo, const bool scanMedia, const bo
 						success = UpdateMediaLibrary( info );
 						if ( success && sendNotification ) {
 							if ( VUPlayer* vuplayer = VUPlayer::Get(); nullptr != vuplayer ) {
-								vuplayer->OnMediaUpdated( mediaInfo /*previousInfo*/, info /*updatedInfo*/ );
+								vuplayer->OnMediaUpdated( previousInfo, info /*updatedInfo*/ );
 							}
 						}
-					} else if ( removeMissing ) {
-						RemoveFromLibrary( info );
 					}
 				}
 
