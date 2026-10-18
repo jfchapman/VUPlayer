@@ -460,6 +460,23 @@ void CentreDialog( const HWND dialog )
 	}
 }
 
+void SetDeviceCaption( const HWND dialog, const std::wstring& deviceName )
+{
+	if ( nullptr != dialog ) {
+		std::wstring device = deviceName;
+		if ( device.empty() ) {
+			const int bufferSize = MAX_PATH;
+			WCHAR buffer[ bufferSize ] = {};
+			LoadString( reinterpret_cast<HINSTANCE>( GetWindowLongPtr( dialog, GWLP_HINSTANCE ) ), IDS_OPTIONS_DEVICE_DEFAULT, buffer, bufferSize );
+			device = buffer;
+		}
+		const int captionSize = GetWindowTextLength( dialog ) + 1;
+		std::vector<WCHAR> caption( captionSize, 0 );
+		GetWindowText( dialog, caption.data(), captionSize );
+		SetWindowText( dialog, ( std::wstring( caption.data() ) + L" - " + device ).c_str() );
+	}
+}
+
 // Subclass ID for vertically centred edit controls.
 static const UINT_PTR s_CentredEditSubclassID = 1;
 

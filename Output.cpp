@@ -238,6 +238,7 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, S
 	m_WASAPIFailed( false ),
 	m_WASAPIPaused( false ),
 	m_ResetASIO( false ),
+	m_ASIOControlPanelDevice( -1 ),
 	m_OutputStreamFinished( false ),
 	m_MixerStreamHasEndSync( false ),
 	m_LeadInSeconds( 0 ),
@@ -1243,6 +1244,96 @@ Output::Devices Output::GetDevices( const Settings::OutputMode mode ) const
 	return devices;
 }
 
+std::wstring Output::GetSettingsDeviceName( const Settings::OutputMode mode, const std::wstring& deviceName ) const
+{
+	if ( !deviceName.empty() ) {
+		return deviceName;
+	}
+
+	std::wstring defaultDeviceName;
+	switch ( mode ) {
+		case Settings::OutputMode::WASAPIExclusive: {
+			BASS_WASAPI_DEVICEINFO deviceInfo = {};
+			for ( DWORD deviceID = 0; TRUE == BASS_WASAPI_GetDeviceInfo( deviceID, &deviceInfo ); deviceID++ ) {
+				if ( ( deviceInfo.flags & BASS_DEVICE_ENABLED ) && ( deviceInfo.flags & BASS_DEVICE_DEFAULT ) && !( deviceInfo.flags & BASS_DEVICE_INPUT ) && ( nullptr != deviceInfo.name ) ) {
+					defaultDeviceName = AnsiCodePageToWideString( deviceInfo.name );
+					break;
+				}
+			}
+			break;
+		}
+		case Settings::OutputMode::ASIO: {
+			// There is no default ASIO device, the first device is used.
+			BASS_ASIO_DEVICEINFO deviceInfo = {};
+			if ( ( TRUE == BASS_ASIO_GetDeviceInfo( 0, &deviceInfo ) ) && ( nullptr != deviceInfo.name ) ) {
+				defaultDeviceName = AnsiCodePageToWideString( deviceInfo.name );
+			}
+			break;
+		}
+		default: {
+			break;
+		}
+	}
+	return defaultDeviceName;
+}
+
+bool Output::ShowASIOControlPanel( const std::wstring& deviceName )
+{
+	int deviceNum = -1;
+	if ( !deviceName.empty() ) {
+		const Devices devices = GetDevices( Settings::OutputMode::ASIO );
+		for ( const auto& device : devices ) {
+			if ( device.second == deviceName ) {
+				deviceNum = device.first;
+				break;
+			}
+		}
+	}
+
+	// Use the device currently in use for playback, if it matches.
+	const int currentDevice = static_cast<int>( BASS_ASIO_GetDevice() );
+	if ( ( -1 != currentDevice ) && ( currentDevice != m_ASIOControlPanelDevice ) && ( ( -1 == deviceNum ) || ( currentDevice == deviceNum ) ) ) {
+		return ( TRUE == BASS_ASIO_ControlPanel() );
+	}
+
+	// Otherwise, initialise the device (it is kept initialised in case the control panel is modeless).
+	if ( ( -1 == m_ASIOControlPanelDevice ) || ( ( -1 != deviceNum ) && ( deviceNum != m_ASIOControlPanelDevice ) ) ) {
+		CloseASIOControlPanel();
+		const int previousDevice = static_cast<int>( BASS_ASIO_GetDevice() );
+		if ( TRUE == BASS_ASIO_Init( deviceNum, BASS_ASIO_THREAD ) ) {
+			m_ASIOControlPanelDevice = static_cast<int>( BASS_ASIO_GetDevice() );
+		}
+		if ( -1 != previousDevice ) {
+			BASS_ASIO_SetDevice( static_cast<DWORD>( previousDevice ) );
+		}
+	}
+
+	bool shown = false;
+	if ( -1 != m_ASIOControlPanelDevice ) {
+		const int previousDevice = static_cast<int>( BASS_ASIO_GetDevice() );
+		BASS_ASIO_SetDevice( static_cast<DWORD>( m_ASIOControlPanelDevice ) );
+		shown = ( TRUE == BASS_ASIO_ControlPanel() );
+		if ( ( -1 != previousDevice ) && ( previousDevice != m_ASIOControlPanelDevice ) ) {
+			BASS_ASIO_SetDevice( static_cast<DWORD>( previousDevice ) );
+		}
+	}
+	return shown;
+}
+
+void Output::CloseASIOControlPanel()
+{
+	if ( -1 != m_ASIOControlPanelDevice ) {
+		const int previousDevice = static_cast<int>( BASS_ASIO_GetDevice() );
+		if ( TRUE == BASS_ASIO_SetDevice( static_cast<DWORD>( m_ASIOControlPanelDevice ) ) ) {
+			BASS_ASIO_Free();
+		}
+		if ( ( -1 != previousDevice ) && ( previousDevice != m_ASIOControlPanelDevice ) ) {
+			BASS_ASIO_SetDevice( static_cast<DWORD>( previousDevice ) );
+		}
+		m_ASIOControlPanelDevice = -1;
+	}
+}
+
 void Output::SettingsChanged()
 {
 	std::wstring settingsDevice;
@@ -1253,9 +1344,14 @@ void Output::SettingsChanged()
 	uint32_t resamplerChannels = 0;
 	const bool resamplerEnabled = m_Settings.GetResamplerSettings( resamplerRate, resamplerChannels );
 
+	// For WASAPI exclusive and ASIO, changing between the default device and the actual device it maps to does not require reinitialisation.
+	const bool sameDevice = ( settingsDevice == m_OutputDevice ) ||
+		( ( settingsMode == m_OutputMode ) && ( Settings::OutputMode::Standard != settingsMode ) &&
+		( GetSettingsDeviceName( settingsMode, settingsDevice ) == GetSettingsDeviceName( m_OutputMode, m_OutputDevice ) ) );
+
 	const bool reinitialise =
 		( settingsMode != m_OutputMode ) ||
-		( settingsDevice != m_OutputDevice ) ||
+		!sameDevice ||
 		( resamplerEnabled != m_Resample.has_value() ) ||
 		( resamplerRate != m_Resample.value_or( std::make_pair( resamplerRate, resamplerChannels ) ).first ) ||
 		( resamplerChannels != m_Resample.value_or( std::make_pair( resamplerRate, resamplerChannels ) ).second );
@@ -1267,10 +1363,17 @@ void Output::SettingsChanged()
 		}
 		BASS_Free();
 		InitialiseOutput();
+	} else {
+		m_OutputDevice = settingsDevice;
 	}
 
-	GetWASAPISettings();
-	GetASIOSettings();
+	// Stop playback if the advanced settings for the current output mode have changed.
+	const bool wasapiSettingsChanged = GetWASAPISettings();
+	const bool asioSettingsChanged = GetASIOSettings();
+	if ( ( wasapiSettingsChanged && ( Settings::OutputMode::WASAPIExclusive == m_OutputMode ) ) ||
+		( asioSettingsChanged && ( Settings::OutputMode::ASIO == m_OutputMode ) ) ) {
+		Stop();
+	}
 
 	Settings::GainMode gainMode = Settings::GainMode::Disabled;
 	Settings::LimitMode limitMode = Settings::LimitMode::None;
@@ -1346,26 +1449,30 @@ void Output::InitialiseOutput()
 	GetASIOSettings();
 }
 
-void Output::GetWASAPISettings()
+bool Output::GetWASAPISettings()
 {
 	bool useMixFormat = false;
 	int bufferMilliseconds = 0;
 	int leadInMilliseconds = 0;
-	m_Settings.GetAdvancedWasapiExclusiveSettings( useMixFormat, bufferMilliseconds, leadInMilliseconds );
-	m_WASAPIUseMixFormat.store( useMixFormat );
-	m_WASAPIBufferMilliseconds.store( bufferMilliseconds );
-	m_WASAPILeadInMilliseconds.store( leadInMilliseconds );
+	bool useEventMode = false;
+	m_Settings.GetAdvancedWasapiExclusiveSettings( GetSettingsDeviceName( Settings::OutputMode::WASAPIExclusive, m_OutputDevice ), useMixFormat, bufferMilliseconds, leadInMilliseconds, useEventMode );
+	bool changed = ( m_WASAPIUseMixFormat.exchange( useMixFormat ) != useMixFormat );
+	changed |= ( m_WASAPIBufferMilliseconds.exchange( bufferMilliseconds ) != bufferMilliseconds );
+	changed |= ( m_WASAPILeadInMilliseconds.exchange( leadInMilliseconds ) != leadInMilliseconds );
+	changed |= ( m_WASAPIEventMode.exchange( useEventMode ) != useEventMode );
+	return changed;
 }
 
-void Output::GetASIOSettings()
+bool Output::GetASIOSettings()
 {
 	bool useDefaultSamplerate = false;
 	int defaultSamplerate = 0;
 	int leadInMilliseconds = 0;
-	m_Settings.GetAdvancedASIOSettings( useDefaultSamplerate, defaultSamplerate, leadInMilliseconds );
-	m_ASIOUseDefaultSamplerate.store( useDefaultSamplerate );
-	m_ASIODefaultSamplerate.store( defaultSamplerate );
-	m_ASIOLeadInMilliseconds.store( leadInMilliseconds );
+	m_Settings.GetAdvancedASIOSettings( GetSettingsDeviceName( Settings::OutputMode::ASIO, m_OutputDevice ), useDefaultSamplerate, defaultSamplerate, leadInMilliseconds );
+	bool changed = ( m_ASIOUseDefaultSamplerate.exchange( useDefaultSamplerate ) != useDefaultSamplerate );
+	changed |= ( m_ASIODefaultSamplerate.exchange( defaultSamplerate ) != defaultSamplerate );
+	changed |= ( m_ASIOLeadInMilliseconds.exchange( leadInMilliseconds ) != leadInMilliseconds );
+	return changed;
 }
 
 void Output::EstimateGain( Playlist::Item& item )
@@ -1914,6 +2021,11 @@ bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
 					}
 				}
 
+				// The default device might have changed, so refresh the device specific settings.
+				if ( m_OutputDevice.empty() ) {
+					GetWASAPISettings();
+				}
+
 				m_LeadInSeconds = static_cast<float>( m_WASAPILeadInMilliseconds.load() ) / 1000;
 				bool useMixFormat = m_WASAPIUseMixFormat.load();
 				if ( !useMixFormat ) {
@@ -1923,14 +2035,23 @@ bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
 				DWORD outputSamplerate = useMixFormat ? 0 : samplerate;
 				DWORD outputChannels = useMixFormat ? 0 : channels;
 
-				DWORD flags = BASS_WASAPI_EXCLUSIVE | BASS_WASAPI_BUFFER | BASS_WASAPI_EVENT | BASS_WASAPI_ASYNC;
 				const float period = 0;
-				float buffer = static_cast<float>( m_WASAPIBufferMilliseconds.load() ) / 1000;
-				if ( flags & BASS_WASAPI_EVENT ) {
-					buffer /= 2;
+				const float bufferSeconds = static_cast<float>( m_WASAPIBufferMilliseconds.load() ) / 1000;
+				const auto initWASAPI = [ this, deviceNum, outputSamplerate, outputChannels, bufferSeconds, period ] ( const bool eventMode ) {
+					// In exclusive event-driven mode, the device alternates between two buffers of the requested length.
+					const DWORD flags = BASS_WASAPI_EXCLUSIVE | BASS_WASAPI_BUFFER | BASS_WASAPI_ASYNC | ( eventMode ? BASS_WASAPI_EVENT : 0 );
+					const float buffer = eventMode ? ( bufferSeconds / 2 ) : bufferSeconds;
+					return TRUE == BASS_WASAPI_Init( deviceNum, outputSamplerate, outputChannels, flags, buffer, period, WasapiProc, this );
+				};
+
+				// Fall back to timer-driven mode if the device does not support event-driven mode.
+				bool initialised = initWASAPI( m_WASAPIEventMode.load() );
+				if ( !initialised && m_WASAPIEventMode.load() ) {
+					initialised = initWASAPI( false );
 				}
 
-				if ( TRUE == BASS_WASAPI_Init( deviceNum, outputSamplerate, outputChannels, flags, buffer, period, WasapiProc, this ) ) {
+				if ( initialised ) {
+					DWORD flags = 0;
 					BASS_WASAPI_INFO wasapiInfo = {};
 					success = ( TRUE == BASS_WASAPI_GetInfo( &wasapiInfo ) );
 					if ( success ) {

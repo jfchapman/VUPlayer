@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 
+#include "Output.h"
 #include "Settings.h"
 
 class DlgAdvancedASIO
@@ -10,7 +11,9 @@ public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
 	// 'settings' - application settings.
-	DlgAdvancedASIO( const HINSTANCE instance, const HWND parent, Settings& settings );
+	// 'output' - output object.
+	// 'deviceName' - selected ASIO device name, or an empty string for the default device.
+	DlgAdvancedASIO( const HINSTANCE instance, const HWND parent, Settings& settings, Output& output, const std::wstring& deviceName );
 
 	virtual ~DlgAdvancedASIO();
 
@@ -28,6 +31,18 @@ private:
 	// Resets controls to the default state.
 	void ResetToDefaults( const HWND hwnd );
 
+	// Shows the ASIO driver control panel.
+	void ShowControlPanel();
+
 	// Application settings.
 	Settings& m_Settings;
+
+	// Output object.
+	Output& m_Output;
+
+	// Selected ASIO device name.
+	const std::wstring m_DeviceName;
+
+	// Device name to use for device specific settings (with the default device resolved to the actual device).
+	const std::wstring m_SettingsDeviceName;
 };

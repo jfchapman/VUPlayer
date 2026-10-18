@@ -121,6 +121,10 @@ void WideStringReplaceInvalidFilenameCharacters( std::wstring& filename, const s
 // Centres a 'dialog' with respect to its parent window, or the desktop window if the parent is not visible.
 void CentreDialog( const HWND dialog );
 
+// Appends the output device name to the caption of a device settings 'dialog'.
+// 'deviceName' - device name, or an empty string for the (unresolved) default device.
+void SetDeviceCaption( const HWND dialog, const std::wstring& deviceName );
+
 // Returns the natural height of a combo box, using the 'dialog' font.
 int GetDialogComboBoxHeight( const HWND dialog );
 

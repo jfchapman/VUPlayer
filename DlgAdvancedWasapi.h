@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 
+#include "Output.h"
 #include "Settings.h"
 
 class DlgAdvancedWasapi
@@ -10,7 +11,9 @@ public:
 	// 'instance' - module instance handle.
 	// 'parent' - parent window handle.
 	// 'settings' - application settings.
-	DlgAdvancedWasapi( const HINSTANCE instance, const HWND parent, Settings& settings );
+	// 'output' - output object.
+	// 'deviceName' - selected WASAPI device name, or an empty string for the default device.
+	DlgAdvancedWasapi( const HINSTANCE instance, const HWND parent, Settings& settings, Output& output, const std::wstring& deviceName );
 
 	virtual ~DlgAdvancedWasapi();
 
@@ -30,4 +33,7 @@ private:
 
 	// Application settings.
 	Settings& m_Settings;
+
+	// Device name to use for device specific settings (with the default device resolved to the actual device).
+	const std::wstring m_SettingsDeviceName;
 };

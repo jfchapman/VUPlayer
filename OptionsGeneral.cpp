@@ -217,11 +217,11 @@ void OptionsGeneral::OnCommand( const HWND hwnd, const WPARAM wParam, const LPAR
 				const Settings::OutputMode mode = GetSelectedMode( hwnd );
 				switch ( mode ) {
 					case Settings::OutputMode::WASAPIExclusive: {
-						DlgAdvancedWasapi dialog( GetInstanceHandle(), hwnd, GetSettings() );
+						DlgAdvancedWasapi dialog( GetInstanceHandle(), hwnd, GetSettings(), GetOutput(), GetSelectedDeviceName( hwnd ) );
 						break;
 					}
 					case Settings::OutputMode::ASIO: {
-						DlgAdvancedASIO dialog( GetInstanceHandle(), hwnd, GetSettings() );
+						DlgAdvancedASIO dialog( GetInstanceHandle(), hwnd, GetSettings(), GetOutput(), GetSelectedDeviceName( hwnd ) );
 						break;
 					}
 				}

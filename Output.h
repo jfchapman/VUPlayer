@@ -173,6 +173,20 @@ public:
 	// 'mode' - output mode.
 	Devices GetDevices( const Settings::OutputMode mode ) const;
 
+	// Returns the name of the device to use for device specific settings.
+	// 'mode' - output mode.
+	// 'deviceName' - device name, or an empty string for the default device (which is resolved to the actual device name, if possible).
+	std::wstring GetSettingsDeviceName( const Settings::OutputMode mode, const std::wstring& deviceName ) const;
+
+	// Shows the driver control panel for an ASIO device.
+	// If the device is not currently in use, it is initialised until CloseASIOControlPanel is called.
+	// 'deviceName' - device name, or an empty string for the default device.
+	// Returns whether the control panel was shown.
+	bool ShowASIOControlPanel( const std::wstring& deviceName );
+
+	// Frees any ASIO device that was initialised only to show its control panel.
+	void CloseASIOControlPanel();
+
 	// Called when output settings are changed.
 	void SettingsChanged();
 
@@ -416,11 +430,13 @@ private:
 	// Changes the current output 'playlist', returning whether the playist was changed.
 	bool ChangePlaylist( const Playlist::Ptr& playlist );
 
-	// Applies the latest WASAPI settings.
-	void GetWASAPISettings();
+	// Applies the latest WASAPI settings for the current output device.
+	// Returns whether any of the settings have changed.
+	bool GetWASAPISettings();
 
-	// Applies the latest ASIO settings.
-	void GetASIOSettings();
+	// Applies the latest ASIO settings for the current output device.
+	// Returns whether any of the settings have changed.
+	bool GetASIOSettings();
 
 	// Module instance handle.
 	const HINSTANCE m_hInst;
@@ -602,6 +618,9 @@ private:
 	// Indicates whether ASIO should be reinitialised the next time playback is started.
 	std::atomic<bool> m_ResetASIO;
 
+	// ASIO device that was initialised only to show its control panel (-1 if none).
+	int m_ASIOControlPanelDevice;
+
 	// Indicates whether the output stream has finished.
 	std::atomic<bool> m_OutputStreamFinished;
 
@@ -615,6 +634,7 @@ private:
 	std::atomic<bool> m_WASAPIUseMixFormat;
 	std::atomic<int> m_WASAPIBufferMilliseconds;
 	std::atomic<int> m_WASAPILeadInMilliseconds;
+	std::atomic<bool> m_WASAPIEventMode;
 
 	// ASIO settings.
 	std::atomic<bool> m_ASIOUseDefaultSamplerate;

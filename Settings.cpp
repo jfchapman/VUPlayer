@@ -116,6 +116,20 @@ Settings::~Settings()
 {
 }
 
+std::string Settings::DeviceSettingName( const std::string& name, const std::wstring& device )
+{
+	return device.empty() ? name : ( name + "|" + WideStringToUTF8( device ) );
+}
+
+template <typename T>
+std::optional<T> Settings::ReadDeviceSetting( const std::string& name, const std::wstring& device )
+{
+	if ( const auto value = ReadSetting<T>( DeviceSettingName( name, device ) ); value ) {
+		return value;
+	}
+	return ReadSetting<T>( name );
+}
+
 std::string Settings::ColourSettingName( const std::string& name )
 {
 	return DarkMode::UseDarkColours() ? ( name + "Dark" ) : name;
@@ -1577,36 +1591,41 @@ void Settings::SetMusicBrainzEnabled( const bool enabled )
 	WriteSetting( "MusicBrainzEnable", enabled );
 }
 
-void Settings::GetDefaultAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn, int& maxBufferLength, int& maxLeadIn )
+void Settings::GetDefaultAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn, bool& useEventMode, int& maxBufferLength, int& maxLeadIn )
 {
 	useDeviceDefaultFormat = false;
 	bufferLength = 250;
 	leadIn = 0;
+	useEventMode = false;
 	maxBufferLength = 1000;
 	maxLeadIn = 2000;
 }
 
-void Settings::GetAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn )
+void Settings::GetAdvancedWasapiExclusiveSettings( const std::wstring& device, bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn, bool& useEventMode )
 {
 	int maxBufferLength = 0;
 	int maxLeadIn = 0;
-	GetDefaultAdvancedWasapiExclusiveSettings( useDeviceDefaultFormat, bufferLength, leadIn, maxBufferLength, maxLeadIn );
-	if ( const auto value = ReadSetting<bool>( "WasapiExclusiveUseDeviceFormat" ); value ) {
+	GetDefaultAdvancedWasapiExclusiveSettings( useDeviceDefaultFormat, bufferLength, leadIn, useEventMode, maxBufferLength, maxLeadIn );
+	if ( const auto value = ReadDeviceSetting<bool>( "WasapiExclusiveUseDeviceFormat", device ); value ) {
 		useDeviceDefaultFormat = *value;
 	}
-	if ( const auto value = ReadSetting<int>( "WasapiExclusiveBufferLength" ); value ) {
+	if ( const auto value = ReadDeviceSetting<int>( "WasapiExclusiveBufferLength", device ); value ) {
 		bufferLength = std::clamp( *value, 0, maxBufferLength );
 	}
-	if ( const auto value = ReadSetting<int>( "WasapiExclusiveLeadIn" ); value ) {
+	if ( const auto value = ReadDeviceSetting<int>( "WasapiExclusiveLeadIn", device ); value ) {
 		leadIn = std::clamp( *value, 0, maxLeadIn );
+	}
+	if ( const auto value = ReadDeviceSetting<bool>( "WasapiExclusiveEventMode", device ); value ) {
+		useEventMode = *value;
 	}
 }
 
-void Settings::SetAdvancedWasapiExclusiveSettings( const bool useDeviceDefaultFormat, const int bufferLength, const int leadIn )
+void Settings::SetAdvancedWasapiExclusiveSettings( const std::wstring& device, const bool useDeviceDefaultFormat, const int bufferLength, const int leadIn, const bool useEventMode )
 {
-	WriteSetting( "WasapiExclusiveUseDeviceFormat", useDeviceDefaultFormat );
-	WriteSetting( "WasapiExclusiveBufferLength", bufferLength );
-	WriteSetting( "WasapiExclusiveLeadIn", leadIn );
+	WriteSetting( DeviceSettingName( "WasapiExclusiveUseDeviceFormat", device ), useDeviceDefaultFormat );
+	WriteSetting( DeviceSettingName( "WasapiExclusiveBufferLength", device ), bufferLength );
+	WriteSetting( DeviceSettingName( "WasapiExclusiveLeadIn", device ), leadIn );
+	WriteSetting( DeviceSettingName( "WasapiExclusiveEventMode", device ), useEventMode );
 }
 
 void Settings::GetDefaultAdvancedASIOSettings( bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn, int& maxDefaultSamplerate, int& maxLeadIn )
@@ -1618,27 +1637,27 @@ void Settings::GetDefaultAdvancedASIOSettings( bool& useDefaultSamplerate, int& 
 	maxLeadIn = 2000;
 }
 
-void Settings::GetAdvancedASIOSettings( bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn )
+void Settings::GetAdvancedASIOSettings( const std::wstring& device, bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn )
 {
 	int maxDefaultSamplerate = 0;
 	int maxLeadIn = 0;
 	GetDefaultAdvancedASIOSettings( useDefaultSamplerate, defaultSamplerate, leadIn, maxDefaultSamplerate, maxLeadIn );
-	if ( const auto value = ReadSetting<bool>( "ASIOUseDefaultSamplerate" ); value ) {
+	if ( const auto value = ReadDeviceSetting<bool>( "ASIOUseDefaultSamplerate", device ); value ) {
 		useDefaultSamplerate = *value;
 	}
-	if ( const auto value = ReadSetting<int>( "ASIODefaultSamplerate" ); value ) {
+	if ( const auto value = ReadDeviceSetting<int>( "ASIODefaultSamplerate", device ); value ) {
 		defaultSamplerate = std::clamp( *value, 0, maxDefaultSamplerate );
 	}
-	if ( const auto value = ReadSetting<int>( "ASIOLeadIn" ); value ) {
+	if ( const auto value = ReadDeviceSetting<int>( "ASIOLeadIn", device ); value ) {
 		leadIn = std::clamp( *value, 0, maxLeadIn );
 	}
 }
 
-void Settings::SetAdvancedASIOSettings( const bool useDefaultSamplerate, const int defaultSamplerate, const int leadIn )
+void Settings::SetAdvancedASIOSettings( const std::wstring& device, const bool useDefaultSamplerate, const int defaultSamplerate, const int leadIn )
 {
-	WriteSetting( "ASIOUseDefaultSamplerate", useDefaultSamplerate );
-	WriteSetting( "ASIODefaultSamplerate", defaultSamplerate );
-	WriteSetting( "ASIOLeadIn", leadIn );
+	WriteSetting( DeviceSettingName( "ASIOUseDefaultSamplerate", device ), useDefaultSamplerate );
+	WriteSetting( DeviceSettingName( "ASIODefaultSamplerate", device ), defaultSamplerate );
+	WriteSetting( DeviceSettingName( "ASIOLeadIn", device ), leadIn );
 }
 
 Settings::ToolbarSize Settings::GetToolbarSize()

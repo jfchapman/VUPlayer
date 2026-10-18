@@ -565,21 +565,26 @@ public:
 	// 'useDeviceDefaultFormat' - out, true to use the device's default sample format, false to use the source sample format.
 	// 'bufferLength' - out, buffer length, in milliseconds.
 	// 'leadIn' - out, lead-in length, in milliseconds.
+	// 'useEventMode' - out, true to use event-driven buffering, false to use timer-driven buffering.
 	// 'maxBufferLength' - out, maximum buffer length, in milliseconds.
 	// 'maxLeadIn' - out, maximum lead-in length, in milliseconds.
-	void GetDefaultAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn, int& maxBufferLength, int& maxLeadIn );
+	void GetDefaultAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn, bool& useEventMode, int& maxBufferLength, int& maxLeadIn );
 
 	// Gets the advanced WASAPI exclusive mode settings.
+	// 'device' - output device name (or an empty string for the default device).
 	// 'useDeviceDefaultFormat' - out, true to use the device's default sample format, false to use the source sample format.
 	// 'bufferLength' - out, buffer length, in milliseconds.
 	// 'leadIn' - out, lead-in length, in milliseconds.
-	void GetAdvancedWasapiExclusiveSettings( bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn );
+	// 'useEventMode' - out, true to use event-driven buffering, false to use timer-driven buffering.
+	void GetAdvancedWasapiExclusiveSettings( const std::wstring& device, bool& useDeviceDefaultFormat, int& bufferLength, int& leadIn, bool& useEventMode );
 
 	// Sets the advanced WASAPI exclusive mode settings.
+	// 'device' - output device name (or an empty string for the default device).
 	// 'useDeviceDefaultFormat' - true to use the device's default sample format, false to use the source sample format.
 	// 'bufferLength' - buffer length, in milliseconds.
 	// 'leadIn' - lead-in length, in milliseconds.
-	void SetAdvancedWasapiExclusiveSettings( const bool useDeviceDefaultFormat, const int bufferLength, const int leadIn );
+	// 'useEventMode' - true to use event-driven buffering, false to use timer-driven buffering.
+	void SetAdvancedWasapiExclusiveSettings( const std::wstring& device, const bool useDeviceDefaultFormat, const int bufferLength, const int leadIn, const bool useEventMode );
 
 	// Gets the default (and maximum allowed) advanced ASIO settings.
 	// 'useDefaultSamplerate' - out, true to use the default sample rate, false to use the source sample rate.
@@ -590,16 +595,18 @@ public:
 	void GetDefaultAdvancedASIOSettings( bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn, int& maxDefaultSamplerate, int& maxLeadIn );
 
 	// Gets the advanced ASIO settings.
+	// 'device' - output device name (or an empty string for the default device).
 	// 'useDefaultSamplerate' - out, true to use the default sample rate, false to use the source sample rate.
 	// 'defaultSamplerate' - out, default sample rate, in Hz.
 	// 'leadIn' - out, lead-in length, in milliseconds.
-	void GetAdvancedASIOSettings( bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn );
+	void GetAdvancedASIOSettings( const std::wstring& device, bool& useDefaultSamplerate, int& defaultSamplerate, int& leadIn );
 
 	// Sets the advanced ASIO settings.
+	// 'device' - output device name (or an empty string for the default device).
 	// 'useDefaultSamplerate' - true to use the default sample rate, false to use the source sample rate.
 	// 'defaultSamplerate' - default sample rate, in Hz.
 	// 'leadIn' - lead-in length, in milliseconds.
-	void SetAdvancedASIOSettings( const bool useDefaultSamplerate, const int defaultSamplerate, const int leadIn );
+	void SetAdvancedASIOSettings( const std::wstring& device, const bool useDefaultSamplerate, const int defaultSamplerate, const int leadIn );
 
 	// Gets the toolbar size.
 	ToolbarSize GetToolbarSize();
@@ -807,6 +814,15 @@ private:
 	// Returns the value of the setting 'name', or nullopt if the setting is not in the database.
 	template <typename T>
 	std::optional<T> ReadSetting( const std::string& name );
+
+	// Returns the setting name to use for the output device setting 'name' and output 'device' name.
+	// An empty 'device' name (used if the default device could not be resolved) uses the original (global) setting 'name', which is also the fallback for other devices.
+	static std::string DeviceSettingName( const std::string& name, const std::wstring& device );
+
+	// Returns the value of the output device setting 'name' for the output 'device' name.
+	// If there is no device specific setting, the (global) setting 'name' is returned, or nullopt if neither setting is in the database.
+	template <typename T>
+	std::optional<T> ReadDeviceSetting( const std::string& name, const std::wstring& device );
 
 	// Sets the setting 'name' in the database to 'value'.
 	template <typename T>

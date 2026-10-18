@@ -42,6 +42,13 @@ INT_PTR CALLBACK DlgAdvancedASIO::DialogProc( HWND hwnd, UINT message, WPARAM wP
 					}
 					break;
 				}
+				case IDC_ASIO_CONTROLPANEL: {
+					DlgAdvancedASIO* dialog = reinterpret_cast<DlgAdvancedASIO*>( GetWindowLongPtr( hwnd, DWLP_USER ) );
+					if ( nullptr != dialog ) {
+						dialog->ShowControlPanel();
+					}
+					break;
+				}
 			}
 			break;
 		}
@@ -49,23 +56,41 @@ INT_PTR CALLBACK DlgAdvancedASIO::DialogProc( HWND hwnd, UINT message, WPARAM wP
 	return FALSE;
 }
 
-DlgAdvancedASIO::DlgAdvancedASIO( const HINSTANCE instance, const HWND parent, Settings& settings ) :
-	m_Settings( settings )
+DlgAdvancedASIO::DlgAdvancedASIO( const HINSTANCE instance, const HWND parent, Settings& settings, Output& output, const std::wstring& deviceName ) :
+	m_Settings( settings ),
+	m_Output( output ),
+	m_DeviceName( deviceName ),
+	m_SettingsDeviceName( output.GetSettingsDeviceName( Settings::OutputMode::ASIO, deviceName ) )
 {
 	DialogBoxParam( instance, MAKEINTRESOURCE( IDD_ADVANCED_ASIO ), parent, DialogProc, reinterpret_cast<LPARAM>( this ) );
 }
 
 DlgAdvancedASIO::~DlgAdvancedASIO()
 {
+	m_Output.CloseASIOControlPanel();
+}
+
+void DlgAdvancedASIO::ShowControlPanel()
+{
+	// Initialising the driver can take a while (e.g. if the device is in use by WASAPI exclusive mode playback).
+	HCURSOR oldCursor = SetCursor( LoadCursor( NULL /*instance*/, IDC_WAIT ) );
+	const bool shown = m_Output.ShowASIOControlPanel( m_DeviceName );
+	SetCursor( oldCursor );
+	if ( !shown ) {
+		MessageBeep( MB_ICONWARNING );
+	}
 }
 
 void DlgAdvancedASIO::OnInitDialog( const HWND hwnd )
 {
 	CentreDialog( hwnd );
+
+	SetDeviceCaption( hwnd, m_SettingsDeviceName );
+
 	bool useDefaultSamplerate = false;
 	int defaultSamplerate = 0;
 	int leadIn = 0;
-	m_Settings.GetAdvancedASIOSettings( useDefaultSamplerate, defaultSamplerate, leadIn );
+	m_Settings.GetAdvancedASIOSettings( m_SettingsDeviceName, useDefaultSamplerate, defaultSamplerate, leadIn );
 	SetDlgItemInt( hwnd, IDC_ASIO_DEFAULTRATE, static_cast<UINT>( defaultSamplerate ), FALSE );
 	SetDlgItemInt( hwnd, IDC_ASIO_LEADIN, static_cast<UINT>( leadIn ), FALSE );
 	CheckRadioButton( hwnd, IDC_ASIO_OUTPUT_DEFAULT, IDC_ASIO_OUTPUT_SOURCE,
@@ -77,7 +102,7 @@ void DlgAdvancedASIO::SaveSettings( const HWND hwnd )
 	bool useDefaultSamplerate = false;
 	int defaultSamplerate = 0;
 	int leadIn = 0;
-	m_Settings.GetAdvancedASIOSettings( useDefaultSamplerate, defaultSamplerate, leadIn );
+	m_Settings.GetAdvancedASIOSettings( m_SettingsDeviceName, useDefaultSamplerate, defaultSamplerate, leadIn );
 
 	useDefaultSamplerate = ( BST_CHECKED == IsDlgButtonChecked( hwnd, IDC_ASIO_OUTPUT_DEFAULT ) );
 	BOOL success = FALSE;
@@ -90,7 +115,7 @@ void DlgAdvancedASIO::SaveSettings( const HWND hwnd )
 		leadIn = static_cast<int>( value );
 	}
 
-	m_Settings.SetAdvancedASIOSettings( useDefaultSamplerate, defaultSamplerate, leadIn );
+	m_Settings.SetAdvancedASIOSettings( m_SettingsDeviceName, useDefaultSamplerate, defaultSamplerate, leadIn );
 }
 
 void DlgAdvancedASIO::ResetToDefaults( const HWND hwnd )

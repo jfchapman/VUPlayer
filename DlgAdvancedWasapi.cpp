@@ -49,8 +49,9 @@ INT_PTR CALLBACK DlgAdvancedWasapi::DialogProc( HWND hwnd, UINT message, WPARAM 
 	return FALSE;
 }
 
-DlgAdvancedWasapi::DlgAdvancedWasapi( const HINSTANCE instance, const HWND parent, Settings& settings ) :
-	m_Settings( settings )
+DlgAdvancedWasapi::DlgAdvancedWasapi( const HINSTANCE instance, const HWND parent, Settings& settings, Output& output, const std::wstring& deviceName ) :
+	m_Settings( settings ),
+	m_SettingsDeviceName( output.GetSettingsDeviceName( Settings::OutputMode::WASAPIExclusive, deviceName ) )
 {
 	DialogBoxParam( instance, MAKEINTRESOURCE( IDD_ADVANCED_WASAPI ), parent, DialogProc, reinterpret_cast<LPARAM>( this ) );
 }
@@ -62,14 +63,19 @@ DlgAdvancedWasapi::~DlgAdvancedWasapi()
 void DlgAdvancedWasapi::OnInitDialog( const HWND hwnd )
 {
 	CentreDialog( hwnd );
+
+	SetDeviceCaption( hwnd, m_SettingsDeviceName );
+
 	bool useDeviceDefaultFormat = false;
 	int bufferLength = 0;
 	int leadIn = 0;
-	m_Settings.GetAdvancedWasapiExclusiveSettings( useDeviceDefaultFormat, bufferLength, leadIn );
+	bool useEventMode = false;
+	m_Settings.GetAdvancedWasapiExclusiveSettings( m_SettingsDeviceName, useDeviceDefaultFormat, bufferLength, leadIn, useEventMode );
 	SetDlgItemInt( hwnd, IDC_WASAPI_BUFFERLENGTH, static_cast<UINT>( bufferLength ), FALSE );
 	SetDlgItemInt( hwnd, IDC_WASAPI_LEADIN, static_cast<UINT>( leadIn ), FALSE );
 	CheckRadioButton( hwnd, IDC_WASAPI_OUTPUT_DEFAULT, IDC_WASAPI_OUTPUT_SOURCE,
 		useDeviceDefaultFormat ? IDC_WASAPI_OUTPUT_DEFAULT : IDC_WASAPI_OUTPUT_SOURCE );
+	CheckDlgButton( hwnd, IDC_WASAPI_EVENTMODE, useEventMode ? BST_CHECKED : BST_UNCHECKED );
 }
 
 void DlgAdvancedWasapi::SaveSettings( const HWND hwnd )
@@ -77,9 +83,11 @@ void DlgAdvancedWasapi::SaveSettings( const HWND hwnd )
 	bool useDeviceDefaultFormat = false;
 	int bufferLength = 0;
 	int leadIn = 0;
-	m_Settings.GetAdvancedWasapiExclusiveSettings( useDeviceDefaultFormat, bufferLength, leadIn );
+	bool useEventMode = false;
+	m_Settings.GetAdvancedWasapiExclusiveSettings( m_SettingsDeviceName, useDeviceDefaultFormat, bufferLength, leadIn, useEventMode );
 
 	useDeviceDefaultFormat = ( BST_CHECKED == IsDlgButtonChecked( hwnd, IDC_WASAPI_OUTPUT_DEFAULT ) );
+	useEventMode = ( BST_CHECKED == IsDlgButtonChecked( hwnd, IDC_WASAPI_EVENTMODE ) );
 	BOOL success = FALSE;
 	UINT value = GetDlgItemInt( hwnd, IDC_WASAPI_BUFFERLENGTH, &success, FALSE );
 	if ( success ) {
@@ -90,7 +98,7 @@ void DlgAdvancedWasapi::SaveSettings( const HWND hwnd )
 		leadIn = static_cast<int>( value );
 	}
 
-	m_Settings.SetAdvancedWasapiExclusiveSettings( useDeviceDefaultFormat, bufferLength, leadIn );
+	m_Settings.SetAdvancedWasapiExclusiveSettings( m_SettingsDeviceName, useDeviceDefaultFormat, bufferLength, leadIn, useEventMode );
 }
 
 void DlgAdvancedWasapi::ResetToDefaults( const HWND hwnd )
@@ -98,11 +106,13 @@ void DlgAdvancedWasapi::ResetToDefaults( const HWND hwnd )
 	bool useDeviceDefaultFormat = false;
 	int bufferLength = 0;
 	int leadIn = 0;
+	bool useEventMode = false;
 	int maxBufferLength = 0;
 	int maxLeadIn = 0;
-	m_Settings.GetDefaultAdvancedWasapiExclusiveSettings( useDeviceDefaultFormat, bufferLength, leadIn, maxBufferLength, maxLeadIn );
+	m_Settings.GetDefaultAdvancedWasapiExclusiveSettings( useDeviceDefaultFormat, bufferLength, leadIn, useEventMode, maxBufferLength, maxLeadIn );
 	SetDlgItemInt( hwnd, IDC_WASAPI_BUFFERLENGTH, static_cast<UINT>( bufferLength ), TRUE /*signed*/ );
 	SetDlgItemInt( hwnd, IDC_WASAPI_LEADIN, static_cast<UINT>( leadIn ), TRUE /*signed*/ );
 	CheckRadioButton( hwnd, IDC_WASAPI_OUTPUT_DEFAULT, IDC_WASAPI_OUTPUT_SOURCE,
 		useDeviceDefaultFormat ? IDC_WASAPI_OUTPUT_DEFAULT : IDC_WASAPI_OUTPUT_SOURCE );
+	CheckDlgButton( hwnd, IDC_WASAPI_EVENTMODE, useEventMode ? BST_CHECKED : BST_UNCHECKED );
 }
