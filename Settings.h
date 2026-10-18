@@ -785,8 +785,8 @@ private:
 	// Updates the playlist table if necessary.
 	void UpdatePlaylistTable( const std::string& table );
 
-	// Applies font scaling to all fonts stored in the settings table, based on the current screen DPI.
-	void UpdateFontSettings();
+	// Applies scaling to all fonts & sizes (window, split, playlist columns) stored in the settings table, based on the current screen DPI.
+	void UpdateDPIScaledSettings();
 
 	// Sets the playlist files from the database.
 	void ReadPlaylistFiles( Playlist& playlist );

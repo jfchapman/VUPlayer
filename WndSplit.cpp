@@ -15,9 +15,6 @@ static const int s_MinSplit = static_cast<int>( 200 * GetDPIScaling() );
 // Maximum split width
 static const int s_MaxSplit = static_cast<int>( 600 * GetDPIScaling() );
 
-// Default split width
-static const int s_DefaultSplit = static_cast<int>( 303 * GetDPIScaling() );
-
 LRESULT CALLBACK WndSplit::SplitProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	WndSplit* wndSplit = reinterpret_cast<WndSplit*>( GetWindowLongPtr( hwnd, GWLP_USERDATA ) );
@@ -118,6 +115,7 @@ WndSplit::WndSplit( HINSTANCE instance, HWND parent, HWND wndRebar, HWND wndStat
 	m_hWnd = CreateWindowEx( 0, s_SplitClass, NULL, style, x, y, width, height, parent, reinterpret_cast<HMENU>( s_WndSplitID++ ), instance, param );
 	SetWindowLongPtr( m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 
+	// New users start with the minimum split width.
 	m_SplitPosition = std::clamp( m_Settings.GetSplitWidth(), s_MinSplit, s_MaxSplit );
 	Resize();
 }

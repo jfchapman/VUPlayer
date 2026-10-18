@@ -132,7 +132,7 @@ void Settings::UpdateDatabase()
 	UpdatePlaylistColumnsTable();
 	UpdatePlaylistsTable();
 	UpdateHotkeysTable();
-	UpdateFontSettings();
+	UpdateDPIScaledSettings();
 }
 
 void Settings::UpdateSettingsTable()
@@ -348,9 +348,10 @@ void Settings::UpdateHotkeysTable()
 	}
 }
 
-void Settings::UpdateFontSettings()
+void Settings::UpdateDPIScaledSettings()
 {
-	// Apply DPI scaling, if necessary, to all logfont blobs in the settings table.
+	// Apply DPI scaling, if necessary, to all logfont blobs & sizes in the settings table.
+	// Sizes are saved in the coordinates of the DPI that applied at application startup (which is also the case if the DPI changes while the application is running).
 	constexpr std::array allFontSettings{ "ListFont", "TreeFont", "CounterFont" };
 
 	// Get the current pixel count per logical inch.
@@ -419,6 +420,23 @@ void Settings::UpdateFontSettings()
 						sqlite3_step( stmt );
 						sqlite3_reset( stmt );
 					}
+					sqlite3_finalize( stmt );
+				}
+
+				// Apply DPI scaling to window & split sizes (positions are left as they are).
+				constexpr std::array allSizeSettings{ "StartupWidth", "StartupHeight", "SplitWidth" };
+				for ( const auto& setting : allSizeSettings ) {
+					if ( const auto size = ReadSetting<int>( setting ); size ) {
+						WriteSetting( setting, static_cast<int>( std::lroundf( scaling * *size ) ) );
+					}
+				}
+
+				// Apply DPI scaling to playlist column widths.
+				stmt = nullptr;
+				query = "UPDATE PlaylistColumns SET Width = CAST( ROUND( Width * ?1 ) AS INTEGER );";
+				if ( SQLITE_OK == sqlite3_prepare_v2( database, query.c_str(), -1 /*nByte*/, &stmt, nullptr /*tail*/ ) ) {
+					sqlite3_bind_double( stmt, 1, scaling );
+					sqlite3_step( stmt );
 					sqlite3_finalize( stmt );
 				}
 			}
@@ -2219,7 +2237,8 @@ bool Settings::GetResamplerSettings( uint32_t& samplerate, uint32_t& channels )
 	if ( const auto it = std::find( supportedSampleRates.begin(), supportedSampleRates.end(), samplerate ); supportedSampleRates.end() == it ) {
 		samplerate = kDefaultSamplerate;
 	}
-	channels = std::clamp( ReadSetting<uint32_t>( "ResamplerChannels" ).value_or( kDefaultSamplerate ), 1u, 2u );
+	constexpr uint32_t kDefaultChannels = 2;
+	channels = std::clamp( ReadSetting<uint32_t>( "ResamplerChannels" ).value_or( kDefaultChannels ), 1u, 2u );
 
 	return enabled;
 }

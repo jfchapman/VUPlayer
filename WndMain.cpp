@@ -217,10 +217,19 @@ BOOL InitInstance( HINSTANCE hInstance, int /*nCmdShow*/ )
 	}
 
 	const DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS;
-	const int x = 0;
-	const int y = 0;
 	const int width = static_cast<int>( 1024 * GetDPIScaling() );
-	const int height = static_cast<int>( 768 * GetDPIScaling() );
+	const int height = static_cast<int>( 640 * GetDPIScaling() );
+
+	// Centre on the primary monitor work area (any saved window position is applied later).
+	int x = 0;
+	int y = 0;
+	MONITORINFO monitorInfo = {};
+	monitorInfo.cbSize = sizeof( MONITORINFO );
+	if ( GetMonitorInfo( MonitorFromPoint( {}, MONITOR_DEFAULTTOPRIMARY ), &monitorInfo ) ) {
+		const RECT& workArea = monitorInfo.rcWork;
+		x = std::max( workArea.left, workArea.left + ( workArea.right - workArea.left - width ) / 2 );
+		y = std::max( workArea.top, workArea.top + ( workArea.bottom - workArea.top - height ) / 2 );
+	}
 	g_hWnd = CreateWindowW( g_szWindowClass, g_szTitle, style, x, y, width, height, nullptr, nullptr, hInstance, nullptr );
 	const BOOL success = ( NULL != g_hWnd );
 	if ( success ) {
