@@ -62,7 +62,9 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_hInst( instance ),
 	m_hWnd( hwnd ),
 	m_hAccel( LoadAccelerators( m_hInst, MAKEINTRESOURCE( IDC_VUPLAYER ) ) ),
-	m_hAccelEditLabel( CreateModifiedAcceleratorTable() ),
+	m_hAccelEditLabel( CreateModifiedAcceleratorTable( true /*ignoreSpace*/, false /*ignoreMediaKeys*/ ) ),
+	m_hAccelMediaControls( CreateModifiedAcceleratorTable( false /*ignoreSpace*/, true /*ignoreMediaKeys*/ ) ),
+	m_hAccelEditLabelMediaControls( CreateModifiedAcceleratorTable( true /*ignoreSpace*/, true /*ignoreMediaKeys*/ ) ),
 	m_Handlers(),
 	m_Database( ( portable ? ( ApplicationFolder() / s_Database ) : ( DocumentsFolder() / s_Database ) ), databaseMode ),
 	m_Library( m_Database, m_Handlers ),
@@ -98,6 +100,7 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_Splitter( m_hInst, m_hWnd, m_Rebar.GetWindowHandle(), m_Status.GetWindowHandle(), m_Tree.GetWindowHandle(), m_Visual.GetWindowHandle(), m_List.GetWindowHandle(), m_List.GetFilterWindowHandle(), m_Settings ),
 	m_Tray( m_hInst, m_hWnd, m_Library, m_Settings, m_Output, m_Tree, m_List ),
 	m_Taskbar( m_hInst, m_hWnd ),
+	m_MediaControls( m_hWnd ),
 	m_EQ( m_hInst, m_List.GetWindowHandle(), m_Settings, m_Output ),
 	m_CurrentOutput(),
 	m_CustomColours(),
@@ -117,6 +120,8 @@ VUPlayer::VUPlayer( const HINSTANCE instance, const HWND hwnd, const std::list<s
 	m_TitleBarFormat( m_Settings.GetTitleBarFormat() )
 {
 	s_VUPlayer = this;
+
+	m_MediaControls.Enable( m_Settings.GetMediaControls() );
 
 	// The dark mode preference was applied before the child windows were created (so they have loaded the correct colours),
 	// but the main window was created using the initial dark mode state, so update it if the state has changed.
@@ -571,6 +576,8 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 			RedrawWindow( m_Status.GetWindowHandle(), NULL /*updateRect*/, NULL /*updateRegion*/, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW );
 		}
 
+		m_Output.CheckOutputDevice();
+
 		Output::Item currentPlaying = m_Output.GetCurrentPlaying();
 		if ( m_CurrentOutput.PlaylistItem.ID != currentPlaying.PlaylistItem.ID ) {
 			OnOutputChanged( m_CurrentOutput, currentPlaying );
@@ -612,6 +619,7 @@ bool VUPlayer::OnTimer( const UINT_PTR timerID )
 		if ( !m_IsConverting ) {
 			m_Taskbar.Update( m_ToolbarPlayback, m_Output );
 		}
+		m_MediaControls.Update( m_ToolbarPlayback, m_Output, m_Library, currentPlaylist );
 		m_List.UpdateStatusIcon();
 		m_Tree.UpdateOutputIcon();
 	} else if ( TIMER_SYSTRAY == timerID ) {
@@ -1772,8 +1780,11 @@ void VUPlayer::OnOptions()
 	const COLORREF previousTaskbarButtonColour = m_Settings.GetTaskbarButtonColour();
 	const bool previousTaskbarButtonAutoColour = m_Settings.GetTaskbarButtonAutoColour();
 
+	// Hotkeys & media control buttons are disabled while the options are shown, so that keys can be assigned without performing any action.
 	m_Hotkeys.Unregister();
+	m_IgnoreMediaControlButtons = true;
 	DlgOptions options( m_hInst, m_hWnd, m_Settings, m_Output );
+	m_IgnoreMediaControlButtons = false;
 	m_Hotkeys.Update();
 	SetFocus( m_List.GetWindowHandle() );
 
@@ -1812,6 +1823,7 @@ void VUPlayer::OnOptions()
 		m_Taskbar.SetToolbarButtonColour( m_Settings );
 	}
 	m_Taskbar.EnableProgressBar( m_Settings.GetTaskbarShowProgress() );
+	m_MediaControls.Enable( m_Settings.GetMediaControls() );
 
 	m_TitleBarFormat = m_Settings.GetTitleBarFormat();
 }
@@ -1834,6 +1846,40 @@ void VUPlayer::OnInitMenuPopup( const HMENU menu )
 void VUPlayer::OnHotkey( WPARAM wParam )
 {
 	m_Hotkeys.OnHotkey( wParam );
+}
+
+void VUPlayer::OnMediaControlButton( const MediaControls::Button button )
+{
+	if ( m_IgnoreMediaControlButtons ) {
+		return;
+	}
+	const Output::State state = m_Output.GetState();
+	switch ( button ) {
+		case MediaControls::Button::Play: {
+			if ( Output::State::Playing != state ) {
+				OnCommand( ID_CONTROL_PLAY );
+			}
+			break;
+		}
+		case MediaControls::Button::Pause: {
+			if ( Output::State::Playing == state ) {
+				OnCommand( ID_CONTROL_PLAY );
+			}
+			break;
+		}
+		case MediaControls::Button::Stop: {
+			OnCommand( ID_CONTROL_STOP );
+			break;
+		}
+		case MediaControls::Button::Previous: {
+			OnCommand( ID_CONTROL_PREVIOUSTRACK );
+			break;
+		}
+		case MediaControls::Button::Next: {
+			OnCommand( ID_CONTROL_NEXTTRACK );
+			break;
+		}
+	}
 }
 
 void VUPlayer::OnCalculateGain()
@@ -2169,7 +2215,13 @@ bool VUPlayer::IsMusicBrainzEnabled()
 HACCEL VUPlayer::GetAcceleratorTable() const
 {
 	// Use the modified accelerator table when text is being edited, so that keys such as space are passed to the edit control.
-	return ( m_IsEditingLabel || m_List.IsFilterFocused() ) ? m_hAccelEditLabel : m_hAccel;
+	// When the Windows media controls are active, media playback keys are handled by the media controls (even when the application has focus),
+	// so the media key accelerators are not used, otherwise each key press would be handled twice.
+	const bool isEditing = m_IsEditingLabel || m_List.IsFilterFocused();
+	if ( m_MediaControls.IsActive() ) {
+		return isEditing ? m_hAccelEditLabelMediaControls : m_hAccelMediaControls;
+	}
+	return isEditing ? m_hAccelEditLabel : m_hAccel;
 }
 
 void VUPlayer::OnRemoveFromLibrary( const MediaInfo::List& mediaList )
@@ -2504,19 +2556,29 @@ void VUPlayer::OnTaskbarButtonCreated()
 	m_Taskbar.Init( m_Settings );
 }
 
-HACCEL VUPlayer::CreateModifiedAcceleratorTable() const
+HACCEL VUPlayer::CreateModifiedAcceleratorTable( const bool ignoreSpace, const bool ignoreMediaKeys ) const
 {
 	HACCEL modifiedAcceleratorTable = nullptr;
 	if ( const int entries = CopyAcceleratorTable( m_hAccel, nullptr, 0 ); entries > 0 ) {
 		std::vector<ACCEL> accelerators( entries );
 		if ( const int copied = CopyAcceleratorTable( m_hAccel, accelerators.data(), entries ); copied == entries ) {
-			constexpr std::array<ACCEL, 1> kIgnoredAccelerators = { { FVIRTKEY | FNOINVERT, VK_SPACE, ID_CONTROL_PLAY } };
+			std::vector<ACCEL> ignoredAccelerators;
+			if ( ignoreSpace ) {
+				ignoredAccelerators.push_back( { FVIRTKEY | FNOINVERT, VK_SPACE, ID_CONTROL_PLAY } );
+			}
+			if ( ignoreMediaKeys ) {
+				// Media playback keys are handled by the Windows media controls (volume keys are not, so they are retained).
+				ignoredAccelerators.push_back( { FVIRTKEY | FNOINVERT, VK_MEDIA_PLAY_PAUSE, ID_CONTROL_PLAY } );
+				ignoredAccelerators.push_back( { FVIRTKEY | FNOINVERT, VK_MEDIA_STOP, ID_CONTROL_STOP } );
+				ignoredAccelerators.push_back( { FVIRTKEY | FNOINVERT, VK_MEDIA_PREV_TRACK, ID_CONTROL_PREVIOUSTRACK } );
+				ignoredAccelerators.push_back( { FVIRTKEY | FNOINVERT, VK_MEDIA_NEXT_TRACK, ID_CONTROL_NEXTTRACK } );
+			}
 			for ( auto accel = accelerators.begin(); accelerators.end() != accel; ) {
-				const auto ignored = std::find_if( kIgnoredAccelerators.begin(), kIgnoredAccelerators.end(), [ accel ] ( const ACCEL& ignoredAccel )
+				const auto ignored = std::find_if( ignoredAccelerators.begin(), ignoredAccelerators.end(), [ accel ] ( const ACCEL& ignoredAccel )
 					{
 						return ( accel->fVirt == ignoredAccel.fVirt ) && ( accel->key == ignoredAccel.key ) && ( accel->cmd == ignoredAccel.cmd );
 					} );
-				if ( kIgnoredAccelerators.end() != ignored ) {
+				if ( ignoredAccelerators.end() != ignored ) {
 					accel = accelerators.erase( accel );
 				} else {
 					++accel;

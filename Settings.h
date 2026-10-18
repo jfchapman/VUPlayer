@@ -689,6 +689,12 @@ public:
 	// Sets whether to show a progress bar in the taskbar button.
 	void SetTaskbarShowProgress( const bool showProgress );
 
+	// Returns whether to integrate with the Windows media controls (media flyout & media keys).
+	bool GetMediaControls();
+
+	// Sets whether to integrate with the Windows media controls (media flyout & media keys).
+	void SetMediaControls( const bool enable );
+
 	// Returns whether to allow writing of metadata tags to file.
 	bool GetWriteFileTags();
 

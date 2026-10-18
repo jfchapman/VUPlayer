@@ -10,6 +10,7 @@
 #include "Hotkeys.h"
 #include "Library.h"
 #include "LibraryMaintainer.h"
+#include "MediaControls.h"
 #include "MusicBrainz.h"
 #include "Output.h"
 #include "Scrobbler.h"
@@ -172,6 +173,9 @@ public:
 	// Called when a hotkey message is received.
 	void OnHotkey( WPARAM wParam );
 
+	// Called when a Windows media control 'button' has been pressed.
+	void OnMediaControlButton( const MediaControls::Button button );
+
 	// Creates and returns a new playlist.
 	Playlist::Ptr NewPlaylist();
 
@@ -324,8 +328,10 @@ private:
 	// Initialises the rebar controls.
 	void InitialiseRebar();
 
-	// Creates a modified accelerator table to use when editing labels.
-	HACCEL CreateModifiedAcceleratorTable() const;
+	// Creates a modified accelerator table.
+	// 'ignoreSpace' - whether to remove the space accelerator (for use when editing labels).
+	// 'ignoreMediaKeys' - whether to remove the media playback key accelerators (for use when the Windows media controls are active).
+	HACCEL CreateModifiedAcceleratorTable( const bool ignoreSpace, const bool ignoreMediaKeys ) const;
 
 	// Module instance handle.
 	HINSTANCE m_hInst;
@@ -338,6 +344,12 @@ private:
 
 	// Modified accelerator table to use when editing labels.
 	const HACCEL m_hAccelEditLabel;
+
+	// Modified accelerator table to use when the Windows media controls are active.
+	const HACCEL m_hAccelMediaControls;
+
+	// Modified accelerator table to use when editing labels, and the Windows media controls are active.
+	const HACCEL m_hAccelEditLabelMediaControls;
 
 	// Audio format handlers.
 	Handlers m_Handlers;
@@ -444,6 +456,9 @@ private:
 	// Taskbar extension control.
 	WndTaskbar m_Taskbar;
 
+	// Windows media controls.
+	MediaControls m_MediaControls;
+
 	// EQ dialog.
 	DlgEQ m_EQ;
 
@@ -494,6 +509,9 @@ private:
 
 	// Title bar text format during playback.
 	Settings::TitleBarFormat m_TitleBarFormat;
+
+	// Whether Windows media control button presses are ignored (while the options dialog is shown).
+	bool m_IgnoreMediaControlButtons = false;
 
 	// Indicates whether a MusicBrainz result is being processed.
 	bool m_IsProcessingMusicBrainzResult = false;

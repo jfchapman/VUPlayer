@@ -376,6 +376,18 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 			}
 			break;
 		}
+		case WM_QUERYENDSESSION: {
+			// Allow the session to end (or the application to be closed by the Restart Manager).
+			return TRUE;
+		}
+		case WM_ENDSESSION: {
+			// When the session is ending, the process is terminated once this message has been handled, without the window being destroyed.
+			// So destroy the window now, which saves the settings, playlists & play count in the same way as when the application is closed.
+			if ( FALSE != wParam ) {
+				DestroyWindow( hWnd );
+			}
+			return 0;
+		}
 		case WM_POWERBROADCAST: {
 			if ( nullptr != vuplayer ) {
 				vuplayer->OnPowerBroadcast( wParam );
@@ -445,6 +457,12 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 				vuplayer->OnHandleLibraryRefreshed( removedFiles );
 				delete removedFiles;
 				removedFiles = nullptr;
+			}
+			break;
+		}
+		case MSG_MEDIACONTROLBUTTON: {
+			if ( nullptr != vuplayer ) {
+				vuplayer->OnMediaControlButton( static_cast<MediaControls::Button>( wParam ) );
 			}
 			break;
 		}

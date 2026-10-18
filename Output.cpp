@@ -150,6 +150,14 @@ void CALLBACK Output::SyncSlideStop( HSYNC /*handle*/, DWORD /*channel*/, DWORD 
 	}
 }
 
+void CALLBACK Output::SyncDeviceFail( HSYNC /*handle*/, DWORD /*channel*/, DWORD /*data*/, void *user )
+{
+	// Only flag the failure here, playback is stopped from the main thread (see CheckOutputDevice).
+	Output* output = static_cast<Output*>( user );
+	if ( nullptr != output ) {
+		output->m_OutputDeviceFailed = true;
+	}
+}
 DWORD WINAPI Output::CrossfadeThreadProc( LPVOID lpParam )
 {
 	Output* output = static_cast<Output*>( lpParam );
@@ -238,6 +246,7 @@ Output::Output( const HINSTANCE instance, const HWND hwnd, Handlers& handlers, S
 	m_WASAPIFailed( false ),
 	m_WASAPIPaused( false ),
 	m_ResetASIO( false ),
+	m_OutputDeviceFailed( false ),
 	m_ASIOControlPanelDevice( -1 ),
 	m_OutputStreamFinished( false ),
 	m_MixerStreamHasEndSync( false ),
@@ -303,6 +312,7 @@ Output::~Output()
 void Output::Play( const long playlistID, const double seek )
 {
 	Stop();
+	CheckStandardOutputDevice();
 
 	Playlist::Item item( { playlistID, MediaInfo() } );
 	if ( ( 0 == item.ID ) && m_Playlist ) {
@@ -433,6 +443,7 @@ void Output::Stop()
 	m_FadeOutStartPosition = 0;
 	m_LastTransitionPosition = 0;
 	m_WASAPIFailed = false;
+	m_OutputDeviceFailed = false;
 	m_WASAPIPaused = false;
 	m_OutputStreamFinished = false;
 	m_MixerStreamHasEndSync = false;
@@ -457,7 +468,10 @@ void Output::Pause()
 	switch ( m_OutputMode ) {
 		case Settings::OutputMode::Standard: {
 			if ( State::Paused == state ) {
-				BASS_ChannelPlay( m_OutputStream, FALSE /*restart*/ );
+				if ( !BASS_ChannelPlay( m_OutputStream, FALSE /*restart*/ ) ) {
+					// The output device is unavailable, so stop rather than remain paused.
+					Stop();
+				}
 			} else if ( State::Playing == state ) {
 				BASS_ChannelPause( m_OutputStream );
 			}
@@ -640,6 +654,47 @@ Output::State Output::GetState()
 		}
 	}
 	return state;
+}
+
+void Output::CheckOutputDevice()
+{
+	if ( 0 == m_OutputStream ) {
+		return;
+	}
+
+	bool deviceFailed = false;
+	switch ( m_OutputMode ) {
+		case Settings::OutputMode::Standard: {
+			// When the device is unavailable, the output stream is paused by BASS, and would automatically resume if the device became available again.
+			deviceFailed = m_OutputDeviceFailed || ( BASS_ACTIVE_PAUSED_DEVICE == BASS_ChannelIsActive( m_OutputStream ) );
+			break;
+		}
+		case Settings::OutputMode::WASAPIExclusive: {
+			deviceFailed = m_WASAPIFailed;
+			break;
+		}
+		default: {
+			break;
+		}
+	}
+	if ( deviceFailed ) {
+		Stop();
+	}
+}
+
+void Output::CheckStandardOutputDevice()
+{
+	if ( Settings::OutputMode::Standard == m_OutputMode ) {
+		// Reinitialise the output if the current device is no longer available (the default device is used if the selected device is unavailable).
+		const DWORD device = BASS_GetDevice();
+		BASS_DEVICEINFO deviceInfo = {};
+		const bool reinitialise = ( static_cast<DWORD>( -1 ) != device ) && ( 0 != device ) &&
+			( TRUE == BASS_GetDeviceInfo( device, &deviceInfo ) ) && !( deviceInfo.flags & BASS_DEVICE_ENABLED );
+		if ( reinitialise ) {
+			BASS_Free();
+			InitialiseOutput();
+		}
+	}
 }
 
 Output::Item Output::GetCurrentPlaying()
@@ -2005,6 +2060,9 @@ bool Output::CreateOutputStream( const MediaInfo& mediaInfo )
 					const DWORD flags = BASS_SAMPLE_FLOAT;
 					m_OutputStream = BASS_StreamCreate( samplerate, channels, flags, StreamProc, this );
 					success = ( 0 != m_OutputStream );
+				}
+				if ( success ) {
+					BASS_ChannelSetSync( m_OutputStream, BASS_SYNC_DEV_FAIL, 0 /*param*/, SyncDeviceFail, this );
 				}
 				break;
 			}

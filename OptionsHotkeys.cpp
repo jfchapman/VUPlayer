@@ -138,20 +138,19 @@ std::wstring OptionsHotkeys::GetKeyDescription( const Settings::Hotkey& hotkey )
 		description += buffer;
 		description += L"+";
 	}
-	if ( hotkey.Name.empty() ) {
-		const auto nameIter = s_KeyNames.find( hotkey.Code );
-		if ( s_KeyNames.end() != nameIter ) {
-			LoadString( GetInstanceHandle(), nameIter->second, buffer, bufSize );
+	// Media & volume keys are checked first, as the stored key name for these is not reliable
+	// (GetKeyNameText returns the name of the key which shares the same scan code, e.g. 'G' for the play/pause key).
+	if ( const auto nameIter = s_KeyNames.find( hotkey.Code ); s_KeyNames.end() != nameIter ) {
+		LoadString( GetInstanceHandle(), nameIter->second, buffer, bufSize );
+		description += buffer;
+	} else if ( hotkey.Name.empty() ) {
+		const UINT scancode = MapVirtualKey( hotkey.Code, MAPVK_VK_TO_VSC );
+		if ( 0 != GetKeyNameText( scancode << 16, buffer, bufSize ) ) {
 			description += buffer;
 		} else {
-			const UINT scancode = MapVirtualKey( hotkey.Code, MAPVK_VK_TO_VSC );
-			if ( 0 != GetKeyNameText( scancode << 16, buffer, bufSize ) ) {
-				description += buffer;
-			} else {
-				std::wstringstream ss;
-				ss << L'[' << std::hex << std::showbase << hotkey.Code << L']';
-				description += ss.str();
-			}
+			std::wstringstream ss;
+			ss << L'[' << std::hex << std::showbase << hotkey.Code << L']';
+			description += ss.str();
 		}
 	} else {
 		description += hotkey.Name;

@@ -89,6 +89,10 @@ public:
 	// Returns the current output state.
 	State GetState();
 
+	// Stops playback if the output device has failed or become unavailable (e.g. it has been disconnected).
+	// This should be called periodically from the main thread.
+	void CheckOutputDevice();
+
 	// Returns the currently playing item.
 	Item GetCurrentPlaying();
 
@@ -275,6 +279,13 @@ private:
 
 	// BASS sync, called when manually stopping playback.
 	static void CALLBACK SyncSlideStop( HSYNC handle, DWORD channel, DWORD data, void *user );
+
+	// BASS sync, called when the standard output device stops unexpectedly (e.g. it has been disconnected).
+	static void CALLBACK SyncDeviceFail( HSYNC handle, DWORD channel, DWORD data, void *user );
+
+	// For standard output, reinitialises the output if the current device is no longer available (e.g. it has been disconnected),
+	// in which case the default device is used. This must only be called when stopped.
+	void CheckStandardOutputDevice();
 
 	// Crossfade calculation thread procedure.
 	static DWORD WINAPI CrossfadeThreadProc( LPVOID lpParam );
@@ -617,6 +628,9 @@ private:
 
 	// Indicates whether ASIO should be reinitialised the next time playback is started.
 	std::atomic<bool> m_ResetASIO;
+
+	// Indicates whether the current standard output device has failed (e.g. it has been disconnected).
+	std::atomic<bool> m_OutputDeviceFailed;
 
 	// ASIO device that was initialised only to show its control panel (-1 if none).
 	int m_ASIOControlPanelDevice;

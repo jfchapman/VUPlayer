@@ -336,6 +336,7 @@ copy "$(ProjectDir)$(FFmpegDir)\bin\x64\swresample-7.dll" $(OutDir)swresample-7.
     <ClInclude Include="Hotkeys.h" />
     <ClInclude Include="Library.h" />
     <ClInclude Include="LibraryMaintainer.h" />
+    <ClInclude Include="MediaControls.h" />
     <ClInclude Include="MediaInfo.h" />
     <ClInclude Include="MusicBrainz.h" />
     <ClInclude Include="NullVisual.h" />
@@ -492,6 +493,7 @@ copy "$(ProjectDir)$(FFmpegDir)\bin\x64\swresample-7.dll" $(OutDir)swresample-7.
     <ClCompile Include="Hotkeys.cpp" />
     <ClCompile Include="Library.cpp" />
     <ClCompile Include="LibraryMaintainer.cpp" />
+    <ClCompile Include="MediaControls.cpp" />
     <ClCompile Include="MediaInfo.cpp" />
     <ClCompile Include="MusicBrainz.cpp" />
     <ClCompile Include="NullVisual.cpp" />

@@ -1812,6 +1812,16 @@ void Settings::SetTaskbarShowProgress( const bool showProgress )
 	WriteSetting( "TaskbarProgress", showProgress );
 }
 
+bool Settings::GetMediaControls()
+{
+	return ReadSetting<bool>( "MediaControls" ).value_or( true );
+}
+
+void Settings::SetMediaControls( const bool enable )
+{
+	WriteSetting( "MediaControls", enable );
+}
+
 bool Settings::GetWriteFileTags()
 {
 	return ReadSetting<bool>( "WriteFileTags" ).value_or( true );

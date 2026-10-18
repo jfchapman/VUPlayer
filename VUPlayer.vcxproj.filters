@@ -318,6 +318,9 @@
     <ClInclude Include="WndTaskbar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MediaControls.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="OutputDecoder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -648,6 +651,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WndTaskbar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MediaControls.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="OutputDecoder.cpp">

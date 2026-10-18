@@ -70,7 +70,12 @@ void OptionsTaskbar::OnInit( const HWND hwnd )
 		if ( HWND hwndProgress = GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_PROGRESS ); nullptr != hwndProgress ) {
 			Button_SetCheck( hwndProgress, ( GetSettings().GetTaskbarShowProgress() ? BST_CHECKED : BST_UNCHECKED ) );
 		}
+		if ( HWND hwndMediaControls = GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_MEDIACONTROLS ); nullptr != hwndMediaControls ) {
+			Button_SetCheck( hwndMediaControls, ( GetSettings().GetMediaControls() ? BST_CHECKED : BST_UNCHECKED ) );
+		}
 	} else {
+		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_MEDIAGROUP ), SW_HIDE );
+		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_MEDIACONTROLS ), SW_HIDE );
 		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_THUMBNAILGROUP ), SW_HIDE );
 		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_AUTOCOLOUR ), SW_HIDE );
 		ShowWindow( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_BUTTONCOLOUR ), SW_HIDE );
@@ -95,6 +100,11 @@ void OptionsTaskbar::OnSave( const HWND hwnd )
 
 	// Progress bar
 	GetSettings().SetTaskbarShowProgress( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_PROGRESS ) ) );
+
+	// Media controls
+	if ( IsWindows10() ) {
+		GetSettings().SetMediaControls( BST_CHECKED == Button_GetCheck( GetDlgItem( hwnd, IDC_OPTIONS_TASKBAR_MEDIACONTROLS ) ) );
+	}
 }
 
 void OptionsTaskbar::OnCommand( const HWND hwnd, const WPARAM wParam, const LPARAM /*lParam*/ )
