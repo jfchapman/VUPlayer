@@ -1871,7 +1871,7 @@ void Settings::SetMODSamplerate( const uint32_t samplerate )
 void Settings::GetDefaultOpenMPTSettings( bool& fadeout, long& separation, long& ramping, long& interpolation )
 {
 	fadeout = false;
-	separation = 100;
+	separation = 50;
 	ramping = -1;
 	interpolation = 0;
 }

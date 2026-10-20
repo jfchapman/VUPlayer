@@ -5,7 +5,7 @@
 #include <functional>
 #include <string>
 
-// Playlist filter bar, which is shown above the playlist.
+// Search bar, which is shown above the playlist.
 class WndFilter
 {
 public:

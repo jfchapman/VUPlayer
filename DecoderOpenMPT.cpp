@@ -15,7 +15,7 @@ DecoderOpenMPT::DecoderOpenMPT( const std::wstring& filename, const Context cont
 	const uint32_t samplerate = ( nullptr != vuplayer ) ? vuplayer->GetApplicationSettings().GetMODSamplerate() : 48000;
 	if ( nullptr != vuplayer ) {
 		bool fadeout = false;
-		long separation = 100;
+		long separation = 50;
 		long ramping = -1;
 		long interpolation = 0;
 		vuplayer->GetApplicationSettings().GetOpenMPTSettings( fadeout, separation, ramping, interpolation );

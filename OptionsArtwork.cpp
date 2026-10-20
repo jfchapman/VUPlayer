@@ -5,6 +5,8 @@
 #include "Utility.h"
 #include "VUPlayer.h"
 
+#include <Uxtheme.h>
+
 #include <filesystem>
 
 // Initial folder setting for choosing artwork.
@@ -108,13 +110,15 @@ void OptionsArtwork::OnDrawArtwork( DRAWITEMSTRUCT* drawItemStruct )
 		const int clientWidth = drawItemStruct->rcItem.right - drawItemStruct->rcItem.left;
 		const int clientHeight = drawItemStruct->rcItem.bottom - drawItemStruct->rcItem.top;
 		Gdiplus::Rect clientRect( 0, 0, clientWidth, clientHeight );
+		// Fill using the property page background (which is themed in light mode).
+		if ( !DarkMode::UseDarkColours() ) {
+			DrawThemeParentBackground( drawItemStruct->hwndItem, drawItemStruct->hDC, &drawItemStruct->rcItem );
+		}
 		Gdiplus::Graphics graphics( drawItemStruct->hDC );
 		if ( DarkMode::UseDarkColours() ) {
 			Gdiplus::Color backgroundColour;
 			backgroundColour.SetFromCOLORREF( DarkMode::GetBackgroundColour() );
 			graphics.Clear( backgroundColour );
-		} else {
-			graphics.Clear( static_cast<Gdiplus::ARGB>( Gdiplus::Color::White ) );
 		}
 		if ( m_Artwork ) {
 			const UINT bitmapWidth = m_Artwork->GetWidth();

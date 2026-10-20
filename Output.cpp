@@ -158,6 +158,7 @@ void CALLBACK Output::SyncDeviceFail( HSYNC /*handle*/, DWORD /*channel*/, DWORD
 		output->m_OutputDeviceFailed = true;
 	}
 }
+
 DWORD WINAPI Output::CrossfadeThreadProc( LPVOID lpParam )
 {
 	Output* output = static_cast<Output*>( lpParam );

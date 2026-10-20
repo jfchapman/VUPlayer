@@ -69,7 +69,7 @@ void DlgModOpenMPT::OnInitDialog( const HWND hwnd )
 	CentreDialog( hwnd );
 
 	bool fadeout = false;
-	long separation = 100;
+	long separation = 50;
 	long ramping = -1;
 	long interpolation = 0;
 	m_Settings.GetOpenMPTSettings( fadeout, separation, ramping, interpolation );
@@ -136,7 +136,7 @@ void DlgModOpenMPT::OnInitDialog( const HWND hwnd )
 void DlgModOpenMPT::SaveSettings( const HWND hwnd )
 {
 	bool fadeout = false;
-	long separation = 100;
+	long separation = 50;
 	long ramping = -1;
 	long interpolation = 0;
 	m_Settings.GetOpenMPTSettings( fadeout, separation, ramping, interpolation );
@@ -164,7 +164,7 @@ void DlgModOpenMPT::SaveSettings( const HWND hwnd )
 void DlgModOpenMPT::ResetToDefaults( const HWND hwnd )
 {
 	bool fadeout = false;
-	long separation = 100;
+	long separation = 50;
 	long ramping = -1;
 	long interpolation = 0;
 	m_Settings.GetDefaultOpenMPTSettings( fadeout, separation, ramping, interpolation );
